@@ -65,3 +65,11 @@ Window activation is forwarded to winit. `WM_NCACTIVATE` uses `lParam=-1` to pre
 See [Development](development.md) for unit, actual-DLL and end-to-end checks. Runtime smoke tests compare identical PNG bytes across JSONL, MCP and GUI. Localization checks cover catalogs, placeholders, settings round trips, search and four-language UI captures. Actual tablet/driver compatibility still needs hardware testing.
 
 Document transactions and provisional pen contacts use replay state plus shared undo tiles as rollback checkpoints. Atomic pipelines suppress child journal writes and publish one outcome after success; failure restores the checkpoint. A journal append publishes its index/head only after writing the entire compressed record. Partial writes truncate the uncommitted tail. MCRPLY02 adds metadata deltas, intra-event tile references and sparse XOR blocks; MCRPLY01 remains readable. See [Atomic Operations](atomic-operations.md).
+
+## Stable layer editing
+
+Optional composition metadata stores document-scoped layer IDs, custom names and the next ID. Legacy projects receive deterministic IDs when opened. IDs persist across save, undo and reorder; committed undo does not reuse allocated IDs. Atomic failure restores the allocator with the document checkpoint. Image graphs retain their index-based wire format; structural edits remap indices through stable IDs, and reject deletion of a referenced layer, including disabled graph sources.
+
+Reorder moves existing pixel buffers. Delete stores the removed buffer in a shared undo entry; duplication copies only its source layer. Integer pixel transforms execute in the native painting DLL without an additional image-sized scratch buffer. Host tile snapshots, atomic checkpoints and replay recording retain their existing costs and limits. Typed pen movement is unchanged.
+
+Missing legacy metadata is omitted when serializing old journal records, preserving their hashes. New recordings include layer identities; this release reads old archives, while older hosts are not guaranteed to read new recordings. See [Layer editing](layer-editing.md).

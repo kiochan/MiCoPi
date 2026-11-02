@@ -1,6 +1,7 @@
 //! egui workbench. Painting and platform input remain independent of widget layout.
 mod canvas;
 mod commands;
+mod layers;
 mod nodes;
 mod panels;
 mod preferences;

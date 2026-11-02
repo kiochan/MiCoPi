@@ -421,6 +421,15 @@ pub static COMMANDS: &[Command] = &[
         42
     ),
     c!(
+        "layer.duplicate",
+        "Duplicate Layer",
+        "Layers",
+        "duplicate copy layer fuzhi tuceng",
+        UiCommand(10140),
+        "Ctrl+J",
+        10140
+    ),
+    c!(
         "layer.clear",
         "Clear Current Layer",
         "Layers",

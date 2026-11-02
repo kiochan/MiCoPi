@@ -2,6 +2,7 @@
 use micopi_plugin_api as abi;
 use serde_json::{json, Value};
 use std::ffi::c_void;
+mod spatial;
 #[derive(Default)]
 struct Instance {
     calls: u64,
@@ -20,6 +21,7 @@ unsafe extern "C" fn destroy(state: *mut c_void) {
 struct Kernel {
     checkerboard: bool,
     cell: usize,
+    spatial: Option<spatial::Spatial>,
 }
 unsafe extern "C" fn transform(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 {
     if user.is_null() || buffer.is_null() {
@@ -27,10 +29,24 @@ unsafe extern "C" fn transform(user: *mut c_void, buffer: *mut abi::Pixels) -> i
     }
     let kernel = &*user.cast::<Kernel>();
     let buffer = &mut *buffer;
-    if buffer.len != buffer.width as usize * buffer.height as usize || buffer.data.is_null() {
+    if buffer.width == 0
+        || buffer.height == 0
+        || buffer.stride != buffer.width
+        || buffer.len != buffer.width as usize * buffer.height as usize
+        || buffer.data.is_null()
+    {
         return abi::ERROR;
     }
     let pixels = std::slice::from_raw_parts_mut(buffer.data, buffer.len);
+    if let Some(operation) = kernel.spatial {
+        spatial::apply(
+            pixels,
+            buffer.width as usize,
+            buffer.height as usize,
+            operation,
+        );
+        return abi::OK;
+    }
     for y in 0..buffer.height as usize {
         for x in 0..buffer.width as usize {
             let p = &mut pixels[y * buffer.stride as usize + x];
@@ -73,7 +89,17 @@ unsafe fn run(
     if handler == "stats" {
         return Ok(json!({"implementation":"independent Rust DLL","calls":state.calls}));
     }
-    if !["invert", "checkerboard", "invert_region"].contains(&handler) {
+    if ![
+        "invert",
+        "checkerboard",
+        "invert_region",
+        "flip_horizontal",
+        "flip_vertical",
+        "rotate_180",
+        "translate",
+    ]
+    .contains(&handler)
+    {
         return Err(format!("unknown native handler: {handler}"));
     }
     let mut reply = Vec::<u8>::new();
@@ -119,6 +145,25 @@ unsafe fn run(
     };
     let cell = args["cell"].as_f64().unwrap_or(16.).clamp(1., 256.) as usize;
     let mut kernel = Kernel {
+        spatial: match handler {
+            "flip_horizontal" => Some(spatial::Spatial::FlipHorizontal),
+            "flip_vertical" => Some(spatial::Spatial::FlipVertical),
+            "rotate_180" => Some(spatial::Spatial::Rotate180),
+            "translate" => {
+                let offset = |key: &str| {
+                    args[key]
+                        .as_i64()
+                        .filter(|v| (-4096..=4096).contains(v))
+                        .map(|v| v as i32)
+                        .ok_or_else(|| format!("invalid {key}"))
+                };
+                Some(spatial::Spatial::Translate {
+                    dx: offset("dx")?,
+                    dy: offset("dy")?,
+                })
+            }
+            _ => None,
+        },
         checkerboard: handler == "checkerboard",
         cell,
     };

@@ -718,5 +718,20 @@
   "{} × {}    ·    {} {:.0}%    ·    {:.1}%    ·    History {:.1} MB": "{} × {}    ·    {} {:.0}%    ·    {:.1}%    ·    History {:.1} MB",
   "{} × {} px   ·   {:.1}%   ·   History {:.1} MB": "{} × {} px   ·   {:.1}%   ·   履歴 {:.1} MB",
   "{}: Enter comma-separated shortcuts; Enter to save, Esc to return": "{}: Enter comma-separated shortcuts; Enter to save, Esc to return",
-  "↑↓ Select": "↑↓ 選択"
+  "↑↓ Select": "↑↓ 選択",
+  "Layer Actions": "レイヤー操作",
+  "Layer Name": "レイヤー名",
+  "Duplicate Layer": "レイヤーを複製",
+  "Move Layer Up": "レイヤーを上へ",
+  "Move Layer Down": "レイヤーを下へ",
+  "Delete Layer": "レイヤーを削除",
+  "Flip Layer Horizontally": "レイヤーを左右反転",
+  "Flip Layer Vertically": "レイヤーを上下反転",
+  "Rotate Layer 180°": "レイヤーを180°回転",
+  "Offset Layer": "レイヤーを移動",
+  "Rename layer": "レイヤー名を変更",
+  "Reorder layer": "レイヤーの順序を変更",
+  "Duplicate layer": "レイヤーを複製",
+  "Delete layer": "レイヤーを削除",
+  "Apply Offset": "オフセットを適用"
 }

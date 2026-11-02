@@ -88,6 +88,68 @@
           "implementation"
         ]
       }
+    },
+    {
+      "id": "layer.flip_horizontal",
+      "title": "Flip Layer Horizontally",
+      "native": "flip_horizontal",
+      "document_atomic": true,
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.flip_vertical",
+      "title": "Flip Layer Vertically",
+      "native": "flip_vertical",
+      "document_atomic": true,
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.rotate_180",
+      "title": "Rotate Layer 180°",
+      "native": "rotate_180",
+      "document_atomic": true,
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.translate",
+      "title": "Offset Layer",
+      "native": "translate",
+      "document_atomic": true,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dx": {
+            "type": "integer",
+            "minimum": -4096,
+            "maximum": 4096
+          },
+          "dy": {
+            "type": "integer",
+            "minimum": -4096,
+            "maximum": 4096
+          }
+        },
+        "required": [
+          "dx",
+          "dy"
+        ],
+        "additionalProperties": false
+      }
     }
   ],
   "panels": [

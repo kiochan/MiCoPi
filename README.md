@@ -33,7 +33,9 @@ Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadma
 - [Atomic document groups](docs/atomic-operations.md), shared-tile rollback and compact verified events.
 - Verified [event replay](docs/replay.md), time-lapse preview and PNG frame sequences.
 
-Current limits: one document per session; no Wintab, selections, transforms, layer reordering/merging or watercolor engine. Native plugin DLLs execute inside the host process.
+Layers support renaming, duplication (**Ctrl+J**), reordering and deletion, plus exact flips, 180° rotation and integer offsets. See [Layer editing](docs/layer-editing.md).
+
+Current limits: one document per session; no Wintab, selections, free transforms, layer groups/merging or watercolor engine. Native plugin DLLs execute inside the host process.
 
 ## Build and run
 

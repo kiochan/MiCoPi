@@ -531,6 +531,9 @@ impl Studio {
                         continue;
                     }
                     match id {
+                        10140 => {
+                            self.editor.core("layer.duplicate", serde_json::json!({}));
+                        }
                         10130 => self.focus_panel(Panel::Nodes),
                         10131 => {
                             self.editor.finish_stroke();

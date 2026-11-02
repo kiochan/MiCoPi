@@ -94,6 +94,10 @@ pub enum Operation {
     Undo,
     Redo,
     AddLayer,
+    RenameLayer,
+    DuplicateLayer,
+    MoveLayer,
+    DeleteLayer,
     SelectLayer,
     LayerProperties,
     ClearLayer,
@@ -195,13 +199,21 @@ impl Operation {
                 json!({"tool":{"type":"string"},"points":{"type":"array","items":point,"minItems":1,"maxItems":65536}}),
                 vec!["points"],
             ),
-            Self::SelectLayer => (
-                json!({"index":{"type":"integer","minimum":0,"maximum":15}}),
-                vec!["index"],
+            Self::SelectLayer | Self::DuplicateLayer | Self::DeleteLayer => (
+                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64}}),
+                vec![],
+            ),
+            Self::RenameLayer => (
+                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},"name":{"type":"string","minLength":1}}),
+                vec!["name"],
+            ),
+            Self::MoveLayer => (
+                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},"to":{"type":"integer","minimum":0,"maximum":15}}),
+                vec!["to"],
             ),
             Self::LayerProperties => (
-                json!({"index":{"type":"integer","minimum":0,"maximum":15},"visible":{"type":"boolean"},"opacity":{"type":"number","minimum":0,"maximum":1},"blend_mode":{"type":"string","enum":["normal","multiply","screen","overlay","darken","lighten","add","difference"]}}),
-                vec!["index"],
+                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},"visible":{"type":"boolean"},"opacity":{"type":"number","minimum":0,"maximum":1},"blend_mode":{"type":"string","enum":["normal","multiply","screen","overlay","darken","lighten","add","difference"]}}),
+                vec![],
             ),
             Self::Pick => (json!({"x":number,"y":number}), vec!["x", "y"]),
             Self::View => (

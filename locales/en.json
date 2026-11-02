@@ -718,5 +718,20 @@
   "{} × {}    ·    {} {:.0}%    ·    {:.1}%    ·    History {:.1} MB": "{} × {}    ·    {} {:.0}%    ·    {:.1}%    ·    History {:.1} MB",
   "{} × {} px   ·   {:.1}%   ·   History {:.1} MB": "{} × {} px   ·   {:.1}%   ·   History {:.1} MB",
   "{}: Enter comma-separated shortcuts; Enter to save, Esc to return": "{}: Enter comma-separated shortcuts; Enter to save, Esc to return",
-  "↑↓ Select": "↑↓ Select"
+  "↑↓ Select": "↑↓ Select",
+  "Layer Actions": "Layer Actions",
+  "Layer Name": "Layer Name",
+  "Duplicate Layer": "Duplicate Layer",
+  "Move Layer Up": "Move Layer Up",
+  "Move Layer Down": "Move Layer Down",
+  "Delete Layer": "Delete Layer",
+  "Flip Layer Horizontally": "Flip Layer Horizontally",
+  "Flip Layer Vertically": "Flip Layer Vertically",
+  "Rotate Layer 180°": "Rotate Layer 180°",
+  "Offset Layer": "Offset Layer",
+  "Rename layer": "Rename layer",
+  "Reorder layer": "Reorder layer",
+  "Duplicate layer": "Duplicate layer",
+  "Delete layer": "Delete layer",
+  "Apply Offset": "Apply Offset"
 }

@@ -311,6 +311,44 @@ fn configured_shortcuts_dispatch_and_text_fields_block_global_tool_changes() {
 }
 
 #[test]
+fn layer_name_entry_commits_and_duplicate_shortcut_uses_the_shared_action() {
+    let mut app = studio();
+    let ctx = Context::default();
+    let size = vec2(1360., 920.);
+    for t in 0..3 {
+        frame(&mut app, &ctx, size, vec![], t as f64);
+    }
+    let id = app.editor.session.doc.layer_id(0);
+    let edit = Id::new(("layer-name", app.editor.session.doc.identity, id));
+    ctx.memory_mut(|m| m.request_focus(edit));
+    ctx.data_mut(|d| d.insert_temp(edit, "Ink 墨".to_string()));
+    let key = |key, modifiers| Event::Key {
+        key,
+        physical_key: Some(key),
+        pressed: true,
+        repeat: false,
+        modifiers,
+    };
+    frame(
+        &mut app,
+        &ctx,
+        size,
+        vec![key(Key::Enter, Modifiers::NONE)],
+        3.,
+    );
+    assert_eq!(app.editor.session.doc.layer_name(0), "Ink 墨");
+    ctx.memory_mut(|m| m.surrender_focus(edit));
+    frame(&mut app, &ctx, size, vec![], 4.);
+    frame(&mut app, &ctx, size, vec![key(Key::J, Modifiers::CTRL)], 5.);
+    assert_eq!(app.editor.session.doc.layers.len(), 2);
+    assert_eq!(app.editor.session.doc.layer_name(1), "Ink 墨");
+    assert_ne!(app.editor.session.doc.layer_id(1), id);
+    app.editor.core("history.undo", serde_json::json!({}));
+    assert_eq!(app.editor.session.doc.layers.len(), 1);
+    assert_eq!(app.editor.session.doc.layer_id(0), id);
+}
+
+#[test]
 fn command_palette_stays_inside_the_window_at_both_densities() {
     let mut app = studio();
     let ctx = Context::default();

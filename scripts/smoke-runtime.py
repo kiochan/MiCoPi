@@ -62,6 +62,17 @@ def main():
         ])),
     ]
     commands += [
+        dict(action="layer.rename", args=dict(layer_id=1, name="Ink 墨")),
+        dict(action="layer.duplicate", args=dict(layer_id=1)),
+        dict(action="layer.flip_horizontal", args={}),
+        dict(action="layer.flip_vertical", args={}),
+        dict(action="layer.rotate_180", args={}),
+        dict(action="layer.translate", args=dict(dx=7, dy=-3)),
+        dict(action="history.undo", args={}),
+        dict(action="history.redo", args={}),
+        dict(action="layer.move", args=dict(layer_id=2, to=0)),
+        dict(action="layer.move", args=dict(layer_id=2, to=1)),
+        dict(action="layer.delete", args=dict(layer_id=2)),
         dict(action="native.invert_region", args=dict(x=8,y=8,width=128,height=96)),
         dict(action="history.undo",args={}),
         dict(action="history.redo",args={}),

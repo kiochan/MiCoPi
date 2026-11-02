@@ -290,7 +290,7 @@ impl Session {
         self.stroke.panning()
     }
     pub fn state(&self) -> Value {
-        json!({"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":self.parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
+        json!({"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"id":self.doc.layer_id(index),"name":self.doc.layer_name(index),"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":self.parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
     }
     pub fn apply(&mut self, action: Action) -> ActionResult {
         let pointer_action = self

@@ -718,5 +718,20 @@
   "{} × {}    ·    {} {:.0}%    ·    {:.1}%    ·    History {:.1} MB": "{} × {}    ·    {} {:.0}%    ·    {:.1}%    ·    History {:.1} MB",
   "{} × {} px   ·   {:.1}%   ·   History {:.1} MB": "{} × {} px   ·   {:.1}%   ·   기록 {:.1} MB",
   "{}: Enter comma-separated shortcuts; Enter to save, Esc to return": "{}: Enter comma-separated shortcuts; Enter to save, Esc to return",
-  "↑↓ Select": "↑↓ 선택"
+  "↑↓ Select": "↑↓ 선택",
+  "Layer Actions": "레이어 작업",
+  "Layer Name": "레이어 이름",
+  "Duplicate Layer": "레이어 복제",
+  "Move Layer Up": "레이어 위로 이동",
+  "Move Layer Down": "레이어 아래로 이동",
+  "Delete Layer": "레이어 삭제",
+  "Flip Layer Horizontally": "레이어 좌우 반전",
+  "Flip Layer Vertically": "레이어 상하 반전",
+  "Rotate Layer 180°": "레이어 180° 회전",
+  "Offset Layer": "레이어 위치 이동",
+  "Rename layer": "레이어 이름 변경",
+  "Reorder layer": "레이어 순서 변경",
+  "Duplicate layer": "레이어 복제",
+  "Delete layer": "레이어 삭제",
+  "Apply Offset": "오프셋 적용"
 }

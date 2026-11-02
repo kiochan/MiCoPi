@@ -718,5 +718,20 @@
   "{} × {}    ·    {} {:.0}%    ·    {:.1}%    ·    History {:.1} MB": "{} × {}    ·    {} {:.0}%    ·    {:.1}%    ·    历史 {:.1} MB",
   "{} × {} px   ·   {:.1}%   ·   History {:.1} MB": "{} × {} px   ·   {:.1}%   ·   历史 {:.1} MB",
   "{}: Enter comma-separated shortcuts; Enter to save, Esc to return": "{}：输入组合，逗号分隔多个；Enter 保存，Esc 返回",
-  "↑↓ Select": "↑↓ 选择"
+  "↑↓ Select": "↑↓ 选择",
+  "Layer Actions": "图层操作",
+  "Layer Name": "图层名称",
+  "Duplicate Layer": "复制图层",
+  "Move Layer Up": "上移图层",
+  "Move Layer Down": "下移图层",
+  "Delete Layer": "删除图层",
+  "Flip Layer Horizontally": "水平翻转图层",
+  "Flip Layer Vertically": "垂直翻转图层",
+  "Rotate Layer 180°": "图层旋转 180°",
+  "Offset Layer": "偏移图层",
+  "Rename layer": "重命名图层",
+  "Reorder layer": "调整图层顺序",
+  "Duplicate layer": "复制图层",
+  "Delete layer": "删除图层",
+  "Apply Offset": "应用偏移"
 }

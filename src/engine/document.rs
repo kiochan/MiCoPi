@@ -13,6 +13,45 @@ pub struct Composition {
     pub layers: Vec<(bool, u8, BlendMode)>,
     #[serde(default)]
     pub workflow: super::workflow::Graph,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub layer_metadata: Vec<LayerMetadata>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub next_layer_id: u64,
+}
+fn is_zero(value: &u64) -> bool {
+    *value == 0
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LayerMetadata {
+    pub id: u64,
+    pub name: String,
+}
+impl Composition {
+    pub fn validate_layer_metadata(&self) -> Result<(), String> {
+        if self.layer_metadata.is_empty() {
+            return if self.next_layer_id == 0 {
+                Ok(())
+            } else {
+                Err("Missing layer identities".into())
+            };
+        }
+        let mut ids = std::collections::BTreeSet::new();
+        if self.layer_metadata.len() != self.layers.len()
+            || self.next_layer_id == 0
+            || self.next_layer_id > u32::MAX as u64 + 1
+            || self.layer_metadata.iter().any(|m| {
+                m.id == 0
+                    || m.id >= self.next_layer_id
+                    || !ids.insert(m.id)
+                    || m.name.len() > 512
+                    || m.name.chars().any(char::is_control)
+            })
+        {
+            return Err("Invalid layer identities or names".into());
+        }
+        Ok(())
+    }
 }
 pub const TILE: usize = 64;
 const HISTORY_LIMIT: usize = 64 * 1024 * 1024;
@@ -34,9 +73,17 @@ struct Edit {
     layer_change: Option<LayerChange>,
 }
 #[derive(Clone)]
-struct LayerChange {
-    active: usize,
-    removed: Option<Arc<Layer>>,
+enum LayerChange {
+    Toggle {
+        index: usize,
+        active: usize,
+        removed: Option<Arc<Layer>>,
+    },
+    Move {
+        from: usize,
+        to: usize,
+        active: usize,
+    },
 }
 #[derive(Clone)]
 pub(crate) struct HistoryCheckpoint {
@@ -48,6 +95,7 @@ pub(crate) struct HistoryCheckpoint {
     last: Option<(f32, f32)>,
     last_brush: Option<Brush>,
     distance: f32,
+    next_layer_id: u64,
 }
 impl Edit {
     fn bytes(&self) -> usize {
@@ -56,7 +104,10 @@ impl Edit {
             + self
                 .layer_change
                 .as_ref()
-                .and_then(|c| c.removed.as_ref())
+                .and_then(|c| match c {
+                    LayerChange::Toggle { removed, .. } => removed.as_ref(),
+                    _ => None,
+                })
                 .map_or(0, |layer| layer.pixels.len() * 4)
     }
 }
@@ -69,6 +120,8 @@ pub struct Brush {
     pub erase: bool,
 }
 pub struct Document {
+    layer_metadata: Vec<LayerMetadata>,
+    next_layer_id: u64,
     pub(crate) replay_tiles: std::collections::BTreeSet<(usize, usize)>,
     pub(crate) replay_surface: Option<[usize; 4]>,
     pub(crate) replay_data: Option<Vec<u8>>,
@@ -123,6 +176,7 @@ impl Document {
             last: self.last,
             last_brush: self.last_brush,
             distance: self.distance,
+            next_layer_id: self.next_layer_id,
         }
     }
     pub(crate) fn restore_history(&mut self, saved: HistoryCheckpoint) {
@@ -134,11 +188,17 @@ impl Document {
         self.last = saved.last;
         self.last_brush = saved.last_brush;
         self.distance = saved.distance;
+        self.next_layer_id = saved.next_layer_id;
     }
     pub fn new(width: usize, height: usize) -> Self {
         assert!(width > 0 && height > 0 && width <= MAX_SIDE && height <= MAX_SIDE);
         let n = width * height;
         Self {
+            layer_metadata: vec![LayerMetadata {
+                id: 1,
+                name: String::new(),
+            }],
+            next_layer_id: 2,
             workflow: Default::default(),
             identity: {
                 static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
@@ -189,6 +249,8 @@ impl Document {
     }
     pub fn composition(&self) -> Composition {
         Composition {
+            layer_metadata: self.layer_metadata.clone(),
+            next_layer_id: self.next_layer_id,
             workflow: self.workflow.clone(),
             graph: self.graph.clone(),
             layers: self
@@ -199,6 +261,20 @@ impl Document {
         }
     }
     pub(crate) fn restore_composition(&mut self, state: Composition) {
+        self.layer_metadata = if state.layer_metadata.is_empty() {
+            (0..self.layers.len())
+                .map(|i| LayerMetadata {
+                    id: i as u64 + 1,
+                    name: String::new(),
+                })
+                .collect()
+        } else {
+            state.layer_metadata
+        };
+        self.next_layer_id = self
+            .next_layer_id
+            .max(state.next_layer_id)
+            .max(self.layer_metadata.iter().map(|m| m.id).max().unwrap_or(0) + 1);
         self.workflow = state.workflow;
         self.graph = state.graph;
         self.plan = self.graph.compile(self.layers.len()).unwrap_or_default();
@@ -219,6 +295,11 @@ impl Document {
                 + before.graph.edges.len() * 16
                 + before.workflow.bytes()
                 + before.layers.len() * 8
+                + before
+                    .layer_metadata
+                    .iter()
+                    .map(|m| m.name.len() + 16)
+                    .sum::<usize>()
                 + 64,
             composition: Some(before),
         });
@@ -579,12 +660,27 @@ impl Document {
         if let Some(state) = &mut e.composition {
             let before = self.composition();
             if let Some(change) = &mut e.layer_change {
-                if let Some(layer) = change.removed.take() {
-                    self.layers.push(Arc::unwrap_or_clone(layer));
-                } else {
-                    change.removed = self.layers.pop().map(Arc::new);
+                match change {
+                    LayerChange::Toggle {
+                        index,
+                        active,
+                        removed,
+                    } => {
+                        if let Some(layer) = removed.take() {
+                            self.layers.insert(*index, Arc::unwrap_or_clone(layer));
+                        } else {
+                            *removed = Some(Arc::new(self.layers.remove(*index)));
+                        }
+                        std::mem::swap(&mut self.active, active);
+                    }
+                    LayerChange::Move { from, to, active } => {
+                        let layer = self.layers.remove(*from);
+                        self.layers.insert(*to, layer);
+                        std::mem::swap(from, to);
+                        std::mem::swap(&mut self.active, active);
+                    }
                 }
-                std::mem::swap(&mut self.active, &mut change.active);
+                self.track_layer_order();
             }
             self.restore_composition(state.clone());
             *state = before;
@@ -592,6 +688,11 @@ impl Document {
                 + state.graph.edges.len() * 16
                 + state.workflow.bytes()
                 + state.layers.len() * 8
+                + state
+                    .layer_metadata
+                    .iter()
+                    .map(|m| m.name.len() + 16)
+                    .sum::<usize>()
                 + 64;
         }
         let cols = (self.width + TILE - 1) / TILE;
@@ -632,8 +733,16 @@ impl Document {
     pub fn add_layer(&mut self) {
         self.finish();
         if self.layers.len() < MAX_LAYERS {
+            if self.next_layer_id > u32::MAX as u64 {
+                return;
+            }
             let before = self.composition();
             let active = self.active;
+            self.layer_metadata.push(LayerMetadata {
+                id: self.next_layer_id,
+                name: String::new(),
+            });
+            self.next_layer_id += 1;
             self.layers.push(Layer {
                 pixels: vec![0; self.width * self.height],
                 visible: true,
@@ -643,7 +752,8 @@ impl Document {
             self.active = self.layers.len() - 1;
             self.commit_composition(
                 before,
-                Some(LayerChange {
+                Some(LayerChange::Toggle {
+                    index: self.active,
                     active,
                     removed: None,
                 }),
@@ -807,6 +917,13 @@ impl Document {
         }
         let mut doc = Self::new(w, h);
         doc.layers.clear();
+        doc.layer_metadata = (0..n)
+            .map(|i| LayerMetadata {
+                id: i as u64 + 1,
+                name: String::new(),
+            })
+            .collect();
+        doc.next_layer_id = n as u64 + 1;
         doc.active = a;
         for _ in 0..n {
             let mut flags = [0; 2];
@@ -840,6 +957,7 @@ impl Document {
             if state.layers.len() != n {
                 return Err(bad());
             }
+            state.validate_layer_metadata().map_err(|_| bad())?;
             state.graph.compile(n).map_err(|_| bad())?;
             state.workflow.validate_structure().map_err(|_| bad())?;
             doc.restore_composition(state);
@@ -860,6 +978,8 @@ impl Document {
         Ok(doc)
     }
 }
+#[path = "layer_editing.rs"]
+mod layer_editing;
 #[cfg(test)]
 #[path = "document_tests.rs"]
 mod tests;

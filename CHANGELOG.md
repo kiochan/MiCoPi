@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add document-scoped stable layer IDs, rename/duplicate/reorder/delete actions, undoable structural edits and identity-preserving image-node remapping.
+- Add exact flips, 180° rotation and clipped integer translation in the native painting DLL; expose layer menus, editable names and Ctrl+J in the four-language desktop.
+- Move layer buffers during reorder/delete history and transform pixels in place; preserve legacy project/replay loading and recorded hashes.
+
 - Make native resize tests honor effective client bounds and cover desktop tracking limits, avoiding false CI failures on small hosted displays.
 
 - Share provisional contact recording and storage-failure rollback between GUI input and canvas.pointer actions.

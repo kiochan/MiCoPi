@@ -84,6 +84,10 @@ impl Operation {
                 | Self::Undo
                 | Self::Redo
                 | Self::AddLayer
+                | Self::RenameLayer
+                | Self::DuplicateLayer
+                | Self::MoveLayer
+                | Self::DeleteLayer
                 | Self::SelectLayer
                 | Self::LayerProperties
                 | Self::ClearLayer
