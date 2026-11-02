@@ -322,3 +322,81 @@ fn fill_and_gradient_are_undoable_atomic_and_replayable() {
     }
     check(&mut s);
 }
+
+#[test]
+fn stroke_options_change_dabs_and_persist_without_changing_legacy_metadata() {
+    let mut s = session();
+    let defaults = serde_json::to_value(&s.parameters).unwrap();
+    assert!(defaults.get("spacing").is_none());
+    assert!(defaults.get("minimum_opacity").is_none());
+    assert_eq!(
+        s.state()["parameters"]["spacing"].as_f64().unwrap() as f32,
+        0.11
+    );
+    assert_eq!(
+        s.state()["parameters"]["minimum_opacity"].as_f64().unwrap() as f32,
+        0.
+    );
+    call(&mut s, "canvas.new", json!({"width":128,"height":32}));
+    call(
+        &mut s,
+        "brush.set",
+        json!({"radius":3,"hardness":1,"opacity":1,"pressure_size":false,"stabilizer":0,"spacing":1}),
+    );
+    let points = json!({"points":[{"x":10,"y":16},{"x":110,"y":16}]});
+    call(&mut s, "canvas.stroke", points.clone());
+    let sparse = s.doc.layers[0]
+        .pixels
+        .iter()
+        .filter(|p| **p >> 24 > 0)
+        .count();
+    check(&mut s);
+    call(&mut s, "history.undo", json!({}));
+    call(&mut s, "brush.set", json!({"spacing":0.11}));
+    call(&mut s, "canvas.stroke", points);
+    let dense = s.doc.layers[0]
+        .pixels
+        .iter()
+        .filter(|p| **p >> 24 > 0)
+        .count();
+    assert!(dense > sparse);
+    call(
+        &mut s,
+        "brush.set",
+        json!({"spacing":0.7,"minimum_opacity":0.4}),
+    );
+    for (key, value) in [
+        ("spacing", json!(0)),
+        ("spacing", json!(2.1)),
+        ("minimum_opacity", json!(-0.1)),
+    ] {
+        assert!(s
+            .apply(Action::new("brush.set", json!({key:value})))
+            .is_err());
+    }
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+        "target/test-output/brush-options-{}.mcp",
+        std::process::id()
+    ));
+    call(&mut s, "document.save", json!({"path":path}));
+    let mut reopened = session();
+    call(&mut reopened, "document.open", json!({"path":path}));
+    assert_eq!(reopened.parameters.spacing, 0.7);
+    assert_eq!(reopened.parameters.minimum_opacity, 0.4);
+    check(&mut reopened);
+    let path = path.with_extension("json");
+    call(
+        &mut s,
+        "settings.update",
+        json!({"path":path,"document":{"painting":{"spacing":0.7,"minimum_opacity":0.4}}}),
+    );
+    let settings = call(&mut s, "settings.read", json!({"path":path}));
+    assert_eq!(
+        settings["painting"]["spacing"].as_f64().unwrap() as f32,
+        0.7
+    );
+    assert_eq!(
+        settings["painting"]["minimum_opacity"].as_f64().unwrap() as f32,
+        0.4
+    );
+}

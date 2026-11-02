@@ -741,5 +741,9 @@
   "Fill Tolerance": "Fill Tolerance",
   "Radial Gradient": "Radial Gradient",
   "Click the canvas to fill a connected area.": "Click the canvas to fill a connected area.",
-  "Drag on the canvas from foreground to background color.": "Drag on the canvas from foreground to background color."
+  "Drag on the canvas from foreground to background color.": "Drag on the canvas from foreground to background color.",
+  "Dab Spacing": "Dab Spacing",
+  "Minimum Opacity": "Minimum Opacity",
+  "Distance between brush dabs as a fraction of diameter.": "Distance between brush dabs as a fraction of diameter.",
+  "Opacity retained at light pressure; zero pressure deposits no paint.": "Opacity retained at light pressure; zero pressure deposits no paint."
 }

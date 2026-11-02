@@ -134,7 +134,7 @@ impl StrokeEngine {
         let ended = matches!(p.phase, PointerPhase::Up | PointerPhase::Cancel);
         let result = contact
             .instance
-            .pointer(s, contact.handler, sample, parameters)
+            .pointer(s, contact.handler, sample, parameters, painting)
             .and_then(|output| {
                 if (ended && output.flags & (abi::DRAWING | abi::PANNING) != 0)
                     || (!painting && output.flags & abi::DRAWING != 0)

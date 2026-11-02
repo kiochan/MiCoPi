@@ -741,5 +741,9 @@
   "Fill Tolerance": "塗りつぶし許容値",
   "Radial Gradient": "放射状グラデーション",
   "Click the canvas to fill a connected area.": "キャンバスをクリックして連結領域を塗りつぶします。",
-  "Drag on the canvas from foreground to background color.": "キャンバス上でドラッグし、前景色から背景色へ変化させます。"
+  "Drag on the canvas from foreground to background color.": "キャンバス上でドラッグし、前景色から背景色へ変化させます。",
+  "Dab Spacing": "描点間隔",
+  "Minimum Opacity": "最小不透明度",
+  "Distance between brush dabs as a fraction of diameter.": "描点間の距離をブラシ直径に対する割合で指定します。",
+  "Opacity retained at light pressure; zero pressure deposits no paint.": "弱い筆圧で維持する不透明度です。筆圧がゼロのときは描画しません。"
 }

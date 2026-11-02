@@ -187,7 +187,7 @@ impl Operation {
             ),
             Self::SelectTool => (json!({"tool":{"type":"string"}}), vec!["tool"]),
             Self::Parameters => (
-                json!({"radius":{"type":"number","minimum":0.5,"maximum":200},"opacity":{"type":"number","minimum":0,"maximum":1},"hardness":{"type":"number","minimum":0,"maximum":1},"color":{"type":"string"},"background_color":{"type":"string"},"stabilizer":{"type":"number","minimum":0,"maximum":1},"pressure_size":{"type":"boolean"},"pressure_opacity":{"type":"boolean"},"pressure_gamma":{"type":"number","minimum":0.25,"maximum":4},"minimum_radius":{"type":"number","minimum":0,"maximum":1}}),
+                json!({"radius":{"type":"number","minimum":0.5,"maximum":200},"opacity":{"type":"number","minimum":0,"maximum":1},"hardness":{"type":"number","minimum":0,"maximum":1},"color":{"type":"string"},"background_color":{"type":"string"},"stabilizer":{"type":"number","minimum":0,"maximum":1},"pressure_size":{"type":"boolean"},"pressure_opacity":{"type":"boolean"},"pressure_gamma":{"type":"number","minimum":0.25,"maximum":4},"minimum_radius":{"type":"number","minimum":0,"maximum":1},"spacing":{"type":"number","minimum":0.01,"maximum":2},"minimum_opacity":{"type":"number","minimum":0,"maximum":1}}),
                 vec![],
             ),
             Self::Pointer => {

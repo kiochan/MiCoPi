@@ -28,6 +28,19 @@ pub struct Parameters {
     pub pressure_opacity: bool,
     pub pressure_gamma: f32,
     pub minimum_radius: f32,
+    #[serde(default = "default_spacing", skip_serializing_if = "legacy_spacing")]
+    pub spacing: f32,
+    #[serde(default, skip_serializing_if = "zero_opacity")]
+    pub minimum_opacity: f32,
+}
+fn default_spacing() -> f32 {
+    0.11
+}
+fn legacy_spacing(value: &f32) -> bool {
+    *value == default_spacing()
+}
+fn zero_opacity(value: &f32) -> bool {
+    *value == 0.
 }
 impl Default for Parameters {
     fn default() -> Self {
@@ -42,6 +55,8 @@ impl Default for Parameters {
             pressure_opacity: false,
             pressure_gamma: 1.,
             minimum_radius: 0.08,
+            spacing: default_spacing(),
+            minimum_opacity: 0.,
         }
     }
 }
@@ -290,7 +305,10 @@ impl Session {
         self.stroke.panning()
     }
     pub fn state(&self) -> Value {
-        json!({"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"id":self.doc.layer_id(index),"name":self.doc.layer_name(index),"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":self.parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
+        let mut parameters = json!(self.parameters);
+        parameters["spacing"] = json!(self.parameters.spacing);
+        parameters["minimum_opacity"] = json!(self.parameters.minimum_opacity);
+        json!({"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"id":self.doc.layer_id(index),"name":self.doc.layer_name(index),"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
     }
     pub fn apply(&mut self, action: Action) -> ActionResult {
         let pointer_action = self

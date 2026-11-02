@@ -249,6 +249,7 @@ impl Editor {
                 pressure_opacity: editor.workspace.dynamics.opacity,
                 pressure_gamma: editor.workspace.dynamics.gamma,
                 minimum_radius: editor.workspace.dynamics.minimum,
+                ..Default::default()
             };
         }
         editor.sync_from_session();
@@ -319,6 +320,8 @@ impl Editor {
     }
     fn push_gui_parameters(&mut self) {
         let desired = crate::application::Parameters {
+            spacing: self.session.parameters.spacing,
+            minimum_opacity: self.session.parameters.minimum_opacity,
             radius: self.radius,
             opacity: self.opacity,
             hardness: self.hardness,

@@ -246,6 +246,22 @@ const SETTINGS: &[Setting] = &[
         category: Category::Painting,
         range: Some((0., 1.)),
     },
+    Setting {
+        id: "painting.spacing",
+        title: "Dab Spacing",
+        description: "Distance between brush dabs as a fraction of diameter.",
+        keywords: "spacing dabs brush jianju 间距",
+        category: Category::Painting,
+        range: Some((0.01, 2.)),
+    },
+    Setting {
+        id: "painting.minimum_opacity",
+        title: "Minimum Opacity",
+        description: "Opacity retained at light pressure; zero pressure deposits no paint.",
+        keywords: "pressure opacity floor yagan 压感 不透明度",
+        category: Category::Painting,
+        range: Some((0., 1.)),
+    },
 ];
 fn matches(query: &str, text: &str, modified: bool) -> bool {
     let text = text.to_lowercase();

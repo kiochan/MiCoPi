@@ -741,5 +741,9 @@
   "Fill Tolerance": "채우기 허용 오차",
   "Radial Gradient": "방사형 그라데이션",
   "Click the canvas to fill a connected area.": "캔버스를 클릭하여 연결된 영역을 채웁니다.",
-  "Drag on the canvas from foreground to background color.": "캔버스에서 드래그하여 전경색에서 배경색으로 그라데이션을 만듭니다."
+  "Drag on the canvas from foreground to background color.": "캔버스에서 드래그하여 전경색에서 배경색으로 그라데이션을 만듭니다.",
+  "Dab Spacing": "브러시 간격",
+  "Minimum Opacity": "최소 불투명도",
+  "Distance between brush dabs as a fraction of diameter.": "브러시 직경에 대한 비율로 찍힘 간 거리를 지정합니다.",
+  "Opacity retained at light pressure; zero pressure deposits no paint.": "약한 필압에서 유지할 불투명도입니다. 필압이 0이면 그리지 않습니다."
 }

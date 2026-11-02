@@ -109,6 +109,8 @@ impl Appearance {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct PaintingPreferences {
+    pub spacing: f32,
+    pub minimum_opacity: f32,
     pub stabilizer: f32,
     pub pressure_size: bool,
     pub pressure_opacity: bool,
@@ -118,6 +120,8 @@ pub struct PaintingPreferences {
 impl Default for PaintingPreferences {
     fn default() -> Self {
         Self {
+            spacing: 0.11,
+            minimum_opacity: 0.,
             stabilizer: 0.35,
             pressure_size: true,
             pressure_opacity: false,
@@ -129,6 +133,8 @@ impl Default for PaintingPreferences {
 impl From<&crate::application::Parameters> for PaintingPreferences {
     fn from(p: &crate::application::Parameters) -> Self {
         Self {
+            spacing: p.spacing,
+            minimum_opacity: p.minimum_opacity,
             stabilizer: p.stabilizer,
             pressure_size: p.pressure_size,
             pressure_opacity: p.pressure_opacity,
@@ -145,6 +151,8 @@ impl PaintingPreferences {
             .map_err(|e| e.to_string())
     }
     pub fn apply(&self, parameters: &mut crate::application::Parameters) {
+        parameters.spacing = self.spacing;
+        parameters.minimum_opacity = self.minimum_opacity;
         parameters.stabilizer = self.stabilizer;
         parameters.pressure_size = self.pressure_size;
         parameters.pressure_opacity = self.pressure_opacity;

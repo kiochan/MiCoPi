@@ -70,3 +70,9 @@ The explicit DLL lifecycle fixture checks actual loading, ABI rejection, instanc
 ## Document transaction capability (host 0.21+)
 
 Native action descriptors may set `"document_atomic":true`. The host then snapshots document/history metadata using shared tiles, stages nested host actions, and rolls back document changes on failure. Unmarked mutating native actions cannot run inside an atomic pipeline. This contract excludes plugin-private state and external side effects; it is not a DLL sandbox. C ABI tables remain unchanged. See [Atomic Operations](atomic-operations.md).
+
+## Optional stroke options (unreleased)
+
+`micopi_tool_options_v1` exports a `ToolOptionsApi`/`MicopiToolOptionsApi` table with version 1, its struct size and a configure callback. The host validates its header and calls configure once before painting DOWN, using the state created by the v1 tool API. Configure must not invoke host functions and must reject mid-contact changes. `ToolOptions` contains version/size, `spacing` (0.01–2, diameter fraction, default 0.11) and `minimum_opacity` (0–1, default 0). Copy options into the contact; never retain the borrowed pointer. The Rust SDK and C header define the exact layouts.
+
+Existing tool/action tables remain unchanged. A missing extension accepts defaults; unsupported custom settings fail before exposing pixels. A new DLL with an older host uses defaults. Configure rejection follows ordinary tool failure rollback. There is no extra options call on MOVE. See [Painting tools](painting-tools.md) for persistence and legacy recording compatibility.

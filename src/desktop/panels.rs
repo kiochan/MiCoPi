@@ -388,9 +388,27 @@ impl Editor {
             false,
         );
         section(ui, "Stroke", a.section_spacing);
+        let mut spacing = self.session.parameters.spacing;
+        parameter(ui, "Dab Spacing", &mut spacing, 0.01..=2., "%", true, false);
+        if spacing != self.session.parameters.spacing {
+            self.core("brush.set", serde_json::json!({"spacing":spacing}));
+        }
         ui.collapsing(tr("Pressure Dynamics"), |ui| {
             ui.checkbox(&mut self.workspace.dynamics.size, tr("Pressure Size"));
             ui.checkbox(&mut self.workspace.dynamics.opacity, tr("Pressure Opacity"));
+            let mut minimum = self.session.parameters.minimum_opacity;
+            parameter(
+                ui,
+                "Minimum Opacity",
+                &mut minimum,
+                0.0..=1.,
+                "%",
+                true,
+                false,
+            );
+            if minimum != self.session.parameters.minimum_opacity {
+                self.core("brush.set", serde_json::json!({"minimum_opacity":minimum}));
+            }
             parameter(
                 ui,
                 "Minimum Size",

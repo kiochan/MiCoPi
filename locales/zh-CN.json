@@ -741,5 +741,9 @@
   "Fill Tolerance": "填充容差",
   "Radial Gradient": "径向渐变",
   "Click the canvas to fill a connected area.": "点击画布填充相连区域。",
-  "Drag on the canvas from foreground to background color.": "在画布上拖动，创建前景色到背景色的渐变。"
+  "Drag on the canvas from foreground to background color.": "在画布上拖动，创建前景色到背景色的渐变。",
+  "Dab Spacing": "笔触间距",
+  "Minimum Opacity": "最小不透明度",
+  "Distance between brush dabs as a fraction of diameter.": "笔触之间的距离，以笔刷直径的比例表示。",
+  "Opacity retained at light pressure; zero pressure deposits no paint.": "轻压时保留的不透明度；零压力不会绘制。"
 }

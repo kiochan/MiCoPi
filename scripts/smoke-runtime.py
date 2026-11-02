@@ -46,7 +46,7 @@ def main():
             dict(id="read",action="canvas.state",args={}),
             dict(id="view",action="view.set",args=dict(zoom={"$ref":"read#/result/view/zoom"})),
         ])),
-        dict(action="brush.set", args=dict(color="#0077ff", radius=9, stabilizer=0, pressure_size=True)),
+        dict(action="brush.set", args=dict(color="#0077ff", radius=9, stabilizer=0, pressure_size=True,pressure_opacity=True,spacing=.2,minimum_opacity=.25)),
         dict(action="tool.select", args=dict(tool="brush")),
         dict(action="canvas.stroke", args=dict(points=[
             dict(x=28, y=130, pen=True, pressure=.2, time=10),

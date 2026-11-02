@@ -75,6 +75,16 @@ typedef struct {
                        MicopiToolOutput *);
 } MicopiToolApi;
 const MicopiToolApi *micopi_tools_v1(void);
+/* Optional stroke options. Existing v1 tables and parameter sizes are unchanged. */
+typedef struct {
+    uint32_t abi_version, struct_size;
+    float spacing, minimum_opacity; /* diameter fraction, pressure opacity floor */
+} MicopiToolOptions;
+typedef struct {
+    uint32_t abi_version, struct_size;
+    int32_t (*configure)(void *, const MicopiToolOptions *);
+} MicopiToolOptionsApi;
+const MicopiToolOptionsApi *micopi_tool_options_v1(void);
 /* SDK 1.2 additive compositor extension; no existing tables change. */
 typedef struct {
     const uint32_t *data; size_t len;

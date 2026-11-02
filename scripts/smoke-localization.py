@@ -53,7 +53,7 @@ def main():
             time.sleep(.05)
         call('canvas.new',dict(width=256,height=192))
         call('native.checkerboard',dict(cell=16))
-        call('brush.set',dict(radius=8,color='#0077ff',stabilizer=.35,pressure_size=True))
+        call('brush.set',dict(radius=8,color='#0077ff',stabilizer=.35,pressure_size=True,pressure_opacity=True,spacing=.2,minimum_opacity=.25))
         call('canvas.stroke',dict(points=[dict(x=24,y=130,pen=True,pressure=.2,time=0),dict(x=100,y=60,pen=True,pressure=1.,time=30),dict(x=225,y=130,pen=True,pressure=.5,time=60)]))
         call('layer.rename',dict(name='Ink 墨'))
         call('layer.gradient',dict(x0=0,y0=0,x1=256,y1=192,start_color='#dd7700',end_color='#2200ff00',opacity=.3))
