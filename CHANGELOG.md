@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Make native resize tests honor effective client bounds and cover desktop tracking limits, avoiding false CI failures on small hosted displays.
+
 - Share provisional contact recording and storage-failure rollback between GUI input and canvas.pointer actions.
 - Preserve revisions after failed atomic native results and refresh replay textures when external clients replace an archive.
 - Make layer creation undoable, restore its active layer on undo/redo and discard stale redo branches.
