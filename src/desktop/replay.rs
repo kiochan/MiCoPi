@@ -8,7 +8,8 @@ pub(super) struct ReplayWindow {
     playing: bool,
     rate: f32,
     last: f64,
-    last_frame: Option<(bool, usize)>,
+    last_frame: Option<(bool, usize, crate::engine::replay::Hash)>,
+    last_head: Option<(bool, crate::engine::replay::Hash)>,
     texture: Option<TextureHandle>,
     message: String,
     verified: Option<String>,
@@ -17,6 +18,53 @@ pub(super) struct ReplayWindow {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn replacing_an_archive_externally_refreshes_the_same_event_index() {
+        let mut app = crate::desktop::tests::studio();
+        app.editor
+            .session
+            .apply(crate::application::Action::new(
+                "canvas.new",
+                serde_json::json!({"width":16,"height":16}),
+            ))
+            .unwrap();
+        app.replay.open = true;
+        app.replay.loaded = true;
+        let ctx = Context::default();
+        let mut old_key = None;
+        for color in [0xffff0000, 0xff0000ff] {
+            app.editor.session.doc.layers[0].pixels.fill(color);
+            app.editor.session.doc.invalidate();
+            let metadata = app.editor.session.replay_metadata();
+            let archive = crate::engine::replay::Journal::new(
+                &mut app.editor.session.doc,
+                metadata,
+                serde_json::json!({}),
+            )
+            .unwrap();
+            app.editor.session.loaded_replay = Some(archive);
+            let output = ctx.run(
+                RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(960., 680.))),
+                    ..Default::default()
+                },
+                |ctx| app.replay_window(ctx),
+            );
+            assert_ne!(app.replay.last_frame, old_key);
+            old_key = app.replay.last_frame;
+            assert_eq!(app.replay.cursor, 0);
+            let expected = Color32::from_rgb((color >> 16) as u8, (color >> 8) as u8, color as u8);
+            let texture = app.replay.texture.as_ref().unwrap().id();
+            assert!(output.textures_delta.set.iter().any(|(id, delta)| {
+                *id == texture
+                    && match &delta.image {
+                        egui::ImageData::Color(image) => {
+                            image.pixels.iter().all(|p| *p == expected)
+                        }
+                    }
+            }));
+        }
+    }
     #[test]
     fn seeking_and_playback_render_at_multiple_sizes_without_editing_the_live_canvas() {
         let mut app = crate::desktop::tests::studio();
@@ -74,6 +122,15 @@ impl Studio {
             return;
         }
         let mut panel = std::mem::take(&mut self.replay);
+        let head = self
+            .editor
+            .session
+            .replay_journal(panel.loaded)
+            .ok()
+            .and_then(|j| j.entries.last().map(|e| (panel.loaded, e.hash)));
+        if panel.last_head != head {
+            panel.verified = None;
+        }
         let mut open = true;
         if panel.rate == 0. {
             panel.rate = 12.;
@@ -248,7 +305,17 @@ impl Studio {
                     ui.weak(tr("Start drawing to record a replay."));
                     return;
                 }
-                if panel.last_frame != Some((panel.loaded, panel.cursor)) {
+                let frame_key = self
+                    .editor
+                    .session
+                    .replay_journal(panel.loaded)
+                    .ok()
+                    .and_then(|j| {
+                        j.entries
+                            .get(panel.cursor)
+                            .map(|e| (panel.loaded, panel.cursor, e.hash))
+                    });
+                if panel.last_frame != frame_key {
                     match self
                         .editor
                         .session
@@ -270,7 +337,7 @@ impl Studio {
                                     TextureOptions::LINEAR,
                                 ));
                             }
-                            panel.last_frame = Some((panel.loaded, panel.cursor));
+                            panel.last_frame = frame_key;
                         }
                         Err(e) => panel.message = e.to_string(),
                     }
@@ -362,6 +429,12 @@ impl Studio {
                 }
             });
         panel.open = open;
+        panel.last_head = self
+            .editor
+            .session
+            .replay_journal(panel.loaded)
+            .ok()
+            .and_then(|j| j.entries.last().map(|e| (panel.loaded, e.hash)));
         if panel.playing {
             ctx.request_repaint_after(Duration::from_secs_f32(1. / panel.rate));
         }

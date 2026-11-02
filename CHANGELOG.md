@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Share provisional contact recording and storage-failure rollback between GUI input and canvas.pointer actions.
+- Preserve revisions after failed atomic native results and refresh replay textures when external clients replace an archive.
+- Make layer creation undoable, restore its active layer on undo/redo and discard stale redo branches.
+- Recognize project file headers independently of extensions and retain the opened project's save path.
+- Bound GUI pipe reads and writes; acknowledge complete responses before disconnecting without an unbounded flush.
+
 ## 0.21.0
 
 - Add document action rollback, atomic pipeline/workflow groups and a default-enabled atomic workflow UI control.

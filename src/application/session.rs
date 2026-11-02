@@ -293,11 +293,16 @@ impl Session {
         json!({"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":self.parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
     }
     pub fn apply(&mut self, action: Action) -> ActionResult {
+        let pointer_action = self
+            .registry
+            .actions
+            .get(&action.action)
+            .is_some_and(|d| d.operation == Some(Operation::Pointer));
         let recordable =
             self.registry.actions.get(&action.action).is_none_or(|d| {
                 !d.is_read_only() && !d.operation.is_some_and(Operation::is_replay)
             });
-        if recordable && self.read_depth == 0 {
+        if recordable && self.read_depth == 0 && !pointer_action {
             self.replay_boundary()?;
         }
         let replay_sequence = self.journal.as_ref().map_or(0, |j| j.entries.len());
@@ -364,7 +369,9 @@ impl Session {
             }
             self.remaining_actions -= 1;
             let read_only = self.registry.actions[&id].is_read_only();
-            let recording = !read_only && !op.is_some_and(Operation::is_replay);
+            let recording = !read_only
+                && !op.is_some_and(Operation::is_replay)
+                && op != Some(Operation::Pointer);
             let atomic_group = matches!(op, Some(Operation::PipelineRun | Operation::WorkflowRun))
                 && args["atomic"] == true;
             if self.atomic_depth != 0
@@ -433,11 +440,13 @@ impl Session {
                         };
                     }
                     if !read_only
+                        && !(failed && self.registry.actions[&id].is_document_atomic())
                         && !matches!(
                             op,
                             Some(
                                 Operation::PipelineRun
                                     | Operation::WorkflowRun
+                                    | Operation::Pointer
                                     | Operation::ReplayExport
                                     | Operation::ReplayFrames
                                     | Operation::ReplayRecover
@@ -534,6 +543,15 @@ impl Session {
         crate::plugins::execute(self, op, args)
     }
     pub fn pointer(&mut self, sample: Pointer) -> Result<(), ActionError> {
+        self.pointer_input(
+            sample,
+            self.execution_depth == 0 || self.replay_direct_contact,
+        )
+    }
+    pub(crate) fn pointer_action(&mut self, sample: Pointer) -> Result<(), ActionError> {
+        self.pointer_input(sample, true)
+    }
+    fn pointer_input(&mut self, sample: Pointer, recording: bool) -> Result<(), ActionError> {
         if self.read_depth != 0 {
             return Err(ActionError::new(
                 "read_only",
@@ -553,10 +571,9 @@ impl Session {
             }
             return Err(error);
         }
-        let recording = self.execution_depth == 0 || self.replay_direct_contact;
         if recording {
             self.replay_ensure()?;
-            if self.execution_depth == 0 && sample.phase == PointerPhase::Down {
+            if sample.phase == PointerPhase::Down {
                 if !self.stroke.active() {
                     self.replay_boundary()?;
                     self.pointer_checkpoint = Some((

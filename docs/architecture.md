@@ -52,6 +52,8 @@ Document display updates return dirty rectangles. Desktop uploads partial textur
 
 MICOPI03 projects save layer pixels, blend properties, image/workflow metadata and a sealed verified event journal; MICOPI01/02 remain readable. The undo stack is not persisted; the replay journal is independent. See [Verified Replay](replay.md). Image decoding checks dimensions before allocation; PNG export preserves alpha.
 
+Project headers are recognized independently of the filename extension; renamed projects retain their save path when opened. Layer creation is a structural undo entry that restores the previous active layer and invalidates the old redo branch.
+
 `settings.json` contains appearance, language, keybindings, painting defaults and plugin preferences. Saving validates ranges/conflicts, preserves unknown root fields and atomically replaces the file. Dock trees and floating rectangles are kept in `workspace.egui.json`; new plugin panels are reconciled without reopening previously closed panels.
 
 Localization is applied at presentation boundaries. English metadata, machine IDs, schemas, file paths and documents stay independent of display language. Catalogs are embedded and loaded once. Existing Windows CJK fonts provide glyph fallback without a bundled font pack.

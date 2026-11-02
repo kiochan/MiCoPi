@@ -607,3 +607,149 @@ fn atomic_group_journal_failure_rolls_back_every_completed_child() {
         true
     );
 }
+
+#[test]
+fn action_pointer_streams_share_contact_buffering_and_storage_rollback() {
+    let mut s = session();
+    let before = s.state();
+    let history = s.doc.history_bytes();
+    let count = s.journal.as_ref().unwrap().entries.len();
+    let head = s.journal.as_ref().unwrap().status()["head_hash"].clone();
+    call(
+        &mut s,
+        "canvas.pointer",
+        json!({"phase":"down","x":12,"y":20,"pen":true,"pressure":0.5}),
+    );
+    for i in 0..400 {
+        call(
+            &mut s,
+            "canvas.pointer",
+            json!({"phase":"move","x":12+i%80,"y":20+i%50,"pen":true,"pressure":0.5,"time":i}),
+        );
+        if i == 20 {
+            assert_eq!(s.journal.as_ref().unwrap().entries.len(), count);
+        }
+    }
+    let status = call(&mut s, "replay.status", json!({}));
+    assert_eq!(status["transaction_pending"], true);
+    assert_eq!(status["committed_head_hash"], head);
+    for action in ["replay.export", "replay.frames"] {
+        assert_eq!(
+            s.apply(Action::new(
+                action,
+                json!({"path":output("action-pending")})
+            ))
+            .unwrap_err()
+            .code,
+            "stroke_active"
+        );
+    }
+    s.journal.as_mut().unwrap().fail_next_write_after(9);
+    assert!(s
+        .apply(Action::new(
+            "canvas.pointer",
+            json!({"phase":"up","x":30,"y":30})
+        ))
+        .is_err());
+    assert_eq!(s.state(), before);
+    assert_eq!(s.doc.history_bytes(), history);
+    assert_eq!(s.journal.as_ref().unwrap().status()["head_hash"], head);
+    assert!(s.pointer_checkpoint.is_none());
+    assert_eq!(
+        s.journal.as_mut().unwrap().verify(None).unwrap()["valid"],
+        true
+    );
+}
+
+#[test]
+fn completed_action_pointer_contacts_record_every_sample_once() {
+    let mut s = session();
+    let count = s.journal.as_ref().unwrap().entries.len();
+    for phase in ["down", "move", "up"] {
+        call(
+            &mut s,
+            "canvas.pointer",
+            json!({"phase":phase,"x":20,"y":20}),
+        );
+    }
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), count + 1);
+    let events = call(&mut s, "replay.events", json!({"start":count}));
+    assert_eq!(
+        events["events"][0]["source"]["samples"]
+            .as_array()
+            .unwrap()
+            .len(),
+        3
+    );
+    assert_eq!(events["events"][0]["source"]["complete"], true);
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+    let last = s.journal.as_ref().unwrap().entries.len() - 1;
+    assert_eq!(
+        replay::png(&s.replay_preview(last, false).unwrap()).unwrap(),
+        codec::png(&mut s.doc).unwrap()
+    );
+}
+
+#[test]
+fn failed_atomic_native_result_preserves_revision_and_document() {
+    let mut s = session();
+    call(&mut s, "layer.set", json!({"index":0,"visible":false}));
+    let before = s.state();
+    let count = s.journal.as_ref().unwrap().entries.len();
+    assert_eq!(
+        call(&mut s, "assistant.checkerboard", json!({}))["ok"],
+        false
+    );
+    assert_eq!(s.state(), before);
+    let events = call(&mut s, "replay.events", json!({"start":count}));
+    assert_eq!(events["events"][0]["before"], events["events"][0]["after"]);
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+}
+
+#[test]
+fn projects_reopen_by_header_and_preserve_their_save_path() {
+    let mut s = session();
+    paint(&mut s);
+    let pixels = codec::png(&mut s.doc).unwrap();
+    for name in ["project-without-extension", "project-named.png"] {
+        let path = output(name);
+        call(&mut s, "document.save", json!({"path":path}));
+        let mut reopened = session();
+        call(&mut reopened, "document.open", json!({"path":path}));
+        assert_eq!(reopened.file.as_ref(), Some(&path));
+        assert_eq!(codec::png(&mut reopened.doc).unwrap(), pixels);
+        assert_eq!(
+            call(&mut reopened, "replay.verify", json!({}))["valid"],
+            true
+        );
+    }
+}
+
+#[test]
+fn structural_layer_undo_and_redo_keep_verified_pixels_and_atomic_checkpoints() {
+    let mut s = session();
+    paint(&mut s);
+    let original = codec::png(&mut s.doc).unwrap();
+    for action in ["layer.add", "history.undo", "history.redo"] {
+        call(&mut s, action, json!({}));
+        assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+        assert_eq!(codec::png(&mut s.doc).unwrap(), original);
+    }
+    call(&mut s, "history.undo", json!({}));
+    let before = s.state();
+    let result = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[
+            {"id":"redo","action":"history.redo"},
+            {"id":"fail","action":"layer.select","args":{"index":12}}
+        ]}),
+    );
+    assert_eq!(result["rolled_back"], true);
+    assert_eq!(s.state(), before);
+    call(&mut s, "history.redo", json!({}));
+    assert_eq!(s.doc.layers.len(), 2);
+    assert_eq!(s.doc.active, 1);
+    assert_eq!(codec::png(&mut s.doc).unwrap(), original);
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+}

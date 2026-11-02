@@ -30,6 +30,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         }
         Open => {
             let path = path()?;
+            let project = codec::is_project(&path)?;
             let mut doc = codec::open(&path)?;
             let journal = crate::application::replay::read_embedded(&mut doc)?;
             doc.renderer = s.registry.renderer();
@@ -56,14 +57,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 s.restored_replay = Some(journal);
             }
             s.source_file = Some(path.clone());
-            s.file = if path
-                .extension()
-                .is_some_and(|e| e.eq_ignore_ascii_case("mcp"))
-            {
-                Some(path)
-            } else {
-                None
-            };
+            s.file = if project { Some(path) } else { None };
             s.view = Default::default();
             Ok(s.state())
         }

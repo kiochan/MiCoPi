@@ -31,6 +31,12 @@ struct Edit {
     tiles: BTreeMap<usize, Arc<Vec<u32>>>,
     composition: Option<Composition>,
     metadata_bytes: usize,
+    layer_change: Option<LayerChange>,
+}
+#[derive(Clone)]
+struct LayerChange {
+    active: usize,
+    removed: Option<Arc<Layer>>,
 }
 #[derive(Clone)]
 pub(crate) struct HistoryCheckpoint {
@@ -45,7 +51,13 @@ pub(crate) struct HistoryCheckpoint {
 }
 impl Edit {
     fn bytes(&self) -> usize {
-        self.tiles.values().map(|v| v.len() * 4).sum::<usize>() + self.metadata_bytes
+        self.tiles.values().map(|v| v.len() * 4).sum::<usize>()
+            + self.metadata_bytes
+            + self
+                .layer_change
+                .as_ref()
+                .and_then(|c| c.removed.as_ref())
+                .map_or(0, |layer| layer.pixels.len() * 4)
     }
 }
 #[derive(Clone, Copy)]
@@ -198,8 +210,9 @@ impl Document {
         self.render_error = None;
         self.invalidate();
     }
-    fn commit_composition(&mut self, before: Composition) {
+    fn commit_composition(&mut self, before: Composition, layer_change: Option<LayerChange>) {
         self.stroke = Some(Edit {
+            layer_change,
             layer: self.active,
             tiles: BTreeMap::new(),
             metadata_bytes: before.graph.nodes.len() * 160
@@ -225,7 +238,7 @@ impl Document {
         let before = self.composition();
         self.graph = graph;
         self.plan = plan;
-        self.commit_composition(before);
+        self.commit_composition(before, None);
         Ok(())
     }
     pub fn set_workflow(
@@ -239,7 +252,7 @@ impl Document {
         self.finish();
         let before = self.composition();
         self.workflow = graph;
-        self.commit_composition(before);
+        self.commit_composition(before, None);
         Ok(())
     }
     pub fn set_layer_properties(
@@ -265,7 +278,7 @@ impl Document {
         l.visible = visible;
         l.opacity = opacity;
         l.mode = mode;
-        self.commit_composition(before);
+        self.commit_composition(before, None);
         Ok(())
     }
     fn damage(&mut self, r: [usize; 4]) {
@@ -386,6 +399,7 @@ impl Document {
     pub(crate) fn begin_plugin_stroke(&mut self) {
         self.finish();
         self.stroke = Some(Edit {
+            layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
             composition: None,
@@ -431,6 +445,7 @@ impl Document {
             return;
         }
         self.stroke = Some(Edit {
+            layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
             composition: None,
@@ -563,6 +578,14 @@ impl Document {
     fn swap_edit(&mut self, mut e: Edit) -> Edit {
         if let Some(state) = &mut e.composition {
             let before = self.composition();
+            if let Some(change) = &mut e.layer_change {
+                if let Some(layer) = change.removed.take() {
+                    self.layers.push(Arc::unwrap_or_clone(layer));
+                } else {
+                    change.removed = self.layers.pop().map(Arc::new);
+                }
+                std::mem::swap(&mut self.active, &mut change.active);
+            }
             self.restore_composition(state.clone());
             *state = before;
             e.metadata_bytes = state.graph.nodes.len() * 160
@@ -609,6 +632,8 @@ impl Document {
     pub fn add_layer(&mut self) {
         self.finish();
         if self.layers.len() < MAX_LAYERS {
+            let before = self.composition();
+            let active = self.active;
             self.layers.push(Layer {
                 pixels: vec![0; self.width * self.height],
                 visible: true,
@@ -616,7 +641,13 @@ impl Document {
                 mode: BlendMode::Normal,
             });
             self.active = self.layers.len() - 1;
-            self.dirty = true;
+            self.commit_composition(
+                before,
+                Some(LayerChange {
+                    active,
+                    removed: None,
+                }),
+            );
         }
     }
     /// Commit a contiguous plugin-owned region, recording only changed tiles.
@@ -638,6 +669,7 @@ impl Document {
         }
         self.finish();
         self.stroke = Some(Edit {
+            layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
             composition: None,
@@ -676,6 +708,7 @@ impl Document {
     pub fn clear_layer(&mut self) {
         self.finish();
         self.stroke = Some(Edit {
+            layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
             composition: None,
