@@ -56,6 +56,16 @@ pub type ActionResult = Result<Value, ActionError>;
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Operation {
+    ReplayStatus,
+    ReplayOpen,
+    ReplayEvents,
+    ReplayVerify,
+    ReplayExport,
+    ReplayLoad,
+    ReplaySeek,
+    ReplaySnapshot,
+    ReplayFrames,
+    ReplayRecover,
     NodeCatalog,
     WorkflowRead,
     WorkflowSet,
@@ -94,10 +104,46 @@ pub enum Operation {
     Events,
 }
 impl Operation {
+    pub fn is_replay(self) -> bool {
+        matches!(
+            self,
+            Self::ReplayStatus
+                | Self::ReplayOpen
+                | Self::ReplayEvents
+                | Self::ReplayVerify
+                | Self::ReplayExport
+                | Self::ReplayLoad
+                | Self::ReplaySeek
+                | Self::ReplaySnapshot
+                | Self::ReplayFrames
+                | Self::ReplayRecover
+        )
+    }
     pub fn schema(self) -> Value {
         let number = json!({"type":"number"});
         let point = json!({"type":"object","properties":{"x":number,"y":number,"pressure":{"type":"number","minimum":0,"maximum":1},"time":{"type":"integer","minimum":0},"pen":{"type":"boolean"},"eraser":{"type":"boolean"},"tool_override":{"type":"string","enum":["brush","eraser","picker","hand","zoom"]},"view_x":number,"view_y":number},"required":["x","y"],"additionalProperties":false});
         let (props, required) = match self {
+            Self::ReplayStatus | Self::ReplayOpen => (json!({}), vec![]),
+            Self::ReplayEvents => (
+                json!({"source":{"type":"string","enum":["current","loaded"]},"start":{"type":"integer","minimum":0},"limit":{"type":"integer","minimum":1,"maximum":256}}),
+                vec![],
+            ),
+            Self::ReplayVerify => (
+                json!({"source":{"type":"string","enum":["current","loaded"]},"expected_head":{"type":"string","minLength":64}}),
+                vec![],
+            ),
+            Self::ReplaySeek | Self::ReplaySnapshot => (
+                json!({"source":{"type":"string","enum":["current","loaded"]},"event":{"type":"integer","minimum":0}}),
+                vec![],
+            ),
+            Self::ReplayExport | Self::ReplayLoad | Self::ReplayRecover => (
+                json!({"source":{"type":"string","enum":["current","loaded"]},"path":{"type":"string","minLength":1}}),
+                vec!["path"],
+            ),
+            Self::ReplayFrames => (
+                json!({"source":{"type":"string","enum":["current","loaded"]},"path":{"type":"string","minLength":1},"max_frames":{"type":"integer","minimum":1,"maximum":1000},"fps":{"type":"integer","minimum":1,"maximum":60}}),
+                vec!["path"],
+            ),
             Self::WorkflowSet => (
                 json!({"graph":crate::engine::workflow::schema()}),
                 vec!["graph"],
@@ -107,7 +153,7 @@ impl Operation {
                 vec!["operations"],
             ),
             Self::WorkflowValidate | Self::WorkflowRun => (
-                json!({"graph":crate::engine::workflow::schema(),"dry_run":{"type":"boolean"},"expected_revision":{"type":"integer","minimum":0}}),
+                json!({"graph":crate::engine::workflow::schema(),"dry_run":{"type":"boolean"},"atomic":{"type":"boolean"},"expected_revision":{"type":"integer","minimum":0}}),
                 vec![],
             ),
             Self::WorkflowState => (json!({"resource":{"type":"string"}}), vec!["resource"]),
@@ -120,7 +166,7 @@ impl Operation {
                 vec![],
             ),
             Self::PipelineRun => (
-                json!({"steps":{"type":"array","minItems":1,"maxItems":128,"items":{"type":"object","properties":{"id":{"type":"string"},"action":{"type":"string"},"args":{},"output_schema":{"type":"object"}},"required":["id","action"],"additionalProperties":false}},"dry_run":{"type":"boolean"},"expected_revision":{"type":"integer","minimum":0}}),
+                json!({"steps":{"type":"array","minItems":1,"maxItems":128,"items":{"type":"object","properties":{"id":{"type":"string"},"action":{"type":"string"},"args":{},"output_schema":{"type":"object"}},"required":["id","action"],"additionalProperties":false}},"dry_run":{"type":"boolean"},"atomic":{"type":"boolean"},"expected_revision":{"type":"integer","minimum":0}}),
                 vec!["steps"],
             ),
             Self::New => (
@@ -172,6 +218,13 @@ impl Operation {
         matches!(
             self,
             Self::NodeCatalog
+                | Self::ReplayStatus
+                | Self::ReplayOpen
+                | Self::ReplayEvents
+                | Self::ReplayVerify
+                | Self::ReplayLoad
+                | Self::ReplaySeek
+                | Self::ReplaySnapshot
                 | Self::WorkflowRead
                 | Self::WorkflowValidate
                 | Self::WorkflowState

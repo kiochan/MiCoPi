@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- Make native resize tests honor effective client bounds and cover desktop tracking limits, avoiding false CI failures on small hosted displays.
+
+- Share provisional contact recording and storage-failure rollback between GUI input and canvas.pointer actions.
+- Preserve revisions after failed atomic native results and refresh replay textures when external clients replace an archive.
+- Make layer creation undoable, restore its active layer on undo/redo and discard stale redo branches.
+- Recognize project file headers independently of extensions and retain the opened project's save path.
+- Bound GUI pipe reads and writes; acknowledge complete responses before disconnecting without an unbounded flush.
+
+## 0.21.0
+
+- Add document action rollback, atomic pipeline/workflow groups and a default-enabled atomic workflow UI control.
+- Add opt-in document_atomic native action capability and validate effects before executing atomic pipelines.
+- Keep pen segments provisional until contact completion; rewind the whole contact on journal storage failure.
+- Publish journal heads only after complete writes; reserve log records before replacing projects and roll reservations back on save failure.
+- Compress MCRPLY02 events with metadata deltas, tile references and sparse XOR blocks; retain MCRPLY01 decoding.
+- Cover partial-write failures, nested/output-schema rollback, redo restoration, old recordings and bounded event growth.
+
+## 0.20.0
+
+- Add a host-owned append-only document outcome journal with SHA-256 event/state chains and sealed archive verification.
+- Preserve pressure/stabilization and typed DLL painting; batch raw pointer recording at stroke or 256-sample boundaries.
+- Add a four-language time-lapse viewer, stepping/seeking, replay archives and bounded PNG frame export.
+- Persist verified history in MICOPI03 projects; retain MICOPI01/02 reading and independent undo history.
+- Expose replay actions/state through plugin schemas, workflow nodes, MCP and headless execution; never reexecute DLLs or file writes during playback.
+
 ## 0.19.0
 
 - Organize examples by purpose, separate current screenshots from historical captures, and group reference schemas.

@@ -1,0 +1,7 @@
+{"action":"canvas.new","args":{"width":640,"height":480}}
+{"action":"brush.set","args":{"radius":12,"color":"#668FF0","stabilizer":0.35,"pressure_size":true}}
+{"action":"canvas.stroke","args":{"points":[{"x":40,"y":240,"pen":true,"pressure":0.2,"time":0},{"x":320,"y":100,"pen":true,"pressure":1,"time":100},{"x":600,"y":240,"pen":true,"pressure":0.3,"time":200}]}}
+{"action":"replay.verify","args":{}}
+{"action":"document.save","args":{"path":"target/example-output/replay.mcp"}}
+{"action":"replay.export","args":{"path":"target/example-output/replay.mcreplay"}}
+{"action":"replay.frames","args":{"path":"target/example-output/replay-frames","max_frames":120,"fps":12}}

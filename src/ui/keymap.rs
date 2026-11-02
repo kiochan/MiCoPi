@@ -196,6 +196,15 @@ macro_rules! c {
 use Action::*;
 pub static COMMANDS: &[Command] = &[
     c!(
+        "replay.open",
+        "Time-lapse Replay",
+        "View",
+        "replay timelapse history event verify huifang",
+        Action::UiCommand(10131),
+        "",
+        10131
+    ),
+    c!(
         "graph.open",
         "Open Node Editor",
         "Workspace",

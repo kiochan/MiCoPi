@@ -4,6 +4,7 @@ mod commands;
 mod nodes;
 mod panels;
 mod preferences;
+mod replay;
 mod schema;
 pub mod settings;
 mod shell;
@@ -364,6 +365,7 @@ impl Editor {
 }
 
 pub struct Studio {
+    replay: replay::ReplayWindow,
     action_server: Option<crate::automation::ipc::Server>,
     from_core_ui: bool,
     pending_capture: Option<PathBuf>,
@@ -474,6 +476,7 @@ impl Studio {
         };
         Self {
             action_server,
+            replay: replay::ReplayWindow::default(),
             from_core_ui: false,
             pending_capture: None,
             editor,
@@ -500,6 +503,11 @@ impl Studio {
                 Some("nodes.open") => {
                     self.editor.nodes_workflow = effect["value"]["mode"] == "workflow";
                     self.focus_panel(Panel::Nodes);
+                }
+                Some("replay.open") => {
+                    self.editor.finish_stroke();
+                    self.replay.open = true;
+                    self.replay.refresh = true;
                 }
                 Some("command") => {
                     match serde_json::from_value::<Action>(effect["value"].clone()) {
@@ -649,8 +657,10 @@ impl Studio {
         self.consume_ui_effects(ctx);
         self.editor.shortcuts(ctx);
         self.run_actions(ctx);
-        self.editor.blocked =
-            self.settings_open || self.editor.palette.is_some() || self.editor.new_open;
+        self.editor.blocked = self.settings_open
+            || self.editor.palette.is_some()
+            || self.editor.new_open
+            || self.replay.open;
         self.draw_shell(ctx);
         let a = self.editor.settings.ui.clone();
         let colors = theme::Colors::new(&a);
@@ -690,6 +700,7 @@ impl Studio {
                     );
             });
         self.settings_window(ctx);
+        self.replay_window(ctx);
         self.editor.palette_ui(ctx);
         self.new_document_window(ctx);
         self.run_actions(ctx);

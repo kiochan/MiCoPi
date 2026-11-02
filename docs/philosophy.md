@@ -49,7 +49,7 @@ AI-ready means an AI client can discover actions and schemas, inspect public sta
 
 Plugins expose named public state rather than sharing private memory. AI clients use stable IDs, parameter schemas, revision guards and execution reports. Display language never changes protocol identifiers or file paths.
 
-Validation and dry runs help catch static mistakes. They do not predict every runtime error. A failed workflow stops later nodes and reports partial completion; already completed operations remain. That behavior should be visible to both people and automation.
+Validation and dry runs help catch static mistakes. They do not predict every runtime error. Sequential execution retains completed operations after failure; atomic document groups roll back the group. The workflow UI defaults to atomic execution, while API clients opt in explicitly. These semantics should be visible to both people and automation; see [Atomic Operations](atomic-operations.md).
 
 ![Schema-derived native plugin state connected to an action node](screenshots/workflow-nodes.png)
 
@@ -75,4 +75,10 @@ Appearance and input preferences belong in `settings.json`. Dock layout is store
 
 MiCoPi currently targets Windows 10/11 x64 and one document per Session. It does not yet provide Wintab, selections, transforms, layer reordering/merging or a watercolor engine. Native DLLs execute in process: their lifecycle and protocol are validated, but they are not sandboxed against crashes or memory errors. Actual pen-driver compatibility still requires hardware testing.
 
-These are present capabilities and constraints, not promises about a roadmap. The [architecture](architecture.md), [SDK contract](native-plugins.md) and [workflow contract](workflow-nodes.md) describe the implementation in detail.
+These are present capabilities and constraints. The [roadmap](../ROADMAP.md) separates intended work from implemented behavior; the [architecture](architecture.md), [SDK contract](native-plugins.md) and [workflow contract](workflow-nodes.md) describe the implementation in detail.
+
+## Record operations as verifiable outcomes
+
+Document operations share an append-only [replay journal](replay.md), including pen samples, plugin outcomes and undo/redo. Each event binds its predecessor and before/after state. Playback applies recorded tiles instead of executing commands again, so plugin changes and external side effects cannot alter the recorded picture. The typed input path batches recording work at stroke/segment boundaries. Integrity checking is distinct from digital signatures or authorship claims.
+
+![Read-only event replay](screenshots/replay.png)

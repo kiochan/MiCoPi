@@ -31,6 +31,35 @@ fn stroke_undo_redo_crosses_tiles() {
     assert_eq!(painted, d.layers[0].pixels);
 }
 #[test]
+fn adding_layers_is_undoable_and_invalidates_redo() {
+    let mut d = Document::new(32, 24);
+    d.begin(10., 10., brush());
+    d.finish();
+    let original = d.layers[0].pixels.clone();
+    d.add_layer();
+    d.undo();
+    assert_eq!(d.layers.len(), 1);
+    assert_eq!(d.active, 0);
+    assert_eq!(d.layers[0].pixels, original);
+    d.redo();
+    assert_eq!(d.layers.len(), 2);
+    assert_eq!(d.active, 1);
+    d.begin(10., 10., brush());
+    d.finish();
+    let second = d.layers[1].pixels.clone();
+    d.undo(); // Paint on the second layer.
+    d.undo(); // Add the second layer.
+    d.redo();
+    d.redo();
+    assert_eq!(d.layers[1].pixels, second);
+    d.undo();
+    d.add_layer(); // A structural edit must discard the old paint redo.
+    d.redo();
+    assert_eq!(d.layers.len(), 3);
+    assert!(d.layers[1].pixels.iter().all(|p| *p == 0));
+    assert!(d.layers[2].pixels.iter().all(|p| *p == 0));
+}
+#[test]
 fn eraser_and_layers() {
     let mut d = Document::new(20, 20);
     d.begin(10., 10., brush());

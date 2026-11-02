@@ -923,13 +923,45 @@ fn cursor_uses_splitter_and_header_shapes_through_drag() {
 }
 #[test]
 fn native_hidden_window_resize_messages_update_layout() {
+    check_native_hidden_window_resize(false);
+}
+#[test]
+fn native_hidden_window_resize_handles_clamped_tracking_sizes() {
+    check_native_hidden_window_resize(true);
+}
+fn check_native_hidden_window_resize(clamp_tracking: bool) {
+    unsafe extern "system" fn constrained_window_proc(
+        hwnd: Hwnd,
+        msg: u32,
+        w: usize,
+        l: isize,
+    ) -> isize {
+        let result = window_proc(hwnd, msg, w, l);
+        if msg == 0x24 && l != 0 {
+            // Model a small CI desktop without changing the user's display.
+            let points = l as *mut Point;
+            let dpi = dpi::for_window(hwnd);
+            *points.add(4) = Point {
+                x: dpi::physical(1024, dpi),
+                y: dpi::physical(768, dpi),
+            };
+        }
+        result
+    }
     unsafe {
         // Only a private, hidden test window is created. No desktop pointer input is sent.
         let instance = GetModuleHandleW(null());
-        let name = wide(&format!("MiCoPi.ResizeTest.{}", std::process::id()));
+        let name = wide(&format!(
+            "MiCoPi.ResizeTest.{}.{clamp_tracking}",
+            std::process::id()
+        ));
         let class = WndClass {
             style: 3 | 8,
-            proc: window_proc,
+            proc: if clamp_tracking {
+                constrained_window_proc
+            } else {
+                window_proc
+            },
             cls_extra: 0,
             wnd_extra: 0,
             instance,
@@ -1034,16 +1066,65 @@ fn native_hidden_window_resize_messages_update_layout() {
             );
         }
         SetWindowLongPtrW(window, -16, style);
-        SetWindowPos(window, null_mut(), 0, 0, 1100, 760, 0x16);
-        let small = APP.with(|s| s.borrow().as_ref().unwrap().zoom);
-        SetWindowPos(window, null_mut(), 0, 0, 1600, 1100, 0x16);
+        let dpi = dpi::for_window(window);
+        assert_ne!(
+            SetWindowPos(
+                window,
+                null_mut(),
+                0,
+                0,
+                dpi::physical(1100, dpi),
+                dpi::physical(760, dpi),
+                0x16
+            ),
+            0
+        );
+        let mut small_client = Rect::default();
+        assert_ne!(GetClientRect(window, &mut small_client), 0);
+        APP.with(|s| {
+            assert_eq!(
+                s.borrow().as_ref().unwrap().physical_size,
+                (small_client.right, small_client.bottom)
+            )
+        });
+        let (small, small_view) = APP.with(|s| {
+            let state = s.borrow();
+            let app = state.as_ref().unwrap();
+            let view = app.view();
+            (app.zoom, (view.right - view.left, view.bottom - view.top))
+        });
+        assert_ne!(
+            SetWindowPos(
+                window,
+                null_mut(),
+                0,
+                0,
+                dpi::physical(1600, dpi),
+                dpi::physical(1100, dpi),
+                0x16
+            ),
+            0
+        );
         APP.with(|s| {
             let state = s.borrow();
             let app = state.as_ref().unwrap();
-            assert!(app.zoom > small);
             let mut r = Rect::default();
-            GetClientRect(window, &mut r);
+            assert_ne!(GetClientRect(window, &mut r), 0);
             assert_eq!(app.physical_size, (r.right, r.bottom));
+            if clamp_tracking {
+                assert_eq!(
+                    (r.right, r.bottom),
+                    (dpi::physical(1024, dpi), dpi::physical(768, dpi))
+                );
+            }
+            // Windows can clamp both requests to the same limiting width on
+            // small desktops. Check the delivered geometry, not requested size.
+            let view = app.view();
+            let large_view = (view.right - view.left, view.bottom - view.top);
+            assert!(app.zoom >= small);
+            if large_view.0 > small_view.0 && large_view.1 > small_view.1 {
+                assert!(app.zoom > small);
+            }
         });
         // Native EDIT owns text input (including IME), never the global tool handler.
         let edit = APP.with(|slot| {

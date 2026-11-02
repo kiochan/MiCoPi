@@ -6,6 +6,10 @@
 
 目前支持 **Windows 10/11 x64**。桌面工作台使用 **egui + egui_dock** 和 OpenGL，数位笔输入使用 Windows Ink。项目仍处于早期开发阶段。
 
+**0.21.0：** 新增[可验证的事件回放](docs/replay.md)。记录笔触压感、图层和插件操作，支持时间轴播放、SHA-256 完整性校验、工程内保存历史，以及导出回放文件和 PNG 帧序列。
+
+新增[原子操作组](docs/atomic-operations.md)：失败时回滚整组画布修改，只提交一条组级事件。MCRPLY02 使用元数据差分、像素块引用和 XOR 压缩，仍支持旧版回放。
+
 ![MiCoPi 实际工作台，截图为英语界面](docs/screenshots/workbench.png)
 
 ## 主要理念
@@ -14,7 +18,7 @@
 
 逐点输入采用强类型接口，保留压感、防抖和局部更新。插件、MCP 与 headless 通过带 schema 的 action 和公开状态操作同一个 Session。图像节点非破坏式合成画布；操作节点只有明确运行时才执行。
 
-“AI-ready”代表可发现、可检查、可验证的集成契约，不代表必须联网或内置云端助手。配图与详细说明见英文[设计理念](docs/philosophy.md)、[文档索引](docs/README.md)和[目录规划](docs/project-structure.md)。技术文档以英语为准。
+“AI-ready”代表可发现、可检查、可验证的集成契约，不代表必须联网或内置云端助手。配图与详细说明见英文[设计理念](docs/philosophy.md)、[文档索引](docs/README.md)、[开发路线图](ROADMAP.md)和[目录规划](docs/project-structure.md)。技术文档以英语为准。
 
 ## 当前功能
 

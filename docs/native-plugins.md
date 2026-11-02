@@ -66,3 +66,7 @@ python scripts/smoke-workflows.py
 ```
 
 The explicit DLL lifecycle fixture checks actual loading, ABI rejection, instance isolation, tile edits and undo. Painting tests compare full pixels/history with the previous implementation, including pressure and stabilization. Optional release benchmarks are local measurements, not CI timing thresholds. End-to-end tests compare PNG bytes across JSONL, MCP and GUI.
+
+## Document transaction capability (host 0.21+)
+
+Native action descriptors may set `"document_atomic":true`. The host then snapshots document/history metadata using shared tiles, stages nested host actions, and rolls back document changes on failure. Unmarked mutating native actions cannot run inside an atomic pipeline. This contract excludes plugin-private state and external side effects; it is not a DLL sandbox. C ABI tables remain unchanged. See [Atomic Operations](atomic-operations.md).

@@ -2184,20 +2184,30 @@ pub fn run() {
 mod tests;
 
 unsafe fn file_dialog(hwnd: Hwnd, save: bool, png: bool) -> Option<PathBuf> {
-    let mut file = [0u16; 32768];
     let name = if png { "Untitled.png" } else { "Untitled.mcp" };
-    if save {
-        let n = wide(name);
-        file[..n.len()].copy_from_slice(&n);
-    }
-    let filter = wide(if save && png {
+    let filter = if save && png {
         "PNG image\0*.png\0\0"
     } else if save {
         "MiCoPi project\0*.mcp\0\0"
     } else {
         "MiCoPi / Images\0*.mcp;*.png;*.jpg;*.jpeg;*.bmp\0MiCoPi project\0*.mcp\0PNG image\0*.png\0All files\0*.*\0\0"
-    });
-    let ext = wide(if png { "png" } else { "mcp" });
+    };
+    file_dialog_custom(hwnd, save, name, filter, if png { "png" } else { "mcp" })
+}
+unsafe fn file_dialog_custom(
+    hwnd: Hwnd,
+    save: bool,
+    name: &str,
+    filter: &str,
+    extension: &str,
+) -> Option<PathBuf> {
+    let mut file = [0u16; 32768];
+    if save {
+        let n = wide(name);
+        file[..n.len()].copy_from_slice(&n);
+    }
+    let filter = wide(filter);
+    let ext = wide(extension);
     let mut of: OpenFile = mem::zeroed();
     of.size = mem::size_of::<OpenFile>() as u32;
     of.owner = hwnd;

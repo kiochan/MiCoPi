@@ -32,7 +32,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         }
         Pointer => {
             let sample: crate::application::Pointer = serde_json::from_value(args)?;
-            s.pointer(sample)?;
+            s.pointer_action(sample)?;
             Ok(json!({"drawing":s.stroke.drawing()}))
         }
         Stroke => {

@@ -7,7 +7,7 @@ use std::{
     io::{self, Read, Write},
     path::Path,
 };
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Composition {
     pub graph: Graph,
     pub layers: Vec<(bool, u8, BlendMode)>,
@@ -25,15 +25,39 @@ pub struct Layer {
     pub opacity: u8,
     pub mode: BlendMode,
 }
+#[derive(Clone)]
 struct Edit {
     layer: usize,
-    tiles: BTreeMap<usize, Vec<u32>>,
+    tiles: BTreeMap<usize, Arc<Vec<u32>>>,
     composition: Option<Composition>,
     metadata_bytes: usize,
+    layer_change: Option<LayerChange>,
+}
+#[derive(Clone)]
+struct LayerChange {
+    active: usize,
+    removed: Option<Arc<Layer>>,
+}
+#[derive(Clone)]
+pub(crate) struct HistoryCheckpoint {
+    undo: Vec<Edit>,
+    redo: Vec<Edit>,
+    identity: u64,
+    renderer: Option<Arc<dyn Renderer>>,
+    stroke: Option<Edit>,
+    last: Option<(f32, f32)>,
+    last_brush: Option<Brush>,
+    distance: f32,
 }
 impl Edit {
     fn bytes(&self) -> usize {
-        self.tiles.values().map(|v| v.len() * 4).sum::<usize>() + self.metadata_bytes
+        self.tiles.values().map(|v| v.len() * 4).sum::<usize>()
+            + self.metadata_bytes
+            + self
+                .layer_change
+                .as_ref()
+                .and_then(|c| c.removed.as_ref())
+                .map_or(0, |layer| layer.pixels.len() * 4)
     }
 }
 #[derive(Clone, Copy)]
@@ -45,6 +69,9 @@ pub struct Brush {
     pub erase: bool,
 }
 pub struct Document {
+    pub(crate) replay_tiles: std::collections::BTreeSet<(usize, usize)>,
+    pub(crate) replay_surface: Option<[usize; 4]>,
+    pub(crate) replay_data: Option<Vec<u8>>,
     pub workflow: super::workflow::Graph,
     pub identity: u64,
     pub graph: Graph,
@@ -86,6 +113,28 @@ pub fn over(dst: u32, src: u32) -> u32 {
     out
 }
 impl Document {
+    pub(crate) fn checkpoint_history(&self) -> HistoryCheckpoint {
+        HistoryCheckpoint {
+            undo: self.undo.clone(),
+            redo: self.redo.clone(),
+            identity: self.identity,
+            renderer: self.renderer.clone(),
+            stroke: self.stroke.clone(),
+            last: self.last,
+            last_brush: self.last_brush,
+            distance: self.distance,
+        }
+    }
+    pub(crate) fn restore_history(&mut self, saved: HistoryCheckpoint) {
+        self.undo = saved.undo;
+        self.redo = saved.redo;
+        self.identity = saved.identity;
+        self.renderer = saved.renderer;
+        self.stroke = saved.stroke;
+        self.last = saved.last;
+        self.last_brush = saved.last_brush;
+        self.distance = saved.distance;
+    }
     pub fn new(width: usize, height: usize) -> Self {
         assert!(width > 0 && height > 0 && width <= MAX_SIDE && height <= MAX_SIDE);
         let n = width * height;
@@ -96,6 +145,9 @@ impl Document {
                 NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
             },
             graph: Graph::default(),
+            replay_tiles: Default::default(),
+            replay_surface: Some([0, 0, width, height]),
+            replay_data: None,
             renderer: None,
             plan: vec![],
             render_error: None,
@@ -121,6 +173,7 @@ impl Document {
         }
     }
     pub fn invalidate(&mut self) {
+        self.replay_surface = Some([0, 0, self.width, self.height]);
         self.changed = Some([0, 0, self.width, self.height]);
         self.display_changed = self.changed;
     }
@@ -145,7 +198,7 @@ impl Document {
                 .collect(),
         }
     }
-    fn restore_composition(&mut self, state: Composition) {
+    pub(crate) fn restore_composition(&mut self, state: Composition) {
         self.workflow = state.workflow;
         self.graph = state.graph;
         self.plan = self.graph.compile(self.layers.len()).unwrap_or_default();
@@ -157,8 +210,9 @@ impl Document {
         self.render_error = None;
         self.invalidate();
     }
-    fn commit_composition(&mut self, before: Composition) {
+    fn commit_composition(&mut self, before: Composition, layer_change: Option<LayerChange>) {
         self.stroke = Some(Edit {
+            layer_change,
             layer: self.active,
             tiles: BTreeMap::new(),
             metadata_bytes: before.graph.nodes.len() * 160
@@ -184,7 +238,7 @@ impl Document {
         let before = self.composition();
         self.graph = graph;
         self.plan = plan;
-        self.commit_composition(before);
+        self.commit_composition(before, None);
         Ok(())
     }
     pub fn set_workflow(
@@ -198,7 +252,7 @@ impl Document {
         self.finish();
         let before = self.composition();
         self.workflow = graph;
-        self.commit_composition(before);
+        self.commit_composition(before, None);
         Ok(())
     }
     pub fn set_layer_properties(
@@ -224,10 +278,19 @@ impl Document {
         l.visible = visible;
         l.opacity = opacity;
         l.mode = mode;
-        self.commit_composition(before);
+        self.commit_composition(before, None);
         Ok(())
     }
     fn damage(&mut self, r: [usize; 4]) {
+        self.replay_surface = Some(match self.replay_surface {
+            Some(p) => [
+                p[0].min(r[0]),
+                p[1].min(r[1]),
+                p[2].max(r[2]),
+                p[3].max(r[3]),
+            ],
+            None => r,
+        });
         self.changed = Some(match self.changed {
             Some(p) => [
                 p[0].min(r[0]),
@@ -336,6 +399,7 @@ impl Document {
     pub(crate) fn begin_plugin_stroke(&mut self) {
         self.finish();
         self.stroke = Some(Edit {
+            layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
             composition: None,
@@ -381,6 +445,7 @@ impl Document {
             return;
         }
         self.stroke = Some(Edit {
+            layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
             composition: None,
@@ -433,6 +498,7 @@ impl Document {
     fn save_tile(&mut self, tx: usize, ty: usize) {
         let cols = (self.width + TILE - 1) / TILE;
         let id = ty * cols + tx;
+        self.replay_tiles.insert((self.active, id));
         let edit = self.stroke.as_mut().unwrap();
         if edit.tiles.contains_key(&id) {
             return;
@@ -444,7 +510,7 @@ impl Document {
                     ..y * self.width + ((tx + 1) * TILE).min(self.width)],
             );
         }
-        edit.tiles.insert(id, data);
+        edit.tiles.insert(id, Arc::new(data));
     }
     fn dab(&mut self, x: f32, y: f32, b: Brush) {
         if b.opacity <= 0. || b.radius <= 0. {
@@ -512,6 +578,14 @@ impl Document {
     fn swap_edit(&mut self, mut e: Edit) -> Edit {
         if let Some(state) = &mut e.composition {
             let before = self.composition();
+            if let Some(change) = &mut e.layer_change {
+                if let Some(layer) = change.removed.take() {
+                    self.layers.push(Arc::unwrap_or_clone(layer));
+                } else {
+                    change.removed = self.layers.pop().map(Arc::new);
+                }
+                std::mem::swap(&mut self.active, &mut change.active);
+            }
             self.restore_composition(state.clone());
             *state = before;
             e.metadata_bytes = state.graph.nodes.len() * 160
@@ -522,6 +596,8 @@ impl Document {
         }
         let cols = (self.width + TILE - 1) / TILE;
         for (id, data) in e.tiles.iter_mut() {
+            let data = Arc::make_mut(data);
+            self.replay_tiles.insert((e.layer, *id));
             let tx = *id % cols;
             let ty = *id / cols;
             let mut j = 0;
@@ -556,6 +632,8 @@ impl Document {
     pub fn add_layer(&mut self) {
         self.finish();
         if self.layers.len() < MAX_LAYERS {
+            let before = self.composition();
+            let active = self.active;
             self.layers.push(Layer {
                 pixels: vec![0; self.width * self.height],
                 visible: true,
@@ -563,7 +641,13 @@ impl Document {
                 mode: BlendMode::Normal,
             });
             self.active = self.layers.len() - 1;
-            self.dirty = true;
+            self.commit_composition(
+                before,
+                Some(LayerChange {
+                    active,
+                    removed: None,
+                }),
+            );
         }
     }
     /// Commit a contiguous plugin-owned region, recording only changed tiles.
@@ -585,6 +669,7 @@ impl Document {
         }
         self.finish();
         self.stroke = Some(Edit {
+            layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
             composition: None,
@@ -623,6 +708,7 @@ impl Document {
     pub fn clear_layer(&mut self) {
         self.finish();
         self.stroke = Some(Edit {
+            layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
             composition: None,
@@ -638,11 +724,22 @@ impl Document {
         self.finish();
     }
     pub fn save(&mut self, path: &Path) -> io::Result<()> {
+        self.save_with_replay(path, None)
+    }
+    pub(crate) fn save_with_replay(
+        &mut self,
+        path: &Path,
+        replay: Option<&[u8]>,
+    ) -> io::Result<()> {
         self.finish();
         // Same-directory temp + rename keeps an existing project intact on write failure.
         let tmp = path.with_extension("mcp.tmp");
         let mut f = std::fs::File::create(&tmp)?;
-        f.write_all(b"MICOPI02")?;
+        f.write_all(if replay.is_some() {
+            b"MICOPI03"
+        } else {
+            b"MICOPI02"
+        })?;
         for v in [self.width, self.height, self.layers.len(), self.active] {
             f.write_all(&(v as u32).to_le_bytes())?;
         }
@@ -657,6 +754,10 @@ impl Document {
         let metadata = serde_json::to_vec(&self.composition()).map_err(io::Error::other)?;
         f.write_all(&(metadata.len() as u32).to_le_bytes())?;
         f.write_all(&metadata)?;
+        if let Some(bytes) = replay {
+            f.write_all(&(bytes.len() as u64).to_le_bytes())?;
+            f.write_all(bytes)?;
+        }
         f.sync_all()?;
         drop(f);
         crate::platform::replace_file(&tmp, path)?;
@@ -673,7 +774,7 @@ impl Document {
                 "Invalid or oversized Micopi project",
             )
         };
-        if &magic != b"MICOPI01" && &magic != b"MICOPI02" {
+        if &magic != b"MICOPI01" && &magic != b"MICOPI02" && &magic != b"MICOPI03" {
             return Err(bad());
         }
         let mut dims = [0usize; 4];
@@ -698,6 +799,9 @@ impl Document {
         let size = f.metadata()?.len();
         if (&magic == b"MICOPI01" && size != base)
             || (&magic == b"MICOPI02" && (size < base + 4 || size > base + 4 + 1024 * 1024))
+            || (&magic == b"MICOPI03"
+                && (size < base + 4 + 8
+                    || size > base + 4 + 1024 * 1024 + 8 + super::replay::MAX_ARCHIVE as u64))
         {
             return Err(bad());
         }
@@ -723,11 +827,11 @@ impl Document {
                 mode: BlendMode::Normal,
             });
         }
-        if &magic == b"MICOPI02" {
+        if &magic == b"MICOPI02" || &magic == b"MICOPI03" {
             let mut length = [0u8; 4];
             f.read_exact(&mut length)?;
             let length = u32::from_le_bytes(length) as usize;
-            if length > 1024 * 1024 || size != base + 4 + length as u64 {
+            if length > 1024 * 1024 || (&magic == b"MICOPI02" && size != base + 4 + length as u64) {
                 return Err(bad());
             }
             let mut bytes = vec![0; length];
@@ -739,6 +843,19 @@ impl Document {
             state.graph.compile(n).map_err(|_| bad())?;
             state.workflow.validate_structure().map_err(|_| bad())?;
             doc.restore_composition(state);
+            if &magic == b"MICOPI03" {
+                let mut length_bytes = [0; 8];
+                f.read_exact(&mut length_bytes)?;
+                let replay_length = u64::from_le_bytes(length_bytes);
+                if replay_length > super::replay::MAX_ARCHIVE as u64
+                    || size != base + 4 + length as u64 + 8 + replay_length
+                {
+                    return Err(bad());
+                }
+                let mut bytes = vec![0; replay_length as usize];
+                f.read_exact(&mut bytes)?;
+                doc.replay_data = Some(bytes);
+            }
         }
         Ok(doc)
     }

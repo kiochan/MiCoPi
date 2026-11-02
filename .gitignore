@@ -17,6 +17,7 @@
 /artworks/
 /scratch/
 *.mcp.tmp
+*.replay.tmp
 MiCoPi.workspace.ini
 /settings.json
 /workspace.egui.json

@@ -71,6 +71,7 @@ impl Studio {
                                         (85, "Zoom In"),
                                         (86, "Zoom Out"),
                                         (10130, "Node Editor…"),
+                                        (10131, "Time-lapse Replay…"),
                                         (69, "Toggle Panels"),
                                     ],
                                 ),

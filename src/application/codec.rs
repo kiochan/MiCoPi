@@ -5,12 +5,22 @@ use crate::{
     platform::replace_file,
 };
 use image::ImageEncoder;
+use std::io::Read;
 use std::path::Path;
+pub(crate) fn is_project(path: &Path) -> Result<bool, ActionError> {
+    let mut header = Vec::with_capacity(8);
+    std::fs::File::open(path)?
+        .take(8)
+        .read_to_end(&mut header)?;
+    Ok(
+        matches!(header.as_slice(), b"MICOPI01" | b"MICOPI02" | b"MICOPI03")
+            || path
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("mcp")),
+    )
+}
 pub fn open(path: &Path) -> Result<Document, ActionError> {
-    if path
-        .extension()
-        .is_some_and(|e| e.eq_ignore_ascii_case("mcp"))
-    {
+    if is_project(path)? {
         return Ok(Document::load(path)?);
     }
     let reader = || {

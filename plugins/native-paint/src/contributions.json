@@ -8,7 +8,8 @@
       "input_schema": {
         "type": "object",
         "additionalProperties": false
-      }
+      },
+      "document_atomic": true
     },
     {
       "id": "native.checkerboard",
@@ -24,7 +25,8 @@
           }
         },
         "additionalProperties": false
-      }
+      },
+      "document_atomic": true
     },
     {
       "id": "native.invert_region",
@@ -59,7 +61,8 @@
           "height"
         ],
         "additionalProperties": false
-      }
+      },
+      "document_atomic": true
     },
     {
       "id": "native.stats",

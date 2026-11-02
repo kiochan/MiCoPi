@@ -6,7 +6,7 @@ A small Rust painting application focused on responsive pen input and an extensi
 
 MiCoPi runs on **Windows 10/11 x64**. The desktop workbench uses **egui + egui_dock** with OpenGL; pen input uses Windows Ink. The project is in early development.
 
-**0.19.0:** English is the default display language, with Simplified Chinese, Japanese and Korean available in Settings. Menus, settings, commands, tooltips and node controls use embedded translation catalogs. Documentation is maintained in English. See [Localization](docs/localization.md).
+**0.21.0:** [Atomic document groups](docs/atomic-operations.md) roll back failed batches and publish one compact event. MCRPLY02 adds metadata/XOR deltas and tile references while retaining v1 reading. [Verified event replay](docs/replay.md) records document operations, pressure input and plugin outcomes. Preview the drawing process, verify its SHA-256 chain, save history inside projects, or export a replay archive and PNG time-lapse frames. English is the default language, with Chinese, Japanese and Korean available.
 
 ![Painting workbench](docs/screenshots/workbench.png)
 
@@ -16,7 +16,7 @@ MiCoPi runs on **Windows 10/11 x64**. The desktop workbench uses **egui + egui_d
 
 Typed pen input protects the drawing path; schema-described actions and public state make the same application inspectable from plugins, MCP and headless clients. Image composition stays non-destructive, and workflow execution remains explicit. AI-ready means a documented integration contract, not a required cloud assistant.
 
-Read the illustrated [design philosophy](docs/philosophy.md), browse the [documentation index](docs/README.md), or see the [directory and ownership guide](docs/project-structure.md).
+Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadmap](ROADMAP.md), browse the [documentation index](docs/README.md), or see the [directory and ownership guide](docs/project-structure.md).
 
 ## Features
 
@@ -30,6 +30,8 @@ Read the illustrated [design philosophy](docs/philosophy.md), browse the [docume
 - Non-destructive [image graphs](docs/node-editor.md) for filters and blending.
 - [Plugin workflow graphs](docs/workflow-nodes.md) generated from action and state schemas.
 - Independent native DLL plugins, headless JSONL, MCP stdio and attachment to a running GUI.
+- [Atomic document groups](docs/atomic-operations.md), shared-tile rollback and compact verified events.
+- Verified [event replay](docs/replay.md), time-lapse preview and PNG frame sequences.
 
 Current limits: one document per session; no Wintab, selections, transforms, layer reordering/merging or watercolor engine. Native plugin DLLs execute inside the host process.
 

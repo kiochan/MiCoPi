@@ -48,12 +48,12 @@ pub fn describe(s: &Session) -> Value {
     }));
     json!({"pipeline_version":1,"version":env!("CARGO_PKG_VERSION"),"runtime":s.runtime,
         "revision":s.revision,"document_model":"single_document_session",
-        "entrypoints":{"discover":"app.describe","query":"context.read","execute":"pipeline.run","node_catalog":"node.catalog","workflow_read":"workflow.read","workflow_edit":"workflow.patch","workflow_execute":"workflow.run","events":"events.list","image":"canvas.snapshot"},
+        "entrypoints":{"discover":"app.describe","query":"context.read","execute":"pipeline.run","node_catalog":"node.catalog","workflow_read":"workflow.read","workflow_edit":"workflow.patch","workflow_execute":"workflow.run","events":"events.list","image":"canvas.snapshot","replay_status":"replay.status","replay_events":"replay.events","replay_verify":"replay.verify","replay_image":"replay.snapshot"},
         "actions":s.registry.actions.values().map(|a|json!({"id":a.id,"title":a.title,
             "owner":s.registry.owners.get(&a.id),"inputSchema":a.schema(),"outputSchema":a.output_schema,
-            "readOnly":a.is_read_only()})).collect::<Vec<_>>(),
+            "readOnly":a.is_read_only(),"documentAtomic":a.is_document_atomic()})).collect::<Vec<_>>(),
         "resources":resources,"limits":{"steps":128,"nested_calls":16,"action_budget":1024,"events":512},
-        "execution":{"order":"sequential","transactional":false,"stop_on_error":true,
+        "execution":{"order":"sequential","transactional":false,"atomic_option":true,"atomic_scope":"document","stop_on_error":true,
             "reference":{"$ref":"step-id#/result/field"},"dry_run":"validate_only_no_plugin_execution",
             "dynamic_arguments":"validated_after_reference_resolution","expected_revision":true},
         "plugin_sdk":{"action_abi":1,"tool_abi":1,"descriptor_states":true,"cross_plugin_calls":true,
@@ -281,6 +281,9 @@ pub fn run(s: &mut Session, args: Value) -> ActionResult {
         if !s.registry.actions.contains_key(&step.action) {
             return Err(ActionError::new("unknown_action", &step.action));
         }
+        if s.atomic_depth != 0 {
+            s.validate_atomic_action(&step.action, 0)?;
+        }
         let (bindings, _) = local_arguments(s, step);
         let dynamic = inspect_refs(&bindings, &seen, 0)?;
         if !dynamic {
@@ -294,7 +297,7 @@ pub fn run(s: &mut Session, args: Value) -> ActionResult {
     if args["dry_run"].as_bool() == Some(true) {
         return Ok(
             json!({"ok":true,"dry_run":true,"steps":steps.len(),"deferred_validation":deferred,
-            "revision":s.revision,"transactional":false}),
+            "revision":s.revision,"transactional":s.atomic_depth != 0}),
         );
     }
     let started = s.revision;
@@ -319,14 +322,14 @@ pub fn run(s: &mut Session, args: Value) -> ActionResult {
                     .any(|schema| validate(schema, &result["result"]).is_err()) =>
             {
                 return Ok(
-                    json!({"ok":false,"failed_step":step.id,"action":step.action,"error":{"code":"invalid_node_output","message":"Action result does not match the output schema"},"failed_result":result,"completed":completed,"results":results,"start_revision":started,"revision":s.revision,"transactional":false}),
+                    json!({"ok":false,"failed_step":step.id,"action":step.action,"error":{"code":"invalid_node_output","message":"Action result does not match the output schema"},"failed_result":result,"completed":completed,"results":results,"start_revision":started,"revision":s.revision,"transactional":s.atomic_depth != 0}),
                 );
             }
             Ok(result) if result["result"]["ok"] == false => {
                 return Ok(
                     json!({"ok":false,"failed_step":step.id,"action":step.action,
                 "error":{"code":"nested_pipeline_failed","message":"Nested action failed; inspect failed_result"},"failed_result":result,
-                "completed":completed,"results":results,"start_revision":started,"revision":s.revision,"transactional":false}),
+                "completed":completed,"results":results,"start_revision":started,"revision":s.revision,"transactional":s.atomic_depth != 0}),
                 )
             }
             Ok(result) => {
@@ -337,13 +340,13 @@ pub fn run(s: &mut Session, args: Value) -> ActionResult {
                 return Ok(
                     json!({"ok":false,"failed_step":step.id,"action":step.action,
                 "error":error,"completed":completed,"results":results,"start_revision":started,
-                "revision":s.revision,"transactional":false}),
+                "revision":s.revision,"transactional":s.atomic_depth != 0}),
                 )
             }
         }
     }
     Ok(
         json!({"ok":true,"completed":completed,"results":results,"start_revision":started,
-        "revision":s.revision,"transactional":false}),
+        "revision":s.revision,"transactional":s.atomic_depth != 0}),
     )
 }

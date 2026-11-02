@@ -183,6 +183,19 @@ pub struct Event {
     pub event: EventKind,
 }
 pub struct Session {
+    pub(crate) pointer_checkpoint: Option<(
+        super::atomic::Checkpoint,
+        crate::engine::replay::JournalCheckpoint,
+    )>,
+    pub(crate) atomic_depth: usize,
+    pub(crate) journal: Option<crate::engine::replay::Journal>,
+    pub(crate) loaded_replay: Option<crate::engine::replay::Journal>,
+    pub(crate) restored_replay: Option<crate::engine::replay::Journal>,
+    pub(crate) replay_identity: u64,
+    pub(crate) replay_error: Option<String>,
+    pub(crate) replay_samples: Vec<Pointer>,
+    pub(crate) replay_direct_contact: bool,
+    pub(crate) pending_save: Option<(PathBuf, Option<PathBuf>, bool, u64)>,
     pub(crate) workflow_stack: Vec<crate::engine::workflow::Graph>,
     pub(crate) doc: Document,
     pub file: Option<PathBuf>,
@@ -234,6 +247,16 @@ impl Session {
         let mut doc = Document::new(1200, 900);
         doc.renderer = registry.renderer();
         Ok(Self {
+            pointer_checkpoint: None,
+            atomic_depth: 0,
+            journal: None,
+            loaded_replay: None,
+            restored_replay: None,
+            replay_identity: 0,
+            replay_error: None,
+            replay_samples: Vec::with_capacity(256),
+            replay_direct_contact: false,
+            pending_save: None,
             workflow_stack: vec![],
             selected_tool: tool.id.clone(),
             tool: tool.kind,
@@ -270,6 +293,20 @@ impl Session {
         json!({"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":self.parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
     }
     pub fn apply(&mut self, action: Action) -> ActionResult {
+        let pointer_action = self
+            .registry
+            .actions
+            .get(&action.action)
+            .is_some_and(|d| d.operation == Some(Operation::Pointer));
+        let recordable =
+            self.registry.actions.get(&action.action).is_none_or(|d| {
+                !d.is_read_only() && !d.operation.is_some_and(Operation::is_replay)
+            });
+        if recordable && self.read_depth == 0 && !pointer_action {
+            self.replay_boundary()?;
+        }
+        let replay_sequence = self.journal.as_ref().map_or(0, |j| j.entries.len());
+        let rejected = recordable.then(|| action.clone());
         if self.execution_depth == 0 {
             self.remaining_actions = 1024;
         }
@@ -282,6 +319,21 @@ impl Session {
         self.execution_depth += 1;
         let result = self.apply_inner(action);
         self.execution_depth -= 1;
+        if let (Err(error), Some(action)) = (&result, rejected) {
+            if self.read_depth == 0
+                && self.journal.as_ref().map_or(0, |j| j.entries.len()) == replay_sequence
+            {
+                self.replay_commit(
+                    crate::engine::replay::Source::Action {
+                        action: action.action,
+                        args: action.args,
+                        depth: self.execution_depth,
+                    },
+                    false,
+                    Some(error.to_string()),
+                )?;
+            }
+        }
         result
     }
     pub(crate) fn validate_action(&self, action: &Action) -> Result<(), ActionError> {
@@ -317,23 +369,105 @@ impl Session {
             }
             self.remaining_actions -= 1;
             let read_only = self.registry.actions[&id].is_read_only();
+            let recording = !read_only
+                && !op.is_some_and(Operation::is_replay)
+                && op != Some(Operation::Pointer);
+            let atomic_group = matches!(op, Some(Operation::PipelineRun | Operation::WorkflowRun))
+                && args["atomic"] == true;
+            if self.atomic_depth != 0
+                && ((!read_only
+                    && !op.is_some_and(Operation::allowed_in_atomic)
+                    && !self.registry.actions[&id].is_document_atomic())
+                    || matches!(op, Some(Operation::ReplayLoad | Operation::ReplayOpen)))
+            {
+                return Err(ActionError::new("non_atomic_action",format!("{id} cannot run inside an atomic document group; file/UI/native action effects cannot be rolled back")));
+            }
+            if atomic_group && (self.stroke.active() || self.pointer_checkpoint.is_some()) {
+                return Err(ActionError::new(
+                    "stroke_active",
+                    "Finish the current contact before starting an atomic group",
+                ));
+            }
+            if recording {
+                self.replay_boundary()?;
+            }
+            let mut checkpoint = if recording
+                && self.atomic_depth == 0
+                && !self.stroke.active()
+                && (atomic_group || self.registry.actions[&id].is_document_atomic())
+            {
+                Some(super::atomic::Checkpoint::capture(self))
+            } else {
+                None
+            };
+            let scoped_atomic = atomic_group || (checkpoint.is_some() && op.is_none());
             if read_only {
                 self.read_depth += 1;
+            }
+            if scoped_atomic {
+                self.atomic_depth += 1;
             }
             let outcome = match op {
                 Some(op) => self.execute(op, args),
                 None => crate::plugins::native::execute(self, &id, args),
             };
+            if scoped_atomic {
+                self.atomic_depth -= 1;
+            }
             if read_only {
                 self.read_depth -= 1;
             }
             match outcome {
-                Ok(value) => {
+                Ok(mut value) => {
                     let failed = value.get("ok") == Some(&Value::Bool(false));
+                    if failed {
+                        if let Some(saved) = checkpoint.take() {
+                            saved.restore(self);
+                        }
+                    }
+                    if atomic_group {
+                        value["transactional"] = json!(true);
+                        value["rolled_back"] = json!(failed && self.atomic_depth == 0);
+                        value["revision"] = json!(self.revision);
+                        value["committed"] = if failed {
+                            json!([])
+                        } else {
+                            value
+                                .get("completed")
+                                .or_else(|| value.get("completed_nodes"))
+                                .cloned()
+                                .unwrap_or_else(|| json!([]))
+                        };
+                    }
                     if !read_only
-                        && !matches!(op, Some(Operation::PipelineRun | Operation::WorkflowRun))
+                        && !(failed && self.registry.actions[&id].is_document_atomic())
+                        && !matches!(
+                            op,
+                            Some(
+                                Operation::PipelineRun
+                                    | Operation::WorkflowRun
+                                    | Operation::Pointer
+                                    | Operation::ReplayExport
+                                    | Operation::ReplayFrames
+                                    | Operation::ReplayRecover
+                            )
+                        )
                     {
                         self.revision += 1;
+                    }
+                    if recording {
+                        if let Err(error) = self.replay_action(
+                            &id,
+                            &event_args,
+                            op,
+                            !failed,
+                            failed.then(|| value["error"].to_string()),
+                        ) {
+                            if let Some(saved) = checkpoint.take() {
+                                saved.restore(self);
+                            }
+                            return Err(error);
+                        }
                     }
                     if !read_only {
                         self.record(EventKind::Action {
@@ -349,6 +483,12 @@ impl Session {
                     }
                 }
                 Err(e) => {
+                    if let Some(saved) = checkpoint.take() {
+                        saved.restore(self);
+                    }
+                    if recording {
+                        self.replay_action(&id, &event_args, op, false, Some(e.to_string()))?;
+                    }
                     self.record(EventKind::Action {
                         action: id,
                         args: event_args,
@@ -403,21 +543,76 @@ impl Session {
         crate::plugins::execute(self, op, args)
     }
     pub fn pointer(&mut self, sample: Pointer) -> Result<(), ActionError> {
+        self.pointer_input(
+            sample,
+            self.execution_depth == 0 || self.replay_direct_contact,
+        )
+    }
+    pub(crate) fn pointer_action(&mut self, sample: Pointer) -> Result<(), ActionError> {
+        self.pointer_input(sample, true)
+    }
+    fn pointer_input(&mut self, sample: Pointer, recording: bool) -> Result<(), ActionError> {
         if self.read_depth != 0 {
             return Err(ActionError::new(
                 "read_only",
                 "Read-only queries cannot paint",
             ));
         }
-        sample.validate()?;
+        if let Err(error) = sample.validate() {
+            if self.execution_depth == 0 {
+                self.replay_boundary()?;
+                self.replay_commit(
+                    crate::engine::replay::Source::Rejected {
+                        input: format!("Pointer: {sample:?}"),
+                    },
+                    false,
+                    Some(error.to_string()),
+                )?;
+            }
+            return Err(error);
+        }
+        if recording {
+            self.replay_ensure()?;
+            if sample.phase == PointerPhase::Down {
+                if !self.stroke.active() {
+                    self.replay_boundary()?;
+                    self.pointer_checkpoint = Some((
+                        super::atomic::Checkpoint::capture(self),
+                        self.journal.as_ref().unwrap().checkpoint(),
+                    ));
+                }
+                self.replay_direct_contact = true;
+            }
+        }
         let mut stroke = std::mem::take(&mut self.stroke);
         let result = stroke.input(self, sample);
         self.stroke = stroke;
+        if result.is_err() && recording {
+            if let Some((saved, _)) = &self.pointer_checkpoint {
+                let saved = saved.clone();
+                let samples = std::mem::take(&mut self.replay_samples);
+                saved.restore(self);
+                self.replay_samples = samples;
+            }
+        }
         if result.is_ok() {
             self.last_pointer = Some(sample);
             self.pen_observed |= sample.pen;
             self.revision += 1;
             self.record(EventKind::Pointer { sample });
+        }
+        if recording {
+            self.replay_samples.push(sample);
+            let ended = matches!(sample.phase, PointerPhase::Up | PointerPhase::Cancel)
+                || result.is_err()
+                || (sample.phase == PointerPhase::Down && !self.stroke.active());
+            if ended || self.replay_samples.len() >= 256 {
+                self.replay_flush(ended, result.as_ref().err().map(ToString::to_string))?;
+            }
+            if ended {
+                self.replay_direct_contact = false;
+                self.pointer_checkpoint = None;
+            }
         }
         result
     }

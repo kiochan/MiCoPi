@@ -38,7 +38,7 @@ Actions carry an ID, JSON arguments and optional expected revision. Session vali
 
 GUI request transport parses and queues on worker threads; the GUI thread executes mutations against its Session. Requests do not call DLLs from transport threads. External pointer streams survive loss of GUI focus. Long-running actions occupy the Session thread; independent headless sessions suit offline batch work.
 
-Read-only queries cannot mutate document pixels or dispatch mutating actions. They do not finish strokes or increment revision. A bounded event buffer retains the most recent 512 action/pointer events for diagnostics, not persistent event sourcing.
+Read-only queries cannot mutate document pixels or dispatch mutating actions. They do not finish strokes or increment revision. A bounded event buffer retains the most recent 512 action/pointer events for diagnostics, not persistent event sourcing. A separate append-only outcome journal records document mutations, raw pen samples and changed tiles with a SHA-256 chain. Playback applies verified results without executing plugins or external effects.
 
 ## Painting and performance
 
@@ -50,7 +50,9 @@ Document display updates return dirty rectangles. Desktop uploads partial textur
 
 ## Persistence and presentation
 
-MICOPI02 projects save layer pixels, blend properties, image nodes, positions and workflow metadata; MICOPI01 remains readable. Undo history is not persisted. Image decoding checks dimensions before allocation; PNG export preserves alpha.
+MICOPI03 projects save layer pixels, blend properties, image/workflow metadata and a sealed verified event journal; MICOPI01/02 remain readable. The undo stack is not persisted; the replay journal is independent. See [Verified Replay](replay.md). Image decoding checks dimensions before allocation; PNG export preserves alpha.
+
+Project headers are recognized independently of the filename extension; renamed projects retain their save path when opened. Layer creation is a structural undo entry that restores the previous active layer and invalidates the old redo branch.
 
 `settings.json` contains appearance, language, keybindings, painting defaults and plugin preferences. Saving validates ranges/conflicts, preserves unknown root fields and atomically replaces the file. Dock trees and floating rectangles are kept in `workspace.egui.json`; new plugin panels are reconciled without reopening previously closed panels.
 
@@ -61,3 +63,5 @@ Window activation is forwarded to winit. `WM_NCACTIVATE` uses `lParam=-1` to pre
 ## Verification
 
 See [Development](development.md) for unit, actual-DLL and end-to-end checks. Runtime smoke tests compare identical PNG bytes across JSONL, MCP and GUI. Localization checks cover catalogs, placeholders, settings round trips, search and four-language UI captures. Actual tablet/driver compatibility still needs hardware testing.
+
+Document transactions and provisional pen contacts use replay state plus shared undo tiles as rollback checkpoints. Atomic pipelines suppress child journal writes and publish one outcome after success; failure restores the checkpoint. A journal append publishes its index/head only after writing the entire compressed record. Partial writes truncate the uncommitted tail. MCRPLY02 adds metadata deltas, intra-event tile references and sparse XOR blocks; MCRPLY01 remains readable. See [Atomic Operations](atomic-operations.md).

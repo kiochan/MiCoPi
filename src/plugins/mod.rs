@@ -24,6 +24,10 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        ReplayStatus | ReplayOpen | ReplayEvents | ReplayVerify | ReplayExport | ReplayLoad
+        | ReplaySeek | ReplaySnapshot | ReplayFrames | ReplayRecover => {
+            crate::application::replay::execute(session, op, args)
+        }
         NodeCatalog | WorkflowRead | WorkflowSet | WorkflowPatch | WorkflowValidate
         | WorkflowRun | WorkflowState => crate::application::workflow::execute(session, op, args),
         GraphRead | GraphSet | GraphCatalog => compositing::execute(session, op, args),

@@ -10,6 +10,7 @@ This directory is the installable extension boundary. It contains manifests and 
 | native-paint | Native action examples, pixel regions, statistics and a node alias |
 | ai-assistant | Cross-plugin public state and pipeline example |
 | compositing | Typed region compositor and image node definitions |
+| replay | Host-owned outcome journal, integrity checks, preview and frame export APIs |
 | workflows | Action/state graph discovery, editing, validation and execution |
 
 Build native implementations with `scripts/build.ps1 -PluginsOnly` or the corresponding Cargo package. DLLs are build output and remain ignored. Distributions install each DLL with its manifest beside the application; plugin source stays versioned here.

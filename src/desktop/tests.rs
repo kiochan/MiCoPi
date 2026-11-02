@@ -7,6 +7,7 @@ pub(super) fn studio() -> Studio {
     editor.workspace = Workspace::default();
     let applied = editor.settings.ui.clone();
     Studio {
+        replay: replay::ReplayWindow::default(),
         action_server: None,
         from_core_ui: false,
         pending_capture: None,

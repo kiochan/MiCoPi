@@ -480,7 +480,12 @@ impl Editor {
     }
     fn export(&mut self) {
         if let Some(path) = self.native.as_ref().and_then(|n| n.dialog(true, true)) {
-            if self.core("canvas.export", serde_json::json!({"path":path})) {
+            let action = if self.session.replay_error.is_some() {
+                "replay.recover_png"
+            } else {
+                "canvas.export"
+            };
+            if self.core(action, serde_json::json!({"path":path})) {
                 self.status = "PNG Exported".into();
             }
         }
@@ -527,6 +532,11 @@ impl Studio {
                     }
                     match id {
                         10130 => self.focus_panel(Panel::Nodes),
+                        10131 => {
+                            self.editor.finish_stroke();
+                            self.replay.open = true;
+                            self.replay.refresh = true;
+                        }
                         43 => {
                             if self
                                 .editor
