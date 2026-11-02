@@ -8,6 +8,7 @@ micopi/
 ├── README.zh.md              Chinese overview
 ├── README.ja.md              Japanese overview
 ├── README.ko.md              Korean overview
+├── ROADMAP.md               Priorities, milestones and acceptance criteria
 ├── Cargo.toml / Cargo.lock   Host package, workspace and locked dependencies
 ├── src/
 │   ├── main.rs              Desktop entry point

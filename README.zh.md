@@ -18,7 +18,7 @@
 
 逐点输入采用强类型接口，保留压感、防抖和局部更新。插件、MCP 与 headless 通过带 schema 的 action 和公开状态操作同一个 Session。图像节点非破坏式合成画布；操作节点只有明确运行时才执行。
 
-“AI-ready”代表可发现、可检查、可验证的集成契约，不代表必须联网或内置云端助手。配图与详细说明见英文[设计理念](docs/philosophy.md)、[文档索引](docs/README.md)和[目录规划](docs/project-structure.md)。技术文档以英语为准。
+“AI-ready”代表可发现、可检查、可验证的集成契约，不代表必须联网或内置云端助手。配图与详细说明见英文[设计理念](docs/philosophy.md)、[文档索引](docs/README.md)、[开发路线图](ROADMAP.md)和[目录规划](docs/project-structure.md)。技术文档以英语为准。
 
 ## 当前功能
 

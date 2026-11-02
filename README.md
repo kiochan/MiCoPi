@@ -16,7 +16,7 @@ MiCoPi runs on **Windows 10/11 x64**. The desktop workbench uses **egui + egui_d
 
 Typed pen input protects the drawing path; schema-described actions and public state make the same application inspectable from plugins, MCP and headless clients. Image composition stays non-destructive, and workflow execution remains explicit. AI-ready means a documented integration contract, not a required cloud assistant.
 
-Read the illustrated [design philosophy](docs/philosophy.md), browse the [documentation index](docs/README.md), or see the [directory and ownership guide](docs/project-structure.md).
+Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadmap](ROADMAP.md), browse the [documentation index](docs/README.md), or see the [directory and ownership guide](docs/project-structure.md).
 
 ## Features
 
