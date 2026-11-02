@@ -19,7 +19,7 @@ use std::{
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
-pub const MAGIC: &[u8; 8] = b"MCRPLY01";
+pub const MAGIC: &[u8; 8] = b"MCRPLY02";
 pub const MAX_ARCHIVE: usize = 1024 * 1024 * 1024;
 const MAX_DECODED: usize = 512 * 1024 * 1024;
 const MAX_EVENTS: usize = 1_000_000;
@@ -158,6 +158,12 @@ struct Block {
     pixels: Vec<u32>,
 }
 impl Block {
+    fn normalized(mut pixels: Vec<u32>) -> Self {
+        if !pixels.is_empty() && pixels.iter().all(|p| *p == pixels[0]) {
+            pixels.truncate(1);
+        }
+        Self { pixels }
+    }
     fn read(pixels: &[u32], meta: &Metadata, id: usize) -> Self {
         let cols = meta.width.div_ceil(TILE);
         let x = (id % cols) * TILE;
@@ -193,6 +199,41 @@ pub struct State {
     surface: Vec<Cell>,
 }
 impl State {
+    pub(crate) fn restore_document(&self, doc: &mut Document) {
+        let m = &self.metadata;
+        if (doc.width, doc.height) != (m.width, m.height) {
+            *doc = Document::new(m.width, m.height);
+        }
+        doc.layers
+            .resize_with(self.layers.len(), || crate::engine::document::Layer {
+                pixels: vec![0; m.width * m.height],
+                visible: true,
+                opacity: 255,
+                mode: Default::default(),
+            });
+        let cols = m.width.div_ceil(TILE);
+        for (layer, grid) in doc.layers.iter_mut().zip(&self.layers) {
+            for (id, cell) in grid.iter().enumerate() {
+                let x = id % cols * TILE;
+                let y = id / cols * TILE;
+                let mut i = 0;
+                for row in y..(y + TILE).min(m.height) {
+                    for col in x..(x + TILE).min(m.width) {
+                        layer.pixels[row * m.width + col] =
+                            cell.block.pixels[if cell.block.pixels.len() == 1 { 0 } else { i }];
+                        i += 1;
+                    }
+                }
+            }
+        }
+        doc.active = m.active;
+        doc.restore_composition(m.composition.clone());
+        doc.dirty = m.dirty;
+        doc.render_error = m.render_error.clone();
+        doc.replay_tiles = (0..self.layers.len())
+            .flat_map(|l| (0..m.count()).map(move |t| (l, t)))
+            .collect();
+    }
     pub fn digest(&self) -> Hash {
         let mut h = Sha256::new();
         h.update(serde_json::to_vec(&self.metadata).expect("finite validated replay metadata"));
@@ -273,7 +314,60 @@ impl State {
 struct Change {
     layer: usize,
     tile: usize,
-    block: Block,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    block: Option<Block>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    reuse: Option<usize>,
+    #[serde(default)]
+    xor: bool,
+}
+impl Change {
+    fn resolve(
+        &self,
+        previous: Option<&State>,
+        resolved: &[Cell],
+        m: &Metadata,
+    ) -> Result<Cell, ActionError> {
+        let len = m.tile_len(self.tile);
+        let block = match (&self.block, self.reuse) {
+            (Some(block), None) if [1, len].contains(&block.pixels.len()) => {
+                if self.xor {
+                    let old = previous
+                        .and_then(|s| {
+                            if self.layer == s.layers.len() {
+                                s.surface.get(self.tile)
+                            } else {
+                                s.layers.get(self.layer)?.get(self.tile)
+                            }
+                        })
+                        .ok_or_else(|| bad("Missing XOR base tile"))?;
+                    Arc::new(Block::normalized(
+                        (0..len)
+                            .map(|i| {
+                                block.pixels[if block.pixels.len() == 1 { 0 } else { i }]
+                                    ^ old.block.pixels
+                                        [if old.block.pixels.len() == 1 { 0 } else { i }]
+                            })
+                            .collect(),
+                    ))
+                } else {
+                    Arc::new(block.clone())
+                }
+            }
+            (None, Some(index)) if !self.xor => resolved
+                .get(index)
+                .map(|c| c.block.clone())
+                .ok_or_else(|| bad("Invalid or forward tile reference"))?,
+            _ => return Err(bad("Invalid replay tile encoding")),
+        };
+        if ![1, len].contains(&block.pixels.len()) {
+            return Err(bad("Replay tile reference size mismatch"));
+        }
+        Ok(Cell {
+            digest: block.digest(),
+            block,
+        })
+    }
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -285,17 +379,104 @@ pub struct Event {
     pub error: Option<String>,
     pub before: Hash,
     pub after: Hash,
-    metadata: Metadata,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    metadata: Option<Metadata>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    metadata_delta: Option<Value>,
     replace: bool,
     changes: Vec<Change>,
 }
 impl Event {
+    fn metadata(&self, previous: Option<&State>) -> Result<Metadata, ActionError> {
+        if let Some(m) = &self.metadata {
+            if self.metadata_delta.is_some() {
+                return Err(bad("Ambiguous replay metadata"));
+            }
+            return Ok(m.clone());
+        }
+        let old = previous.ok_or_else(|| bad("Missing metadata base"))?;
+        let mut value = serde_json::to_value(&old.metadata)?;
+        let delta = self
+            .metadata_delta
+            .as_ref()
+            .and_then(Value::as_object)
+            .ok_or_else(|| bad("Missing metadata delta"))?;
+        for (k, v) in delta {
+            value.as_object_mut().unwrap().insert(k.clone(), v.clone());
+        }
+        Ok(serde_json::from_value(value).map_err(|e| bad(e.to_string()))?)
+    }
+    fn compact(&mut self, previous: &State, current: &mut State) -> Result<(), ActionError> {
+        if !self.replace {
+            let old = serde_json::to_value(&previous.metadata)?;
+            let value = serde_json::to_value(self.metadata.as_ref().unwrap())?;
+            self.metadata_delta = Some(Value::Object(
+                value
+                    .as_object()
+                    .unwrap()
+                    .iter()
+                    .filter(|(k, v)| old.get(k.as_str()) != Some(*v))
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect(),
+            ));
+            self.metadata = None;
+        }
+        let n = current.layers.len();
+        let mut seen = std::collections::BTreeMap::<Hash, (usize, Cell)>::new();
+        for (index, c) in self.changes.iter_mut().enumerate() {
+            let digest = if c.layer == n {
+                current.surface[c.tile].digest
+            } else {
+                current.layers[c.layer][c.tile].digest
+            };
+            if let Some((prior, cell)) = seen.get(&digest) {
+                c.block = None;
+                c.reuse = Some(*prior);
+                if c.layer == n {
+                    current.surface[c.tile] = cell.clone();
+                } else {
+                    current.layers[c.layer][c.tile] = cell.clone();
+                }
+                continue;
+            }
+            let cell = if c.layer == n {
+                current.surface[c.tile].clone()
+            } else {
+                current.layers[c.layer][c.tile].clone()
+            };
+            seen.insert(digest, (index, cell));
+            let block = c.block.as_mut().unwrap();
+            if !self.replace && block.pixels.len() > 1 {
+                let old = if c.layer == n {
+                    &previous.surface[c.tile]
+                } else {
+                    &previous.layers[c.layer][c.tile]
+                };
+                let delta: Vec<_> = block
+                    .pixels
+                    .iter()
+                    .enumerate()
+                    .map(|(i, p)| {
+                        p ^ old.block.pixels[if old.block.pixels.len() == 1 { 0 } else { i }]
+                    })
+                    .collect();
+                let zeros = delta.iter().filter(|p| **p == 0).count();
+                if zeros > block.pixels.iter().filter(|p| **p == 0).count() + block.pixels.len() / 8
+                {
+                    *block = Block::normalized(delta);
+                    c.xor = true;
+                }
+            }
+        }
+        Ok(())
+    }
     fn apply(&self, previous: Option<&State>) -> Result<State, ActionError> {
-        self.metadata.validate()?;
+        let metadata = self.metadata(previous)?;
+        metadata.validate()?;
         if self.before != previous.map(State::digest).unwrap_or([0; 32]) {
             return Err(bad("Replay state before-hash mismatch"));
         }
-        let m = &self.metadata;
+        let m = &metadata;
         let count = m.count();
         let n = m.composition.layers.len();
         let empty = Cell {
@@ -321,18 +502,14 @@ impl Event {
             next
         };
         let mut seen = BTreeSet::new();
+        let mut resolved = Vec::with_capacity(self.changes.len());
         for change in &self.changes {
-            if change.layer > n
-                || change.tile >= count
-                || !seen.insert((change.layer, change.tile))
-                || ![1, m.tile_len(change.tile)].contains(&change.block.pixels.len())
+            if change.layer > n || change.tile >= count || !seen.insert((change.layer, change.tile))
             {
                 return Err(bad("Invalid, missing or duplicate replay tile"));
             }
-            let cell = Cell {
-                digest: change.block.digest(),
-                block: Arc::new(change.block.clone()),
-            };
+            let cell = change.resolve(if self.replace { None } else { previous }, &resolved, m)?;
+            resolved.push(cell.clone());
             if change.layer == n {
                 state.surface[change.tile] = cell;
             } else {
@@ -369,6 +546,8 @@ pub struct Entry {
     length: usize,
 }
 pub struct Journal {
+    #[cfg(test)]
+    fail_after: Option<usize>,
     file: File,
     path: PathBuf,
     pub entries: Vec<Entry>,
@@ -379,12 +558,47 @@ pub struct Journal {
     base_time: u64,
     cached: Option<(usize, State)>,
 }
+pub(crate) struct JournalCheckpoint {
+    state: State,
+    length: u64,
+    head: Hash,
+    entries: usize,
+}
+impl JournalCheckpoint {
+    pub fn head_hash(&self) -> String {
+        hex(&self.head)
+    }
+    pub fn event_count(&self) -> usize {
+        self.entries.saturating_sub(1)
+    }
+}
 impl Drop for Journal {
     fn drop(&mut self) {
         let _ = std::fs::remove_file(&self.path);
     }
 }
 impl Journal {
+    pub(crate) fn checkpoint(&self) -> JournalCheckpoint {
+        JournalCheckpoint {
+            state: self.state.clone(),
+            length: self.length,
+            head: self.head,
+            entries: self.entries.len(),
+        }
+    }
+    pub(crate) fn rollback(&mut self, mark: JournalCheckpoint) -> Result<(), ActionError> {
+        self.length = mark.length;
+        self.head = mark.head;
+        self.state = mark.state;
+        self.entries.truncate(mark.entries);
+        self.cached = None;
+        self.file.set_len(self.length)?;
+        Ok(())
+    }
+    #[cfg(test)]
+    pub(crate) fn fail_next_write_after(&mut self, bytes: usize) {
+        self.fail_after = Some(bytes);
+    }
     fn storage() -> Result<(File, PathBuf), ActionError> {
         static NEXT: AtomicU64 = AtomicU64::new(0);
         let directory = std::env::temp_dir().join("MiCoPi-replay");
@@ -400,7 +614,7 @@ impl Journal {
         ));
         let file = OpenOptions::new()
             .read(true)
-            .append(true)
+            .write(true)
             .create_new(true)
             .open(&path)?;
         Ok((file, path))
@@ -413,6 +627,8 @@ impl Journal {
         metadata.validate()?;
         let (file, path) = Self::storage()?;
         let mut journal = Self {
+            #[cfg(test)]
+            fail_after: None,
             file,
             path,
             entries: vec![],
@@ -482,7 +698,9 @@ impl Journal {
                 changes.push(Change {
                     layer,
                     tile: id,
-                    block,
+                    block: Some(block),
+                    reuse: None,
+                    xor: false,
                 });
             }
         }
@@ -508,7 +726,9 @@ impl Journal {
                 changes.push(Change {
                     layer: n,
                     tile: id,
-                    block,
+                    block: Some(block),
+                    reuse: None,
+                    xor: false,
                 });
             }
         }
@@ -522,7 +742,8 @@ impl Journal {
             error,
             before,
             after: [0; 32],
-            metadata: metadata.clone(),
+            metadata: Some(metadata.clone()),
+            metadata_delta: None,
             replace,
             changes,
         };
@@ -542,9 +763,10 @@ impl Journal {
             s
         };
         for change in &event.changes {
+            let block = change.block.as_ref().unwrap();
             let cell = Cell {
-                digest: change.block.digest(),
-                block: Arc::new(change.block.clone()),
+                digest: block.digest(),
+                block: Arc::new(block.clone()),
             };
             if change.layer == n {
                 state.surface[change.tile] = cell;
@@ -553,6 +775,7 @@ impl Journal {
             }
         }
         event.after = state.digest();
+        event.compact(&self.state, &mut state)?;
         let mut encoder = Limited {
             inner: DeflateEncoder::new(Vec::new(), Compression::fast()),
             written: 0,
@@ -578,9 +801,27 @@ impl Journal {
         prepared.event.before != prepared.event.after
     }
     pub fn commit(&mut self, p: Prepared) -> Result<(), ActionError> {
-        self.file.write_all(&(p.bytes.len() as u32).to_le_bytes())?;
-        self.file.write_all(&p.hash)?;
-        self.file.write_all(&p.bytes)?;
+        let written = (|| -> std::io::Result<()> {
+            self.file.seek(SeekFrom::Start(self.length))?;
+            self.file.write_all(&(p.bytes.len() as u32).to_le_bytes())?;
+            self.file.write_all(&p.hash)?;
+            #[cfg(test)]
+            if let Some(n) = self.fail_after.take() {
+                self.file.write_all(&p.bytes[..n.min(p.bytes.len())])?;
+                return Err(std::io::Error::other("Injected partial journal write"));
+            }
+            self.file.write_all(&p.bytes)?;
+            Ok(())
+        })();
+        if let Err(error) = written {
+            if let Err(truncate) = self.file.set_len(self.length) {
+                return Err(ActionError::new(
+                    "replay_storage",
+                    format!("{error}; truncating the uncommitted tail failed: {truncate}"),
+                ));
+            }
+            return Err(error.into());
+        }
         self.entries.push(Entry {
             sequence: p.event.sequence,
             elapsed_ms: p.event.elapsed_ms,
@@ -657,7 +898,7 @@ impl Journal {
         Ok(json!({"events":out,"total":self.entries.len()}))
     }
     pub fn status(&self) -> Value {
-        json!({"format":"MCRPLY01","events":self.entries.len().saturating_sub(1),"frames":self.entries.iter().filter(|e|e.visual).count(),"bytes":self.length,"head_hash":hex(&self.head),"state_hash":hex(&self.state.digest()),"surface_hash":hex(&self.state.surface_hash()),"width":self.state.metadata.width,"height":self.state.metadata.height,"elapsed_ms":self.entries.last().map_or(0,|e|e.elapsed_ms),"recording":true})
+        json!({"format":"MCRPLY02","events":self.entries.len().saturating_sub(1),"frames":self.entries.iter().filter(|e|e.visual).count(),"bytes":self.length,"head_hash":hex(&self.head),"state_hash":hex(&self.state.digest()),"surface_hash":hex(&self.state.surface_hash()),"width":self.state.metadata.width,"height":self.state.metadata.height,"elapsed_ms":self.entries.last().map_or(0,|e|e.elapsed_ms),"recording":true})
     }
     pub fn bytes(&mut self, pending: Option<&Prepared>) -> Result<Vec<u8>, ActionError> {
         self.file.flush()?;
@@ -678,10 +919,13 @@ impl Journal {
         Ok(out)
     }
     pub fn import(bytes: &[u8]) -> Result<Self, ActionError> {
-        if bytes.len() > MAX_ARCHIVE || !bytes.starts_with(MAGIC) {
+        if bytes.len() > MAX_ARCHIVE
+            || (!bytes.starts_with(MAGIC) && !bytes.starts_with(b"MCRPLY01"))
+        {
             return Err(bad("Invalid or oversized replay archive"));
         }
         let mut reader = std::io::Cursor::new(bytes);
+        let legacy = bytes.starts_with(b"MCRPLY01");
         reader.set_position(8);
         let mut head = [0; 32];
         let mut state: Option<State> = None;
@@ -722,6 +966,16 @@ impl Journal {
                 return Err(bad("Replay hash chain mismatch"));
             }
             let event = Self::decode(&payload)?;
+            if legacy
+                && (event.metadata.is_none()
+                    || event.metadata_delta.is_some()
+                    || event
+                        .changes
+                        .iter()
+                        .any(|c| c.xor || c.reuse.is_some() || c.block.is_none()))
+            {
+                return Err(bad("Version 1 archive contains version 2 encoding"));
+            }
             if event.sequence != entries.len()
                 || event.elapsed_ms < time
                 || (entries.is_empty() && !matches!(event.source, Source::Genesis { .. }))
@@ -747,6 +1001,8 @@ impl Journal {
         };
         let (file, path) = Self::storage()?;
         let mut journal = Self {
+            #[cfg(test)]
+            fail_after: None,
             file,
             path,
             entries,
@@ -757,7 +1013,8 @@ impl Journal {
             base_time: time,
             cached: None,
         };
-        journal.file.write_all(&bytes[..end as usize])?;
+        journal.file.write_all(MAGIC)?;
+        journal.file.write_all(&bytes[8..end as usize])?;
         Ok(journal)
     }
     pub fn verify(&mut self, expected: Option<&str>) -> Result<Value, ActionError> {

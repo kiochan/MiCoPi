@@ -6,7 +6,7 @@ A small Rust painting application focused on responsive pen input and an extensi
 
 MiCoPi runs on **Windows 10/11 x64**. The desktop workbench uses **egui + egui_dock** with OpenGL; pen input uses Windows Ink. The project is in early development.
 
-**0.20.0:** [Verified event replay](docs/replay.md) records document operations, pressure input and plugin outcomes. Preview the drawing process, verify its SHA-256 chain, save history inside projects, or export a replay archive and PNG time-lapse frames. English is the default language, with Chinese, Japanese and Korean available.
+**0.21.0:** [Atomic document groups](docs/atomic-operations.md) roll back failed batches and publish one compact event. MCRPLY02 adds metadata/XOR deltas and tile references while retaining v1 reading. [Verified event replay](docs/replay.md) records document operations, pressure input and plugin outcomes. Preview the drawing process, verify its SHA-256 chain, save history inside projects, or export a replay archive and PNG time-lapse frames. English is the default language, with Chinese, Japanese and Korean available.
 
 ![Painting workbench](docs/screenshots/workbench.png)
 
@@ -30,6 +30,7 @@ Read the illustrated [design philosophy](docs/philosophy.md), browse the [docume
 - Non-destructive [image graphs](docs/node-editor.md) for filters and blending.
 - [Plugin workflow graphs](docs/workflow-nodes.md) generated from action and state schemas.
 - Independent native DLL plugins, headless JSONL, MCP stdio and attachment to a running GUI.
+- [Atomic document groups](docs/atomic-operations.md), shared-tile rollback and compact verified events.
 - Verified [event replay](docs/replay.md), time-lapse preview and PNG frame sequences.
 
 Current limits: one document per session; no Wintab, selections, transforms, layer reordering/merging or watercolor engine. Native plugin DLLs execute inside the host process.

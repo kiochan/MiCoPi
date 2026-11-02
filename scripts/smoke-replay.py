@@ -38,6 +38,7 @@ def main():
         dict(id=1,kind='filter',node_type='compositing.filter',filter='brightness',amount=.08,position=[230,0]),
         dict(id=2,kind='output',node_type='compositing.output',position=[460,0]),
     ],edges=[{'from':0,'to':1,'input':0},{'from':1,'to':2,'input':0}]))))
+    commands=commands[:2]+[dict(action='pipeline.run',args=dict(atomic=True,steps=[dict(id=f'paint_{i}',**command) for i,command in enumerate(commands[2:])]))]
     commands.extend([
         dict(action='history.undo',args={}),dict(action='history.redo',args={}),
         dict(action='document.save',args=dict(path=str(project))),
@@ -68,10 +69,20 @@ def main():
         ('replay.snapshot',dict(source='loaded')),
     ],1):
         requests.append(dict(jsonrpc='2.0',id=i,method='tools/call',params=dict(name=name,arguments=arguments)))
+    requests.extend([
+        dict(jsonrpc='2.0',id=4,method='tools/call',params=dict(name='pipeline.run',arguments=dict(atomic=True,steps=[dict(id='add',action='layer.add'),dict(id='fail',action='layer.select',args=dict(index=12))]))),
+        dict(jsonrpc='2.0',id=5,method='tools/call',params=dict(name='canvas.state',arguments={})),
+        dict(jsonrpc='2.0',id=6,method='tools/call',params=dict(name='replay.snapshot',arguments=dict(source='loaded'))),
+    ])
     mcp=subprocess.run([str(cli),'mcp','--plugins',str(minimal),'--config-dir',str(profile)],input='\n'.join(json.dumps(r) for r in requests)+'\n',capture_output=True,text=True,encoding='utf-8',timeout=60)
     assert mcp.returncode==0,mcp.stderr
     replies=[json.loads(line) for line in mcp.stdout.splitlines()]
-    for reply in replies: assert not reply.get('error') and not reply['result'].get('isError'),reply
+    for reply in replies:
+        assert not reply.get('error'),reply
+        assert bool(reply['result'].get('isError'))==(reply['id']==4),reply
+    state=json.loads(next(r for r in replies if r['id']==5)['result']['content'][0]['text'])
+    state=state.get('result',state)
+    assert len(state['layers'])==1 and state['active_layer']==0 and state['dirty']==False
     content=replies[-1]['result']['content'][0]
     assert content['type']=='image' and base64.b64decode(content['data'])==expected
     if not args.skip_gui:
@@ -104,7 +115,8 @@ def main():
             assert process.wait(timeout=15)==0
         finally:
             if process.poll() is None: process.kill(); process.wait(timeout=10)
-    print('Replay PNG parity, sealed project/archive verification, bounded frame export and DLL-independent MCP playback passed.')
+    print('Atomic JSONL drawing and MCP rollback, replay PNG parity, sealed project/archive verification, bounded frame export and DLL-independent playback passed.')
+    print(f'Compressed replay: {archive.stat().st_size:,} bytes')
     print(output)
 
 

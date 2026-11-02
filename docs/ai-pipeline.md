@@ -39,3 +39,7 @@ The default [ai-assistant DLL](../plugins/ai-assistant/README.md) demonstrates r
 ## Locale and AI contracts
 
 English is the canonical metadata/documentation language. Display language affects presentation, not action IDs, argument names, state IDs, schema types, revision checks, node ports or file paths. Always use IDs and schemas for automation rather than matching visible translated labels. Unknown third-party messages fall back to their original text.
+
+## Atomic document execution
+
+Set `atomic: true` on `pipeline.run` or `workflow.run` for all-or-nothing document changes. Atomic groups stage child operations and record one replay event. Errors restore pixels, metadata, revision and undo/redo state. File/UI effects and native actions without the `document_atomic` capability are rejected. `app.describe` exposes `documentAtomic`; dry-run validation checks capabilities. Omitted/false retains sequential semantics. See [Atomic Operations](atomic-operations.md) for scope, plugin contracts and examples.

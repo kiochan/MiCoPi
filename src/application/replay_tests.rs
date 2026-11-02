@@ -321,3 +321,289 @@ fn recording_fault_blocks_mutations_but_preserves_canvas_and_prefix_recovery() {
         head
     );
 }
+
+#[test]
+fn atomic_group_failure_restores_pixels_metadata_revision_and_redo_with_one_event() {
+    let mut s = session();
+    paint(&mut s);
+    let painted = codec::png(&mut s.doc).unwrap();
+    call(&mut s, "history.undo", json!({}));
+    let before = s.state();
+    let pixels = codec::png(&mut s.doc).unwrap();
+    let history = s.doc.history_bytes();
+    let count = s.journal.as_ref().unwrap().entries.len();
+    let r = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[
+            {"id":"paint","action":"native.checkerboard","args":{"cell":8}},
+            {"id":"brush","action":"brush.set","args":{"color":"#ffcc00"}},
+            {"id":"layer","action":"layer.add"},
+            {"id":"fail","action":"layer.select","args":{"index":12}}
+        ]}),
+    );
+    assert_eq!(r["ok"], false);
+    assert_eq!(r["rolled_back"], true);
+    assert_eq!(r["transactional"], true);
+    assert_eq!(r["committed"], json!([]));
+    assert_eq!(s.state(), before);
+    assert_eq!(codec::png(&mut s.doc).unwrap(), pixels);
+    assert_eq!(s.doc.history_bytes(), history);
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), count + 1);
+    let e = call(&mut s, "replay.events", json!({"start":count}));
+    assert_eq!(e["events"][0]["before"], e["events"][0]["after"]);
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+    call(&mut s, "history.redo", json!({}));
+    assert_eq!(codec::png(&mut s.doc).unwrap(), painted);
+    assert_eq!(s.atomic_depth, 0);
+}
+
+#[test]
+fn atomic_nested_success_records_one_group_and_output_failure_rolls_it_back() {
+    let mut s = session();
+    let count = s.journal.as_ref().unwrap().entries.len();
+    let r = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[
+            {"id":"nested","action":"pipeline.run","args":{"steps":[{"id":"brush","action":"brush.set","args":{"radius":12}}]}},
+            {"id":"draw","action":"canvas.stroke","args":{"points":[{"x":12,"y":12},{"x":70,"y":60}]}}
+        ]}),
+    );
+    assert_eq!(r["ok"], true);
+    assert_eq!(r["transactional"], true);
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), count + 1);
+    let expected = s.state();
+    let png = codec::png(&mut s.doc).unwrap();
+    let r = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[
+            {"id":"clear","action":"layer.clear","output_schema":{"type":"string"}}
+        ]}),
+    );
+    assert_eq!(r["ok"], false);
+    assert_eq!(r["rolled_back"], true);
+    assert_eq!(s.state(), expected);
+    assert_eq!(codec::png(&mut s.doc).unwrap(), png);
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+}
+
+#[test]
+fn atomic_groups_reject_external_effects_without_writing_files() {
+    let mut s = session();
+    let before = s.state();
+    let path = output("forbidden-export.png");
+    for dry in [false, true] {
+        let error = s
+            .apply(Action::new(
+                "pipeline.run",
+                json!({"atomic":true,"dry_run":dry,"steps":[
+                    {"id":"brush","action":"brush.set","args":{"radius":17}},
+                    {"id":"external","action":"canvas.export","args":{"path":path}}
+                ]}),
+            ))
+            .unwrap_err();
+        assert_eq!(error.code, "non_atomic_action");
+    }
+    assert!(!path.exists());
+    assert_eq!(s.state(), before);
+}
+
+#[test]
+fn partial_journal_write_rolls_back_action_and_preserves_a_valid_retryable_prefix() {
+    let mut s = session();
+    paint(&mut s);
+    let before = s.state();
+    let png = codec::png(&mut s.doc).unwrap();
+    let bytes = s.journal.as_ref().unwrap().status()["bytes"].clone();
+    s.journal.as_mut().unwrap().fail_next_write_after(7);
+    assert!(s.apply(Action::new("layer.clear", json!({}))).is_err());
+    assert_eq!(s.state(), before);
+    assert_eq!(codec::png(&mut s.doc).unwrap(), png);
+    assert_eq!(s.journal.as_ref().unwrap().status()["bytes"], bytes);
+    let archive = s.journal.as_mut().unwrap().bytes(None).unwrap();
+    assert!(Journal::import(&archive).is_ok());
+    s.replay_error = None; // Simulate a recovered storage device; production stays faulted.
+    call(&mut s, "brush.set", json!({"radius":9}));
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+    call(&mut s, "history.undo", json!({}));
+    assert_ne!(codec::png(&mut s.doc).unwrap(), png);
+}
+
+#[test]
+fn failed_journal_reservation_never_replaces_an_existing_project() {
+    let mut s = session();
+    let path = output("atomic-save.mcp");
+    call(&mut s, "document.save", json!({"path":path}));
+    let old = std::fs::read(&path).unwrap();
+    paint(&mut s);
+    let before = s.state();
+    s.journal.as_mut().unwrap().fail_next_write_after(11);
+    assert!(s
+        .apply(Action::new("document.save", json!({"path":path})))
+        .is_err());
+    assert_eq!(std::fs::read(path).unwrap(), old);
+    assert_eq!(s.state(), before);
+}
+
+#[test]
+fn unchanged_large_metadata_is_not_repeated_in_every_event() {
+    let mut s = session();
+    let mut seed = 7u32;
+    let text: String = (0..16000)
+        .map(|_| {
+            seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+            format!("{seed:08x}")
+        })
+        .collect();
+    s.ui = json!({"large":text});
+    s.replay_boundary().unwrap();
+    let start = s.journal.as_ref().unwrap().status()["bytes"]
+        .as_u64()
+        .unwrap();
+    for i in 0..64 {
+        call(&mut s, "view.set", json!({"pan_x":i}));
+    }
+    let growth = s.journal.as_ref().unwrap().status()["bytes"]
+        .as_u64()
+        .unwrap()
+        - start;
+    assert!(growth < 40_000, "metadata events grew by {growth} bytes");
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+}
+
+#[test]
+fn noisy_background_uses_tile_references_and_sparse_xor_deltas() {
+    let mut s = session();
+    call(&mut s, "canvas.new", json!({"width":128,"height":64}));
+    let mut seed = 1u32;
+    for p in &mut s.doc.layers[0].pixels {
+        seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+        *p = 0xff000000 | seed & 0xffffff;
+    }
+    s.doc.invalidate();
+    s.doc.replay_tiles.extend([(0, 0), (0, 1)]);
+    let start = s.journal.as_ref().unwrap().status()["bytes"]
+        .as_u64()
+        .unwrap();
+    s.replay_boundary().unwrap();
+    let baseline = s.journal.as_ref().unwrap().status()["bytes"]
+        .as_u64()
+        .unwrap();
+    assert!(
+        baseline - start < 40_000,
+        "duplicate layer/composite blocks were not shared"
+    );
+    call(&mut s, "brush.set", json!({"radius":1,"stabilizer":0}));
+    call(
+        &mut s,
+        "canvas.stroke",
+        json!({"points":[{"x":5,"y":5},{"x":9,"y":9}]}),
+    );
+    let end = s.journal.as_ref().unwrap().status()["bytes"]
+        .as_u64()
+        .unwrap();
+    assert!(
+        end - baseline < 3000,
+        "sparse edit grew by {} bytes",
+        end - baseline
+    );
+    let last = s.journal.as_ref().unwrap().entries.len() - 1;
+    let expected = codec::png(&mut s.doc).unwrap();
+    assert_eq!(
+        replay::png(&s.replay_preview(last, false).unwrap()).unwrap(),
+        expected
+    );
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+}
+
+#[test]
+fn original_v1_recording_loads_and_upgrades_without_changing_verified_pixels() {
+    use sha2::{Digest, Sha256};
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay-v1.mcreplay");
+    let expected: Value =
+        serde_json::from_str(include_str!("../../tests/fixtures/replay-v1.json")).unwrap();
+    let bytes = std::fs::read(path).unwrap();
+    assert_eq!(&bytes[..8], b"MCRPLY01");
+    let mut journal = Journal::import(&bytes).unwrap();
+    assert_eq!(journal.verify(None).unwrap()["valid"], true);
+    let png = replay::png(&journal.state).unwrap();
+    let digest: crate::engine::replay::Hash = Sha256::digest(&png).into();
+    assert_eq!(crate::engine::replay::hex(&digest), expected["png_sha256"]);
+    let upgraded = journal.bytes(None).unwrap();
+    assert_eq!(&upgraded[..8], b"MCRPLY02");
+    let second = Journal::import(&upgraded).unwrap();
+    assert_eq!(second.status()["head_hash"], journal.status()["head_hash"]);
+    assert_eq!(replay::png(&second.state).unwrap(), png);
+}
+
+#[test]
+fn direct_contact_storage_failure_rewinds_all_provisional_segments_and_undo() {
+    let mut s = session();
+    let before = s.state();
+    let history = s.doc.history_bytes();
+    let head = s.journal.as_ref().unwrap().status()["head_hash"].clone();
+    let mut p = Pointer {
+        phase: PointerPhase::Down,
+        x: 12.,
+        y: 20.,
+        pressure: 0.5,
+        time: 0,
+        pen: true,
+        eraser: false,
+        tool_override: None,
+        view_x: None,
+        view_y: None,
+    };
+    s.pointer(p).unwrap();
+    for i in 0..400 {
+        p.phase = PointerPhase::Move;
+        p.x = 12. + (i % 80) as f32;
+        p.y = 20. + (i % 50) as f32;
+        p.time = i;
+        s.pointer(p).unwrap();
+    }
+    let pending = call(&mut s, "replay.status", json!({}));
+    assert_eq!(pending["transaction_pending"], true);
+    assert_eq!(pending["committed_head_hash"], head);
+    assert_ne!(pending["head_hash"], head);
+    assert!(s
+        .apply(Action::new(
+            "replay.export",
+            json!({"path":output("pending.mcreplay")})
+        ))
+        .is_err());
+    s.journal.as_mut().unwrap().fail_next_write_after(9);
+    p.phase = PointerPhase::Up;
+    assert!(s.pointer(p).is_err());
+    assert_eq!(s.state(), before);
+    assert_eq!(s.doc.history_bytes(), history);
+    assert_eq!(s.journal.as_ref().unwrap().status()["head_hash"], head);
+    assert_eq!(
+        s.journal.as_mut().unwrap().verify(None).unwrap()["valid"],
+        true
+    );
+    assert!(s.pointer_checkpoint.is_none());
+    assert!(!s.is_drawing());
+}
+
+#[test]
+fn atomic_group_journal_failure_rolls_back_every_completed_child() {
+    let mut s = session();
+    let before = s.state();
+    let head = s.journal.as_ref().unwrap().status()["head_hash"].clone();
+    s.journal.as_mut().unwrap().fail_next_write_after(8);
+    assert!(s.apply(Action::new("pipeline.run",json!({"atomic":true,"steps":[
+        {"id":"brush","action":"brush.set","args":{"radius":12}},
+        {"id":"draw","action":"canvas.stroke","args":{"points":[{"x":12,"y":12},{"x":60,"y":60}]}},
+        {"id":"layer","action":"layer.add"}
+    ]}))).is_err());
+    assert_eq!(s.state(), before);
+    assert_eq!(s.journal.as_ref().unwrap().status()["head_hash"], head);
+    assert_eq!(s.atomic_depth, 0);
+    assert_eq!(
+        s.journal.as_mut().unwrap().verify(None).unwrap()["valid"],
+        true
+    );
+}

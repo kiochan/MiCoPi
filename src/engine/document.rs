@@ -25,11 +25,23 @@ pub struct Layer {
     pub opacity: u8,
     pub mode: BlendMode,
 }
+#[derive(Clone)]
 struct Edit {
     layer: usize,
-    tiles: BTreeMap<usize, Vec<u32>>,
+    tiles: BTreeMap<usize, Arc<Vec<u32>>>,
     composition: Option<Composition>,
     metadata_bytes: usize,
+}
+#[derive(Clone)]
+pub(crate) struct HistoryCheckpoint {
+    undo: Vec<Edit>,
+    redo: Vec<Edit>,
+    identity: u64,
+    renderer: Option<Arc<dyn Renderer>>,
+    stroke: Option<Edit>,
+    last: Option<(f32, f32)>,
+    last_brush: Option<Brush>,
+    distance: f32,
 }
 impl Edit {
     fn bytes(&self) -> usize {
@@ -89,6 +101,28 @@ pub fn over(dst: u32, src: u32) -> u32 {
     out
 }
 impl Document {
+    pub(crate) fn checkpoint_history(&self) -> HistoryCheckpoint {
+        HistoryCheckpoint {
+            undo: self.undo.clone(),
+            redo: self.redo.clone(),
+            identity: self.identity,
+            renderer: self.renderer.clone(),
+            stroke: self.stroke.clone(),
+            last: self.last,
+            last_brush: self.last_brush,
+            distance: self.distance,
+        }
+    }
+    pub(crate) fn restore_history(&mut self, saved: HistoryCheckpoint) {
+        self.undo = saved.undo;
+        self.redo = saved.redo;
+        self.identity = saved.identity;
+        self.renderer = saved.renderer;
+        self.stroke = saved.stroke;
+        self.last = saved.last;
+        self.last_brush = saved.last_brush;
+        self.distance = saved.distance;
+    }
     pub fn new(width: usize, height: usize) -> Self {
         assert!(width > 0 && height > 0 && width <= MAX_SIDE && height <= MAX_SIDE);
         let n = width * height;
@@ -152,7 +186,7 @@ impl Document {
                 .collect(),
         }
     }
-    fn restore_composition(&mut self, state: Composition) {
+    pub(crate) fn restore_composition(&mut self, state: Composition) {
         self.workflow = state.workflow;
         self.graph = state.graph;
         self.plan = self.graph.compile(self.layers.len()).unwrap_or_default();
@@ -461,7 +495,7 @@ impl Document {
                     ..y * self.width + ((tx + 1) * TILE).min(self.width)],
             );
         }
-        edit.tiles.insert(id, data);
+        edit.tiles.insert(id, Arc::new(data));
     }
     fn dab(&mut self, x: f32, y: f32, b: Brush) {
         if b.opacity <= 0. || b.radius <= 0. {
@@ -539,6 +573,7 @@ impl Document {
         }
         let cols = (self.width + TILE - 1) / TILE;
         for (id, data) in e.tiles.iter_mut() {
+            let data = Arc::make_mut(data);
             self.replay_tiles.insert((e.layer, *id));
             let tx = *id % cols;
             let ty = *id / cols;

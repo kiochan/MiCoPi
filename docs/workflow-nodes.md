@@ -57,3 +57,5 @@ Image definitions use binding.kind=image and one of layer, filter, blend or outp
 Image buffers and JSON operation graphs are separate typed domains. AI may use action.graph.set in a workflow to apply an image graph. New aliases reuse existing kernels; a new algorithm still requires extending the compositor DLL.
 
 Painting remains on the independent typed tool ABI with pressure, stabilization and tiled undo. No workflow JSON is built per input point. Workflow editing, moving, saving and validation never execute nodes; only Run does. Image compositing preserves its dirty-region fast path.
+
+The desktop Run control enables **Atomic Document Changes** by default. Disable it to retain partial completion. API callers use `workflow.run {"atomic":true}` explicitly; editing remains inert. See [Atomic Operations](atomic-operations.md).

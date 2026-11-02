@@ -27,6 +27,7 @@ pub(super) struct WorkflowEditor {
     report: Option<Value>,
     fit: bool,
     identity: u64,
+    sequential: bool,
 }
 fn ports(
     node: &Node,
@@ -478,6 +479,12 @@ impl Editor {
             {
                 apply = true;
             }
+            let mut atomic = !state.sequential;
+            ui.checkbox(&mut atomic, tr("Atomic Document Changes"))
+                .on_hover_text(tr(
+                    "Roll back document changes if a node fails. File and UI effects are rejected.",
+                ));
+            state.sequential = !atomic;
             let response = ui.add_enabled(!conflict, Button::new(tr("Run All Nodes")));
             #[cfg(test)]
             {
@@ -539,10 +546,10 @@ impl Editor {
                     state.base = self.session.doc.workflow.clone();
                     state.note = "Workflow Saved; Not Executed".into();
                     if run {
-                        match self
-                            .session
-                            .apply(crate::application::Action::new("workflow.run", json!({})))
-                        {
+                        match self.session.apply(crate::application::Action::new(
+                            "workflow.run",
+                            json!({"atomic":!state.sequential}),
+                        )) {
                             Ok(r) => {
                                 state.note = if r["result"]["ok"] == true {
                                     "Execution Complete".into()

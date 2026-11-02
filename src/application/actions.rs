@@ -153,7 +153,7 @@ impl Operation {
                 vec!["operations"],
             ),
             Self::WorkflowValidate | Self::WorkflowRun => (
-                json!({"graph":crate::engine::workflow::schema(),"dry_run":{"type":"boolean"},"expected_revision":{"type":"integer","minimum":0}}),
+                json!({"graph":crate::engine::workflow::schema(),"dry_run":{"type":"boolean"},"atomic":{"type":"boolean"},"expected_revision":{"type":"integer","minimum":0}}),
                 vec![],
             ),
             Self::WorkflowState => (json!({"resource":{"type":"string"}}), vec!["resource"]),
@@ -166,7 +166,7 @@ impl Operation {
                 vec![],
             ),
             Self::PipelineRun => (
-                json!({"steps":{"type":"array","minItems":1,"maxItems":128,"items":{"type":"object","properties":{"id":{"type":"string"},"action":{"type":"string"},"args":{},"output_schema":{"type":"object"}},"required":["id","action"],"additionalProperties":false}},"dry_run":{"type":"boolean"},"expected_revision":{"type":"integer","minimum":0}}),
+                json!({"steps":{"type":"array","minItems":1,"maxItems":128,"items":{"type":"object","properties":{"id":{"type":"string"},"action":{"type":"string"},"args":{},"output_schema":{"type":"object"}},"required":["id","action"],"additionalProperties":false}},"dry_run":{"type":"boolean"},"atomic":{"type":"boolean"},"expected_revision":{"type":"integer","minimum":0}}),
                 vec!["steps"],
             ),
             Self::New => (

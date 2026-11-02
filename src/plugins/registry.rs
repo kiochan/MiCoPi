@@ -88,9 +88,16 @@ pub struct ActionDefinition {
     #[serde(default)]
     pub read_only: bool,
     #[serde(default)]
+    pub document_atomic: bool,
+    #[serde(default)]
     pub output_schema: Option<Value>,
 }
 impl ActionDefinition {
+    pub fn is_document_atomic(&self) -> bool {
+        self.operation
+            .map(Operation::document_atomic)
+            .unwrap_or(self.native.is_some() && self.document_atomic)
+    }
     pub fn is_read_only(&self) -> bool {
         self.operation
             .map(Operation::read_only)

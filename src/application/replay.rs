@@ -52,10 +52,22 @@ impl Session {
             error.is_none(),
             error,
         );
+        if result.is_err() {
+            if let Some((saved, mark)) = self.pointer_checkpoint.take() {
+                let rollback = self.journal.as_mut().unwrap().rollback(mark);
+                saved.restore(self);
+                if let Err(error) = rollback {
+                    self.replay_error = Some(format!("Contact rollback failed: {error}"));
+                }
+            }
+        }
         self.replay_samples = Vec::with_capacity(256);
         result
     }
     pub(crate) fn replay_boundary(&mut self) -> Result<(), ActionError> {
+        if self.atomic_depth != 0 {
+            return Ok(());
+        }
         self.replay_ensure()?;
         self.replay_flush(false, None)?;
         let meta = self.replay_metadata();
@@ -90,6 +102,9 @@ impl Session {
         success: bool,
         error: Option<String>,
     ) -> Result<(), ActionError> {
+        if self.atomic_depth != 0 {
+            return Ok(());
+        }
         self.replay_ensure()?;
         let metadata = self.replay_metadata();
         let result = (|| {
@@ -115,6 +130,9 @@ impl Session {
         success: bool,
         error: Option<String>,
     ) -> Result<(), ActionError> {
+        if self.atomic_depth != 0 {
+            return Ok(());
+        }
         if let Some(journal) = self.restored_replay.take() {
             self.journal = Some(journal);
             self.replay_identity = self.doc.identity;
@@ -161,18 +179,24 @@ impl Session {
                     return Err(error);
                 }
             };
+            let mark = self.journal.as_ref().unwrap().checkpoint();
+            if let Err(error) = self.journal.as_mut().unwrap().commit(p) {
+                self.file = old_file;
+                self.doc.dirty = old_dirty;
+                self.revision = old_revision;
+                self.replay_error = Some(error.to_string());
+                return Err(error);
+            }
             match self.doc.save_with_replay(&path, Some(&bytes)) {
-                Ok(()) => {
-                    if let Err(error) = self.journal.as_mut().unwrap().commit(p) {
-                        self.replay_error = Some(error.to_string());
-                        return Err(error);
-                    }
-                    return Ok(());
-                }
+                Ok(()) => return Ok(()),
                 Err(error) => {
                     self.file = old_file;
                     self.doc.dirty = old_dirty;
                     self.revision = old_revision;
+                    if let Err(rollback) = self.journal.as_mut().unwrap().rollback(mark) {
+                        self.replay_error = Some(rollback.to_string());
+                        return Err(rollback);
+                    }
                     self.replay_commit(
                         Source::Action {
                             action: id.into(),
@@ -196,6 +220,18 @@ impl Session {
             .map(Journal::status)
             .unwrap_or(json!({"recording":true,"events":0,"frames":0,"bytes":0}));
         status["pending_samples"] = json!(self.replay_samples.len());
+        status["transaction_pending"] =
+            json!(self.atomic_depth != 0 || self.pointer_checkpoint.is_some());
+        status["committed_head_hash"] = self
+            .pointer_checkpoint
+            .as_ref()
+            .map(|(_, m)| json!(m.head_hash()))
+            .unwrap_or_else(|| status["head_hash"].clone());
+        status["committed_events"] = self
+            .pointer_checkpoint
+            .as_ref()
+            .map(|(_, m)| json!(m.event_count()))
+            .unwrap_or_else(|| status["events"].clone());
         status["fault"] = json!(self.replay_error);
         status["recording"] = json!(self.replay_error.is_none());
         status["loaded"] = self
@@ -246,13 +282,24 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
             let mut result = s
                 .replay_journal(loaded)?
                 .verify(args["expected_head"].as_str())?;
-            result["scope"] = json!("committed events");
+            let pending = !loaded && s.pointer_checkpoint.is_some();
+            result["scope"] = json!(if pending {
+                "provisional contact prefix"
+            } else {
+                "committed events"
+            });
+            result["transaction_pending"] = json!(pending || s.atomic_depth != 0);
             result["pending_samples"] = json!(if loaded { 0 } else { s.replay_samples.len() });
             result["stroke_in_progress"] = json!(!loaded && s.is_drawing());
             Ok(result)
         }
         ReplayExport => {
-            s.replay_flush(false, None)?;
+            if !loaded && s.pointer_checkpoint.is_some() {
+                return Err(ActionError::new(
+                    "stroke_active",
+                    "Finish the current contact before sealing a replay archive",
+                ));
+            }
             let path = path()?;
             s.replay_journal(loaded)?.export(&path)?;
             Ok(json!({"path":path,"head_hash":s.replay_journal(loaded)?.status()["head_hash"]}))
@@ -282,6 +329,12 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
             }
         }
         ReplayFrames => {
+            if !loaded && s.pointer_checkpoint.is_some() {
+                return Err(ActionError::new(
+                    "stroke_active",
+                    "Finish the current contact before exporting replay frames",
+                ));
+            }
             let directory = path()?;
             if directory.exists() && std::fs::read_dir(&directory)?.next().is_some() {
                 return Err(ActionError::new(

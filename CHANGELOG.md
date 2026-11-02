@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.21.0
+
+- Add document action rollback, atomic pipeline/workflow groups and a default-enabled atomic workflow UI control.
+- Add opt-in document_atomic native action capability and validate effects before executing atomic pipelines.
+- Keep pen segments provisional until contact completion; rewind the whole contact on journal storage failure.
+- Publish journal heads only after complete writes; reserve log records before replacing projects and roll reservations back on save failure.
+- Compress MCRPLY02 events with metadata deltas, tile references and sparse XOR blocks; retain MCRPLY01 decoding.
+- Cover partial-write failures, nested/output-schema rollback, redo restoration, old recordings and bounded event growth.
+
 ## 0.20.0
 
 - Add a host-owned append-only document outcome journal with SHA-256 event/state chains and sealed archive verification.

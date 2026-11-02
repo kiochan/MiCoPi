@@ -1,5 +1,6 @@
 //! The single document owner and action boundary, independent of windows and egui.
 mod actions;
+mod atomic;
 pub mod codec;
 pub mod pipeline;
 pub mod replay;
