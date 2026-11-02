@@ -94,6 +94,10 @@ pub enum Operation {
     Undo,
     Redo,
     AddLayer,
+    RenameLayer,
+    DuplicateLayer,
+    MoveLayer,
+    DeleteLayer,
     SelectLayer,
     LayerProperties,
     ClearLayer,
@@ -183,7 +187,7 @@ impl Operation {
             ),
             Self::SelectTool => (json!({"tool":{"type":"string"}}), vec!["tool"]),
             Self::Parameters => (
-                json!({"radius":{"type":"number","minimum":0.5,"maximum":200},"opacity":{"type":"number","minimum":0,"maximum":1},"hardness":{"type":"number","minimum":0,"maximum":1},"color":{"type":"string"},"background_color":{"type":"string"},"stabilizer":{"type":"number","minimum":0,"maximum":1},"pressure_size":{"type":"boolean"},"pressure_opacity":{"type":"boolean"},"pressure_gamma":{"type":"number","minimum":0.25,"maximum":4},"minimum_radius":{"type":"number","minimum":0,"maximum":1}}),
+                json!({"radius":{"type":"number","minimum":0.5,"maximum":200},"opacity":{"type":"number","minimum":0,"maximum":1},"hardness":{"type":"number","minimum":0,"maximum":1},"color":{"type":"string"},"background_color":{"type":"string"},"stabilizer":{"type":"number","minimum":0,"maximum":1},"pressure_size":{"type":"boolean"},"pressure_opacity":{"type":"boolean"},"pressure_gamma":{"type":"number","minimum":0.25,"maximum":4},"minimum_radius":{"type":"number","minimum":0,"maximum":1},"spacing":{"type":"number","minimum":0.01,"maximum":2},"minimum_opacity":{"type":"number","minimum":0,"maximum":1}}),
                 vec![],
             ),
             Self::Pointer => {
@@ -195,13 +199,21 @@ impl Operation {
                 json!({"tool":{"type":"string"},"points":{"type":"array","items":point,"minItems":1,"maxItems":65536}}),
                 vec!["points"],
             ),
-            Self::SelectLayer => (
-                json!({"index":{"type":"integer","minimum":0,"maximum":15}}),
-                vec!["index"],
+            Self::SelectLayer | Self::DuplicateLayer | Self::DeleteLayer => (
+                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64}}),
+                vec![],
+            ),
+            Self::RenameLayer => (
+                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},"name":{"type":"string","minLength":1}}),
+                vec!["name"],
+            ),
+            Self::MoveLayer => (
+                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},"to":{"type":"integer","minimum":0,"maximum":15}}),
+                vec!["to"],
             ),
             Self::LayerProperties => (
-                json!({"index":{"type":"integer","minimum":0,"maximum":15},"visible":{"type":"boolean"},"opacity":{"type":"number","minimum":0,"maximum":1},"blend_mode":{"type":"string","enum":["normal","multiply","screen","overlay","darken","lighten","add","difference"]}}),
-                vec!["index"],
+                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},"visible":{"type":"boolean"},"opacity":{"type":"number","minimum":0,"maximum":1},"blend_mode":{"type":"string","enum":["normal","multiply","screen","overlay","darken","lighten","add","difference"]}}),
+                vec![],
             ),
             Self::Pick => (json!({"x":number,"y":number}), vec!["x", "y"]),
             Self::View => (

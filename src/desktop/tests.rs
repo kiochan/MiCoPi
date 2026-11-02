@@ -28,6 +28,32 @@ pub(super) fn studio() -> Studio {
         title: String::new(),
     }
 }
+
+#[test]
+fn configured_theme_survives_opposite_system_theme_on_first_frame() {
+    for (name, system, dark) in [
+        ("graphite", egui::Theme::Light, true),
+        ("light", egui::Theme::Dark, false),
+    ] {
+        let ctx = Context::default();
+        let mut appearance = Appearance::default();
+        appearance.theme = name.into();
+        theme::apply(&ctx, &appearance);
+        let _ = ctx.run(
+            RawInput {
+                system_theme: Some(system),
+                ..Default::default()
+            },
+            |ctx| {
+                assert_eq!(ctx.style().visuals.dark_mode, dark);
+                assert_eq!(
+                    ctx.style().visuals.override_text_color,
+                    Some(theme::Colors::new(&appearance).text)
+                );
+            },
+        );
+    }
+}
 pub(super) fn frame(
     app: &mut Studio,
     ctx: &Context,
@@ -308,6 +334,143 @@ fn configured_shortcuts_dispatch_and_text_fields_block_global_tool_changes() {
     let _ = frame(&mut app, &ctx, size, vec![Event::Text("b".into())], 4.);
     assert!(app.editor.tool == Tool::Eraser);
     assert!(app.editor.palette.is_some());
+}
+
+#[test]
+fn layer_name_entry_commits_and_duplicate_shortcut_uses_the_shared_action() {
+    let mut app = studio();
+    let ctx = Context::default();
+    let size = vec2(1360., 920.);
+    for t in 0..3 {
+        frame(&mut app, &ctx, size, vec![], t as f64);
+    }
+    let id = app.editor.session.doc.layer_id(0);
+    let edit = Id::new(("layer-name", app.editor.session.doc.identity, id));
+    ctx.memory_mut(|m| m.request_focus(edit));
+    ctx.data_mut(|d| d.insert_temp(edit, "Ink 墨".to_string()));
+    let key = |key, modifiers| Event::Key {
+        key,
+        physical_key: Some(key),
+        pressed: true,
+        repeat: false,
+        modifiers,
+    };
+    frame(
+        &mut app,
+        &ctx,
+        size,
+        vec![key(Key::Enter, Modifiers::NONE)],
+        3.,
+    );
+    assert_eq!(app.editor.session.doc.layer_name(0), "Ink 墨");
+    ctx.memory_mut(|m| m.surrender_focus(edit));
+    frame(&mut app, &ctx, size, vec![], 4.);
+    frame(&mut app, &ctx, size, vec![key(Key::J, Modifiers::CTRL)], 5.);
+    assert_eq!(app.editor.session.doc.layers.len(), 2);
+    assert_eq!(app.editor.session.doc.layer_name(1), "Ink 墨");
+    assert_ne!(app.editor.session.doc.layer_id(1), id);
+    app.editor.core("history.undo", serde_json::json!({}));
+    assert_eq!(app.editor.session.doc.layers.len(), 1);
+    assert_eq!(app.editor.session.doc.layer_id(0), id);
+}
+
+#[test]
+fn canvas_area_gestures_commit_once_cancel_and_guard_the_document_target() {
+    let mut app = studio();
+    let ctx = Context::default();
+    let size = vec2(1360., 920.);
+    app.editor.session = crate::application::Session::new(
+        crate::plugins::Registry::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"))
+            .unwrap(),
+    )
+    .unwrap();
+    assert!(app
+        .editor
+        .core("canvas.new", serde_json::json!({"width":4,"height":3})));
+    assert!(app.editor.core(
+        "brush.set",
+        serde_json::json!({"color":"#ff0000","background_color":"#0000ff","opacity":1})
+    ));
+    app.editor.sync_from_session();
+    for t in 0..3 {
+        frame(&mut app, &ctx, size, vec![], t as f64);
+    }
+    let position =
+        |editor: &Editor, x: f32, y: f32| editor.image_rect.min + vec2(x, y) * editor.zoom;
+    let button = |pos, pressed| Event::PointerButton {
+        pos,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: Modifiers::NONE,
+    };
+    app.editor.area_mode = 1;
+    let a = position(&app.editor, 0.5, 1.5);
+    let b = position(&app.editor, 3.5, 1.5);
+    frame(
+        &mut app,
+        &ctx,
+        size,
+        vec![Event::PointerMoved(a), button(a, true), button(a, false)],
+        3.,
+    );
+    assert!(app.editor.session.doc.layers[0]
+        .pixels
+        .iter()
+        .all(|p| *p == 0xffff0000));
+    assert!(app.editor.core("history.undo", serde_json::json!({})));
+    assert!(app.editor.session.doc.layers[0]
+        .pixels
+        .iter()
+        .all(|p| *p == 0));
+    app.editor.area_mode = 2;
+    frame(
+        &mut app,
+        &ctx,
+        size,
+        vec![button(a, true), Event::PointerMoved(b)],
+        4.,
+    );
+    assert!(app.editor.area_drag.is_some());
+    assert!(app.editor.session.doc.layers[0]
+        .pixels
+        .iter()
+        .all(|p| *p == 0));
+    frame(&mut app, &ctx, size, vec![button(b, false)], 5.);
+    assert_eq!(app.editor.session.doc.layers[0].pixels[0], 0xffff0000);
+    assert_eq!(app.editor.session.doc.layers[0].pixels[3], 0xff0000ff);
+    app.editor.core("history.undo", serde_json::json!({}));
+    frame(
+        &mut app,
+        &ctx,
+        size,
+        vec![
+            button(a, true),
+            Event::PointerMoved(b),
+            Event::WindowFocused(false),
+        ],
+        6.,
+    );
+    frame(&mut app, &ctx, size, vec![button(b, false)], 7.);
+    assert!(app.editor.session.doc.layers[0]
+        .pixels
+        .iter()
+        .all(|p| *p == 0));
+    frame(
+        &mut app,
+        &ctx,
+        size,
+        vec![button(a, true), Event::PointerMoved(b)],
+        8.,
+    );
+    app.editor.core("layer.add", serde_json::json!({}));
+    frame(&mut app, &ctx, size, vec![button(b, false)], 9.);
+    assert!(app
+        .editor
+        .session
+        .doc
+        .layers
+        .iter()
+        .all(|l| l.pixels.iter().all(|p| *p == 0)));
 }
 
 #[test]

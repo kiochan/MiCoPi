@@ -41,6 +41,9 @@ impl Editor {
             None
         };
         let q = self.document_position(p);
+        if tool_override.is_none() && self.area_down(q) {
+            return;
+        }
         let sample = crate::application::Pointer {
             phase: crate::application::PointerPhase::Down,
             x: q.x,
@@ -68,6 +71,11 @@ impl Editor {
         }
     }
     fn move_pointer(&mut self, p: Pos2, pressure: f32, time: u32, pen: bool) {
+        if self.area_drag.is_some() {
+            let q = self.document_position(p);
+            self.area_drag.as_mut().unwrap().1 = q;
+            return;
+        }
         if !self.input_owned || (!self.session.is_drawing() && !self.session.is_panning()) {
             return;
         }
@@ -127,6 +135,9 @@ impl Editor {
         );
         let (events, mods, time) =
             ui.input(|i| (i.events.clone(), i.modifiers, (i.time * 1000.) as u32));
+        if self.area_drag.is_some() && ui.input(|i| i.key_pressed(Key::Escape)) {
+            self.finish_stroke();
+        }
         let held = self.settings.keys.held(commands::mod_bits(mods), |key| {
             ui.input(|i| commands::vk_to_key(key).is_some_and(|key| i.key_down(key)))
         });
@@ -155,6 +166,7 @@ impl Editor {
                 }
                 PenPhase::Up if self.pen_active => {
                     self.move_pointer(p, self.pressure, packet.time, true);
+                    self.area_up();
                     self.finish_stroke();
                     self.pen_active = false;
                     self.pressure = 1.;
@@ -192,6 +204,10 @@ impl Editor {
                                 button == PointerButton::Middle,
                             );
                         } else if !pressed {
+                            if self.area_drag.is_some() {
+                                self.move_pointer(pos, 1., time, false);
+                                self.area_up();
+                            }
                             self.finish_stroke();
                         }
                     }
@@ -252,13 +268,17 @@ impl Editor {
             );
         }
         if !self.blocked {
+            if let Some((a, b)) = self.area_drag {
+                let screen = |q: Pos2| self.image_rect.min + q.to_vec2() * self.zoom;
+                painter.line_segment([screen(a), screen(b)], Stroke::new(2., c.accent));
+            }
             let p = self.pen_hover.or_else(|| ctx.pointer_hover_pos());
             if let Some(p) = p.filter(|p| on_canvas(*p)) {
                 if self.panning.is_some() || self.tool == Tool::Hand || held.pan {
                     ctx.set_cursor_icon(CursorIcon::Grab);
                 } else if self.tool == Tool::Zoom || held.zoom || held.zoom_out {
                     ctx.set_cursor_icon(CursorIcon::ZoomIn);
-                } else if self.tool == Tool::Picker || held.pick {
+                } else if self.tool == Tool::Picker || held.pick || self.area_mode != 0 {
                     ctx.set_cursor_icon(CursorIcon::Crosshair);
                 } else {
                     ctx.set_cursor_icon(CursorIcon::None);

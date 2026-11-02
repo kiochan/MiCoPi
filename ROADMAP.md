@@ -11,7 +11,7 @@ This roadmap starts from the **0.21.0 implementation**. Milestones describe inte
 - Schema-described actions, public plugin state, workflow nodes, JSONL, MCP and GUI attachment.
 - Verified outcome replay, compact MCRPLY02 events, atomic document groups and legacy recording support.
 
-Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no selections, transforms or layer reordering/merging. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
+Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no selections, free transforms or layer groups/merging. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
 
 ## Delivery order
 
@@ -39,7 +39,10 @@ M2, M3 and M4 can progress independently after their foundation requirements are
 
 ## M2 — Essential painting and editing
 
-- [ ] Introduce stable layer identifiers and migrate project/graph references before enabling layer reorder, rename, duplication, groups and merge.
+- [x] Introduce stable layer IDs, persist names/identities and remap image-node references for reorder, rename, duplication and deletion.
+- [x] Add exact layer flips, 180° rotation and clipped integer offsets through native plugin actions.
+- [x] Add connected fill with tolerance, linear/radial gradient gestures and inline pressure controls through shared native actions.
+- [ ] Add groups and merge with explicit reference and history behavior.
 - [ ] Make structural and multi-layer edits reliably undoable; define optional undo grouping separately from transaction rollback.
 - [ ] Add rectangle/lasso selections and selection masks, followed by move, scale, rotate, crop and canvas resize.
 - [ ] Add useful document controls: new-canvas presets, resolution/background choices, clearer dirty state and save/recovery feedback.

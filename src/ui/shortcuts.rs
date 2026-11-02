@@ -93,6 +93,10 @@ mod tests {
         assert_eq!(brush_diameter(200., true), 200.);
         assert_eq!(brush_diameter(1., false), 1.);
         assert_eq!(resolve(0x48, false, false, false), Some(Action::Hand));
+        assert_eq!(
+            resolve(0x4a, true, false, false),
+            Some(Action::UiCommand(10140))
+        );
         assert_eq!(resolve(0x5a, false, false, false), Some(Action::Zoom));
         assert_eq!(resolve(0x57, true, true, true), Some(Action::Export));
         assert_eq!(resolve(0x4b, true, true, true), Some(Action::ShowShortcuts));

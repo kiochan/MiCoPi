@@ -9,6 +9,7 @@ pub struct Raster {
     pub width: u32,
     pub height: u32,
     pub failed: bool,
+    pub spacing: f32,
 }
 impl Raster {
     pub fn begin(&mut self, host: &abi::ToolHost, x: f32, y: f32, brush: Brush) {
@@ -22,7 +23,7 @@ impl Raster {
             let dx = x - px;
             let dy = y - py;
             let len = dx.hypot(dy);
-            let spacing = (b.radius * 0.22).max(0.5);
+            let spacing = (b.radius * (self.spacing * 2.)).max(0.5);
             let previous = self.last_brush.unwrap_or(b);
             if len < 0.0001 && previous.opacity <= 0. && b.opacity > 0. {
                 self.dab(host, x, y, b);
@@ -115,7 +116,19 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
         let py = buffer.origin_y as usize + row;
         for column in 0..w {
             let px = buffer.origin_x as usize + column;
-            let d = (px as f32 + 0.5 - dab.x).hypot(py as f32 + 0.5 - dab.y);
+            let dx = px as f32 + 0.5 - dab.x;
+            let dy = py as f32 + 0.5 - dab.y;
+            let squared = dx * dx + dy * dy;
+            // Outside pixels have zero coverage. Solid interior pixels need no
+            // distance evaluation; retain hypot on the antialiased boundary.
+            if squared > (r + 0.5) * (r + 0.5) {
+                continue;
+            }
+            let d = if b.hardness >= 0.999 && r >= 0.5 && squared <= (r - 0.5) * (r - 0.5) {
+                0.
+            } else {
+                dx.hypot(dy)
+            };
             let edge = (r - d + 0.5).max(0.).min(1.);
             let soft = if b.hardness >= 0.999 {
                 1.
@@ -155,4 +168,52 @@ pub fn over(dst: u32, src: u32) -> u32 {
         out |= c.min(255) << shift;
     }
     out
+}
+
+#[cfg(test)]
+mod spacing_tests {
+    use super::*;
+    unsafe extern "C" fn count(
+        ctx: *mut c_void,
+        _: abi::Region,
+        _: Option<abi::Transform>,
+        _: *mut c_void,
+    ) -> i32 {
+        *ctx.cast::<usize>() += 1;
+        abi::OK
+    }
+    unsafe extern "C" fn pick(_: *mut c_void, _: f32, _: f32, _: *mut u32) -> i32 {
+        abi::ERROR
+    }
+    #[test]
+    fn larger_diameter_spacing_reduces_dab_callbacks() {
+        let count_dabs = |spacing| {
+            let mut n = 0usize;
+            let host = abi::ToolHost {
+                abi_version: 1,
+                struct_size: std::mem::size_of::<abi::ToolHost>() as u32,
+                context: (&mut n as *mut usize).cast(),
+                pixels: count,
+                pick,
+            };
+            let b = Brush {
+                radius: 5.,
+                opacity: 1.,
+                hardness: 1.,
+                color: 0,
+                erase: false,
+            };
+            let mut raster = Raster {
+                width: 256,
+                height: 64,
+                spacing,
+                ..Default::default()
+            };
+            raster.begin(&host, 10., 20., b);
+            raster.line(&host, 110., 20., b);
+            n
+        };
+        assert_eq!(count_dabs(1.), 11);
+        assert!(count_dabs(0.11) > 80);
+    }
 }

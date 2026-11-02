@@ -35,6 +35,13 @@ impl Colors {
     }
 }
 pub fn apply(ctx: &Context, a: &Appearance) {
+    // Style is stored per egui theme. Pin the configured appearance before
+    // installing it so a later OS-theme event cannot select an unstyled variant.
+    ctx.set_theme(if a.theme == "graphite" {
+        egui::Theme::Dark
+    } else {
+        egui::Theme::Light
+    });
     let c = Colors::new(a);
     let mut style = Style {
         visuals: if a.theme == "graphite" {

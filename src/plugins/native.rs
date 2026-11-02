@@ -29,6 +29,38 @@ impl Drop for Module {
     }
 }
 impl Module {
+    unsafe fn tool_options_api(&self) -> Result<Option<abi::ToolOptionsApi>, String> {
+        #[cfg(windows)]
+        {
+            let address = GetProcAddress(
+                self.handle as *mut c_void,
+                abi::TOOL_OPTIONS_SYMBOL.as_ptr(),
+            );
+            if address.is_null() {
+                return Ok(None);
+            }
+            let entry = std::mem::transmute::<*mut c_void, abi::ToolOptionsEntry>(address);
+            let pointer = entry();
+            if pointer.is_null() {
+                return Err("Null tool options table".into());
+            }
+            let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+            if header.abi_version != 1
+                || header.struct_size < std::mem::size_of::<abi::ToolOptionsApi>() as u32
+            {
+                return Err("Incompatible tool options ABI".into());
+            }
+            let api = std::ptr::read_unaligned(pointer);
+            if api.configure.is_none() {
+                return Err("Missing tool options callback".into());
+            }
+            Ok(Some(api))
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(None)
+        }
+    }
     unsafe fn compositor_api(&self) -> Result<Option<abi::CompositorApi>, String> {
         #[cfg(windows)]
         {
@@ -146,6 +178,7 @@ pub struct NativePlugin {
     pub path: PathBuf,
     api: abi::PluginApi,
     tools: Option<abi::ToolApi>,
+    tool_options: Option<abi::ToolOptionsApi>,
     compositor: Option<abi::CompositorApi>,
     _module: Module,
 }
@@ -210,6 +243,10 @@ impl NativePlugin {
             std::ptr::read_unaligned(pointer)
         };
         let tools = unsafe { module.tool_api()? };
+        let tool_options = unsafe { module.tool_options_api()? };
+        if tool_options.is_some() && tools.is_none() {
+            return Err("Tool options require a tool API".into());
+        }
         let compositor = unsafe { module.compositor_api()? };
         if api.describe.is_none()
             || (api.invoke.is_none() && tools.is_none() && compositor.is_none())
@@ -231,6 +268,7 @@ impl NativePlugin {
                 path,
                 api,
                 tools,
+                tool_options,
                 compositor,
                 _module: module,
             }),
@@ -506,6 +544,34 @@ unsafe extern "C" fn edit_region(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn missing_optional_tool_options_accept_defaults_and_reject_custom_values() {
+        let mut registry = super::super::Registry::load(
+            &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+        )
+        .unwrap();
+        let plugin = registry.native_plugins.get_mut("painting").unwrap();
+        Arc::get_mut(plugin).unwrap().tool_options = None;
+        let mut session = Session::new(registry).unwrap();
+        session
+            .apply(Action::new("canvas.new", json!({"width":32,"height":32})))
+            .unwrap();
+        let stroke = json!({"points":[{"x":10,"y":10},{"x":20,"y":20}]});
+        session
+            .apply(Action::new("canvas.stroke", stroke.clone()))
+            .unwrap();
+        session
+            .apply(Action::new("brush.set", json!({"spacing":0.5})))
+            .unwrap();
+        let pixels = session.doc.layers[0].pixels.clone();
+        let revision = session.revision;
+        let error = session
+            .apply(Action::new("canvas.stroke", stroke))
+            .unwrap_err();
+        assert_eq!(error.code, "tool_options_unsupported");
+        assert_eq!(session.doc.layers[0].pixels, pixels);
+        assert_eq!(session.revision, revision);
+    }
     unsafe extern "C" fn fail(_: *mut c_void, pixels: *mut abi::Pixels) -> i32 {
         *(*pixels).data = 0xff123456;
         abi::ERROR
@@ -669,7 +735,30 @@ impl ToolInstance {
         handler: u32,
         sample: abi::ToolSample,
         parameters: Option<&abi::ToolParameters>,
+        painting: bool,
     ) -> Result<abi::ToolOutput, ActionError> {
+        if parameters.is_some() && painting {
+            let p = &session.parameters;
+            if let Some(api) = self.plugin.tool_options {
+                let options = abi::ToolOptions {
+                    abi_version: 1,
+                    struct_size: std::mem::size_of::<abi::ToolOptions>() as u32,
+                    spacing: p.spacing,
+                    minimum_opacity: p.minimum_opacity,
+                };
+                if unsafe { (api.configure.unwrap())(self.state, &options) } != abi::OK {
+                    return Err(ActionError::new(
+                        "tool_options",
+                        "Tool rejected stroke options",
+                    ));
+                }
+            } else if p.spacing != 0.11 || p.minimum_opacity != 0. {
+                return Err(ActionError::new(
+                    "tool_options_unsupported",
+                    "Tool DLL does not support custom spacing or pressure opacity floor",
+                ));
+            }
+        }
         let mut context = ToolContext {
             session,
             busy: false,

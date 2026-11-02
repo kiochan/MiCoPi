@@ -100,6 +100,7 @@ impl Metadata {
             return Err(bad("Invalid replay document metadata"));
         }
         self.composition.graph.compile(n).map_err(bad)?;
+        self.composition.validate_layer_metadata().map_err(bad)?;
         self.composition.workflow.validate_structure()?;
         Parameters::default().patched(&serde_json::to_value(&self.parameters)?)?;
         Ok(())
@@ -297,8 +298,15 @@ impl State {
     }
     pub fn matches_document(&self, doc: &Document) -> bool {
         let m = &self.metadata;
+        let mut composition = doc.composition();
+        // Legacy journals hashed the old metadata shape. Compare their pixels
+        // and original fields before introducing IDs at the next event boundary.
+        if m.composition.layer_metadata.is_empty() {
+            composition.layer_metadata.clear();
+            composition.next_layer_id = 0;
+        }
         if (doc.width, doc.height, doc.active) != (m.width, m.height, m.active)
-            || doc.composition() != m.composition
+            || composition != m.composition
         {
             return false;
         }

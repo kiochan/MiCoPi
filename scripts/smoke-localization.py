@@ -53,11 +53,22 @@ def main():
             time.sleep(.05)
         call('canvas.new',dict(width=256,height=192))
         call('native.checkerboard',dict(cell=16))
-        call('brush.set',dict(radius=8,color='#0077ff',stabilizer=.35,pressure_size=True))
+        call('brush.set',dict(radius=8,color='#0077ff',stabilizer=.35,pressure_size=True,pressure_opacity=True,spacing=.2,minimum_opacity=.25))
         call('canvas.stroke',dict(points=[dict(x=24,y=130,pen=True,pressure=.2,time=0),dict(x=100,y=60,pen=True,pressure=1.,time=30),dict(x=225,y=130,pen=True,pressure=.5,time=60)]))
+        call('layer.rename',dict(name='Ink 墨'))
+        call('layer.gradient',dict(x0=0,y0=0,x1=256,y1=192,start_color='#dd7700',end_color='#2200ff00',opacity=.3))
+        call('layer.duplicate',{})
+        call('layer.translate',dict(dx=9,dy=-5))
+        call('layer.set',dict(opacity=.45))
+        call('layer.move',dict(layer_id=1,to=1))
+        # Reopen the existing Layers tab so captures exercise its editing controls,
+        # rather than the sample plugin tab that is selected on first discovery.
+        call('ui.dispatch',dict(id='command',value='ToggleLayers'))
+        call('ui.dispatch',dict(id='command',value='ToggleLayers'))
         expected = base64.b64decode(call('canvas.snapshot',{})['data'])
         graph=dict(version=1,nodes=[dict(id=1,type='native_paint.statistics',position=[0,0],parameters={}),dict(id=2,type='action.native.checkerboard',position=[460,0],parameters={})],edges=[dict(**{'from':1},output='calls',to=2,input='cell')])
         call('workflow.set',dict(graph=graph))
+        call('ui.dispatch',dict(id='painting.mode',value='gradient'))
         for language in ['en','zh-CN','ja','ko']:
             call('settings.update',dict(path=str(settings),ui=dict(language=language)))
             stored=json.loads(settings.read_text(encoding='utf-8-sig'))

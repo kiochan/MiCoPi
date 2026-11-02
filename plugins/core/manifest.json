@@ -86,6 +86,26 @@
       "operation": "add_layer"
     },
     {
+      "id": "layer.rename",
+      "title": "Rename layer",
+      "operation": "rename_layer"
+    },
+    {
+      "id": "layer.duplicate",
+      "title": "Duplicate layer",
+      "operation": "duplicate_layer"
+    },
+    {
+      "id": "layer.move",
+      "title": "Reorder layer",
+      "operation": "move_layer"
+    },
+    {
+      "id": "layer.delete",
+      "title": "Delete layer",
+      "operation": "delete_layer"
+    },
+    {
       "id": "layer.select",
       "title": "Select layer",
       "operation": "select_layer"

@@ -14,10 +14,21 @@ pub struct Brush {
     pub color: u32,
     pub erase: bool,
 }
-#[derive(Default)]
 struct State {
     filter: Stabilizer,
     contact: Option<Contact>,
+    spacing: f32,
+    minimum_opacity: f32,
+}
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            filter: Default::default(),
+            contact: None,
+            spacing: 0.11,
+            minimum_opacity: 0.,
+        }
+    }
 }
 struct Contact {
     handler: u32,
@@ -26,6 +37,7 @@ struct Contact {
     erase: bool,
     last: abi::ToolSample,
     raster: Raster,
+    minimum_opacity: f32,
 }
 impl Contact {
     fn brush(&self, pressure: f32) -> Brush {
@@ -38,13 +50,21 @@ impl Contact {
             erase: self.erase,
         };
         if self.pen {
-            Dynamics {
+            let mut brush = Dynamics {
                 size: p.flags & abi::PRESSURE_SIZE != 0,
                 opacity: p.flags & abi::PRESSURE_OPACITY != 0,
                 gamma: p.pressure_gamma,
                 minimum: p.minimum_radius,
             }
-            .apply(brush, pressure)
+            .apply(brush, pressure);
+            if p.flags & abi::PRESSURE_OPACITY != 0 && pressure > 0. && self.minimum_opacity > 0. {
+                let curve = pressure
+                    .clamp(0., 1.)
+                    .powf(p.pressure_gamma.clamp(0.25, 4.));
+                brush.opacity =
+                    p.opacity * (self.minimum_opacity + (1. - self.minimum_opacity) * curve);
+            }
+            brush
         } else {
             brush
         }
@@ -99,7 +119,9 @@ impl State {
                     pen: p.flags & abi::PEN != 0,
                     erase: handler == 2 || p.flags & abi::ERASER != 0,
                     last: p,
+                    minimum_opacity: self.minimum_opacity,
                     raster: Raster {
+                        spacing: self.spacing,
                         width: p.width,
                         height: p.height,
                         ..Default::default()
@@ -257,4 +279,105 @@ pub extern "C" fn micopi_plugin_v1() -> *const abi::PluginApi {
 #[no_mangle]
 pub extern "C" fn micopi_tools_v1() -> *const abi::ToolApi {
     &TOOLS
+}
+
+unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOptions) -> i32 {
+    if state.is_null() || options.is_null() {
+        return abi::ERROR;
+    }
+    let header = std::ptr::read_unaligned(options.cast::<abi::Header>());
+    if header.abi_version != 1
+        || header.struct_size < std::mem::size_of::<abi::ToolOptions>() as u32
+    {
+        return abi::ERROR;
+    }
+    let options = std::ptr::read_unaligned(options);
+    if !options.spacing.is_finite()
+        || !(0.01..=2.).contains(&options.spacing)
+        || !options.minimum_opacity.is_finite()
+        || !(0. ..=1.).contains(&options.minimum_opacity)
+    {
+        return abi::ERROR;
+    }
+    let state = &mut *state.cast::<State>();
+    if state.contact.is_some() {
+        return abi::ERROR;
+    }
+    state.spacing = options.spacing;
+    state.minimum_opacity = options.minimum_opacity;
+    abi::OK
+}
+static OPTIONS: abi::ToolOptionsApi = abi::ToolOptionsApi {
+    abi_version: 1,
+    struct_size: std::mem::size_of::<abi::ToolOptionsApi>() as u32,
+    configure: Some(configure),
+};
+#[no_mangle]
+pub extern "C" fn micopi_tool_options_v1() -> *const abi::ToolOptionsApi {
+    &OPTIONS
+}
+
+#[cfg(test)]
+mod option_tests {
+    use super::*;
+    fn options() -> abi::ToolOptions {
+        abi::ToolOptions {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::ToolOptions>() as u32,
+            spacing: 0.5,
+            minimum_opacity: 0.4,
+        }
+    }
+    fn contact() -> Contact {
+        Contact {
+            handler: 1,
+            parameters: abi::ToolParameters {
+                radius: 10.,
+                opacity: 0.8,
+                hardness: 1.,
+                color: 0xff0000,
+                stabilizer: 0.,
+                pressure_gamma: 1.,
+                minimum_radius: 0.08,
+                flags: abi::PRESSURE_OPACITY,
+            },
+            pen: true,
+            erase: false,
+            last: unsafe { std::mem::zeroed() },
+            raster: Default::default(),
+            minimum_opacity: 0.4,
+        }
+    }
+    #[test]
+    fn pressure_floor_respects_zero_full_and_mouse_pressure() {
+        let mut c = contact();
+        assert_eq!(c.brush(0.).opacity, 0.);
+        assert!((c.brush(0.5).opacity - 0.56).abs() < 1e-6);
+        assert_eq!(c.brush(1.).opacity, 0.8);
+        c.pen = false;
+        assert_eq!(c.brush(0.1).opacity, 0.8);
+    }
+    #[test]
+    fn option_abi_validates_header_ranges_and_contact_ownership() {
+        let mut state = State::default();
+        let pointer = (&mut state as *mut State).cast();
+        let valid = options();
+        assert_eq!(unsafe { configure(pointer, &valid) }, abi::OK);
+        assert_eq!(state.spacing, 0.5);
+        for i in 0..5 {
+            let mut bad = valid;
+            match i {
+                0 => bad.struct_size = 8,
+                1 => bad.abi_version = 2,
+                2 => bad.spacing = f32::NAN,
+                3 => bad.spacing = 0.,
+                _ => bad.minimum_opacity = 1.1,
+            }
+            assert_eq!(unsafe { configure(pointer, &bad) }, abi::ERROR);
+            assert_eq!(state.spacing, 0.5);
+        }
+        assert_eq!(unsafe { configure(pointer, std::ptr::null()) }, abi::ERROR);
+        state.contact = Some(contact());
+        assert_eq!(unsafe { configure(pointer, &valid) }, abi::ERROR);
+    }
 }

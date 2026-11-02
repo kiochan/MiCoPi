@@ -46,7 +46,7 @@ def main():
             dict(id="read",action="canvas.state",args={}),
             dict(id="view",action="view.set",args=dict(zoom={"$ref":"read#/result/view/zoom"})),
         ])),
-        dict(action="brush.set", args=dict(color="#0077ff", radius=9, stabilizer=0, pressure_size=True)),
+        dict(action="brush.set", args=dict(color="#0077ff", radius=9, stabilizer=0, pressure_size=True,pressure_opacity=True,spacing=.2,minimum_opacity=.25)),
         dict(action="tool.select", args=dict(tool="brush")),
         dict(action="canvas.stroke", args=dict(points=[
             dict(x=28, y=130, pen=True, pressure=.2, time=10),
@@ -62,6 +62,19 @@ def main():
         ])),
     ]
     commands += [
+        dict(action="layer.rename", args=dict(layer_id=1, name="Ink 墨")),
+        dict(action="layer.duplicate", args=dict(layer_id=1)),
+        dict(action="layer.flip_horizontal", args={}),
+        dict(action="layer.flip_vertical", args={}),
+        dict(action="layer.rotate_180", args={}),
+        dict(action="layer.translate", args=dict(dx=7, dy=-3)),
+        dict(action="history.undo", args={}),
+        dict(action="history.redo", args={}),
+        dict(action="layer.move", args=dict(layer_id=2, to=0)),
+        dict(action="layer.move", args=dict(layer_id=2, to=1)),
+        dict(action="layer.delete", args=dict(layer_id=2)),
+        dict(action="layer.fill", args=dict(x=0,y=0,color="#228855",tolerance=8,opacity=.7)),
+        dict(action="layer.gradient", args=dict(x0=10,y0=20,x1=230,y1=170,start_color="#ee7700cc",end_color="#0033ff00",kind="radial",opacity=.65)),
         dict(action="native.invert_region", args=dict(x=8,y=8,width=128,height=96)),
         dict(action="history.undo",args={}),
         dict(action="history.redo",args={}),

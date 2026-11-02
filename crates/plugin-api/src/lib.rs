@@ -200,6 +200,28 @@ pub struct ToolApi {
 }
 pub type ToolEntry = unsafe extern "C" fn() -> *const ToolApi;
 
+/// Optional stroke options; independent of the unchanged v1 tool tables.
+pub const TOOL_OPTIONS_SYMBOL: &[u8] = b"micopi_tool_options_v1\0";
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ToolOptions {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    /// Dab distance as a fraction of brush diameter; legacy default is 0.11.
+    pub spacing: f32,
+    pub minimum_opacity: f32,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ToolOptionsApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    /// Called once before DOWN, on the state returned by ToolApi::create.
+    /// No host callbacks; reject changes during an active contact.
+    pub configure: Option<unsafe extern "C" fn(*mut c_void, *const ToolOptions) -> i32>,
+}
+pub type ToolOptionsEntry = unsafe extern "C" fn() -> *const ToolOptionsApi;
+
 /// Additive synchronous compositor extension. Input layers are immutable;
 /// output is a separate strided ARGB region. No pointer may outlive the call.
 pub const COMPOSITOR_SYMBOL: &[u8] = b"micopi_compositor_v1\0";

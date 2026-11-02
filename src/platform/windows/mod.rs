@@ -712,6 +712,11 @@ impl App {
         }
         self.doc.finish();
         match id {
+            10140 => {
+                if let Err(error) = self.doc.duplicate_layer(self.doc.active) {
+                    self.status = format!("Operation failed: {}", error);
+                }
+            }
             7 => {
                 self.save(hwnd, true);
             }

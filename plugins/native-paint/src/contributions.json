@@ -88,6 +88,166 @@
           "implementation"
         ]
       }
+    },
+    {
+      "id": "layer.flip_horizontal",
+      "title": "Flip Layer Horizontally",
+      "native": "flip_horizontal",
+      "document_atomic": true,
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.flip_vertical",
+      "title": "Flip Layer Vertically",
+      "native": "flip_vertical",
+      "document_atomic": true,
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.rotate_180",
+      "title": "Rotate Layer 180°",
+      "native": "rotate_180",
+      "document_atomic": true,
+      "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.translate",
+      "title": "Offset Layer",
+      "native": "translate",
+      "document_atomic": true,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dx": {
+            "type": "integer",
+            "minimum": -4096,
+            "maximum": 4096
+          },
+          "dy": {
+            "type": "integer",
+            "minimum": -4096,
+            "maximum": 4096
+          }
+        },
+        "required": [
+          "dx",
+          "dy"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.fill",
+      "title": "Flood Fill",
+      "native": "fill",
+      "document_atomic": true,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "x": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4095
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4095
+          },
+          "color": {
+            "type": "string"
+          },
+          "tolerance": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "color"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.gradient",
+      "title": "Gradient",
+      "native": "gradient",
+      "document_atomic": true,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "x0": {
+            "type": "number",
+            "minimum": -4096,
+            "maximum": 8192
+          },
+          "y0": {
+            "type": "number",
+            "minimum": -4096,
+            "maximum": 8192
+          },
+          "x1": {
+            "type": "number",
+            "minimum": -4096,
+            "maximum": 8192
+          },
+          "y1": {
+            "type": "number",
+            "minimum": -4096,
+            "maximum": 8192
+          },
+          "start_color": {
+            "type": "string"
+          },
+          "end_color": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "linear",
+              "radial"
+            ]
+          }
+        },
+        "required": [
+          "x0",
+          "y0",
+          "x1",
+          "y1",
+          "start_color",
+          "end_color"
+        ],
+        "additionalProperties": false
+      }
     }
   ],
   "panels": [

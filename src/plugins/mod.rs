@@ -32,7 +32,8 @@ pub(crate) fn execute(
         | WorkflowRun | WorkflowState => crate::application::workflow::execute(session, op, args),
         GraphRead | GraphSet | GraphCatalog => compositing::execute(session, op, args),
         New | Open | Save | Export | Render | Undo | Redo => document::execute(session, op, args),
-        AddLayer | SelectLayer | LayerProperties | ClearLayer => layers::execute(session, op, args),
+        AddLayer | RenameLayer | DuplicateLayer | MoveLayer | DeleteLayer | SelectLayer
+        | LayerProperties | ClearLayer => layers::execute(session, op, args),
         SelectTool | Parameters | Pointer | Stroke | Pick | View => {
             painting::execute(session, op, args)
         }

@@ -4,7 +4,28 @@ use crate::engine::MAX_LAYERS;
 use serde_json::{json, Value};
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     use Operation::*;
-    let index = || args["index"].as_f64().unwrap_or(0.) as usize;
+    let index = || -> Result<usize, ActionError> {
+        let by_index = args["index"].as_u64().map(|v| v as usize);
+        let by_id = args["layer_id"]
+            .as_u64()
+            .map(|id| {
+                s.doc
+                    .layer_index(id)
+                    .ok_or_else(|| ActionError::new("invalid_layer", "Layer ID does not exist"))
+            })
+            .transpose()?;
+        if by_index.is_some() && by_id.is_some() && by_index != by_id {
+            return Err(ActionError::new(
+                "invalid_layer",
+                "Layer index and ID refer to different layers",
+            ));
+        }
+        let i = by_id.or(by_index).unwrap_or(s.doc.active);
+        if i >= s.doc.layers.len() {
+            return Err(ActionError::new("invalid_layer", "Layer does not exist"));
+        }
+        Ok(i)
+    };
     match op {
         AddLayer => {
             if s.doc.layers.len() >= MAX_LAYERS
@@ -16,11 +37,33 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 ));
             }
             s.finish_stroke();
+            let count = s.doc.layers.len();
             s.doc.add_layer();
-            Ok(json!({"active_layer":s.doc.active}))
+            if s.doc.layers.len() == count {
+                return Err(ActionError::new(
+                    "layer_limit",
+                    "Layer identity limit reached",
+                ));
+            }
+            Ok(json!({"active_layer":s.doc.active,"layer_id":s.doc.layer_id(s.doc.active)}))
+        }
+        RenameLayer | DuplicateLayer | MoveLayer | DeleteLayer => {
+            let i = index()?;
+            s.finish_stroke();
+            let result = match op {
+                RenameLayer => s
+                    .doc
+                    .rename_layer(i, args["name"].as_str().unwrap().to_owned()),
+                DuplicateLayer => s.doc.duplicate_layer(i),
+                MoveLayer => s.doc.move_layer(i, args["to"].as_u64().unwrap() as usize),
+                DeleteLayer => s.doc.delete_layer(i),
+                _ => unreachable!(),
+            };
+            result.map_err(|e| ActionError::new("layer_edit", e))?;
+            Ok(s.state())
         }
         SelectLayer | LayerProperties => {
-            let i = index();
+            let i = index()?;
             if i >= s.doc.layers.len() {
                 return Err(ActionError::new("invalid_layer", "Layer does not exist"));
             }

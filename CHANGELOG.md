@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Add dab spacing and minimum pressure opacity in the Brush panel and persistent Painting settings. Freeze typed options at DOWN through an optional extension while preserving default pixels and legacy recording hashes.
+- Reject custom options explicitly for DLLs without the extension, retaining existing tool tables and default compatibility.
+
+- Surface pressure dynamics with a curve preview; add click-to-fill and drag-to-gradient desktop modes backed by shared native actions, undo, atomic rollback and verified replay.
+- Add scanline four-connected fill with tolerance, premultiplied-alpha linear/radial gradients and guarded gesture cancellation.
+- Skip unnecessary distance calculations outside brush dabs and inside solid hard tips while retaining reference stroke pixels and the existing tool ABI.
+- Pin the configured UI theme before applying styles so first-frame system theme events cannot mix default light controls with the dark workbench.
+
+- Add document-scoped stable layer IDs, rename/duplicate/reorder/delete actions, undoable structural edits and identity-preserving image-node remapping.
+- Add exact flips, 180° rotation and clipped integer translation in the native painting DLL; expose layer menus, editable names and Ctrl+J in the four-language desktop.
+- Move layer buffers during reorder/delete history and transform pixels in place; preserve legacy project/replay loading and recorded hashes.
+
 - Make native resize tests honor effective client bounds and cover desktop tracking limits, avoiding false CI failures on small hosted displays.
 
 - Share provisional contact recording and storage-failure rollback between GUI input and canvas.pointer actions.
