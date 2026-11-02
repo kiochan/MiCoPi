@@ -471,10 +471,10 @@
   "Press a shortcut; hold gestures accept modifiers alone; Esc to cancel": "请按下新组合键；按住手势可单独录入修饰键；Esc 取消",
   "Pressure Controls Opacity": "压感控制不透明度",
   "Pressure Controls Size": "压感控制大小",
-  "Pressure Curve": "压感曲线",
+  "Pressure Curve": "压力曲线",
   "Pressure Curve   {:.2} · Cycle": "压力曲线   {:.2} · 切换",
-  "Pressure Opacity": "压感浓度",
-  "Pressure Size": "压感大小",
+  "Pressure Opacity": "压感控制不透明度",
+  "Pressure Size": "压感控制大小",
   "Previous Event": "上一个事件",
   "Project Saved": "工程已保存",
   "Project requires the compositing DLL": "工程需要 compositing DLL",
@@ -733,5 +733,13 @@
   "Reorder layer": "调整图层顺序",
   "Duplicate layer": "复制图层",
   "Delete layer": "删除图层",
-  "Apply Offset": "应用偏移"
+  "Apply Offset": "应用偏移",
+  "Flood Fill": "油漆桶填充",
+  "Gradient": "渐变",
+  "Pressure Dynamics": "压感动态",
+  "Minimum Size": "最小大小",
+  "Fill Tolerance": "填充容差",
+  "Radial Gradient": "径向渐变",
+  "Click the canvas to fill a connected area.": "点击画布填充相连区域。",
+  "Drag on the canvas from foreground to background color.": "在画布上拖动，创建前景色到背景色的渐变。"
 }

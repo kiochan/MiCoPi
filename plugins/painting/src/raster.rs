@@ -115,7 +115,19 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
         let py = buffer.origin_y as usize + row;
         for column in 0..w {
             let px = buffer.origin_x as usize + column;
-            let d = (px as f32 + 0.5 - dab.x).hypot(py as f32 + 0.5 - dab.y);
+            let dx = px as f32 + 0.5 - dab.x;
+            let dy = py as f32 + 0.5 - dab.y;
+            let squared = dx * dx + dy * dy;
+            // Outside pixels have zero coverage. Solid interior pixels need no
+            // distance evaluation; retain hypot on the antialiased boundary.
+            if squared > (r + 0.5) * (r + 0.5) {
+                continue;
+            }
+            let d = if b.hardness >= 0.999 && r >= 0.5 && squared <= (r - 0.5) * (r - 0.5) {
+                0.
+            } else {
+                dx.hypot(dy)
+            };
             let edge = (r - d + 0.5).max(0.).min(1.);
             let soft = if b.hardness >= 0.999 {
                 1.

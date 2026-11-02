@@ -59,3 +59,7 @@ Current omissions include selections, transforms, layer reordering/merging, Wint
 ## Organize and transform layers
 
 Use **Layer Actions** or right-click a layer to duplicate, move up/down, delete, flip or rotate it. **Ctrl+J** duplicates the current layer. Edit **Layer Name** and press Enter or leave the field to commit; Escape cancels. **Offset Layer** accepts signed integer X/Y offsets; positive X moves right and positive Y moves down. Exposed pixels become transparent and pixels outside the canvas are discarded. Undo restores them. See [Layer editing](layer-editing.md) for action schemas, reference rules and limits.
+
+## Fill, gradients and pressure
+
+The Brush panel contains **Flood Fill**, **Gradient** and expandable **Pressure Dynamics** controls. Click to fill a connected area or drag to define a gradient. See [Painting tools](painting-tools.md) for tolerance, alpha, gesture cancellation and the shared automation actions.

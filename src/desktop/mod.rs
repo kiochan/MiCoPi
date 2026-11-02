@@ -1,4 +1,5 @@
 //! egui workbench. Painting and platform input remain independent of widget layout.
+mod area;
 mod canvas;
 mod commands;
 mod layers;
@@ -83,6 +84,11 @@ fn tr(value: impl Into<WidgetText>) -> RichText {
 }
 
 pub(super) struct Editor {
+    area_mode: u8,
+    area_tolerance: u32,
+    area_radial: bool,
+    area_drag: Option<(Pos2, Pos2)>,
+    area_target: Option<(u64, u64, u64)>,
     plugin_nodes: std::collections::BTreeMap<String, crate::plugins::nodes::Resolved>,
     workflow: workflow::WorkflowEditor,
     nodes_workflow: bool,
@@ -199,6 +205,11 @@ impl Editor {
             display: vec![],
             drawing: false,
             input_owned: false,
+            area_mode: 0,
+            area_tolerance: 0,
+            area_radial: false,
+            area_drag: None,
+            area_target: None,
             pen_active: false,
             pen_eraser: false,
             pressure: 1.,
@@ -268,6 +279,8 @@ impl Editor {
         self.settings.keys.ui_hint(id).unwrap_or_default()
     }
     fn finish_stroke(&mut self) {
+        self.area_drag = None;
+        self.area_target = None;
         self.session.finish_stroke();
         self.drawing = false;
         self.panning = None;
@@ -297,6 +310,8 @@ impl Editor {
             .map_err(|e| e.to_string())
     }
     fn select_tool(&mut self, id: &str) {
+        self.area_mode = 0;
+        self.area_drag = None;
         self.push_gui_parameters();
         if self.core("tool.select", serde_json::json!({"tool":id})) {
             self.sync_from_session();
@@ -519,6 +534,18 @@ impl Studio {
                             self.from_core_ui = false;
                         }
                         Err(e) => self.editor.status = format!("Invalid UI Action: {e}"),
+                    }
+                }
+                Some("painting.mode") => {
+                    if let Some(mode) = match effect["value"].as_str() {
+                        Some("brush") => Some(0),
+                        Some("fill") => Some(1),
+                        Some("gradient") => Some(2),
+                        _ => None,
+                    } {
+                        self.editor.finish_stroke();
+                        self.editor.select_tool("brush");
+                        self.editor.area_mode = mode;
                     }
                 }
                 Some("settings.search") => {

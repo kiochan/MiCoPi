@@ -270,3 +270,55 @@ fn malformed_id_metadata_and_hidden_pixel_edits_are_rejected() {
     assert_eq!(s.doc.layers[1].pixels, pixels);
     check(&mut s);
 }
+
+#[test]
+fn fill_and_gradient_are_undoable_atomic_and_replayable() {
+    let mut s = session();
+    call(&mut s, "native.checkerboard", json!({"cell":3}));
+    let original = s.doc.layers[0].pixels.clone();
+    call(&mut s, "layer.fill", json!({"x":0,"y":0,"color":"#ff0000"}));
+    for y in 0..8 {
+        for x in 0..12 {
+            assert_eq!(
+                s.doc.layers[0].pixels[y * 12 + x],
+                if x < 3 && y < 3 {
+                    0xffff0000
+                } else {
+                    original[y * 12 + x]
+                }
+            );
+        }
+    }
+    check(&mut s);
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(s.doc.layers[0].pixels, original);
+    call(
+        &mut s,
+        "layer.gradient",
+        json!({"x0":0.5,"y0":0.5,"x1":11.5,"y1":0.5,"start_color":"#ff0000","end_color":"#0000ff"}),
+    );
+    assert_eq!(s.doc.layers[0].pixels[0], 0xffff0000);
+    assert_eq!(s.doc.layers[0].pixels[11], 0xff0000ff);
+    check(&mut s);
+    let pixels = s.doc.layers[0].pixels.clone();
+    let before = s.state();
+    let result = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[
+            {"id":"fill","action":"layer.fill","args":{"x":0,"y":0,"color":"#00ff00"}},
+            {"id":"invalid","action":"layer.gradient","args":{"x0":1,"y0":1,"x1":1,"y1":1,"start_color":"#ff0000","end_color":"#ffffff"}}
+        ]}),
+    );
+    assert_eq!(result["rolled_back"], true);
+    assert_eq!(s.state(), before);
+    assert_eq!(s.doc.layers[0].pixels, pixels);
+    for args in [
+        json!({"x":100,"y":0,"color":"#ffffff"}),
+        json!({"x":0,"y":0,"color":"#bad"}),
+    ] {
+        assert!(s.apply(Action::new("layer.fill", args)).is_err());
+        assert_eq!(s.state(), before);
+    }
+    check(&mut s);
+}

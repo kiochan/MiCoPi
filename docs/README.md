@@ -8,6 +8,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Roadmap](../ROADMAP.md) | Priorities, milestone dependencies and acceptance criteria |
 | [User Guide](user-guide.md) | Drawing, pen input, settings, shortcuts and panels |
 | [Layer Editing](layer-editing.md) | Stable identities, structural edits, exact transforms and reference behavior |
+| [Painting Tools](painting-tools.md) | Pressure controls, connected fill, gradient gestures and performance limits |
 | [Atomic Operations](atomic-operations.md) | Rollback, plugin capabilities, contact commits and compact event storage |
 | [Verified Replay](replay.md) | Event journal, integrity checks, time-lapse preview and frame export |
 | [Project Structure](project-structure.md) | Directory responsibilities, generated files and Git boundaries |

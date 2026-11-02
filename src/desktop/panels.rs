@@ -311,6 +311,7 @@ impl Editor {
         }
     }
     fn brush_ui(&mut self, ui: &mut Ui) {
+        self.area_ui(ui);
         let a = self.settings.ui.clone();
         let presets: Vec<_> = self
             .session
@@ -387,6 +388,46 @@ impl Editor {
             false,
         );
         section(ui, "Stroke", a.section_spacing);
+        ui.collapsing(tr("Pressure Dynamics"), |ui| {
+            ui.checkbox(&mut self.workspace.dynamics.size, tr("Pressure Size"));
+            ui.checkbox(&mut self.workspace.dynamics.opacity, tr("Pressure Opacity"));
+            parameter(
+                ui,
+                "Minimum Size",
+                &mut self.workspace.dynamics.minimum,
+                0.0..=1.,
+                "%",
+                true,
+                false,
+            );
+            parameter(
+                ui,
+                "Pressure Curve",
+                &mut self.workspace.dynamics.gamma,
+                0.25..=4.,
+                "",
+                false,
+                false,
+            );
+            let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 64.), Sense::hover());
+            let colors = theme::Colors::new(&self.settings.ui);
+            let points = (0..=32)
+                .map(|i| {
+                    let x = i as f32 / 32.;
+                    let y = x.powf(self.workspace.dynamics.gamma);
+                    pos2(
+                        rect.left() + x * rect.width(),
+                        rect.bottom() - y * rect.height(),
+                    )
+                })
+                .collect();
+            ui.painter().line_segment(
+                [rect.left_bottom(), rect.right_top()],
+                Stroke::new(1., colors.muted),
+            );
+            ui.painter()
+                .add(Shape::line(points, Stroke::new(2., colors.accent)));
+        });
         parameter(
             ui,
             "Stabilizer",

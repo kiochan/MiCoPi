@@ -473,8 +473,8 @@
   "Pressure Controls Size": "필압으로 크기 조절",
   "Pressure Curve": "필압 곡선",
   "Pressure Curve   {:.2} · Cycle": "Pressure Curve   {:.2} · Cycle",
-  "Pressure Opacity": "Pressure Opacity",
-  "Pressure Size": "Pressure Size",
+  "Pressure Opacity": "필압으로 불투명도 조절",
+  "Pressure Size": "필압으로 크기 조절",
   "Previous Event": "이전 이벤트",
   "Project Saved": "프로젝트 저장됨",
   "Project requires the compositing DLL": "Project requires the compositing DLL",
@@ -733,5 +733,13 @@
   "Reorder layer": "레이어 순서 변경",
   "Duplicate layer": "레이어 복제",
   "Delete layer": "레이어 삭제",
-  "Apply Offset": "오프셋 적용"
+  "Apply Offset": "오프셋 적용",
+  "Flood Fill": "영역 채우기",
+  "Gradient": "그라데이션",
+  "Pressure Dynamics": "필압 동적 설정",
+  "Minimum Size": "최소 크기",
+  "Fill Tolerance": "채우기 허용 오차",
+  "Radial Gradient": "방사형 그라데이션",
+  "Click the canvas to fill a connected area.": "캔버스를 클릭하여 연결된 영역을 채웁니다.",
+  "Drag on the canvas from foreground to background color.": "캔버스에서 드래그하여 전경색에서 배경색으로 그라데이션을 만듭니다."
 }

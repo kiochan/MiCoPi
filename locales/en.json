@@ -733,5 +733,13 @@
   "Reorder layer": "Reorder layer",
   "Duplicate layer": "Duplicate layer",
   "Delete layer": "Delete layer",
-  "Apply Offset": "Apply Offset"
+  "Apply Offset": "Apply Offset",
+  "Flood Fill": "Flood Fill",
+  "Gradient": "Gradient",
+  "Pressure Dynamics": "Pressure Dynamics",
+  "Minimum Size": "Minimum Size",
+  "Fill Tolerance": "Fill Tolerance",
+  "Radial Gradient": "Radial Gradient",
+  "Click the canvas to fill a connected area.": "Click the canvas to fill a connected area.",
+  "Drag on the canvas from foreground to background color.": "Drag on the canvas from foreground to background color."
 }

@@ -41,6 +41,7 @@ M2, M3 and M4 can progress independently after their foundation requirements are
 
 - [x] Introduce stable layer IDs, persist names/identities and remap image-node references for reorder, rename, duplication and deletion.
 - [x] Add exact layer flips, 180° rotation and clipped integer offsets through native plugin actions.
+- [x] Add connected fill with tolerance, linear/radial gradient gestures and inline pressure controls through shared native actions.
 - [ ] Add groups and merge with explicit reference and history behavior.
 - [ ] Make structural and multi-layer edits reliably undoable; define optional undo grouping separately from transaction rollback.
 - [ ] Add rectangle/lasso selections and selection masks, followed by move, scale, rotate, crop and canvas resize.

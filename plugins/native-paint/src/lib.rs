@@ -2,6 +2,8 @@
 use micopi_plugin_api as abi;
 use serde_json::{json, Value};
 use std::ffi::c_void;
+mod area;
+mod area_action;
 mod spatial;
 #[derive(Default)]
 struct Instance {
@@ -97,6 +99,8 @@ unsafe fn run(
         "flip_vertical",
         "rotate_180",
         "translate",
+        "fill",
+        "gradient",
     ]
     .contains(&handler)
     {
@@ -117,6 +121,9 @@ unsafe fn run(
         return Err("canvas.state failed".into());
     }
     let document: Value = serde_json::from_slice(&reply).map_err(|e| e.to_string())?;
+    if handler == "fill" || handler == "gradient" {
+        return area_action::invoke(host, &document["result"], &args, handler);
+    }
     let region = if handler == "invert_region" {
         let number = |key: &str| {
             args[key]
