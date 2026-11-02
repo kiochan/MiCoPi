@@ -1,0 +1,359 @@
+//! Serializable image DAG. Validation/compilation stays host-owned; pixel math is DLL code.
+use micopi_plugin_api as abi;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
+pub const MAX_NODES: usize = 64;
+pub fn schema() -> serde_json::Value {
+    use serde_json::json;
+    let id = json!({"type":"integer","minimum":0,"maximum":4294967295u64});
+    json!({"type":"object","required":["enabled","nodes","edges"],"additionalProperties":false,"properties":{
+        "enabled":{"type":"boolean"},
+        "nodes":{"type":"array","maxItems":64,"items":{"type":"object","required":["id","position","kind"],"additionalProperties":false,"properties":{
+            "node_type":{"type":"string"},"id":id,"position":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-1000000,"maximum":1000000}},
+            "kind":{"type":"string","enum":["layer","filter","blend","output"]},"index":{"type":"integer","minimum":0,"maximum":15},
+            "filter":{"type":"string","enum":Filter::ALL},"amount":{"type":"number","minimum":-1,"maximum":1},
+            "mode":{"type":"string","enum":BlendMode::ALL},"opacity":{"type":"number","minimum":0,"maximum":1}
+        }}},
+        "edges":{"type":"array","maxItems":128,"items":{"type":"object","required":["from","to","input"],"additionalProperties":false,"properties":{"from":id,"to":id,"input":{"type":"integer","minimum":0,"maximum":1}}}}
+    }})
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[repr(u32)]
+pub enum BlendMode {
+    #[default]
+    Normal,
+    Multiply,
+    Screen,
+    Overlay,
+    Darken,
+    Lighten,
+    Add,
+    Difference,
+}
+impl BlendMode {
+    pub const ALL: [Self; 8] = [
+        Self::Normal,
+        Self::Multiply,
+        Self::Screen,
+        Self::Overlay,
+        Self::Darken,
+        Self::Lighten,
+        Self::Add,
+        Self::Difference,
+    ];
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Normal => "Normal",
+            Self::Multiply => "Multiply",
+            Self::Screen => "Screen",
+            Self::Overlay => "Overlay",
+            Self::Darken => "Darken",
+            Self::Lighten => "Lighten",
+            Self::Add => "Linear Dodge",
+            Self::Difference => "Difference",
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[repr(u32)]
+pub enum Filter {
+    Invert,
+    Grayscale,
+    Brightness,
+    Contrast,
+    Saturation,
+}
+impl Filter {
+    pub const ALL: [Self; 5] = [
+        Self::Invert,
+        Self::Grayscale,
+        Self::Brightness,
+        Self::Contrast,
+        Self::Saturation,
+    ];
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Invert => "Invert",
+            Self::Grayscale => "Grayscale",
+            Self::Brightness => "Brightness",
+            Self::Contrast => "Contrast",
+            Self::Saturation => "Saturation",
+        }
+    }
+    pub fn minimum(self) -> f32 {
+        if matches!(self, Self::Invert | Self::Grayscale) {
+            0.
+        } else {
+            -1.
+        }
+    }
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum NodeKind {
+    Layer { index: usize },
+    Filter { filter: Filter, amount: f32 },
+    Blend { mode: BlendMode, opacity: f32 },
+    Output,
+}
+impl NodeKind {
+    pub fn inputs(&self) -> usize {
+        match self {
+            Self::Layer { .. } => 0,
+            Self::Blend { .. } => 2,
+            _ => 1,
+        }
+    }
+    pub fn title(&self) -> String {
+        match self {
+            Self::Layer { index } => format!("Layer {}", index + 1),
+            Self::Filter { filter, .. } => filter.title().into(),
+            Self::Blend { mode, .. } => format!("Blend · {}", mode.title()),
+            Self::Output => "Canvas Output".into(),
+        }
+    }
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Node {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node_type: Option<String>,
+    pub id: u32,
+    pub position: [f32; 2],
+    #[serde(flatten)]
+    pub data: NodeKind,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Edge {
+    pub from: u32,
+    pub to: u32,
+    pub input: u32,
+}
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Graph {
+    pub enabled: bool,
+    pub nodes: Vec<Node>,
+    pub edges: Vec<Edge>,
+}
+pub trait Renderer {
+    fn render(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        width: u32,
+        height: u32,
+        output: &mut abi::Pixels,
+    ) -> Result<(), String>;
+}
+impl Graph {
+    pub fn from_layers(layers: &[super::Layer]) -> Self {
+        let mut graph = Self {
+            enabled: true,
+            ..Self::default()
+        };
+        let mut last = 0;
+        for (index, layer) in layers.iter().enumerate() {
+            let id = graph.nodes.len() as u32;
+            graph.nodes.push(Node {
+                node_type: Some("compositing.layer".into()),
+                id,
+                position: [index as f32 * 240., if index == 0 { 20. } else { 260. }],
+                data: NodeKind::Layer { index },
+            });
+            if index == 0 {
+                last = id;
+            } else {
+                let blend = graph.nodes.len() as u32;
+                graph.nodes.push(Node {
+                    node_type: Some("compositing.blend".into()),
+                    id: blend,
+                    position: [index as f32 * 240., 0.],
+                    data: NodeKind::Blend {
+                        mode: layer.mode,
+                        opacity: 1.,
+                    },
+                });
+                graph.edges.extend([
+                    Edge {
+                        from: last,
+                        to: blend,
+                        input: 0,
+                    },
+                    Edge {
+                        from: id,
+                        to: blend,
+                        input: 1,
+                    },
+                ]);
+                last = blend;
+            }
+        }
+        let id = graph.nodes.len() as u32;
+        graph.nodes.push(Node {
+            node_type: Some("compositing.output".into()),
+            id,
+            position: [layers.len() as f32 * 240., 0.],
+            data: NodeKind::Output,
+        });
+        graph.edges.push(Edge {
+            from: last,
+            to: id,
+            input: 0,
+        });
+        graph
+    }
+    pub fn compile(&self, layer_count: usize) -> Result<Vec<abi::CompositeNode>, String> {
+        if self.nodes.len() > MAX_NODES || self.edges.len() > MAX_NODES * 2 {
+            return Err("Node or edge limit exceeded".into());
+        }
+        if self.nodes.is_empty() {
+            return if self.enabled {
+                Err("An enabled image graph requires an output node".into())
+            } else {
+                Ok(vec![])
+            };
+        }
+        let mut ids = BTreeMap::new();
+        let mut output = None;
+        for (i, n) in self.nodes.iter().enumerate() {
+            if ids.insert(n.id, i).is_some()
+                || n.position.iter().any(|v| !v.is_finite() || v.abs() > 1e6)
+            {
+                return Err("Duplicate node ID or invalid position".into());
+            }
+            match n.data {
+                NodeKind::Layer { index } if index >= layer_count => {
+                    return Err("Node references a missing layer".into())
+                }
+                NodeKind::Filter { filter, amount }
+                    if !amount.is_finite() || !(filter.minimum()..=1.).contains(&amount) =>
+                {
+                    return Err("Invalid filter parameters".into())
+                }
+                NodeKind::Blend { opacity, .. }
+                    if !opacity.is_finite() || !(0. ..=1.).contains(&opacity) =>
+                {
+                    return Err("Invalid blend opacity".into())
+                }
+                NodeKind::Output => {
+                    if output.replace(i).is_some() {
+                        return Err("Only one canvas output is allowed".into());
+                    }
+                }
+                _ => {}
+            }
+        }
+        let output = output.ok_or("Missing canvas output")?;
+        let mut inputs = vec![[None; 2]; self.nodes.len()];
+        for e in &self.edges {
+            let from = *ids.get(&e.from).ok_or("Edge source does not exist")?;
+            let to = *ids.get(&e.to).ok_or("Edge destination does not exist")?;
+            if matches!(self.nodes[from].data, NodeKind::Output)
+                || e.input as usize >= self.nodes[to].data.inputs()
+                || inputs[to][e.input as usize].replace(from).is_some()
+            {
+                return Err("Invalid edge port or multiple outputs connected to one input".into());
+            }
+        }
+        fn visit(
+            i: usize,
+            nodes: &[Node],
+            inputs: &[[Option<usize>; 2]],
+            visiting: &mut BTreeSet<usize>,
+            done: &mut BTreeSet<usize>,
+            order: &mut Vec<usize>,
+            required: bool,
+        ) -> Result<(), String> {
+            if done.contains(&i) {
+                return Ok(());
+            }
+            if !visiting.insert(i) {
+                return Err("The graph contains a cycle".into());
+            }
+            for port in 0..nodes[i].data.inputs() {
+                match inputs[i][port] {
+                    Some(j) => visit(j, nodes, inputs, visiting, done, order, required)?,
+                    None if required => {
+                        return Err(format!(
+                            "Input of {} is not connected",
+                            nodes[i].data.title()
+                        ))
+                    }
+                    None => {}
+                }
+            }
+            visiting.remove(&i);
+            done.insert(i);
+            order.push(i);
+            Ok(())
+        }
+        let mut order = vec![];
+        let mut done = BTreeSet::new();
+        let mut visiting = BTreeSet::new();
+        visit(
+            output,
+            &self.nodes,
+            &inputs,
+            &mut visiting,
+            &mut done,
+            &mut order,
+            true,
+        )?;
+        // Disconnected drafts may remain, but cycles anywhere are rejected.
+        for i in 0..self.nodes.len() {
+            visit(
+                i,
+                &self.nodes,
+                &inputs,
+                &mut visiting,
+                &mut done,
+                &mut vec![],
+                false,
+            )?;
+        }
+        let slots: BTreeMap<_, _> = order
+            .iter()
+            .enumerate()
+            .map(|(slot, id)| (*id, slot as u32))
+            .collect();
+        Ok(order
+            .iter()
+            .map(|&i| {
+                let input = |port: usize| slots[&inputs[i][port].unwrap()];
+                match self.nodes[i].data {
+                    NodeKind::Layer { index } => abi::CompositeNode {
+                        kind: 0,
+                        a: index as u32,
+                        b: 0,
+                        mode: 0,
+                        amount: 1.,
+                    },
+                    NodeKind::Filter { filter, amount } => abi::CompositeNode {
+                        kind: 1,
+                        a: input(0),
+                        b: 0,
+                        mode: filter as u32,
+                        amount,
+                    },
+                    NodeKind::Blend { mode, opacity } => abi::CompositeNode {
+                        kind: 2,
+                        a: input(0),
+                        b: input(1),
+                        mode: mode as u32,
+                        amount: opacity,
+                    },
+                    NodeKind::Output => abi::CompositeNode {
+                        kind: 3,
+                        a: input(0),
+                        b: 0,
+                        mode: 0,
+                        amount: 1.,
+                    },
+                }
+            })
+            .collect())
+    }
+}

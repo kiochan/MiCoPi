@@ -1,0 +1,152 @@
+{
+  "id": "native_paint",
+  "actions": [
+    {
+      "id": "native.invert",
+      "title": "Invert Current Layer (Native DLL)",
+      "native": "invert",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "native.checkerboard",
+      "title": "Generate Checkerboard (Native DLL)",
+      "native": "checkerboard",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "cell": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 256
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "native.invert_region",
+      "title": "Invert Region (Native DLL)",
+      "native": "invert_region",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "width",
+          "height"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "native.stats",
+      "title": "Query Native Plugin Instance",
+      "native": "stats",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "read_only": true,
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "calls": {
+            "type": "integer"
+          },
+          "implementation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "calls",
+          "implementation"
+        ]
+      }
+    }
+  ],
+  "panels": [
+    {
+      "id": "native_paint.panel",
+      "title": "Native Plugin",
+      "buttons": [
+        {
+          "title": "Generate Checkerboard · DLL",
+          "action": {
+            "action": "native.checkerboard",
+            "args": {
+              "cell": 32
+            }
+          }
+        },
+        {
+          "title": "Invert Current Layer · DLL",
+          "action": {
+            "action": "native.invert"
+          }
+        },
+        {
+          "title": "Undo",
+          "action": {
+            "action": "history.undo"
+          }
+        }
+      ]
+    }
+  ],
+  "states": [
+    {
+      "id": "native_paint.stats",
+      "title": "Native painting DLL instance statistics",
+      "action": "native.stats",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "calls",
+          "implementation"
+        ],
+        "properties": {
+          "calls": {
+            "type": "integer"
+          },
+          "implementation": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "native_paint.statistics",
+      "title": "Painting DLL Statistics",
+      "category": "Plugin Examples",
+      "binding": {
+        "kind": "state",
+        "resource": "native_paint.stats"
+      }
+    }
+  ]
+}

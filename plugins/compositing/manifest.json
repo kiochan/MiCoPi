@@ -1,0 +1,187 @@
+{
+  "api_version": 1,
+  "id": "compositing",
+  "name": "Node compositing",
+  "requires": [
+    "core"
+  ],
+  "library": "micopi_compositing.dll",
+  "actions": [
+    {
+      "id": "graph.read",
+      "title": "Read Image Graph",
+      "operation": "graph_read"
+    },
+    {
+      "id": "graph.set",
+      "title": "Apply Non-destructive Image Graph",
+      "operation": "graph_set"
+    },
+    {
+      "id": "graph.catalog",
+      "title": "List Filters and Blend Modes",
+      "operation": "graph_catalog"
+    },
+    {
+      "id": "graph.open",
+      "title": "Open Node Editor",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "nodes.open"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    }
+  ],
+  "panels": [
+    {
+      "id": "compositing.nodes",
+      "title": "Node Editor",
+      "builtin": "nodes"
+    }
+  ],
+  "states": [
+    {
+      "id": "compositing.graph",
+      "title": "Document Image Graph",
+      "action": "graph.read",
+      "output_schema": {
+        "type": "object"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "compositing.layer",
+      "title": "Layer Source",
+      "category": "Image",
+      "binding": {
+        "kind": "image",
+        "operation": "layer",
+        "defaults": {
+          "index": 0
+        }
+      },
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Layer Index",
+            "minimum": 0,
+            "maximum": 15
+          }
+        },
+        "required": [
+          "index"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "compositing.filter",
+      "title": "Color Filter",
+      "category": "Image",
+      "binding": {
+        "kind": "image",
+        "operation": "filter",
+        "defaults": {
+          "filter": "invert",
+          "amount": 1
+        }
+      },
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "filter": {
+            "type": "string",
+            "title": "Filter",
+            "enum": [
+              "invert",
+              "grayscale",
+              "brightness",
+              "contrast",
+              "saturation"
+            ]
+          },
+          "amount": {
+            "type": "number",
+            "title": "Amount",
+            "minimum": -1,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "filter",
+          "amount"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "compositing.blend",
+      "title": "Blend Layers",
+      "category": "Image",
+      "binding": {
+        "kind": "image",
+        "operation": "blend",
+        "defaults": {
+          "mode": "normal",
+          "opacity": 1
+        }
+      },
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "title": "Blend Mode",
+            "enum": [
+              "normal",
+              "multiply",
+              "screen",
+              "overlay",
+              "darken",
+              "lighten",
+              "add",
+              "difference"
+            ]
+          },
+          "opacity": {
+            "type": "number",
+            "title": "Opacity",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "mode",
+          "opacity"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "compositing.output",
+      "title": "Canvas Output",
+      "category": "Image",
+      "binding": {
+        "kind": "image",
+        "operation": "output",
+        "defaults": {}
+      },
+      "parameters_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

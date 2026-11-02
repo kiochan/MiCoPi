@@ -1,0 +1,45 @@
+[package]
+name = "micopi"
+version = "0.19.0"
+edition = "2021"
+default-run = "micopi"
+rust-version = "1.88"
+description = "A small, native Rust painting application"
+license = "MIT"
+readme = "README.md"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+
+[features]
+default = ["desktop"]
+desktop = ["dep:eframe", "dep:egui_dock", "dep:raw-window-handle", "dep:egui-snarl"]
+
+[workspace]
+members = ["crates/plugin-api", "plugins/native-paint", "plugins/painting", "plugins/ai-assistant", "plugins/compositing", "tests/fixtures/native-incompatible"]
+default-members = ["."]
+resolver = "2"
+
+[dependencies]
+micopi-plugin-api = { path = "crates/plugin-api", version = "1.1.0" }
+eframe = { version = "=0.33.0", default-features = false, features = ["default_fonts", "glow"], optional = true }
+egui_dock = { version = "=0.18.0", features = ["serde"], optional = true }
+egui-snarl = { version = "=0.9.0", optional = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
+raw-window-handle = { version = "0.6", optional = true }
+image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "bmp"] }
+
+[[bin]]
+name = "micopi"
+path = "src/main.rs"
+required-features = ["desktop"]
+
+[[bin]]
+name = "micopi-cli"
+path = "src/bin/micopi-cli.rs"

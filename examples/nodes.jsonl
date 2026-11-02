@@ -1,0 +1,5 @@
+{"action": "canvas.new", "args": {"width": 640, "height": 480}}
+{"action": "native.checkerboard", "args": {"cell": 40}}
+{"action": "graph.set", "args": {"graph": {"enabled": true, "nodes": [{"id": 1, "kind": "layer", "index": 0, "position": [0, 20]}, {"id": 2, "kind": "filter", "filter": "saturation", "amount": -0.5, "position": [230, 20]}, {"id": 3, "kind": "output", "position": [460, 20]}], "edges": [{"from": 1, "to": 2, "input": 0}, {"from": 2, "to": 3, "input": 0}]}}}
+{"action": "graph.open"}
+{"action": "canvas.export", "args": {"path": "target/test-output/node-demo.png"}}

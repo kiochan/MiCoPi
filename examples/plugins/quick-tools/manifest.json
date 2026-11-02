@@ -1,0 +1,87 @@
+{
+  "api_version": 1,
+  "id": "quick",
+  "name": "Quick tools",
+  "requires": [
+    "painting",
+    "workbench"
+  ],
+  "tools": [
+    {
+      "id": "quick.blue",
+      "title": "Blue Soft Brush",
+      "kind": "brush",
+      "preset": true,
+      "parameters": {
+        "radius": 10,
+        "color": "#3D8EDE",
+        "opacity": 0.8,
+        "hardness": 0.65
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "quick.blue_stroke",
+      "title": "Paint with Blue Soft Brush",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "points": {
+            "type": "array",
+            "minItems": 1
+          }
+        },
+        "required": [
+          "points"
+        ],
+        "additionalProperties": false
+      },
+      "steps": [
+        {
+          "action": "tool.select",
+          "args": {
+            "tool": "quick.blue"
+          }
+        },
+        {
+          "action": "canvas.stroke",
+          "args": {
+            "points": {
+              "$arg": "points"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "panels": [
+    {
+      "id": "quick.panel",
+      "title": "Quick Tools",
+      "buttons": [
+        {
+          "title": "Select Blue Soft Brush",
+          "action": {
+            "action": "tool.select",
+            "args": {
+              "tool": "quick.blue"
+            }
+          }
+        },
+        {
+          "title": "Undo",
+          "action": {
+            "action": "history.undo"
+          }
+        },
+        {
+          "title": "Open Appearance Settings",
+          "action": {
+            "action": "preferences.open"
+          }
+        }
+      ]
+    }
+  ]
+}

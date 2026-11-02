@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows / stable Rust
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare Rust
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          rustup default stable
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Build native DLL and test ABI boundary
+        shell: pwsh
+        run: |
+          cargo build --release --locked -p micopi-native-paint -p micopi-native-incompatible -p micopi-painting-tools -p micopi-ai-assistant -p micopi-compositing
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item target/release/micopi_native_paint.dll plugins/native-paint/micopi_native_paint.dll
+          Copy-Item target/release/micopi_painting_tools.dll plugins/painting/micopi_painting_tools.dll
+          Copy-Item target/release/micopi_ai_assistant.dll plugins/ai-assistant/micopi_ai_assistant.dll
+          Copy-Item target/release/micopi_compositing.dll plugins/compositing/micopi_compositing.dll
+          $env:MICOPI_TEST_BAD_DLL = "$PWD/target/release/micopi_native_incompatible.dll"
+          cargo test --locked native_plugin_dll_lifecycle -- --ignored
+      - name: Test
+        run: cargo test --locked
+      - name: Build release
+        run: cargo build --release --locked
+      - name: Test headless core
+        run: cargo test --no-default-features --locked
+      - name: Verify JSONL and MCP produce identical pixels
+        run: python scripts/smoke-runtime.py --skip-gui --cli target/release/micopi-cli.exe

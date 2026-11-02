@@ -1,0 +1,14 @@
+{
+  "api_version":1,"id":"workflows","name":"Schema-driven plugin nodes","requires":["core"],
+  "actions":[
+    {"id":"node.catalog","title":"Discover Plugin Nodes and Port Schemas","operation":"node_catalog"},
+    {"id":"workflow.read","title":"Read Workflow","operation":"workflow_read"},
+    {"id":"workflow.set","title":"Save Workflow Graph","operation":"workflow_set"},
+    {"id":"workflow.patch","title":"Atomically Patch Nodes, Parameters and Edges","operation":"workflow_patch"},
+    {"id":"workflow.validate","title":"Validate Workflow without Execution","operation":"workflow_validate"},
+    {"id":"workflow.run","title":"Run Workflow through the Unified Pipeline","operation":"workflow_run"},
+    {"id":"workflow.state","title":"Read Public State","operation":"workflow_state"},
+    {"id":"workflow.open","title":"Open Plugin Workflow Editor","steps":[{"action":"ui.dispatch","args":{"id":"nodes.open","value":{"mode":"workflow"}}}],"input_schema":{"type":"object","additionalProperties":false}}
+  ],
+  "states":[{"id":"workflows.graph","title":"Workflow Graph and Validation","action":"workflow.read","output_schema":{"type":"object"}}]
+}

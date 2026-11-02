@@ -1,0 +1,241 @@
+//! MiCoPi native ABI v1. No Rust-owned types or allocations cross this boundary.
+//!
+//! All calls are synchronous on the session's thread. Borrowed strings, host APIs,
+//! reply contexts and pixel buffers must not be retained, freed or used on another
+//! thread. Plugins own their instance allocation and release it in `destroy`.
+//! Every exported callback must catch its own unwinding panics. Native plugins are
+//! trusted code in the host process, not a sandbox.
+use std::ffi::c_void;
+pub const ABI_VERSION: u32 = 1;
+pub const ENTRY_SYMBOL: &[u8] = b"micopi_plugin_v1\0";
+pub const OK: i32 = 0;
+pub const ERROR: i32 = 1;
+pub const MAX_MESSAGE: usize = 8 * 1024 * 1024;
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Bytes {
+    pub data: *const u8,
+    pub len: usize,
+}
+impl Bytes {
+    pub const fn borrowed(bytes: &[u8]) -> Self {
+        Self {
+            data: bytes.as_ptr(),
+            len: bytes.len(),
+        }
+    }
+    /// # Safety
+    /// The producer must provide readable bytes for the duration of the borrow.
+    pub unsafe fn as_slice<'a>(self) -> &'a [u8] {
+        if self.len == 0 {
+            &[]
+        } else {
+            std::slice::from_raw_parts(self.data, self.len)
+        }
+    }
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Reply {
+    pub context: *mut c_void,
+    /// Copies bytes immediately; return nonzero to reject oversized output.
+    pub write: unsafe extern "C" fn(*mut c_void, Bytes) -> i32,
+}
+impl Reply {
+    /// # Safety
+    /// Reply must be the live callback supplied to the current invocation.
+    pub unsafe fn send(self, bytes: &[u8]) -> i32 {
+        (self.write)(self.context, Bytes::borrowed(bytes))
+    }
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Region {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+#[repr(C)]
+pub struct Pixels {
+    pub data: *mut u32,
+    pub len: usize,
+    pub width: u32,
+    pub height: u32,
+    pub stride: u32,
+    pub origin_x: u32,
+    pub origin_y: u32,
+}
+pub type Transform = unsafe extern "C" fn(*mut c_void, *mut Pixels) -> i32;
+#[repr(C)]
+pub struct HostApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub context: *mut c_void,
+    /// Dispatch through the shared pipeline. Cross-plugin calls are supported;
+    /// cycles/same-instance reentry and writes from read-only scopes are rejected.
+    pub dispatch: unsafe extern "C" fn(*mut c_void, Bytes, Bytes, Reply) -> i32,
+    /// Transform a contiguous straight-alpha 0xAARRGGBB region of the active layer.
+    /// A successful callback commits one undoable edit; a failed callback commits
+    /// nothing. Host calls from inside the transform callback are rejected.
+    pub edit_region:
+        unsafe extern "C" fn(*mut c_void, Region, Option<Transform>, *mut c_void) -> i32,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Header {
+    pub abi_version: u32,
+    pub struct_size: u32,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct PluginApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    /// Returns a static UTF-8 descriptor: {id, actions, tools, panels}.
+    pub describe: Option<unsafe extern "C" fn() -> Bytes>,
+    /// Optional paired callbacks; create one instance per document Session.
+    pub create: Option<unsafe extern "C" fn() -> *mut c_void>,
+    pub destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+    /// Write exactly one JSON result (or JSON error on nonzero status).
+    pub invoke:
+        Option<unsafe extern "C" fn(*mut c_void, Bytes, Bytes, *const HostApi, Reply) -> i32>,
+}
+pub type Entry = unsafe extern "C" fn() -> *const PluginApi;
+
+/// Convenience receiver for plugin-side host calls. Memory remains plugin-owned.
+pub unsafe extern "C" fn collect(context: *mut c_void, bytes: Bytes) -> i32 {
+    if context.is_null() || bytes.len > MAX_MESSAGE || (bytes.len != 0 && bytes.data.is_null()) {
+        return ERROR;
+    }
+    let output = &mut *(context as *mut Vec<u8>);
+    if output.len().saturating_add(bytes.len) > MAX_MESSAGE {
+        return ERROR;
+    }
+    output.extend_from_slice(bytes.as_slice());
+    OK
+}
+
+// Additive tool extension. The action ABI above is unchanged.
+pub const TOOL_ENTRY_SYMBOL: &[u8] = b"micopi_tools_v1\0";
+pub const TOOL_ABI_VERSION: u32 = 1;
+pub const DOWN: u32 = 0;
+pub const MOVE: u32 = 1;
+pub const UP: u32 = 2;
+pub const CANCEL: u32 = 3;
+pub const PEN: u32 = 1;
+pub const ERASER: u32 = 2;
+pub const PRESSURE_SIZE: u32 = 1;
+pub const PRESSURE_OPACITY: u32 = 2;
+pub const DRAWING: u32 = 1;
+pub const PANNING: u32 = 2;
+pub const COLOR_CHANGED: u32 = 4;
+pub const VIEW_CHANGED: u32 = 8;
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ToolParameters {
+    pub radius: f32,
+    pub opacity: f32,
+    pub hardness: f32,
+    pub color: u32,
+    pub stabilizer: f32,
+    pub pressure_gamma: f32,
+    pub minimum_radius: f32,
+    pub flags: u32,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ToolSample {
+    pub phase: u32,
+    pub flags: u32,
+    pub x: f32,
+    pub y: f32,
+    pub pressure: f32,
+    pub time: u32,
+    pub view_x: f32,
+    pub view_y: f32,
+    pub width: u32,
+    pub height: u32,
+    pub zoom: f32,
+}
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct ToolOutput {
+    pub flags: u32,
+    pub color: u32,
+    pub zoom: f32,
+    pub pan_dx: f32,
+    pub pan_dy: f32,
+}
+#[repr(C)]
+pub struct ToolHost {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub context: *mut c_void,
+    /// Direct strided pixels, scoped to this callback; undo tiles are captured once
+    /// per stroke before exposing memory. No region-sized copies or JSON.
+    /// Write only the stated width/height, not the row gaps. Any error aborts the
+    /// entire tool stroke and restores captured tiles; do not retain pointers.
+    pub pixels: unsafe extern "C" fn(*mut c_void, Region, Option<Transform>, *mut c_void) -> i32,
+    pub pick: unsafe extern "C" fn(*mut c_void, f32, f32, *mut u32) -> i32,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ToolApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub create: Option<unsafe extern "C" fn() -> *mut c_void>,
+    pub destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+    /// parameters is present on down only; the plugin freezes it until up/cancel.
+    pub pointer: Option<
+        unsafe extern "C" fn(
+            *mut c_void,
+            u32,
+            *const ToolSample,
+            *const ToolParameters,
+            *const ToolHost,
+            *mut ToolOutput,
+        ) -> i32,
+    >,
+}
+pub type ToolEntry = unsafe extern "C" fn() -> *const ToolApi;
+
+/// Additive synchronous compositor extension. Input layers are immutable;
+/// output is a separate strided ARGB region. No pointer may outlive the call.
+pub const COMPOSITOR_SYMBOL: &[u8] = b"micopi_compositor_v1\0";
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct CompositeLayer {
+    pub data: *const u32,
+    pub len: usize,
+    pub opacity: u32,
+    pub visible: u32,
+    pub mode: u32,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct CompositeNode {
+    pub kind: u32, // 0 layer, 1 filter, 2 blend, 3 output
+    pub a: u32,
+    pub b: u32,
+    pub mode: u32,
+    pub amount: f32,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct CompositorApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub render: Option<
+        unsafe extern "C" fn(
+            *const CompositeNode,
+            usize,
+            *const CompositeLayer,
+            usize,
+            u32,
+            u32,
+            *mut Pixels,
+        ) -> i32,
+    >,
+}
+pub type CompositorEntry = unsafe extern "C" fn() -> *const CompositorApi;

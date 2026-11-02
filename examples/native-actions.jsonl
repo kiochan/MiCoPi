@@ -1,0 +1,6 @@
+{"action":"canvas.new","args":{"width":512,"height":384}}
+{"action":"native.checkerboard","args":{"cell":32}}
+{"action":"native.invert_region","args":{"x":64,"y":64,"width":256,"height":192}}
+{"action":"canvas.export","args":{"path":"native-demo.png"}}
+{"action":"document.save","args":{"path":"native-demo.mcp"}}
+{"action":"native.stats"}

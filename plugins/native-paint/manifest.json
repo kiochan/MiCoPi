@@ -1,0 +1,7 @@
+{
+  "api_version": 1,
+  "id": "native_paint",
+  "name": "Native Painting Plugin · Rust DLL",
+  "requires": ["core", "painting", "workbench"],
+  "library": "micopi_native_paint.dll"
+}

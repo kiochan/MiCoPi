@@ -1,0 +1,23 @@
+name: Bug report
+description: Report a reproducible application problem
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Application and Windows versions. For pen issues, include tablet, driver and Windows Ink settings.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide minimal steps, screenshots or a small example.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual results
+    validations:
+      required: true

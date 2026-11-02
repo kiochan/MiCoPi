@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "keybindings": {
+    "commands.open": [
+      "Ctrl+Shift+P"
+    ],
+    "keybindings.edit": [
+      "Ctrl+Alt+Shift+K"
+    ],
+    "tool.brush": [
+      "V",
+      "Shift+V"
+    ],
+    "tool.eraser": [
+      "E",
+      "Shift+E"
+    ],
+    "hold.pan": [
+      "Space"
+    ],
+    "hold.pick": [
+      "Alt"
+    ],
+    "wheel.zoom": [
+      "Ctrl+Wheel"
+    ],
+    "wheel.horizontal": [
+      "Shift+Wheel"
+    ],
+    "wheel.vertical": [
+      "Wheel"
+    ]
+  },
+  "ui": {
+    "language": "en"
+  }
+}

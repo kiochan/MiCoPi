@@ -1,0 +1,69 @@
+//! Built-in workbench plugin action handlers; callable without a GUI.
+use crate::application::{ActionError, ActionResult, Operation, Session};
+use serde_json::{json, Value};
+use std::path::PathBuf;
+pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
+    use Operation::*;
+    let path = || {
+        args["path"]
+            .as_str()
+            .map(PathBuf::from)
+            .ok_or_else(|| ActionError::new("invalid_arguments", "Missing path"))
+    };
+    match op {
+        SettingsRead => {
+            let config = crate::configuration::Settings::load(path()?)
+                .map_err(|e| ActionError::new("settings", e))?;
+            Ok(serde_json::from_str(
+                &config
+                    .encode()
+                    .map_err(|e| ActionError::new("settings", e))?,
+            )?)
+        }
+        SettingsWrite => {
+            let path = path()?;
+            let mut value: Value = if let Some(document) = args.get("document") {
+                document.clone()
+            } else {
+                let existing = crate::configuration::Settings::load(path.clone())
+                    .map_err(|e| ActionError::new("settings", e))?;
+                serde_json::from_str(
+                    &existing
+                        .encode()
+                        .map_err(|e| ActionError::new("settings", e))?,
+                )?
+            };
+            for key in ["ui", "keybindings", "painting", "plugins"] {
+                if let Some(patch) = args[key].as_object() {
+                    for (name, setting) in patch {
+                        value[key][name] = setting.clone();
+                    }
+                }
+            }
+            let updated = crate::configuration::Settings::decode(&value.to_string(), path.clone())
+                .map_err(|e| ActionError::new("settings", e))?;
+            updated
+                .save()
+                .map_err(|e| ActionError::new("settings", e))?;
+            s.ui_effects
+                .push_back(json!({"id":"settings.reload","value":path}));
+            while s.ui_effects.len() > 128 {
+                s.ui_effects.pop_front();
+            }
+            Ok(json!({"path":path}))
+        }
+        Ui => {
+            let id = args["id"].as_str().unwrap();
+            s.ui[id] = args.get("value").cloned().unwrap_or(Value::Null);
+            s.ui_effects.push_back(args.clone());
+            while s.ui_effects.len() > 128 {
+                s.ui_effects.pop_front();
+            }
+            Ok(json!({"id":id,"value":s.ui[id]}))
+        }
+        _ => Err(ActionError::new(
+            "internal",
+            "operation routed to wrong plugin",
+        )),
+    }
+}

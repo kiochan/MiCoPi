@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "micopi": {
+      "command": "C:/path/to/MiCoPi/micopi-cli.exe",
+      "args": [
+        "mcp",
+        "--attach",
+        "C:/path/to/MiCoPi/session.json"
+      ]
+    }
+  }
+}

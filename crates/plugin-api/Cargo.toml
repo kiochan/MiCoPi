@@ -1,0 +1,10 @@
+[package]
+name = "micopi-plugin-api"
+version = "1.2.0"
+edition = "2021"
+rust-version = "1.88"
+license = "MIT"
+description = "Versioned C ABI for MiCoPi native plugins"
+
+[lib]
+path = "src/lib.rs"

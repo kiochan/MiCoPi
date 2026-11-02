@@ -1,0 +1,7 @@
+{"action":"canvas.new","args":{"width":256,"height":192}}
+{"action":"workflow.set","args":{"graph":{"version":1,"nodes":[{"id":1,"type":"state.document.active","position":[0,0],"parameters":{}},{"id":2,"type":"action.canvas.new","position":[420,0],"parameters":{}},{"id":3,"type":"action.native.checkerboard","position":[840,0],"parameters":{"cell":16}}],"edges":[{"from":1,"output":"width","to":2,"input":"width"},{"from":1,"output":"height","to":2,"input":"height"},{"from":2,"output":"$exec","to":3,"input":"$exec"}]}}}
+{"action":"workflow.validate","args":{}}
+{"action":"workflow.patch","args":{"operations":[{"op":"move_node","id":2,"position":[460,0]}]}}
+{"action":"workflow.run","args":{"dry_run":true}}
+{"action":"workflow.run","args":{}}
+{"action":"canvas.export","args":{"path":"target/test-output/workflow-demo.png"}}

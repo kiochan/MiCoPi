@@ -1,0 +1,139 @@
+{
+  "api_version": 1,
+  "id": "core",
+  "name": "Canvas & document",
+  "actions": [
+    {
+      "id": "canvas.state",
+      "title": "Inspect document and selected tool",
+      "operation": "state",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "dirty": {
+            "type": "boolean"
+          },
+          "selected_tool": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "view": {
+            "type": "object"
+          },
+          "layers": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "width",
+          "height",
+          "revision",
+          "dirty",
+          "parameters",
+          "layers"
+        ]
+      }
+    },
+    {
+      "id": "canvas.new",
+      "title": "New canvas",
+      "operation": "new"
+    },
+    {
+      "id": "document.open",
+      "title": "Open project or image",
+      "operation": "open"
+    },
+    {
+      "id": "document.save",
+      "title": "Save project",
+      "operation": "save"
+    },
+    {
+      "id": "canvas.export",
+      "title": "Export transparent PNG",
+      "operation": "export"
+    },
+    {
+      "id": "canvas.snapshot",
+      "title": "Render canvas as PNG",
+      "operation": "render"
+    },
+    {
+      "id": "history.undo",
+      "title": "Undo",
+      "operation": "undo"
+    },
+    {
+      "id": "history.redo",
+      "title": "Redo",
+      "operation": "redo"
+    },
+    {
+      "id": "layer.add",
+      "title": "Add layer",
+      "operation": "add_layer"
+    },
+    {
+      "id": "layer.select",
+      "title": "Select layer",
+      "operation": "select_layer"
+    },
+    {
+      "id": "layer.set",
+      "title": "Set layer visibility and opacity",
+      "operation": "layer_properties"
+    },
+    {
+      "id": "layer.clear",
+      "title": "Clear current layer",
+      "operation": "clear_layer"
+    },
+    {
+      "id": "plugins.list",
+      "title": "List loaded plugins and diagnostics",
+      "operation": "plugins"
+    },
+    {
+      "id": "events.list",
+      "title": "Read action events",
+      "operation": "events"
+    },
+    {
+      "id": "settings.read",
+      "title": "Read UI and keybinding configuration",
+      "operation": "settings_read"
+    },
+    {
+      "id": "settings.update",
+      "title": "Update UI and keybinding configuration",
+      "operation": "settings_write"
+    },
+    {
+      "id": "app.describe",
+      "title": "Discover application capabilities and plugin state contracts",
+      "operation": "describe"
+    },
+    {
+      "id": "context.read",
+      "title": "Read document, files, input and public plugin state",
+      "operation": "context_read"
+    },
+    {
+      "id": "pipeline.run",
+      "title": "Validate and execute a sequence with result references",
+      "operation": "pipeline_run"
+    }
+  ]
+}

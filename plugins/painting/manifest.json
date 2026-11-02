@@ -1,0 +1,150 @@
+{
+  "api_version": 1,
+  "id": "painting",
+  "name": "Painting tools",
+  "requires": [
+    "core"
+  ],
+  "tools": [
+    {
+      "id": "brush",
+      "title": "Brush Tool",
+      "kind": "brush",
+      "parameters": {},
+      "preset": false,
+      "native": 1
+    },
+    {
+      "id": "eraser",
+      "title": "Eraser",
+      "kind": "eraser",
+      "parameters": {},
+      "preset": false,
+      "native": 2
+    },
+    {
+      "id": "picker",
+      "title": "Eyedropper",
+      "kind": "picker",
+      "parameters": {},
+      "preset": false,
+      "native": 3
+    },
+    {
+      "id": "hand",
+      "title": "Hand",
+      "kind": "hand",
+      "parameters": {},
+      "preset": false,
+      "native": 4
+    },
+    {
+      "id": "zoom",
+      "title": "Zoom",
+      "kind": "zoom",
+      "parameters": {},
+      "preset": false,
+      "native": 5
+    },
+    {
+      "id": "pencil",
+      "title": "Pencil",
+      "kind": "brush",
+      "parameters": {
+        "radius": 2,
+        "opacity": 1,
+        "hardness": 1
+      },
+      "preset": true,
+      "native": 1
+    },
+    {
+      "id": "ink",
+      "title": "Ink",
+      "kind": "brush",
+      "parameters": {
+        "radius": 6,
+        "opacity": 1,
+        "hardness": 0.9
+      },
+      "preset": true,
+      "native": 1
+    },
+    {
+      "id": "paint",
+      "title": "Brush Preset",
+      "kind": "brush",
+      "parameters": {
+        "radius": 12,
+        "opacity": 0.85,
+        "hardness": 0.8
+      },
+      "preset": true,
+      "native": 1
+    },
+    {
+      "id": "soft",
+      "title": "Soft",
+      "kind": "brush",
+      "parameters": {
+        "radius": 24,
+        "opacity": 0.45,
+        "hardness": 0.1
+      },
+      "preset": true,
+      "native": 1
+    },
+    {
+      "id": "marker",
+      "title": "Marker",
+      "kind": "brush",
+      "parameters": {
+        "radius": 18,
+        "opacity": 0.5,
+        "hardness": 1
+      },
+      "preset": true,
+      "native": 1
+    },
+    {
+      "id": "erase",
+      "title": "Eraser Preset",
+      "kind": "eraser",
+      "preset": true,
+      "parameters": {
+        "radius": 20,
+        "opacity": 1,
+        "hardness": 1
+      },
+      "native": 2
+    }
+  ],
+  "actions": [
+    {
+      "id": "tool.select",
+      "title": "Select active tool",
+      "operation": "select_tool"
+    },
+    {
+      "id": "brush.set",
+      "title": "Configure brush and pressure dynamics",
+      "operation": "parameters"
+    },
+    {
+      "id": "canvas.pointer",
+      "title": "Send a document-coordinate tool input sample",
+      "operation": "pointer"
+    },
+    {
+      "id": "canvas.stroke",
+      "title": "Execute a complete stroke using the selected tool",
+      "operation": "stroke"
+    },
+    {
+      "id": "color.pick",
+      "title": "Pick composited color",
+      "operation": "pick"
+    }
+  ],
+  "library": "micopi_painting_tools.dll"
+}

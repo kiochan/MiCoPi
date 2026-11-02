@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MiCoPi settings",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Logical points, scaled by system DPI. Heights must contain font size plus padding; runtime validates dependent dimensions.",
+      "properties": {
+        "font_size": {
+          "type": "number",
+          "minimum": 11,
+          "maximum": 22,
+          "default": 14
+        },
+        "small_font_size": {
+          "type": "number",
+          "minimum": 10,
+          "maximum": 18,
+          "default": 12
+        },
+        "item_spacing": {
+          "type": "number",
+          "minimum": 4,
+          "maximum": 20,
+          "default": 8
+        },
+        "section_spacing": {
+          "type": "number",
+          "minimum": 8,
+          "maximum": 40,
+          "default": 16
+        },
+        "panel_padding": {
+          "type": "number",
+          "minimum": 6,
+          "maximum": 32,
+          "default": 12
+        },
+        "outer_padding": {
+          "type": "number",
+          "minimum": 4,
+          "maximum": 24,
+          "default": 8
+        },
+        "control_height": {
+          "type": "number",
+          "minimum": 24,
+          "maximum": 48,
+          "default": 30
+        },
+        "title_height": {
+          "type": "number",
+          "minimum": 36,
+          "maximum": 60,
+          "default": 40
+        },
+        "toolbar_height": {
+          "type": "number",
+          "minimum": 32,
+          "maximum": 60,
+          "default": 40
+        },
+        "tab_height": {
+          "type": "number",
+          "minimum": 28,
+          "maximum": 52,
+          "default": 34
+        },
+        "corner_radius": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 12,
+          "default": 5
+        },
+        "icon_size": {
+          "type": "number",
+          "minimum": 16,
+          "maximum": 28,
+          "default": 20
+        },
+        "left_panel_width": {
+          "type": "number",
+          "minimum": 200,
+          "maximum": 440,
+          "default": 244
+        },
+        "right_panel_width": {
+          "type": "number",
+          "minimum": 200,
+          "maximum": 440,
+          "default": 252
+        },
+        "canvas_margin": {
+          "type": "number",
+          "minimum": 8,
+          "maximum": 96,
+          "default": 32
+        },
+        "theme": {
+          "type": "string",
+          "enum": [
+            "graphite",
+            "light",
+            "warm"
+          ],
+          "default": "graphite"
+        },
+        "accent": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "default": "#76C7BA"
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "en",
+            "zh-CN",
+            "ja",
+            "ko"
+          ],
+          "default": "en",
+          "description": "Display language. English is the default; changes apply immediately."
+        }
+      }
+    },
+    "keybindings": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "painting": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Painting defaults shared by desktop and headless sessions.",
+      "properties": {
+        "stabilizer": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.35
+        },
+        "pressure_size": {
+          "type": "boolean",
+          "default": true
+        },
+        "pressure_opacity": {
+          "type": "boolean",
+          "default": false
+        },
+        "pressure_gamma": {
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 4,
+          "default": 1
+        },
+        "minimum_radius": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.08
+        }
+      }
+    },
+    "plugins": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "disabled": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 96,
+            "pattern": "^[a-z0-9._-]+$"
+          },
+          "default": []
+        }
+      },
+      "description": "Disabled plugin IDs; takes effect after restarting the runtime."
+    }
+  }
+}

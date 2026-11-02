@@ -1,0 +1,17 @@
+name: Feature request
+description: Describe a painting workflow need
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Use case and problem
+      description: What task do you need to complete, and what currently prevents it?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include references or alternatives when useful.
+    validations:
+      required: true

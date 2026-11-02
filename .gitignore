@@ -1,0 +1,55 @@
+# Cargo/build output and project-local portable toolchains
+/target/
+/dist/
+/coverage/
+*.profraw
+*.profdata
+*.pdb
+*.ilk
+
+# Local artwork and scratch work (keep intentional fixtures/assets in source)
+/artworks/
+/scratch/
+*.mcp.tmp
+MiCoPi.workspace.ini
+/settings.json
+/workspace.egui.json
+/session.json
+*.json.tmp
+*.ini.tmp
+
+# Local environment, editor state and assistant runtime settings
+/.env
+/.env.*
+!/.env.example
+/.vs/
+/.idea/
+/.codex/
+/.agents/
+*.rs.bk
+__pycache__/
+*.pyc
+*.swp
+*.swo
+*~
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Cargo.lock is intentionally tracked: MiCoPi is an application.
+
+# Outputs from the checked-in headless example
+/headless-demo.png
+/headless-demo.mcp
+
+# Native plugin build outputs (sources and manifests remain tracked)
+/plugins/**/*.dll
+/plugins/**/*.pdb
+/plugins/**/*.so
+/plugins/**/*.dylib
+
+/native-demo.png
+/native-demo.mcp
+

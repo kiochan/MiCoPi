@@ -1,0 +1,504 @@
+use super::{Action, ActionError, ActionResult, Operation};
+use crate::{
+    engine::Document,
+    plugins::{validate, Registry},
+};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::{collections::VecDeque, path::PathBuf};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolKind {
+    Brush,
+    Eraser,
+    Picker,
+    Hand,
+    Zoom,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Parameters {
+    pub radius: f32,
+    pub opacity: f32,
+    pub hardness: f32,
+    pub color: String,
+    pub background_color: String,
+    pub stabilizer: f32,
+    pub pressure_size: bool,
+    pub pressure_opacity: bool,
+    pub pressure_gamma: f32,
+    pub minimum_radius: f32,
+}
+impl Default for Parameters {
+    fn default() -> Self {
+        Self {
+            radius: 6.,
+            opacity: 1.,
+            hardness: 0.85,
+            color: "#333743".into(),
+            background_color: "#FFFFFF".into(),
+            stabilizer: 0.35,
+            pressure_size: true,
+            pressure_opacity: false,
+            pressure_gamma: 1.,
+            minimum_radius: 0.08,
+        }
+    }
+}
+impl Parameters {
+    pub fn patched(&self, patch: &Value) -> Result<Self, ActionError> {
+        validate(&Operation::Parameters.schema(), patch)?;
+        let mut value = serde_json::to_value(self)?;
+        for (k, v) in patch
+            .as_object()
+            .ok_or_else(|| ActionError::new("invalid_arguments", "Arguments must be an object"))?
+        {
+            value[k] = v.clone();
+        }
+        let mut next: Self = serde_json::from_value(value)?;
+        next.color = format!("#{:06X}", parse_color(&next.color)?);
+        next.background_color = format!("#{:06X}", parse_color(&next.background_color)?);
+        Ok(next)
+    }
+    pub fn brush(&self, erase: bool, pressure: f32, pen: bool) -> crate::engine::Brush {
+        let brush = crate::engine::Brush {
+            radius: self.radius,
+            opacity: self.opacity,
+            hardness: self.hardness,
+            color: parse_color(&self.color).unwrap_or(0),
+            erase,
+        };
+        if pen {
+            crate::engine::input::Dynamics {
+                size: self.pressure_size,
+                opacity: self.pressure_opacity,
+                gamma: self.pressure_gamma,
+                minimum: self.minimum_radius,
+            }
+            .apply(brush, pressure)
+        } else {
+            brush
+        }
+    }
+}
+pub fn parse_color(text: &str) -> Result<u32, ActionError> {
+    if text.len() == 7 && text.starts_with('#') {
+        u32::from_str_radix(&text[1..], 16)
+            .map_err(|_| ActionError::new("invalid_color", "Color requires #RRGGBB"))
+    } else {
+        Err(ActionError::new("invalid_color", "Color requires #RRGGBB"))
+    }
+}
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PointerPhase {
+    Down,
+    Move,
+    Up,
+    Cancel,
+}
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Pointer {
+    pub phase: PointerPhase,
+    pub x: f32,
+    pub y: f32,
+    #[serde(default = "one")]
+    pub pressure: f32,
+    #[serde(default)]
+    pub time: u32,
+    #[serde(default)]
+    pub pen: bool,
+    #[serde(default)]
+    pub eraser: bool,
+    #[serde(default)]
+    pub tool_override: Option<ToolKind>,
+    #[serde(default)]
+    pub view_x: Option<f32>,
+    #[serde(default)]
+    pub view_y: Option<f32>,
+}
+fn one() -> f32 {
+    1.
+}
+impl Pointer {
+    pub fn validate(&self) -> Result<(), ActionError> {
+        if !self.x.is_finite()
+            || !self.y.is_finite()
+            || self.x.abs() > 32768.
+            || self.y.abs() > 32768.
+            || !self.pressure.is_finite()
+            || !(0.0..=1.0).contains(&self.pressure)
+            || self
+                .view_x
+                .is_some_and(|x| !x.is_finite() || x.abs() > 32768.)
+            || self
+                .view_y
+                .is_some_and(|x| !x.is_finite() || x.abs() > 32768.)
+        {
+            Err(ActionError::new(
+                "invalid_pointer",
+                "Invalid coordinates or pressure",
+            ))
+        } else {
+            Ok(())
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct View {
+    pub zoom: f32,
+    pub pan_x: f32,
+    pub pan_y: f32,
+    pub fit: bool,
+}
+impl Default for View {
+    fn default() -> Self {
+        Self {
+            zoom: 1.,
+            pan_x: 0.,
+            pan_y: 0.,
+            fit: true,
+        }
+    }
+}
+#[derive(Clone, Debug, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum EventKind {
+    Action {
+        action: String,
+        args: Value,
+        success: bool,
+        error: Option<String>,
+    },
+    Pointer {
+        sample: Pointer,
+    },
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct Event {
+    pub sequence: u64,
+    pub revision: u64,
+    #[serde(flatten)]
+    pub event: EventKind,
+}
+pub struct Session {
+    pub(crate) workflow_stack: Vec<crate::engine::workflow::Graph>,
+    pub(crate) doc: Document,
+    pub file: Option<PathBuf>,
+    pub source_file: Option<PathBuf>,
+    pub runtime: &'static str,
+    pub(crate) last_pointer: Option<Pointer>,
+    pub(crate) pen_observed: bool,
+    pub registry: Registry,
+    pub selected_tool: String,
+    pub tool: ToolKind,
+    pub parameters: Parameters,
+    pub view: View,
+    pub revision: u64,
+    pub ui: Value,
+    pub ui_effects: VecDeque<Value>,
+    pub(crate) stroke: crate::plugins::tools::StrokeEngine,
+    pub(crate) events: VecDeque<Event>,
+    pub(crate) sequence: u64,
+    pub(crate) native_instances:
+        std::collections::BTreeMap<String, crate::plugins::native::Instance>,
+    pub(crate) native_stack: Vec<String>,
+    pub(crate) read_depth: usize,
+    pub(crate) execution_depth: usize,
+    pub(crate) remaining_actions: usize,
+    pub(crate) tool_instances:
+        std::collections::BTreeMap<String, crate::plugins::native::ToolInstance>,
+}
+impl Session {
+    pub fn new(registry: Registry) -> Result<Self, ActionError> {
+        let fallback = crate::plugins::ToolDefinition {
+            id: "brush".into(),
+            title: "Brush (Plugin Unavailable)".into(),
+            kind: ToolKind::Brush,
+            preset: false,
+            icon: None,
+            native: None,
+            parameters: Value::Null,
+        };
+        let tool = registry
+            .tools
+            .get("brush")
+            .or_else(|| registry.tools.values().next())
+            .unwrap_or(&fallback);
+        let parameters = if tool.parameters.is_null() {
+            Parameters::default()
+        } else {
+            Parameters::default().patched(&tool.parameters)?
+        };
+        let mut doc = Document::new(1200, 900);
+        doc.renderer = registry.renderer();
+        Ok(Self {
+            workflow_stack: vec![],
+            selected_tool: tool.id.clone(),
+            tool: tool.kind,
+            registry,
+            doc,
+            file: None,
+            source_file: None,
+            runtime: "headless",
+            last_pointer: None,
+            pen_observed: false,
+            parameters,
+            view: View::default(),
+            revision: 0,
+            ui: json!({}),
+            ui_effects: VecDeque::new(),
+            stroke: Default::default(),
+            events: VecDeque::with_capacity(512),
+            sequence: 0,
+            native_instances: Default::default(),
+            native_stack: vec![],
+            read_depth: 0,
+            execution_depth: 0,
+            remaining_actions: 1024,
+            tool_instances: Default::default(),
+        })
+    }
+    pub fn is_drawing(&self) -> bool {
+        self.stroke.drawing()
+    }
+    pub fn is_panning(&self) -> bool {
+        self.stroke.panning()
+    }
+    pub fn state(&self) -> Value {
+        json!({"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":self.parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
+    }
+    pub fn apply(&mut self, action: Action) -> ActionResult {
+        if self.execution_depth == 0 {
+            self.remaining_actions = 1024;
+        }
+        if self.execution_depth >= 16 || self.remaining_actions == 0 {
+            return Err(ActionError::new(
+                "execution_limit",
+                "Pipeline depth or execution budget exceeded",
+            ));
+        }
+        self.execution_depth += 1;
+        let result = self.apply_inner(action);
+        self.execution_depth -= 1;
+        result
+    }
+    pub(crate) fn validate_action(&self, action: &Action) -> Result<(), ActionError> {
+        self.plan(action, 0, &mut vec![])
+    }
+    fn apply_inner(&mut self, action: Action) -> ActionResult {
+        if action.expected_revision.is_some_and(|r| r != self.revision) {
+            return Err(ActionError::new(
+                "revision_conflict",
+                format!("Current revision is {}", self.revision),
+            ));
+        }
+        let mut plan = vec![];
+        self.plan(&action, 0, &mut plan)?;
+        if self.read_depth != 0
+            && plan
+                .iter()
+                .any(|(id, _, _)| !self.registry.actions[id].is_read_only())
+        {
+            return Err(ActionError::new(
+                "read_only",
+                "Read-only queries cannot execute mutations",
+            ));
+        }
+        let mut result = json!({});
+        for (index, (id, op, args)) in plan.into_iter().enumerate() {
+            let event_args = args.clone();
+            if self.remaining_actions == 0 {
+                return Err(ActionError::new(
+                    "execution_limit",
+                    "Execution budget exhausted",
+                ));
+            }
+            self.remaining_actions -= 1;
+            let read_only = self.registry.actions[&id].is_read_only();
+            if read_only {
+                self.read_depth += 1;
+            }
+            let outcome = match op {
+                Some(op) => self.execute(op, args),
+                None => crate::plugins::native::execute(self, &id, args),
+            };
+            if read_only {
+                self.read_depth -= 1;
+            }
+            match outcome {
+                Ok(value) => {
+                    let failed = value.get("ok") == Some(&Value::Bool(false));
+                    if !read_only
+                        && !matches!(op, Some(Operation::PipelineRun | Operation::WorkflowRun))
+                    {
+                        self.revision += 1;
+                    }
+                    if !read_only {
+                        self.record(EventKind::Action {
+                            action: id,
+                            args: event_args,
+                            success: !failed,
+                            error: failed.then(|| value["error"].to_string()),
+                        });
+                    }
+                    result = value;
+                    if failed {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    self.record(EventKind::Action {
+                        action: id,
+                        args: event_args,
+                        success: false,
+                        error: Some(e.message.clone()),
+                    });
+                    return Err(ActionError::new(
+                        &e.code,
+                        format!(
+                            "{} ({index} steps completed; sequential actions do not roll back previous steps)",
+                            e.message
+                        ),
+                    ));
+                }
+            }
+        }
+        Ok(json!({"revision":self.revision,"result":result}))
+    }
+    fn plan(
+        &self,
+        action: &Action,
+        depth: usize,
+        out: &mut Vec<(String, Option<Operation>, Value)>,
+    ) -> Result<(), ActionError> {
+        if depth > 8 || out.len() >= 256 {
+            return Err(ActionError::new(
+                "action_limit",
+                "Macro action cycle or execution budget exceeded",
+            ));
+        }
+        let definition = self
+            .registry
+            .actions
+            .get(&action.action)
+            .ok_or_else(|| ActionError::new("unknown_action", &action.action))?;
+        validate(&definition.schema(), &action.args)?;
+        if let Some(op) = definition.operation {
+            validate(&op.schema(), &action.args)?;
+            out.push((action.action.clone(), Some(op), action.args.clone()));
+        } else if definition.native.is_some() {
+            out.push((action.action.clone(), None, action.args.clone()));
+        } else {
+            for step in &definition.steps {
+                let mut next = step.clone();
+                next.args = expand(&step.args, &action.args)?;
+                self.plan(&next, depth + 1, out)?;
+            }
+        }
+        Ok(())
+    }
+    fn execute(&mut self, op: Operation, args: Value) -> ActionResult {
+        crate::plugins::execute(self, op, args)
+    }
+    pub fn pointer(&mut self, sample: Pointer) -> Result<(), ActionError> {
+        if self.read_depth != 0 {
+            return Err(ActionError::new(
+                "read_only",
+                "Read-only queries cannot paint",
+            ));
+        }
+        sample.validate()?;
+        let mut stroke = std::mem::take(&mut self.stroke);
+        let result = stroke.input(self, sample);
+        self.stroke = stroke;
+        if result.is_ok() {
+            self.last_pointer = Some(sample);
+            self.pen_observed |= sample.pen;
+            self.revision += 1;
+            self.record(EventKind::Pointer { sample });
+        }
+        result
+    }
+    #[cfg(test)]
+    pub(crate) fn pointer_reference(
+        &mut self,
+        backend: &mut crate::plugins::tool_reference::StrokeEngine,
+        sample: Pointer,
+    ) -> Result<(), ActionError> {
+        sample.validate()?;
+        let result = backend.input(self, sample);
+        if result.is_ok() {
+            self.revision += 1;
+            self.record(EventKind::Pointer { sample });
+        }
+        result
+    }
+    pub fn finish_stroke(&mut self) {
+        if let Some(last) = self.stroke.last_sample() {
+            let _ = self.pointer(Pointer {
+                phase: PointerPhase::Up,
+                ..last
+            });
+        }
+    }
+    pub fn pick(&mut self, x: f32, y: f32) -> Result<(), ActionError> {
+        if !x.is_finite()
+            || !y.is_finite()
+            || x < 0.
+            || y < 0.
+            || x >= self.doc.width as f32
+            || y >= self.doc.height as f32
+        {
+            return Err(ActionError::new(
+                "outside_canvas",
+                "Eyedropper coordinates are outside the canvas",
+            ));
+        }
+        self.doc.compose();
+        let c = self.doc.composite[y as usize * self.doc.width + x as usize];
+        if c >> 24 != 0 {
+            self.parameters.color = format!("#{:06X}", c & 0xffffff);
+        }
+        Ok(())
+    }
+    fn record(&mut self, event: EventKind) {
+        self.sequence += 1;
+        if self.events.len() == 512 {
+            self.events.pop_front();
+        }
+        self.events.push_back(Event {
+            sequence: self.sequence,
+            revision: self.revision,
+            event,
+        });
+    }
+}
+fn expand(template: &Value, args: &Value) -> Result<Value, ActionError> {
+    if let Some(obj) = template.as_object() {
+        if obj.len() == 1 {
+            if let Some(key) = obj.get("$arg").and_then(Value::as_str) {
+                return args.get(key).cloned().ok_or_else(|| {
+                    ActionError::new(
+                        "invalid_arguments",
+                        format!("Macro action is missing argument {key}"),
+                    )
+                });
+            }
+        }
+        let mut out = serde_json::Map::new();
+        for (k, v) in obj {
+            out.insert(k.clone(), expand(v, args)?);
+        }
+        return Ok(Value::Object(out));
+    }
+    if let Some(items) = template.as_array() {
+        return items
+            .iter()
+            .map(|v| expand(v, args))
+            .collect::<Result<Vec<_>, _>>()
+            .map(Value::Array);
+    }
+    Ok(template.clone())
+}

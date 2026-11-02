@@ -1,0 +1,168 @@
+{
+  "api_version": 1,
+  "id": "workbench",
+  "name": "Workbench panels",
+  "requires": [
+    "core",
+    "painting"
+  ],
+  "actions": [
+    {
+      "id": "view.set",
+      "title": "Set zoom and pan",
+      "operation": "view"
+    },
+    {
+      "id": "ui.dispatch",
+      "title": "Dispatch a presentation action",
+      "operation": "ui"
+    },
+    {
+      "id": "workspace.reset",
+      "title": "Reset Layout",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "command",
+            "value": {
+              "UiCommand": 10121
+            }
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "workspace.focus",
+      "title": "Toggle Focus Mode",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "command",
+            "value": "TogglePanels"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "workspace.merge_color_brush",
+      "title": "Group Color and Brush",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "command",
+            "value": {
+              "UiCommand": 10122
+            }
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "workspace.merge_navigation_layers",
+      "title": "Group Navigator and Layers",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "command",
+            "value": {
+              "UiCommand": 10123
+            }
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "preferences.open",
+      "title": "Open Appearance Settings",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "command",
+            "value": "Preferences"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "commands.open",
+      "title": "Open Command Palette",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "command",
+            "value": "OpenPalette"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "keybindings.open",
+      "title": "Open Keyboard Shortcuts",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "command",
+            "value": "ShowShortcuts"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    }
+  ],
+  "panels": [
+    {
+      "id": "color",
+      "title": "Color",
+      "builtin": "color"
+    },
+    {
+      "id": "brush",
+      "title": "Brush",
+      "builtin": "brush"
+    },
+    {
+      "id": "navigator",
+      "title": "Navigator",
+      "builtin": "navigator"
+    },
+    {
+      "id": "layers",
+      "title": "Layers",
+      "builtin": "layers"
+    }
+  ]
+}
