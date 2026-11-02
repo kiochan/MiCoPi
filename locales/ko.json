@@ -745,5 +745,14 @@
   "Dab Spacing": "브러시 간격",
   "Minimum Opacity": "최소 불투명도",
   "Distance between brush dabs as a fraction of diameter.": "브러시 직경에 대한 비율로 찍힘 간 거리를 지정합니다.",
-  "Opacity retained at light pressure; zero pressure deposits no paint.": "약한 필압에서 유지할 불투명도입니다. 필압이 0이면 그리지 않습니다."
+  "Opacity retained at light pressure; zero pressure deposits no paint.": "약한 필압에서 유지할 불투명도입니다. 필압이 0이면 그리지 않습니다.",
+  "Contiguous Fill": "연결된 영역만 채우기",
+  "Extend End Colors": "끝 색상 연장",
+  "Repeat Gradient": "그라데이션 반복",
+  "Reflect Gradient": "그라데이션 대칭 반복",
+  "Reverse Gradient": "그라데이션 반전",
+  "Transparent Gradient End": "그라데이션 끝을 투명하게",
+  "Hold Shift to constrain the gradient to 45° steps.": "Shift를 누르면 그라데이션 각도를 45° 단위로 제한합니다.",
+  "Click the canvas to fill matching colors across this layer.": "캔버스를 클릭하여 현재 레이어의 일치하는 색상을 모두 채웁니다.",
+  "Drag on the canvas to set gradient direction and length.": "캔버스에서 드래그하여 그라데이션 방향과 길이를 정합니다."
 }

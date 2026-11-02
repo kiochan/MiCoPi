@@ -400,3 +400,86 @@ fn stroke_options_change_dabs_and_persist_without_changing_legacy_metadata() {
         0.4
     );
 }
+
+#[test]
+fn global_fill_and_gradient_controls_preserve_undo_atomicity_and_replay() {
+    let mut s = session();
+    call(&mut s, "canvas.new", json!({"width":8,"height":4}));
+    call(&mut s, "native.checkerboard", json!({"cell":2}));
+    let original = s.doc.layers[0].pixels.clone();
+    call(
+        &mut s,
+        "layer.fill",
+        json!({"x":0,"y":0,"color":"#ff0000","contiguous":false}),
+    );
+    for (pixel, old) in s.doc.layers[0].pixels.iter().zip(&original) {
+        assert_eq!(
+            *pixel,
+            if *old == original[0] {
+                0xffff0000
+            } else {
+                *old
+            }
+        );
+    }
+    check(&mut s);
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(s.doc.layers[0].pixels, original);
+    for (spread, reverse, expected) in [
+        (
+            "repeat",
+            false,
+            vec![0xff800080, 0xffff0000, 0xff800080, 0xffff0000, 0xff800080],
+        ),
+        (
+            "reflect",
+            false,
+            vec![0xff800080, 0xffff0000, 0xff800080, 0xff0000ff, 0xff800080],
+        ),
+        (
+            "reflect",
+            true,
+            vec![0xff800080, 0xff0000ff, 0xff800080, 0xffff0000, 0xff800080],
+        ),
+    ] {
+        call(&mut s, "canvas.new", json!({"width":5,"height":1}));
+        call(
+            &mut s,
+            "layer.gradient",
+            json!({"x0":1.5,"y0":0.5,"x1":3.5,"y1":0.5,"start_color":"#ff0000","end_color":"#0000ff","spread":spread,"reverse":reverse}),
+        );
+        assert_eq!(s.doc.layers[0].pixels, expected);
+        check(&mut s);
+        call(&mut s, "history.undo", json!({}));
+        assert_eq!(s.doc.layers[0].pixels, vec![0; 5]);
+        call(&mut s, "history.redo", json!({}));
+        assert_eq!(s.doc.layers[0].pixels, expected);
+    }
+    let before = s.state();
+    let pixels = s.doc.layers[0].pixels.clone();
+    let result = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[
+            {"id":"fill","action":"layer.fill","args":{"x":0,"y":0,"color":"#00ff00","contiguous":false}},
+            {"id":"fail","action":"layer.gradient","args":{"x0":1,"y0":0,"x1":1,"y1":0,"start_color":"#ff0000","end_color":"#0000ff","spread":"repeat"}}
+        ]}),
+    );
+    assert_eq!(result["rolled_back"], true);
+    assert_eq!(s.state(), before);
+    assert_eq!(s.doc.layers[0].pixels, pixels);
+    for (id, args) in [
+        (
+            "layer.fill",
+            json!({"x":0,"y":0,"color":"#ff0000","contiguous":"false"}),
+        ),
+        (
+            "layer.gradient",
+            json!({"x0":0,"y0":0,"x1":1,"y1":0,"start_color":"#ff0000","end_color":"#0000ff","spread":"invalid"}),
+        ),
+    ] {
+        assert!(s.apply(Action::new(id, args)).is_err());
+        assert_eq!(s.state(), before);
+    }
+    check(&mut s);
+}

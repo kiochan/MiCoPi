@@ -181,6 +181,10 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 255
+          },
+          "contiguous": {
+            "type": "boolean",
+            "default": true
           }
         },
         "required": [
@@ -236,6 +240,19 @@
               "linear",
               "radial"
             ]
+          },
+          "spread": {
+            "type": "string",
+            "enum": [
+              "pad",
+              "repeat",
+              "reflect"
+            ],
+            "default": "pad"
+          },
+          "reverse": {
+            "type": "boolean",
+            "default": false
           }
         },
         "required": [

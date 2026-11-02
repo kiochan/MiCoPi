@@ -63,3 +63,5 @@ Use **Layer Actions** or right-click a layer to duplicate, move up/down, delete,
 ## Fill, gradients and pressure
 
 The Brush panel contains **Flood Fill**, **Gradient** and expandable **Pressure Dynamics** controls. Click to fill a connected area or drag to define a gradient. See [Painting tools](painting-tools.md) for tolerance, alpha, gesture cancellation and the shared automation actions.
+
+Clear **Contiguous Fill** to recolor matching pixels across the current layer. Gradient controls provide extend/repeat/reflect modes, reverse and a transparent endpoint; hold **Shift** during a gradient drag to constrain its angle to 45° steps. These operations retain the same undo, atomic and replay behavior.

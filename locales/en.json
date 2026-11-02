@@ -745,5 +745,14 @@
   "Dab Spacing": "Dab Spacing",
   "Minimum Opacity": "Minimum Opacity",
   "Distance between brush dabs as a fraction of diameter.": "Distance between brush dabs as a fraction of diameter.",
-  "Opacity retained at light pressure; zero pressure deposits no paint.": "Opacity retained at light pressure; zero pressure deposits no paint."
+  "Opacity retained at light pressure; zero pressure deposits no paint.": "Opacity retained at light pressure; zero pressure deposits no paint.",
+  "Contiguous Fill": "Contiguous Fill",
+  "Extend End Colors": "Extend End Colors",
+  "Repeat Gradient": "Repeat Gradient",
+  "Reflect Gradient": "Reflect Gradient",
+  "Reverse Gradient": "Reverse Gradient",
+  "Transparent Gradient End": "Transparent Gradient End",
+  "Hold Shift to constrain the gradient to 45° steps.": "Hold Shift to constrain the gradient to 45° steps.",
+  "Click the canvas to fill matching colors across this layer.": "Click the canvas to fill matching colors across this layer.",
+  "Drag on the canvas to set gradient direction and length.": "Drag on the canvas to set gradient direction and length."
 }

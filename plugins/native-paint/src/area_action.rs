@@ -7,6 +7,7 @@ enum Operation {
         y: usize,
         color: u32,
         tolerance: u32,
+        contiguous: bool,
     },
     Gradient {
         from: [f32; 2],
@@ -14,6 +15,7 @@ enum Operation {
         a: u32,
         b: u32,
         radial: bool,
+        spread: super::area::Spread,
     },
 }
 fn color(value: &Value, opacity: f32) -> Result<u32, String> {
@@ -52,22 +54,39 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
             y,
             color,
             tolerance,
-        } => super::area::fill(
-            p,
-            b.width as usize,
-            b.height as usize,
-            *x,
-            *y,
-            *color,
-            *tolerance,
-        ),
+            contiguous,
+        } => {
+            if *contiguous {
+                super::area::fill(
+                    p,
+                    b.width as usize,
+                    b.height as usize,
+                    *x,
+                    *y,
+                    *color,
+                    *tolerance,
+                )
+            } else {
+                super::area::fill_all(p, *y * b.width as usize + *x, *color, *tolerance)
+            }
+        }
         Operation::Gradient {
             from,
             to,
             a,
             b: color,
             radial,
-        } => super::area::gradient(p, b.width as usize, *from, *to, *a, *color, *radial),
+            spread,
+        } => super::area::gradient(
+            p,
+            b.width as usize,
+            *from,
+            *to,
+            *a,
+            *color,
+            *radial,
+            *spread,
+        ),
     }
     abi::OK
 }
@@ -101,6 +120,10 @@ pub unsafe fn invoke(
             y,
             color: color(&args["color"], opacity as f32)?,
             tolerance: tolerance as u32,
+            contiguous: args
+                .get("contiguous")
+                .and_then(Value::as_bool)
+                .unwrap_or(true),
         }
     } else {
         let point = |x: &str, y: &str| -> Result<[f32; 2], String> {
@@ -122,12 +145,28 @@ pub unsafe fn invoke(
         if !["linear", "radial"].contains(&kind) {
             return Err("Invalid gradient kind".into());
         }
+        let spread = match args.get("spread").and_then(Value::as_str).unwrap_or("pad") {
+            "pad" => super::area::Spread::Pad,
+            "repeat" => super::area::Spread::Repeat,
+            "reflect" => super::area::Spread::Reflect,
+            _ => return Err("Invalid gradient spread".into()),
+        };
+        let mut a = color(&args["start_color"], opacity as f32)?;
+        let mut b = color(&args["end_color"], opacity as f32)?;
+        if args
+            .get("reverse")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            std::mem::swap(&mut a, &mut b);
+        }
         Operation::Gradient {
             from,
             to,
-            a: color(&args["start_color"], opacity as f32)?,
-            b: color(&args["end_color"], opacity as f32)?,
+            a,
+            b,
             radial: kind == "radial",
+            spread,
         }
     };
     if (host.edit_region)(

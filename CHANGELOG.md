@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add whole-layer seed-color matching alongside connected fill, with no visited bitmap in the whole-layer path.
+- Add repeated/reflected gradients, endpoint reversal, a transparent endpoint control and Shift-constrained gradient gestures; retain existing action defaults, atomic rollback and outcome replay.
+
 - Add dab spacing and minimum pressure opacity in the Brush panel and persistent Painting settings. Freeze typed options at DOWN through an optional extension while preserving default pixels and legacy recording hashes.
 - Reject custom options explicitly for DLLs without the extension, retaining existing tool tables and default compatibility.
 

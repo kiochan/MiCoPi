@@ -70,10 +70,15 @@ impl Editor {
             Err(e) => self.status = e.to_string(),
         }
     }
-    fn move_pointer(&mut self, p: Pos2, pressure: f32, time: u32, pen: bool) {
+    fn move_pointer(&mut self, p: Pos2, pressure: f32, time: u32, pen: bool, constrain: bool) {
         if self.area_drag.is_some() {
             let q = self.document_position(p);
-            self.area_drag.as_mut().unwrap().1 = q;
+            let (start, end) = self.area_drag.as_mut().unwrap();
+            *end = if constrain {
+                super::area::snap_gradient(*start, q)
+            } else {
+                q
+            };
             return;
         }
         if !self.input_owned || (!self.session.is_drawing() && !self.session.is_panning()) {
@@ -162,10 +167,10 @@ impl Editor {
                     self.pointer_down(p, packet.pressure, packet.time, true, held, false);
                 }
                 PenPhase::Move if self.pen_active => {
-                    self.move_pointer(p, packet.pressure, packet.time, true)
+                    self.move_pointer(p, packet.pressure, packet.time, true, mods.shift)
                 }
                 PenPhase::Up if self.pen_active => {
-                    self.move_pointer(p, self.pressure, packet.time, true);
+                    self.move_pointer(p, self.pressure, packet.time, true, mods.shift);
                     self.area_up();
                     self.finish_stroke();
                     self.pen_active = false;
@@ -205,7 +210,7 @@ impl Editor {
                             );
                         } else if !pressed {
                             if self.area_drag.is_some() {
-                                self.move_pointer(pos, 1., time, false);
+                                self.move_pointer(pos, 1., time, false, mods.shift);
                                 self.area_up();
                             }
                             self.finish_stroke();
@@ -214,7 +219,7 @@ impl Editor {
                     Event::PointerMoved(pos) => {
                         self.pen_hover = None;
                         self.mouse_position = Some(pos);
-                        self.move_pointer(pos, 1., time, false);
+                        self.move_pointer(pos, 1., time, false, mods.shift);
                     }
                     Event::WindowFocused(false) => self.finish_stroke(),
                     Event::MouseWheel {

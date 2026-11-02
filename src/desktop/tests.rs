@@ -474,6 +474,112 @@ fn canvas_area_gestures_commit_once_cancel_and_guard_the_document_target() {
 }
 
 #[test]
+fn area_controls_and_shift_gesture_match_public_native_actions() {
+    use crate::application::{Action as CoreAction, Session};
+    let registry =
+        crate::plugins::Registry::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"))
+            .unwrap();
+    let mut expected = Session::new(registry.clone()).unwrap();
+    let mut app = studio();
+    app.editor.session = Session::new(registry).unwrap();
+    for s in [&mut expected, &mut app.editor.session] {
+        s.apply(CoreAction::new(
+            "canvas.new",
+            serde_json::json!({"width":8,"height":8}),
+        ))
+        .unwrap();
+        s.apply(CoreAction::new(
+            "brush.set",
+            serde_json::json!({"color":"#ff0000","background_color":"#0000ff","opacity":1}),
+        ))
+        .unwrap();
+    }
+    app.editor.sync_from_session();
+    let ctx = Context::default();
+    let size = vec2(1360., 920.);
+    for t in 0..3 {
+        frame(&mut app, &ctx, size, vec![], t as f64);
+    }
+    app.editor.area_mode = 2;
+    app.editor.area_reverse = true;
+    app.editor.area_transparent = true;
+    app.editor.area_spread = "reflect";
+    let start = pos2(1.5, 1.5);
+    let end = pos2(6.5, 2.5);
+    let screen = |p: Pos2| app.editor.image_rect.min + p.to_vec2() * app.editor.zoom;
+    let (a, b) = (screen(start), screen(end));
+    let button = |pos, pressed| Event::PointerButton {
+        pos,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: Modifiers::SHIFT,
+    };
+    let _ = ctx.run(
+        RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, size)),
+            time: Some(3.),
+            modifiers: Modifiers::SHIFT,
+            events: vec![button(a, true), Event::PointerMoved(b)],
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| app.frame_ui(ctx),
+    );
+    let (_, snapped) = app.editor.area_drag.unwrap();
+    assert!((snapped.y - start.y).abs() < 0.0001);
+    assert!((snapped.distance(start) - end.distance(start)).abs() < 0.0001);
+    assert!(app.editor.session.doc.layers[0]
+        .pixels
+        .iter()
+        .all(|p| *p == 0));
+    let _ = ctx.run(
+        RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, size)),
+            time: Some(4.),
+            modifiers: Modifiers::SHIFT,
+            events: vec![button(b, false)],
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| app.frame_ui(ctx),
+    );
+    expected.apply(CoreAction::new("layer.gradient",serde_json::json!({"x0":start.x,"y0":start.y,"x1":snapped.x,"y1":snapped.y,"start_color":"#ff0000","end_color":"#0000ff00","spread":"reflect","reverse":true}))).unwrap();
+    assert_eq!(
+        app.editor.session.doc.layers[0].pixels,
+        expected.doc.layers[0].pixels
+    );
+    assert!(app.editor.area_drag.is_none());
+    assert!(app
+        .editor
+        .core("native.checkerboard", serde_json::json!({"cell":2})));
+    let original = app.editor.session.doc.layers[0].pixels.clone();
+    app.editor.area_mode = 1;
+    app.editor.area_contiguous = false;
+    let p = app.editor.image_rect.min + vec2(0.5, 0.5) * app.editor.zoom;
+    frame(
+        &mut app,
+        &ctx,
+        size,
+        vec![button(p, true), button(p, false)],
+        5.,
+    );
+    for (actual, old) in app.editor.session.doc.layers[0]
+        .pixels
+        .iter()
+        .zip(&original)
+    {
+        assert_eq!(
+            *actual,
+            if *old == original[0] {
+                0xffff0000
+            } else {
+                *old
+            }
+        );
+    }
+}
+
+#[test]
 fn command_palette_stays_inside_the_window_at_both_densities() {
     let mut app = studio();
     let ctx = Context::default();

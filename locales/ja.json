@@ -745,5 +745,14 @@
   "Dab Spacing": "描点間隔",
   "Minimum Opacity": "最小不透明度",
   "Distance between brush dabs as a fraction of diameter.": "描点間の距離をブラシ直径に対する割合で指定します。",
-  "Opacity retained at light pressure; zero pressure deposits no paint.": "弱い筆圧で維持する不透明度です。筆圧がゼロのときは描画しません。"
+  "Opacity retained at light pressure; zero pressure deposits no paint.": "弱い筆圧で維持する不透明度です。筆圧がゼロのときは描画しません。",
+  "Contiguous Fill": "連続領域のみ",
+  "Extend End Colors": "端の色を延長",
+  "Repeat Gradient": "繰り返し",
+  "Reflect Gradient": "折り返し",
+  "Reverse Gradient": "グラデーションを反転",
+  "Transparent Gradient End": "終点を透明にする",
+  "Hold Shift to constrain the gradient to 45° steps.": "Shift を押すと角度を45°刻みに制限します。",
+  "Click the canvas to fill matching colors across this layer.": "クリックして現在のレイヤー内の同色領域を塗りつぶします。",
+  "Drag on the canvas to set gradient direction and length.": "ドラッグしてグラデーションの方向と長さを指定します。"
 }
