@@ -10,7 +10,7 @@ MiCoPi runs on **Windows 10/11 x64**. The desktop workbench uses **egui + egui_d
 
 ![Painting workbench](docs/screenshots/workbench.png)
 
-Connected or whole-layer color fill with tolerance, linear/radial gradients with repeat and reflection and inline pressure dynamics are available in the Brush panel. See [Painting tools](docs/painting-tools.md).
+Connected or whole-layer color fill with tolerance and edge controls, linear/radial gradients with repeat and reflection and inline pressure dynamics are available in the Brush panel. See [Painting tools](docs/painting-tools.md).
 
 ## Why MiCoPi
 

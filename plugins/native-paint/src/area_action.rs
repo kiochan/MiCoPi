@@ -8,6 +8,8 @@ enum Operation {
         color: u32,
         tolerance: u32,
         contiguous: bool,
+        expand: i32,
+        feather: u32,
     },
     Gradient {
         from: [f32; 2],
@@ -55,8 +57,22 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
             color,
             tolerance,
             contiguous,
+            expand,
+            feather,
         } => {
-            if *contiguous {
+            if *expand != 0 || *feather != 0 {
+                super::fill_mask::apply(
+                    p,
+                    b.width as usize,
+                    b.height as usize,
+                    *y * b.width as usize + *x,
+                    *color,
+                    *tolerance,
+                    *contiguous,
+                    *expand,
+                    *feather,
+                );
+            } else if *contiguous {
                 super::area::fill(
                     p,
                     b.width as usize,
@@ -115,11 +131,18 @@ pub unsafe fn invoke(
         if tolerance > 255 {
             return Err("Invalid fill tolerance".into());
         }
+        let expand = args.get("expand").and_then(Value::as_i64).unwrap_or(0);
+        let feather = args.get("feather").and_then(Value::as_u64).unwrap_or(0);
+        if !(-32..=32).contains(&expand) || feather > 32 {
+            return Err("Fill edge controls must be within 32 pixels".into());
+        }
         Operation::Fill {
             x,
             y,
             color: color(&args["color"], opacity as f32)?,
             tolerance: tolerance as u32,
+            expand: expand as i32,
+            feather: feather as u32,
             contiguous: args
                 .get("contiguous")
                 .and_then(Value::as_bool)

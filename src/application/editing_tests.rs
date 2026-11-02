@@ -483,3 +483,79 @@ fn global_fill_and_gradient_controls_preserve_undo_atomicity_and_replay() {
     }
     check(&mut s);
 }
+
+#[test]
+fn fill_edges_preserve_undo_projects_atomicity_and_verified_pixels() {
+    let mut s = session();
+    call(&mut s, "canvas.new", json!({"width":9,"height":9}));
+    call(&mut s, "native.checkerboard", json!({"cell":3}));
+    let original = s.doc.layers[0].pixels.clone();
+    call(
+        &mut s,
+        "layer.fill",
+        json!({"x":1,"y":1,"color":"#ff0000","expand":1}),
+    );
+    for y in 0..9 {
+        for x in 0..9 {
+            assert_eq!(
+                s.doc.layers[0].pixels[y * 9 + x],
+                if x < 4 && y < 4 {
+                    0xffff0000
+                } else {
+                    original[y * 9 + x]
+                }
+            );
+        }
+    }
+    check(&mut s);
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(s.doc.layers[0].pixels, original);
+    call(&mut s, "canvas.new", json!({"width":9,"height":9}));
+    call(
+        &mut s,
+        "layer.fill",
+        json!({"x":4,"y":4,"color":"#ff0000","expand":-1,"feather":1,"contiguous":false}),
+    );
+    assert_eq!(s.doc.layers[0].pixels[0], 0x40ff0000);
+    assert_eq!(s.doc.layers[0].pixels[10], 0xbfff0000);
+    assert_eq!(s.doc.layers[0].pixels[40], 0xffff0000);
+    check(&mut s);
+    let pixels = s.doc.layers[0].pixels.clone();
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(s.doc.layers[0].pixels, vec![0; 81]);
+    call(&mut s, "history.redo", json!({}));
+    assert_eq!(s.doc.layers[0].pixels, pixels);
+    let before = s.state();
+    for (field, value) in [
+        ("expand", json!(33)),
+        ("expand", json!(-33)),
+        ("expand", json!(0.5)),
+        ("feather", json!(-1)),
+        ("feather", json!(33)),
+    ] {
+        let mut args = json!({"x":4,"y":4,"color":"#00ff00"});
+        args[field] = value;
+        assert!(s.apply(Action::new("layer.fill", args)).is_err());
+        assert_eq!(s.state(), before);
+    }
+    let result = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[
+            {"id":"edges","action":"layer.fill","args":{"x":4,"y":4,"color":"#00ff00","expand":1,"feather":2}},
+            {"id":"fail","action":"layer.select","args":{"index":15}}
+        ]}),
+    );
+    assert_eq!(result["rolled_back"], true);
+    assert_eq!(s.state(), before);
+    assert_eq!(s.doc.layers[0].pixels, pixels);
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+        "target/test-output/fill-edges-{}.mcp",
+        std::process::id()
+    ));
+    call(&mut s, "document.save", json!({"path":path}));
+    let mut reopened = session();
+    call(&mut reopened, "document.open", json!({"path":path}));
+    assert_eq!(reopened.doc.layers[0].pixels, pixels);
+    check(&mut reopened);
+}

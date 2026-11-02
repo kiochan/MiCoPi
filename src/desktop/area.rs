@@ -65,6 +65,25 @@ impl Editor {
                     ui.add(DragValue::new(&mut self.area_tolerance).range(0..=255));
                 });
                 ui.checkbox(&mut self.area_contiguous, tr("Contiguous Fill"));
+                ui.horizontal(|ui| {
+                    ui.label(tr("Fill Expansion"));
+                    ui.add(
+                        DragValue::new(&mut self.area_expand)
+                            .range(-32..=32)
+                            .suffix(" px"),
+                    );
+                });
+                ui.horizontal(|ui| {
+                    ui.label(tr("Fill Feather"));
+                    ui.add(
+                        DragValue::new(&mut self.area_feather)
+                            .range(0..=32)
+                            .suffix(" px"),
+                    );
+                });
+                ui.weak(tr(
+                    "Positive expands; negative contracts. Feather softens both sides.",
+                ));
             }
             2 => {
                 ui.label(tr(
@@ -106,7 +125,7 @@ impl Editor {
             return true;
         }
         if self.area_mode == 1 {
-            self.core("layer.fill",serde_json::json!({"x":q.x.floor() as u32,"y":q.y.floor() as u32,"color":self.session.parameters.color,"opacity":self.opacity,"tolerance":self.area_tolerance,"contiguous":self.area_contiguous}));
+            self.core("layer.fill",serde_json::json!({"x":q.x.floor() as u32,"y":q.y.floor() as u32,"color":self.session.parameters.color,"opacity":self.opacity,"tolerance":self.area_tolerance,"contiguous":self.area_contiguous,"expand":self.area_expand,"feather":self.area_feather}));
         } else {
             self.area_drag = Some((q, q));
             self.area_target = Some((

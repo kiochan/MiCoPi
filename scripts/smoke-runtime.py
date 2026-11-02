@@ -73,7 +73,7 @@ def main():
         dict(action="layer.move", args=dict(layer_id=2, to=0)),
         dict(action="layer.move", args=dict(layer_id=2, to=1)),
         dict(action="layer.delete", args=dict(layer_id=2)),
-        dict(action="layer.fill", args=dict(x=0,y=0,color="#228855",tolerance=8,opacity=.7,contiguous=False)),
+        dict(action="layer.fill", args=dict(x=0,y=0,color="#228855",tolerance=8,opacity=.7,contiguous=False,expand=1,feather=2)),
         dict(action="layer.gradient", args=dict(x0=10,y0=20,x1=130,y1=90,start_color="#ee7700cc",end_color="#0033ff00",kind="radial",opacity=.65,spread="reflect",reverse=True)),
         dict(action="native.invert_region", args=dict(x=8,y=8,width=128,height=96)),
         dict(action="history.undo",args={}),

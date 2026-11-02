@@ -4,6 +4,7 @@ use serde_json::{json, Value};
 use std::ffi::c_void;
 mod area;
 mod area_action;
+mod fill_mask;
 mod spatial;
 #[derive(Default)]
 struct Instance {

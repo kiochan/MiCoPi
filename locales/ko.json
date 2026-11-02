@@ -754,5 +754,8 @@
   "Transparent Gradient End": "그라데이션 끝을 투명하게",
   "Hold Shift to constrain the gradient to 45° steps.": "Shift를 누르면 그라데이션 각도를 45° 단위로 제한합니다.",
   "Click the canvas to fill matching colors across this layer.": "캔버스를 클릭하여 현재 레이어의 일치하는 색상을 모두 채웁니다.",
-  "Drag on the canvas to set gradient direction and length.": "캔버스에서 드래그하여 그라데이션 방향과 길이를 정합니다."
+  "Drag on the canvas to set gradient direction and length.": "캔버스에서 드래그하여 그라데이션 방향과 길이를 정합니다.",
+  "Fill Expansion": "채우기 확장",
+  "Fill Feather": "채우기 페더",
+  "Positive expands; negative contracts. Feather softens both sides.": "양수는 확장, 음수는 축소합니다. 페더는 경계 양쪽을 부드럽게 합니다."
 }

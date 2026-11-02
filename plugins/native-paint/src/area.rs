@@ -15,7 +15,7 @@ pub fn over(dst: u32, src: u32) -> u32 {
     }
     out
 }
-fn matches(a: u32, b: u32, t: u32) -> bool {
+pub(super) fn matches(a: u32, b: u32, t: u32) -> bool {
     let aa = a >> 24;
     let ba = b >> 24;
     aa.abs_diff(ba) <= t
@@ -29,7 +29,7 @@ pub fn fill_all(p: &mut [u32], seed: usize, color: u32, tolerance: u32) {
         return;
     }
     let target = p[seed];
-    if tolerance == 0 && target == color {
+    if tolerance == 0 && target == color && color >> 24 == 255 {
         return;
     }
     for pixel in p {
@@ -66,7 +66,7 @@ pub fn fill(p: &mut [u32], w: usize, h: usize, x: usize, y: usize, color: u32, t
         return;
     }
     let target = p[y * w + x];
-    if tolerance == 0 && target == color {
+    if tolerance == 0 && target == color && color >> 24 == 255 {
         return;
     }
     let mut seen = vec![0u8; (w * h).div_ceil(8)];
@@ -272,6 +272,18 @@ mod tests {
         let mut alpha = vec![0x00ffffff, 0xff000000, 0x0000ff00];
         fill_all(&mut alpha, 0, 0x80ff0000, 0);
         assert_eq!(alpha, vec![0x80ff0000, 0xff000000, 0x80ff0000]);
+    }
+    #[test]
+    fn identical_translucent_fill_still_accumulates_alpha() {
+        let mut connected = vec![0x80ff0000; 4];
+        fill(&mut connected, 2, 2, 0, 0, 0x80ff0000, 0);
+        assert_eq!(connected, vec![0xc0ff0000; 4]);
+        let mut all = vec![0x80ff0000; 4];
+        fill_all(&mut all, 0, 0x80ff0000, 0);
+        assert_eq!(all, connected);
+        let mut masked = vec![0x80ff0000; 4];
+        super::super::fill_mask::apply(&mut masked, 2, 2, 0, 0x80ff0000, 0, true, 0, 0);
+        assert_eq!(masked, connected);
     }
     #[test]
     fn gradient_spreads_handle_negative_phase_and_period_boundaries() {

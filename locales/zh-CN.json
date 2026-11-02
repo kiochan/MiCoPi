@@ -754,5 +754,8 @@
   "Transparent Gradient End": "透明渐变终点",
   "Hold Shift to constrain the gradient to 45° steps.": "按住 Shift 将渐变角度约束到 45° 的倍数。",
   "Click the canvas to fill matching colors across this layer.": "点击画布，填充当前图层中所有匹配的颜色。",
-  "Drag on the canvas to set gradient direction and length.": "在画布上拖动，设置渐变的方向和长度。"
+  "Drag on the canvas to set gradient direction and length.": "在画布上拖动，设置渐变的方向和长度。",
+  "Fill Expansion": "填充扩展",
+  "Fill Feather": "填充羽化",
+  "Positive expands; negative contracts. Feather softens both sides.": "正值扩展，负值收缩；羽化柔化边界两侧。"
 }

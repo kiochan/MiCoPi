@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add fill expansion/contraction and linear feather controls to GUI, native actions and workflow schemas; preserve atomic rollback and verified outcomes.
+- Reuse a capped byte-distance buffer after region selection, feather the final geometry and keep the existing zero-edge kernels.
+- Fix identical translucent fills incorrectly returning early instead of accumulating source-over alpha.
+
 - Add whole-layer seed-color matching alongside connected fill, with no visited bitmap in the whole-layer path.
 - Add repeated/reflected gradients, endpoint reversal, a transparent endpoint control and Shift-constrained gradient gestures; retain existing action defaults, atomic rollback and outcome replay.
 

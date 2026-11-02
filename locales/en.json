@@ -754,5 +754,8 @@
   "Transparent Gradient End": "Transparent Gradient End",
   "Hold Shift to constrain the gradient to 45° steps.": "Hold Shift to constrain the gradient to 45° steps.",
   "Click the canvas to fill matching colors across this layer.": "Click the canvas to fill matching colors across this layer.",
-  "Drag on the canvas to set gradient direction and length.": "Drag on the canvas to set gradient direction and length."
+  "Drag on the canvas to set gradient direction and length.": "Drag on the canvas to set gradient direction and length.",
+  "Fill Expansion": "Fill Expansion",
+  "Fill Feather": "Fill Feather",
+  "Positive expands; negative contracts. Feather softens both sides.": "Positive expands; negative contracts. Feather softens both sides."
 }

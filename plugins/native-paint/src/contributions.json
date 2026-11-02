@@ -185,6 +185,18 @@
           "contiguous": {
             "type": "boolean",
             "default": true
+          },
+          "expand": {
+            "type": "integer",
+            "minimum": -32,
+            "maximum": 32,
+            "default": 0
+          },
+          "feather": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 32,
+            "default": 0
           }
         },
         "required": [

@@ -577,6 +577,32 @@ fn area_controls_and_shift_gesture_match_public_native_actions() {
             }
         );
     }
+    app.editor
+        .core("canvas.new", serde_json::json!({"width":8,"height":8}));
+    app.editor.sync_from_session();
+    app.editor.area_expand = -1;
+    app.editor.area_feather = 1;
+    frame(&mut app, &ctx, size, vec![], 6.);
+    let p = app.editor.image_rect.center();
+    frame(
+        &mut app,
+        &ctx,
+        size,
+        vec![button(p, true), button(p, false)],
+        7.,
+    );
+    expected
+        .apply(CoreAction::new(
+            "canvas.new",
+            serde_json::json!({"width":8,"height":8}),
+        ))
+        .unwrap();
+    expected.apply(CoreAction::new("layer.fill",serde_json::json!({"x":4,"y":4,"color":"#ff0000","contiguous":false,"expand":-1,"feather":1}))).unwrap();
+    assert_eq!(
+        app.editor.session.doc.layers[0].pixels,
+        expected.doc.layers[0].pixels
+    );
+    assert_eq!(app.editor.session.doc.layers[0].pixels[0], 0x40ff0000);
 }
 
 #[test]
