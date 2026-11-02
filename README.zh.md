@@ -6,6 +6,8 @@
 
 目前支持 **Windows 10/11 x64**。桌面工作台使用 **egui + egui_dock** 和 OpenGL，数位笔输入使用 Windows Ink。项目仍处于早期开发阶段。
 
+**0.20.0：** 新增[可验证的事件回放](docs/replay.md)。记录笔触压感、图层和插件操作，支持时间轴播放、SHA-256 完整性校验、工程内保存历史，以及导出回放文件和 PNG 帧序列。
+
 ![MiCoPi 实际工作台，截图为英语界面](docs/screenshots/workbench.png)
 
 ## 主要理念

@@ -31,6 +31,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         Open => {
             let path = path()?;
             let mut doc = codec::open(&path)?;
+            let journal = crate::application::replay::read_embedded(&mut doc)?;
             doc.renderer = s.registry.renderer();
             if let Some(graph) = s.workflow_stack.first() {
                 if doc.workflow != *graph {
@@ -46,6 +47,14 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             }
             s.finish_stroke();
             s.doc = doc;
+            if let Some(journal) = journal {
+                let meta = &journal.state.metadata;
+                s.parameters = meta.parameters.clone();
+                s.selected_tool = meta.selected_tool.clone();
+                s.tool = meta.tool;
+                s.revision = s.revision.max(meta.revision);
+                s.restored_replay = Some(journal);
+            }
             s.source_file = Some(path.clone());
             s.file = if path
                 .extension()
@@ -61,8 +70,9 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         Save => {
             let path = path()?;
             s.finish_stroke();
-            s.doc.save(&path)?;
+            s.pending_save = Some((path.clone(), s.file.clone(), s.doc.dirty, s.revision));
             s.file = Some(path.clone());
+            s.doc.dirty = false;
             Ok(json!({"path":path}))
         }
         Export => {

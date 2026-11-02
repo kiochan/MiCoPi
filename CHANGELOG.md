@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.20.0
+
+- Add a host-owned append-only document outcome journal with SHA-256 event/state chains and sealed archive verification.
+- Preserve pressure/stabilization and typed DLL painting; batch raw pointer recording at stroke or 256-sample boundaries.
+- Add a four-language time-lapse viewer, stepping/seeking, replay archives and bounded PNG frame export.
+- Persist verified history in MICOPI03 projects; retain MICOPI01/02 reading and independent undo history.
+- Expose replay actions/state through plugin schemas, workflow nodes, MCP and headless execution; never reexecute DLLs or file writes during playback.
+
 ## 0.19.0
 
 - Organize examples by purpose, separate current screenshots from historical captures, and group reference schemas.

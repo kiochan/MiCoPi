@@ -2,6 +2,7 @@
 mod actions;
 pub mod codec;
 pub mod pipeline;
+pub mod replay;
 mod session;
 pub mod workflow;
 pub(crate) use actions::empty_object as actions_empty_object;
@@ -14,6 +15,8 @@ mod tests;
 mod graph_tests;
 #[cfg(test)]
 mod pipeline_tests;
+#[cfg(test)]
+mod replay_tests;
 #[cfg(test)]
 mod tool_tests;
 #[cfg(test)]

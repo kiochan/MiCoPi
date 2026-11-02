@@ -48,7 +48,7 @@ pub fn describe(s: &Session) -> Value {
     }));
     json!({"pipeline_version":1,"version":env!("CARGO_PKG_VERSION"),"runtime":s.runtime,
         "revision":s.revision,"document_model":"single_document_session",
-        "entrypoints":{"discover":"app.describe","query":"context.read","execute":"pipeline.run","node_catalog":"node.catalog","workflow_read":"workflow.read","workflow_edit":"workflow.patch","workflow_execute":"workflow.run","events":"events.list","image":"canvas.snapshot"},
+        "entrypoints":{"discover":"app.describe","query":"context.read","execute":"pipeline.run","node_catalog":"node.catalog","workflow_read":"workflow.read","workflow_edit":"workflow.patch","workflow_execute":"workflow.run","events":"events.list","image":"canvas.snapshot","replay_status":"replay.status","replay_events":"replay.events","replay_verify":"replay.verify","replay_image":"replay.snapshot"},
         "actions":s.registry.actions.values().map(|a|json!({"id":a.id,"title":a.title,
             "owner":s.registry.owners.get(&a.id),"inputSchema":a.schema(),"outputSchema":a.output_schema,
             "readOnly":a.is_read_only()})).collect::<Vec<_>>(),

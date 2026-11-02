@@ -38,7 +38,7 @@ Actions carry an ID, JSON arguments and optional expected revision. Session vali
 
 GUI request transport parses and queues on worker threads; the GUI thread executes mutations against its Session. Requests do not call DLLs from transport threads. External pointer streams survive loss of GUI focus. Long-running actions occupy the Session thread; independent headless sessions suit offline batch work.
 
-Read-only queries cannot mutate document pixels or dispatch mutating actions. They do not finish strokes or increment revision. A bounded event buffer retains the most recent 512 action/pointer events for diagnostics, not persistent event sourcing.
+Read-only queries cannot mutate document pixels or dispatch mutating actions. They do not finish strokes or increment revision. A bounded event buffer retains the most recent 512 action/pointer events for diagnostics, not persistent event sourcing. A separate append-only outcome journal records document mutations, raw pen samples and changed tiles with a SHA-256 chain. Playback applies verified results without executing plugins or external effects.
 
 ## Painting and performance
 
@@ -50,7 +50,7 @@ Document display updates return dirty rectangles. Desktop uploads partial textur
 
 ## Persistence and presentation
 
-MICOPI02 projects save layer pixels, blend properties, image nodes, positions and workflow metadata; MICOPI01 remains readable. Undo history is not persisted. Image decoding checks dimensions before allocation; PNG export preserves alpha.
+MICOPI03 projects save layer pixels, blend properties, image/workflow metadata and a sealed verified event journal; MICOPI01/02 remain readable. The undo stack is not persisted; the replay journal is independent. See [Verified Replay](replay.md). Image decoding checks dimensions before allocation; PNG export preserves alpha.
 
 `settings.json` contains appearance, language, keybindings, painting defaults and plugin preferences. Saving validates ranges/conflicts, preserves unknown root fields and atomically replaces the file. Dock trees and floating rectangles are kept in `workspace.egui.json`; new plugin panels are reconciled without reopening previously closed panels.
 

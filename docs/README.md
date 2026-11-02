@@ -6,6 +6,7 @@ The technical documentation is maintained in English. The project overview is al
 | --- | --- |
 | [Philosophy](philosophy.md) | Why MiCoPi prioritizes painting, small native components and one execution core |
 | [User Guide](user-guide.md) | Drawing, pen input, settings, shortcuts and panels |
+| [Verified Replay](replay.md) | Event journal, integrity checks, time-lapse preview and frame export |
 | [Project Structure](project-structure.md) | Directory responsibilities, generated files and Git boundaries |
 | [Architecture](architecture.md) | Session ownership, execution, rendering and persistence |
 | [Development](development.md) | Toolchains, builds, tests and performance checks |

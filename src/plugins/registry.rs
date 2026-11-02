@@ -7,6 +7,10 @@ use std::{
 };
 const BUILTINS: &[(&str, &str)] = &[
     (
+        "replay/manifest.json",
+        include_str!("../../plugins/replay/manifest.json"),
+    ),
+    (
         "workflows/manifest.json",
         include_str!("../../plugins/workflows/manifest.json"),
     ),

@@ -4,6 +4,7 @@ These are actual application captures, not interface mockups. Current images com
 
 | Image | Purpose |
 | --- | --- |
+| [Verified replay](replay.png) | Event timeline and read-only recorded outcome preview |
 | [Workbench](workbench.png) | English painting workspace and plugin workflow |
 | [Image nodes](image-nodes.png) | Sources, filter, blending and output |
 | [Workflow nodes](workflow-nodes.png) | DLL-contributed public state connected to an action |

@@ -92,6 +92,8 @@ try {
         $compositorConfig | ConvertTo-Json -Depth 64 | Set-Content $compositorPath -Encoding utf8
     }
     New-Item -ItemType Directory -Path 'dist/plugins/workflows' -Force | Out-Null
+    New-Item -ItemType Directory -Path 'dist/plugins/replay' -Force | Out-Null
+    if (!(Test-Path 'dist/plugins/replay/manifest.json')) {Copy-Item 'plugins/replay/manifest.json' 'dist/plugins/replay/manifest.json'}
     if (!(Test-Path 'dist/plugins/workflows/manifest.json')) {Copy-Item 'plugins/workflows/manifest.json' 'dist/plugins/workflows/manifest.json'}
     # Append new system entrypoints while preserving existing custom definitions.
     $corePath = 'dist/plugins/core/manifest.json'

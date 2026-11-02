@@ -1,0 +1,16 @@
+{
+  "api_version":1,"id":"replay","name":"Verified event replay","requires":["core"],
+  "actions":[
+    {"id":"replay.status","title":"Replay Status","operation":"replay_status"},
+    {"id":"replay.events","title":"Read Replay Events","operation":"replay_events"},
+    {"id":"replay.verify","title":"Verify Replay Integrity","operation":"replay_verify"},
+    {"id":"replay.export","title":"Export Replay Archive","operation":"replay_export"},
+    {"id":"replay.load","title":"Load Replay for Preview","operation":"replay_load"},
+    {"id":"replay.seek","title":"Seek Replay Event","operation":"replay_seek"},
+    {"id":"replay.snapshot","title":"Replay Frame Snapshot","operation":"replay_snapshot"},
+    {"id":"replay.frames","title":"Export Time-lapse PNG Frames","operation":"replay_frames"},
+    {"id":"replay.recover_png","title":"Recover Canvas after Recording Failure","operation":"replay_recover"},
+    {"id":"replay.open","title":"Time-lapse Replay","operation":"replay_open"}
+  ],
+  "states":[{"id":"replay.recording","title":"Replay Recording State","action":"replay.status","output_schema":{"type":"object"}}]
+}

@@ -81,6 +81,25 @@ impl Native {
     pub fn dialog(&self, save: bool, png: bool) -> Option<PathBuf> {
         unsafe { file_dialog(self.hwnd, save, png) }
     }
+    pub fn replay_dialog(&self, save: bool, frames: bool) -> Option<PathBuf> {
+        unsafe {
+            super::file_dialog_custom(
+                self.hwnd,
+                save,
+                if frames {
+                    "timelapse"
+                } else {
+                    "Untitled.mcreplay"
+                },
+                if frames {
+                    "PNG frame folder\0*.*\0\0"
+                } else {
+                    "MiCoPi replay\0*.mcreplay\0All files\0*.*\0\0"
+                },
+                if frames { "" } else { "mcreplay" },
+            )
+        }
+    }
     pub fn confirm_discard(&self) -> bool {
         unsafe {
             MessageBoxW(

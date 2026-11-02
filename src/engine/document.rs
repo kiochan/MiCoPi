@@ -7,7 +7,7 @@ use std::{
     io::{self, Read, Write},
     path::Path,
 };
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Composition {
     pub graph: Graph,
     pub layers: Vec<(bool, u8, BlendMode)>,
@@ -45,6 +45,9 @@ pub struct Brush {
     pub erase: bool,
 }
 pub struct Document {
+    pub(crate) replay_tiles: std::collections::BTreeSet<(usize, usize)>,
+    pub(crate) replay_surface: Option<[usize; 4]>,
+    pub(crate) replay_data: Option<Vec<u8>>,
     pub workflow: super::workflow::Graph,
     pub identity: u64,
     pub graph: Graph,
@@ -96,6 +99,9 @@ impl Document {
                 NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
             },
             graph: Graph::default(),
+            replay_tiles: Default::default(),
+            replay_surface: Some([0, 0, width, height]),
+            replay_data: None,
             renderer: None,
             plan: vec![],
             render_error: None,
@@ -121,6 +127,7 @@ impl Document {
         }
     }
     pub fn invalidate(&mut self) {
+        self.replay_surface = Some([0, 0, self.width, self.height]);
         self.changed = Some([0, 0, self.width, self.height]);
         self.display_changed = self.changed;
     }
@@ -228,6 +235,15 @@ impl Document {
         Ok(())
     }
     fn damage(&mut self, r: [usize; 4]) {
+        self.replay_surface = Some(match self.replay_surface {
+            Some(p) => [
+                p[0].min(r[0]),
+                p[1].min(r[1]),
+                p[2].max(r[2]),
+                p[3].max(r[3]),
+            ],
+            None => r,
+        });
         self.changed = Some(match self.changed {
             Some(p) => [
                 p[0].min(r[0]),
@@ -433,6 +449,7 @@ impl Document {
     fn save_tile(&mut self, tx: usize, ty: usize) {
         let cols = (self.width + TILE - 1) / TILE;
         let id = ty * cols + tx;
+        self.replay_tiles.insert((self.active, id));
         let edit = self.stroke.as_mut().unwrap();
         if edit.tiles.contains_key(&id) {
             return;
@@ -522,6 +539,7 @@ impl Document {
         }
         let cols = (self.width + TILE - 1) / TILE;
         for (id, data) in e.tiles.iter_mut() {
+            self.replay_tiles.insert((e.layer, *id));
             let tx = *id % cols;
             let ty = *id / cols;
             let mut j = 0;
@@ -638,11 +656,22 @@ impl Document {
         self.finish();
     }
     pub fn save(&mut self, path: &Path) -> io::Result<()> {
+        self.save_with_replay(path, None)
+    }
+    pub(crate) fn save_with_replay(
+        &mut self,
+        path: &Path,
+        replay: Option<&[u8]>,
+    ) -> io::Result<()> {
         self.finish();
         // Same-directory temp + rename keeps an existing project intact on write failure.
         let tmp = path.with_extension("mcp.tmp");
         let mut f = std::fs::File::create(&tmp)?;
-        f.write_all(b"MICOPI02")?;
+        f.write_all(if replay.is_some() {
+            b"MICOPI03"
+        } else {
+            b"MICOPI02"
+        })?;
         for v in [self.width, self.height, self.layers.len(), self.active] {
             f.write_all(&(v as u32).to_le_bytes())?;
         }
@@ -657,6 +686,10 @@ impl Document {
         let metadata = serde_json::to_vec(&self.composition()).map_err(io::Error::other)?;
         f.write_all(&(metadata.len() as u32).to_le_bytes())?;
         f.write_all(&metadata)?;
+        if let Some(bytes) = replay {
+            f.write_all(&(bytes.len() as u64).to_le_bytes())?;
+            f.write_all(bytes)?;
+        }
         f.sync_all()?;
         drop(f);
         crate::platform::replace_file(&tmp, path)?;
@@ -673,7 +706,7 @@ impl Document {
                 "Invalid or oversized Micopi project",
             )
         };
-        if &magic != b"MICOPI01" && &magic != b"MICOPI02" {
+        if &magic != b"MICOPI01" && &magic != b"MICOPI02" && &magic != b"MICOPI03" {
             return Err(bad());
         }
         let mut dims = [0usize; 4];
@@ -698,6 +731,9 @@ impl Document {
         let size = f.metadata()?.len();
         if (&magic == b"MICOPI01" && size != base)
             || (&magic == b"MICOPI02" && (size < base + 4 || size > base + 4 + 1024 * 1024))
+            || (&magic == b"MICOPI03"
+                && (size < base + 4 + 8
+                    || size > base + 4 + 1024 * 1024 + 8 + super::replay::MAX_ARCHIVE as u64))
         {
             return Err(bad());
         }
@@ -723,11 +759,11 @@ impl Document {
                 mode: BlendMode::Normal,
             });
         }
-        if &magic == b"MICOPI02" {
+        if &magic == b"MICOPI02" || &magic == b"MICOPI03" {
             let mut length = [0u8; 4];
             f.read_exact(&mut length)?;
             let length = u32::from_le_bytes(length) as usize;
-            if length > 1024 * 1024 || size != base + 4 + length as u64 {
+            if length > 1024 * 1024 || (&magic == b"MICOPI02" && size != base + 4 + length as u64) {
                 return Err(bad());
             }
             let mut bytes = vec![0; length];
@@ -739,6 +775,19 @@ impl Document {
             state.graph.compile(n).map_err(|_| bad())?;
             state.workflow.validate_structure().map_err(|_| bad())?;
             doc.restore_composition(state);
+            if &magic == b"MICOPI03" {
+                let mut length_bytes = [0; 8];
+                f.read_exact(&mut length_bytes)?;
+                let replay_length = u64::from_le_bytes(length_bytes);
+                if replay_length > super::replay::MAX_ARCHIVE as u64
+                    || size != base + 4 + length as u64 + 8 + replay_length
+                {
+                    return Err(bad());
+                }
+                let mut bytes = vec![0; replay_length as usize];
+                f.read_exact(&mut bytes)?;
+                doc.replay_data = Some(bytes);
+            }
         }
         Ok(doc)
     }

@@ -6,6 +6,8 @@
 
 현재 **Windows 10/11 x64**를 지원합니다. 데스크톱 UI는 **egui + egui_dock**과 OpenGL을 사용하고, 펜 입력은 Windows Ink를 사용합니다. 아직 초기 개발 단계입니다.
 
+**0.20.0:** [검증 가능한 이벤트 재생](docs/replay.md)을 추가했습니다. 필압, 레이어와 플러그인 작업을 기록하며 타임라인 재생, SHA-256 무결성 검증, 프로젝트 내 기록 저장, 기록 파일 및 PNG 프레임 내보내기를 지원합니다.
+
 ![실제 MiCoPi 작업 화면. 스크린샷은 영어 UI입니다](docs/screenshots/workbench.png)
 
 ## 핵심 철학
