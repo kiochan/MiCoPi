@@ -521,9 +521,9 @@ fn noisy_background_uses_tile_references_and_sparse_xor_deltas() {
 #[test]
 fn original_v1_recording_loads_and_upgrades_without_changing_verified_pixels() {
     use sha2::{Digest, Sha256};
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay-v1.mcreplay");
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/replay/v1.mcreplay");
     let expected: Value =
-        serde_json::from_str(include_str!("../../tests/fixtures/replay-v1.json")).unwrap();
+        serde_json::from_str(include_str!("../../tests/fixtures/replay/v1.json")).unwrap();
     let bytes = std::fs::read(path).unwrap();
     assert_eq!(&bytes[..8], b"MCRPLY01");
     let mut journal = Journal::import(&bytes).unwrap();

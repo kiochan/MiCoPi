@@ -15,7 +15,7 @@ micopi/
 │   ├── application/         Session, action and pipeline contracts
 │   ├── automation/          JSONL, MCP and GUI attachment
 │   ├── desktop/             UI, settings, canvas and node editors
-│   ├── engine/              Document, composition graph and tiled history
+│   ├── engine/              Document, composition, tiled history and replay codec
 │   ├── plugins/             Host registry, DLL loader and adapters
 │   ├── platform/            Windows input, chrome and file integration
 │   ├── ui/                  Commands, shortcuts and workspace models
@@ -37,7 +37,7 @@ micopi/
 │   ├── plugins/             Small extension examples
 │   └── legacy/              Historical INI examples
 ├── scripts/                 Build, bootstrap, smoke and repository checks
-├── tests/                   ABI fixtures and reference implementations
+├── tests/                   ABI/replay fixtures and reference implementations
 ├── .github/                 CI and contribution templates
 ├── target/                  Local builds, toolchains and test output [ignored]
 ├── dist/                    Local release artifacts and licenses [ignored]
@@ -49,6 +49,26 @@ micopi/
 `src/plugins/` and root `plugins/` have different jobs. The former is host integration: registration, validation, lifecycle and dispatch. The latter is the installable extension boundary: manifests and independent DLL implementations. Keep new pixel algorithms in the appropriate plugin, while the host retains document and history ownership.
 
 The `engine` directory contains shared document structures and the image graph model. The legacy GDI UI under `src/platform/windows/` remains a regression reference. It is not the production desktop entry point; moving it requires its own measured refactor, not a cosmetic directory change.
+
+## Document execution modules
+
+| Path | Responsibility |
+| --- | --- |
+| `src/application/session.rs` | Single document owner, validation and execution boundaries |
+| `src/application/atomic.rs` | Shared-tile rollback checkpoints and atomic action capability checks |
+| `src/application/replay.rs` | Recording boundaries, project persistence and replay actions |
+| `src/engine/document.rs` | Pixels, composition and copy-on-write undo tiles |
+| `src/engine/replay.rs` | Journal storage, compressed tile/metadata encoding and integrity verification |
+| `src/desktop/replay.rs` | Read-only time-lapse presentation |
+| `plugins/replay/manifest.json` | Public action/state registration for automation and workflow nodes |
+
+The host owns transaction and verification rules. Plugins own drawing and processing algorithms; transports and the desktop dispatch through the same Session. See [Atomic Operations](atomic-operations.md) and [Verified Replay](replay.md) for the contracts.
+
+## Tests and local output
+
+Unit tests stay near their implementation. Shared support lives under `tests/reference/`, ABI rejection fixtures under `tests/fixtures/native-incompatible/`, and historical recording fixtures under `tests/fixtures/replay/`. Keep each binary fixture with its provenance and expected hashes. See [Development](development.md) for commands and `tests/README.md` for shared support.
+
+Generated smoke captures, extracted packages, benchmarks and artwork from examples belong under ignored `target/test-output/` or `target/example-output/`. Only reviewed screenshots are promoted to `docs/screenshots/`; portable deliverables stay under ignored `dist/`.
 
 ## Documentation and screenshots
 
