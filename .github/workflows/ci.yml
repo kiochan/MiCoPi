@@ -25,6 +25,8 @@ jobs:
           rustup default stable
       - name: Check formatting
         run: cargo fmt --all -- --check
+      - name: Check repository links and example data
+        run: python scripts/check-repository.py
       - name: Build native DLL and test ABI boundary
         shell: pwsh
         run: |

@@ -44,14 +44,15 @@ Macros use `steps` with existing action envelopes; `{"$arg":"field"}` substitute
 
 ```powershell
 micopi-cli.exe actions
-micopi-cli.exe run examples/draw.jsonl
+New-Item -ItemType Directory -Force target/example-output | Out-Null
+micopi-cli.exe run examples/automation/draw.jsonl
 micopi-cli.exe call canvas.state '{}'
 micopi-cli.exe mcp
 ```
 
 JSONL runs one Session, returns one JSON result per line and stops at the first failure with exit code 1. Separate standalone call processes have separate sessions. Machine IDs and schemas do not vary with display language; CLI diagnostics use English.
 
-MCP uses newline-delimited JSON-RPC over stdio, negotiates initialization, exposes registered actions as tools and public state as resources. Protocol errors are separate from action errors; failed actions mark `isError`. Stdout contains protocol data only. Examples for clients are in [mcp-headless.json](../examples/mcp-headless.json) and [mcp-gui.json](../examples/mcp-gui.json).
+MCP uses newline-delimited JSON-RPC over stdio, negotiates initialization, exposes registered actions as tools and public state as resources. Protocol errors are separate from action errors; failed actions mark `isError`. Stdout contains protocol data only. Examples for clients are in [headless MCP configuration](../examples/mcp/headless.json) and [GUI MCP configuration](../examples/mcp/gui.json).
 
 ## Attach to the GUI
 

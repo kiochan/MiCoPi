@@ -1,11 +1,17 @@
 # Cargo/build output and project-local portable toolchains
 /target/
+**/target/
 /dist/
 /coverage/
 *.profraw
 *.profdata
 *.pdb
 *.ilk
+*.exe
+*.dll
+*.lib
+*.obj
+*.dmp
 
 # Local artwork and scratch work (keep intentional fixtures/assets in source)
 /artworks/
@@ -24,6 +30,7 @@ MiCoPi.workspace.ini
 !/.env.example
 /.vs/
 /.idea/
+/.vscode/
 /.codex/
 /.agents/
 *.rs.bk

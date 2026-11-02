@@ -3,3 +3,6 @@
 *.jpg binary
 *.jpeg binary
 *.ico binary
+*.ttf binary
+*.ttc binary
+*.zip binary

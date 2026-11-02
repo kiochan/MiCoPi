@@ -4,4 +4,4 @@
 {"action":"workflow.patch","args":{"operations":[{"op":"move_node","id":2,"position":[460,0]}]}}
 {"action":"workflow.run","args":{"dry_run":true}}
 {"action":"workflow.run","args":{}}
-{"action":"canvas.export","args":{"path":"target/test-output/workflow-demo.png"}}
+{"action":"canvas.export","args":{"path":"target/example-output/workflow-demo.png"}}

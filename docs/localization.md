@@ -2,7 +2,7 @@
 
 MiCoPi 0.19 uses English as its default and canonical source language. Supported display locales are en (English), zh-CN (Simplified Chinese), ja (Japanese) and ko (Korean).
 
-![Display language setting](assets/localization-en.png)
+![Display language setting](screenshots/settings-en.png)
 
 ## Select a language
 

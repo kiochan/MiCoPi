@@ -2,7 +2,7 @@
 
 MiCoPi 0.18+ unifies plugin actions, public state and image definitions in node.catalog. The Plugin Workflow editor generates ports and controls from schemas. Graphs are saved in .mcp projects with undoable edits. Version 0.19 localizes presentation while keeping all IDs and schemas stable.
 
-![Plugin workflow editor](assets/workflow-editor.png)
+![Plugin workflow editor](screenshots/workflow-nodes.png)
 
 ## Register nodes
 
@@ -38,7 +38,7 @@ Discover node.catalog first. It returns definitions, ports, parameter/output sch
 
 workflow.read returns the stored graph and validation. set replaces it; patch supports add_node, remove_node, set_parameters, move_node, connect and disconnect. Edits apply to a copy and commit only after complete validation. Failed edits retain the original graph. Removing a node removes its edges. set_parameters replaces the parameter object. A patch accepts at most 256 operations.
 
-validate returns topology, compiled steps and deferred checks without execution. run accepts an optional temporary graph; otherwise it uses the stored graph. It supports dry_run and integer expected_revision. MCP exposes these actions as tools and document.workflow as a resource. Run examples/workflow.jsonl with micopi-cli.exe for a window-free example.
+validate returns topology, compiled steps and deferred checks without execution. run accepts an optional temporary graph; otherwise it uses the stored graph. It supports dry_run and integer expected_revision. MCP exposes these actions as tools and document.workflow as a resource. Run examples/automation/workflow.jsonl with micopi-cli.exe for a window-free example.
 
 ## Execution semantics
 

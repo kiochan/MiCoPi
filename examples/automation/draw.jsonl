@@ -2,5 +2,5 @@
 {"action": "brush.set", "args": {"color": "#4477DD", "radius": 12, "stabilizer": 0.35}}
 {"action": "tool.select", "args": {"tool": "brush"}}
 {"action": "canvas.stroke", "args": {"points": [{"x": 70, "y": 310, "pressure": 0.2, "pen": true, "time": 0}, {"x": 160, "y": 360, "pressure": 0.5, "pen": true, "time": 30}, {"x": 300, "y": 240, "pressure": 0.9, "pen": true, "time": 60}, {"x": 480, "y": 120, "pressure": 1.0, "pen": true, "time": 90}, {"x": 560, "y": 180, "pressure": 0.3, "pen": true, "time": 120}]}}
-{"action": "canvas.export", "args": {"path": "headless-demo.png"}}
-{"action": "document.save", "args": {"path": "headless-demo.mcp"}}
+{"action": "canvas.export", "args": {"path": "target/example-output/headless-demo.png"}}
+{"action": "document.save", "args": {"path": "target/example-output/headless-demo.mcp"}}

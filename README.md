@@ -1,12 +1,22 @@
 # MiCoPi
 
+[English](README.md) · [简体中文](README.zh.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
+
 A small Rust painting application focused on responsive pen input and an extensible, AI-ready execution core.
 
 MiCoPi runs on **Windows 10/11 x64**. The desktop workbench uses **egui + egui_dock** with OpenGL; pen input uses Windows Ink. The project is in early development.
 
 **0.19.0:** English is the default display language, with Simplified Chinese, Japanese and Korean available in Settings. Menus, settings, commands, tooltips and node controls use embedded translation catalogs. Documentation is maintained in English. See [Localization](docs/localization.md).
 
-![Painting workbench](docs/assets/runtime-workbench.png)
+![Painting workbench](docs/screenshots/workbench.png)
+
+## Why MiCoPi
+
+**Painting first. Plugins carry behavior. One execution core serves artists and automation.**
+
+Typed pen input protects the drawing path; schema-described actions and public state make the same application inspectable from plugins, MCP and headless clients. Image composition stays non-destructive, and workflow execution remains explicit. AI-ready means a documented integration contract, not a required cloud assistant.
+
+Read the illustrated [design philosophy](docs/philosophy.md), browse the [documentation index](docs/README.md), or see the [directory and ownership guide](docs/project-structure.md).
 
 ## Features
 
@@ -36,7 +46,8 @@ cargo run --release --locked
 Run `dist/MiCoPi.exe`. Keep `plugins/` and `licenses/` beside the executable. End users do not need Rust. A project-local portable toolchain is available; see [Development](docs/development.md).
 
 ```powershell
-.\dist\micopi-cli.exe run examples/draw.jsonl
+New-Item -ItemType Directory -Force target/example-output | Out-Null
+.\dist\micopi-cli.exe run examples/automation/draw.jsonl
 .\dist\micopi-cli.exe actions
 .\dist\micopi-cli.exe mcp
 cargo build --release --no-default-features --bin micopi-cli --locked
@@ -68,11 +79,22 @@ Supported codes: `en`, `zh-CN`, `ja`, `ko`. Existing configurations without a la
 | `src/configuration.rs` | Validated settings and atomic persistence |
 | `src/i18n.rs`, `locales/` | Embedded English-first translations |
 | `src/platform/` | Windows Ink, DWM, native dialogs and file replacement |
-| `docs/`, `examples/`, `scripts/` | Guides, runnable examples and build tools |
+| `docs/` | English guides, reference schema and curated screenshots |
+| `examples/` | Automation, configuration, MCP and plugin examples |
+| `scripts/` | Reproducible build, packaging, smoke and repository checks |
 
 See [Architecture](docs/architecture.md), [User Guide](docs/user-guide.md), [Contributing](CONTRIBUTING.md) and [Changelog](CHANGELOG.md). The legacy GDI workbench remains a regression reference and is not the production desktop entry point.
 
 `Cargo.lock` is retained. Build outputs, downloaded toolchains and personal settings are ignored by Git.
+
+## Contributing and version control
+
+See [Contributing](CONTRIBUTING.md). Start with the [development guide](docs/development.md), use a focused branch and commit coherent, verified changes. Release tags use `vX.Y.Z`. Runtime binaries and personal files stay outside source history; selected documentation screenshots stay versioned.
+
+```powershell
+python scripts/check-repository.py
+cargo fmt --all -- --check
+```
 
 ## License
 

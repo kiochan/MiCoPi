@@ -2,7 +2,7 @@
 
 The egui-snarl editor shares the workbench's theme, configurable spacing and docking. Each document stores an image graph and a separate plugin workflow graph.
 
-![Image graph](assets/node-editor.png)
+![Image graph](screenshots/image-nodes.png)
 
 ## Editing
 

@@ -131,7 +131,7 @@ try {
     Copy-Item -LiteralPath $assistantOutput -Destination 'dist/plugins/ai-assistant/micopi_ai_assistant.dll' -Force
     New-Item -ItemType Directory -Path 'dist/licenses' -Force | Out-Null
     Copy-Item -LiteralPath 'assets/material-symbols/LICENSE' -Destination 'dist/licenses/MaterialSymbols-LICENSE.txt' -Force
-    Copy-Item -LiteralPath 'assets/material-symbols/NOTICE.md' -Destination 'dist/licenses/MaterialSymbols-NOTICE.md' -Force
+    (Get-Content -LiteralPath 'assets/material-symbols/NOTICE.md' -Raw).Replace('](LICENSE)','](MaterialSymbols-LICENSE.txt)') | Set-Content -LiteralPath 'dist/licenses/MaterialSymbols-NOTICE.md' -Encoding utf8
     Copy-Item -LiteralPath 'LICENSE' -Destination 'dist/licenses/MiCoPi-LICENSE.txt' -Force
     $metadata = & $cargo metadata --format-version 1 --offline --locked --filter-platform x86_64-pc-windows-gnu | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0) { throw 'Dependency notice generation failed' }

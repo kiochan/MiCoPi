@@ -4,6 +4,10 @@
 
 ## 0.19.0
 
+- Organize examples by purpose, separate current screenshots from historical captures, and group reference schemas.
+- Add an illustrated English design philosophy, documentation/directory indexes and Chinese, Japanese and Korean README editions.
+- Establish Git source history, artifact boundaries, repository checks and local portable packaging.
+
 - Default to English, with Simplified Chinese, Japanese and Korean display languages.
 - Embed translation catalogs for workbench, settings, commands, shortcuts, tooltips and node controls; preserve protocol IDs and painting behavior.
 - Add searchable ui.language with immediate preview, validated persistence and cancellation; support localized command/setting/node search.

@@ -1,0 +1,36 @@
+# Examples
+
+Run commands from the repository root. Build the host and default plugin DLLs first; the portable distribution already includes them. JSONL files use stable action IDs and document-pixel coordinates.
+
+```powershell
+New-Item -ItemType Directory -Force target/example-output | Out-Null
+.\dist\micopi-cli.exe run examples/automation/draw.jsonl
+```
+
+## Automation
+
+| File | Demonstrates |
+| --- | --- |
+| [draw.jsonl](automation/draw.jsonl) | Pressure-sensitive, stabilized drawing and project/PNG export |
+| [native-actions.jsonl](automation/native-actions.jsonl) | Actual DLL checkerboard and region processing |
+| [ai-pipeline.jsonl](automation/ai-pipeline.jsonl) | Discovery, state, cross-plugin calls and typed pipeline execution |
+| [nodes.jsonl](automation/nodes.jsonl) | Non-destructive image graph and PNG export |
+| [workflow.jsonl](automation/workflow.jsonl) | State/action nodes, patching, validation, dry run and execution |
+
+Generated artwork belongs in ignored `target/example-output/`, not beside source files. Separate CLI invocations create separate Sessions; use GUI attachment when you want to modify a running desktop document.
+
+## Configuration and connections
+
+- [settings.json](config/settings.json): sample shortcut overrides and English display language.
+- [settings-ui.json](config/settings-ui.json): appearance and spacing configuration.
+- [Settings schema](../docs/reference/settings.schema.json): supported configuration fields.
+- [Headless MCP configuration](mcp/headless.json): a client that owns an independent canvas.
+- [GUI MCP configuration](mcp/gui.json): a client attached to an existing session endpoint.
+
+MCP configurations contain example paths; adjust executable/profile paths for your installation. Save personal configuration outside this directory. See [Localization](../docs/localization.md) and [Automation](../docs/plugins-and-actions.md).
+
+## Plugins and historical configurations
+
+[Quick tools](plugins/quick-tools/manifest.json) is a small installable package with a preset, macro action and button panel. Copy the package into your chosen plugin directory and restart.
+
+The INI files under [legacy](legacy/README.md) describe earlier workspaces. The current desktop uses `settings.json` and `workspace.egui.json`; do not copy the old INI files over current JSON settings.

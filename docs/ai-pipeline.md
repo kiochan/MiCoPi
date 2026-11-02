@@ -34,7 +34,7 @@ DLLs call the same entry points through HostApi.dispatch. Cross-DLL calls are al
 
 `node.catalog` adapts action input/output schemas and public state into typed nodes. Plugins may register aliases with titles, categories and defaults. AI can create and modify document graphs through `workflow.set/patch`, inspect with read/validate, and run through workflow.run. This compiles back to the pipeline above. See [Workflow Nodes](workflow-nodes.md) for schemas, limits and manual-run semantics.
 
-The default [ai-assistant DLL](../plugins/ai-assistant/README.md) demonstrates reading another plugin's public state and submitting a cross-DLL pipeline. [examples/ai-pipeline.jsonl](../examples/ai-pipeline.jsonl) provides a runnable sequence. The [native SDK](native-plugins.md) documents ownership and ABI rules.
+The default [ai-assistant DLL](../plugins/ai-assistant/README.md) demonstrates reading another plugin's public state and submitting a cross-DLL pipeline. [examples/automation/ai-pipeline.jsonl](../examples/automation/ai-pipeline.jsonl) provides a runnable sequence. The [native SDK](native-plugins.md) documents ownership and ABI rules.
 
 ## Locale and AI contracts
 
