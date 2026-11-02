@@ -29,7 +29,7 @@ impl Drop for Module {
     }
 }
 impl Module {
-    unsafe fn tool_options_api(&self) -> Result<Option<abi::ToolOptionsApi>, String> {
+    unsafe fn tool_options_api(&self) -> Result<Option<(abi::ToolOptionsApi, u32)>, String> {
         #[cfg(windows)]
         {
             let address = GetProcAddress(
@@ -54,7 +54,13 @@ impl Module {
             if api.configure.is_none() {
                 return Err("Missing tool options callback".into());
             }
-            Ok(Some(api))
+            let features =
+                if header.struct_size >= std::mem::size_of::<abi::ToolOptionsApiExt>() as u32 {
+                    std::ptr::read_unaligned(pointer.cast::<abi::ToolOptionsApiExt>()).features
+                } else {
+                    0
+                };
+            Ok(Some((api, features)))
         }
         #[cfg(not(windows))]
         {
@@ -178,7 +184,7 @@ pub struct NativePlugin {
     pub path: PathBuf,
     api: abi::PluginApi,
     tools: Option<abi::ToolApi>,
-    tool_options: Option<abi::ToolOptionsApi>,
+    tool_options: Option<(abi::ToolOptionsApi, u32)>,
     compositor: Option<abi::CompositorApi>,
     _module: Module,
 }
@@ -535,6 +541,17 @@ unsafe extern "C" fn edit_region(
         origin_y: region.y,
     };
     let status = transform(user, &mut buffer);
+    if status == abi::OK && session.doc.alpha_locked(session.doc.active) {
+        let valid = pixels.iter().enumerate().all(|(i, after)| {
+            let before = session.doc.layers[session.doc.active].pixels
+                [(y + i / w) * session.doc.width + x + i % w];
+            before >> 24 == *after >> 24 && (before >> 24 != 0 || before == *after)
+        });
+        if !valid {
+            (*host).busy = false;
+            return abi::ERROR;
+        }
+    }
     if status == abi::OK && session.doc.replace_region(x, y, w, h, &pixels) {
         session.revision += 1;
     }
@@ -544,6 +561,81 @@ unsafe extern "C" fn edit_region(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn locked_tool_validation_uses_strided_edge_tiles_and_rolls_back_bad_pixels() {
+        unsafe extern "C" fn recolor(_: *mut c_void, p: *mut abi::Pixels) -> i32 {
+            for y in 0..(*p).height as usize {
+                for x in 0..(*p).width as usize {
+                    let pixel = &mut *(*p).data.add(y * (*p).stride as usize + x);
+                    if *pixel >> 24 != 0 {
+                        *pixel = (*pixel & 0xff000000) | 0x00abcdef;
+                    }
+                }
+            }
+            abi::OK
+        }
+        unsafe extern "C" fn change_alpha(_: *mut c_void, p: *mut abi::Pixels) -> i32 {
+            *(*p)
+                .data
+                .add(((*p).height as usize - 1) * (*p).stride as usize + (*p).width as usize - 1) =
+                0xff123456;
+            abi::OK
+        }
+        let mut session = Session::new(super::super::Registry::bundled()).unwrap();
+        session.doc = crate::engine::Document::new(70, 67);
+        session.doc.layers[0].pixels.fill(0x80112233);
+        session.doc.layers[0].pixels[64 * 70 + 64] = 0x00abcdef;
+        session
+            .doc
+            .set_layer_properties_with_lock(
+                0,
+                true,
+                255,
+                crate::engine::graph::BlendMode::Normal,
+                true,
+            )
+            .unwrap();
+        let before = session.doc.layers[0].pixels.clone();
+        session.doc.begin_plugin_stroke();
+        let mut context = ToolContext {
+            session: &mut session,
+            busy: false,
+            failed: false,
+        };
+        let region = abi::Region {
+            x: 63,
+            y: 63,
+            width: 7,
+            height: 4,
+        };
+        assert_eq!(
+            unsafe {
+                tool_pixels(
+                    (&mut context as *mut ToolContext).cast(),
+                    region,
+                    Some(recolor),
+                    std::ptr::null_mut(),
+                )
+            },
+            abi::OK
+        );
+        assert!(!context.failed);
+        assert_eq!(session.doc.layers[0].pixels[64 * 70 + 64], 0x00abcdef);
+        assert_eq!(
+            unsafe {
+                tool_pixels(
+                    (&mut context as *mut ToolContext).cast(),
+                    region,
+                    Some(change_alpha),
+                    std::ptr::null_mut(),
+                )
+            },
+            abi::ERROR
+        );
+        assert!(context.failed);
+        session.doc.rollback_plugin_stroke();
+        assert_eq!(session.doc.layers[0].pixels, before);
+    }
     #[test]
     fn missing_optional_tool_options_accept_defaults_and_reject_custom_values() {
         let mut registry = super::super::Registry::load(
@@ -571,6 +663,21 @@ mod tests {
         assert_eq!(error.code, "tool_options_unsupported");
         assert_eq!(session.doc.layers[0].pixels, pixels);
         assert_eq!(session.revision, revision);
+        session
+            .apply(Action::new("brush.set", json!({"spacing":0.11})))
+            .unwrap();
+        session
+            .apply(Action::new("layer.set", json!({"alpha_locked":true})))
+            .unwrap();
+        let before = session.state();
+        let error = session
+            .apply(Action::new(
+                "canvas.stroke",
+                json!({"points":[{"x":10,"y":10}]}),
+            ))
+            .unwrap_err();
+        assert_eq!(error.code, "tool_options_unsupported");
+        assert_eq!(session.state(), before);
     }
     unsafe extern "C" fn fail(_: *mut c_void, pixels: *mut abi::Pixels) -> i32 {
         *(*pixels).data = 0xff123456;
@@ -739,23 +846,50 @@ impl ToolInstance {
     ) -> Result<abi::ToolOutput, ActionError> {
         if parameters.is_some() && painting {
             let p = &session.parameters;
-            if let Some(api) = self.plugin.tool_options {
+            let locked = session.doc.alpha_locked(session.doc.active);
+            if let Some((api, features)) = self.plugin.tool_options {
+                if locked && features & abi::TOOL_OPTION_ALPHA_LOCK == 0 {
+                    return Err(ActionError::new(
+                        "tool_options_unsupported",
+                        "Tool DLL does not support alpha-locked painting",
+                    ));
+                }
                 let options = abi::ToolOptions {
                     abi_version: 1,
                     struct_size: std::mem::size_of::<abi::ToolOptions>() as u32,
                     spacing: p.spacing,
                     minimum_opacity: p.minimum_opacity,
                 };
-                if unsafe { (api.configure.unwrap())(self.state, &options) } != abi::OK {
+                let status = if features & abi::TOOL_OPTION_ALPHA_LOCK != 0 {
+                    let extended = abi::ToolOptionsExt {
+                        base: abi::ToolOptions {
+                            struct_size: std::mem::size_of::<abi::ToolOptionsExt>() as u32,
+                            ..options
+                        },
+                        flags: if locked {
+                            abi::TOOL_OPTION_ALPHA_LOCK
+                        } else {
+                            0
+                        },
+                    };
+                    unsafe { (api.configure.unwrap())(self.state, &extended.base) }
+                } else {
+                    unsafe { (api.configure.unwrap())(self.state, &options) }
+                };
+                if status != abi::OK {
                     return Err(ActionError::new(
                         "tool_options",
                         "Tool rejected stroke options",
                     ));
                 }
-            } else if p.spacing != 0.11 || p.minimum_opacity != 0. {
+            } else if locked || p.spacing != 0.11 || p.minimum_opacity != 0. {
                 return Err(ActionError::new(
                     "tool_options_unsupported",
-                    "Tool DLL does not support custom spacing or pressure opacity floor",
+                    if locked {
+                        "Tool DLL does not support alpha-locked painting"
+                    } else {
+                        "Tool DLL does not support custom spacing or pressure opacity floor"
+                    },
                 ));
             }
         }
@@ -847,6 +981,9 @@ unsafe extern "C" fn tool_pixels(
         region.width as usize,
         region.height as usize,
     );
+    if session.doc.locked_region_empty(x, y, w, h) {
+        return abi::OK;
+    }
     if !session.doc.prepare_plugin_region(x, y, w, h) {
         (*context).failed = true;
         return abi::ERROR;
@@ -869,8 +1006,9 @@ unsafe extern "C" fn tool_pixels(
     };
     let status = transform(user, &mut pixels);
     (*context).busy = false;
-    if status != abi::OK {
+    if status != abi::OK || !session.doc.locked_tool_region_valid(x, y, w, h) {
         (*context).failed = true;
+        return abi::ERROR;
     }
     status
 }

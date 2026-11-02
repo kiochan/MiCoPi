@@ -61,6 +61,8 @@ def main():
         call('layer.duplicate',{})
         call('layer.translate',dict(dx=9,dy=-5))
         call('layer.set',dict(opacity=.45))
+        call('layer.set',dict(alpha_locked=True))
+        call('layer.fill_color',dict(color='#a64eff',opacity=.4))
         call('layer.move',dict(layer_id=1,to=1))
         # Reopen the existing Layers tab so captures exercise its editing controls,
         # rather than the sample plugin tab that is selected on first discovery.

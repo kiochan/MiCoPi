@@ -67,3 +67,5 @@ The Brush panel contains **Flood Fill**, **Gradient** and expandable **Pressure 
 Clear **Contiguous Fill** to recolor matching pixels across the current layer. Gradient controls provide extend/repeat/reflect modes, reverse and a transparent endpoint; hold **Shift** during a gradient drag to constrain its angle to 45° steps. These operations retain the same undo, atomic and replay behavior.
 
 **Fill Expansion** grows a region with positive values and contracts it with negative values (up to 32 pixels). **Fill Feather** softens the final boundary. Values default to zero. Expansion can paint onto adjacent colors on the current layer; use undo to restore the previous pixels.
+
+Enable **Lock Layer Transparency** in Layers to recolor painted pixels while retaining their alpha. Use the layer menu or **Alt+Backspace** / **Ctrl+Backspace** for foreground/background fills. These fills respect brush opacity and the layer transparency lock.

@@ -757,5 +757,9 @@
   "Drag on the canvas to set gradient direction and length.": "캔버스에서 드래그하여 그라데이션 방향과 길이를 정합니다.",
   "Fill Expansion": "채우기 확장",
   "Fill Feather": "채우기 페더",
-  "Positive expands; negative contracts. Feather softens both sides.": "양수는 확장, 음수는 축소합니다. 페더는 경계 양쪽을 부드럽게 합니다."
+  "Positive expands; negative contracts. Feather softens both sides.": "양수는 확장, 음수는 축소합니다. 페더는 경계 양쪽을 부드럽게 합니다.",
+  "Lock Layer Transparency": "레이어 투명도 잠금",
+  "Fill with Foreground": "전경색으로 채우기",
+  "Fill with Background": "배경색으로 채우기",
+  "Fill Layer Color": "레이어 단색 채우기"
 }

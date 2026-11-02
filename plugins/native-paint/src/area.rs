@@ -15,6 +15,30 @@ pub fn over(dst: u32, src: u32) -> u32 {
     }
     out
 }
+pub fn atop(dst: u32, src: u32) -> u32 {
+    if dst >> 24 == 0 {
+        return dst;
+    }
+    let a = src >> 24;
+    let mut out = dst & 0xff000000;
+    for shift in [0, 8, 16] {
+        out |= ((((src >> shift) & 255) * a + ((dst >> shift) & 255) * (255 - a) + 127) / 255)
+            << shift;
+    }
+    out
+}
+pub(super) fn paint<const LOCKED: bool>(dst: u32, src: u32) -> u32 {
+    if LOCKED {
+        atop(dst, src)
+    } else {
+        over(dst, src)
+    }
+}
+pub fn fill_color<const LOCKED: bool>(p: &mut [u32], color: u32) {
+    for pixel in p {
+        *pixel = paint::<LOCKED>(*pixel, color);
+    }
+}
 pub(super) fn matches(a: u32, b: u32, t: u32) -> bool {
     let aa = a >> 24;
     let ba = b >> 24;
@@ -25,6 +49,12 @@ pub(super) fn matches(a: u32, b: u32, t: u32) -> bool {
 }
 /// Match the seed across the whole active layer without a visited bitmap.
 pub fn fill_all(p: &mut [u32], seed: usize, color: u32, tolerance: u32) {
+    fill_all_mode::<false>(p, seed, color, tolerance)
+}
+pub fn fill_all_locked(p: &mut [u32], seed: usize, color: u32, tolerance: u32) {
+    fill_all_mode::<true>(p, seed, color, tolerance)
+}
+fn fill_all_mode<const LOCKED: bool>(p: &mut [u32], seed: usize, color: u32, tolerance: u32) {
     if color >> 24 == 0 {
         return;
     }
@@ -34,7 +64,7 @@ pub fn fill_all(p: &mut [u32], seed: usize, color: u32, tolerance: u32) {
     }
     for pixel in p {
         if matches(*pixel, target, tolerance) {
-            *pixel = over(*pixel, color);
+            *pixel = paint::<LOCKED>(*pixel, color);
         }
     }
 }
@@ -62,6 +92,28 @@ impl Spread {
     }
 }
 pub fn fill(p: &mut [u32], w: usize, h: usize, x: usize, y: usize, color: u32, tolerance: u32) {
+    fill_mode::<false>(p, w, h, x, y, color, tolerance)
+}
+pub fn fill_locked(
+    p: &mut [u32],
+    w: usize,
+    h: usize,
+    x: usize,
+    y: usize,
+    color: u32,
+    tolerance: u32,
+) {
+    fill_mode::<true>(p, w, h, x, y, color, tolerance)
+}
+fn fill_mode<const LOCKED: bool>(
+    p: &mut [u32],
+    w: usize,
+    h: usize,
+    x: usize,
+    y: usize,
+    color: u32,
+    tolerance: u32,
+) {
     if color >> 24 == 0 {
         return;
     }
@@ -74,7 +126,7 @@ pub fn fill(p: &mut [u32], w: usize, h: usize, x: usize, y: usize, color: u32, t
     fn eligible(p: &[u32], seen: &[u8], i: usize, target: u32, t: u32) -> bool {
         seen[i / 8] & (1 << (i % 8)) == 0 && matches(p[i], target, t)
     }
-    fn run(
+    fn run<const LOCKED: bool>(
         p: &mut [u32],
         seen: &mut [u8],
         w: usize,
@@ -95,11 +147,11 @@ pub fn fill(p: &mut [u32], w: usize, h: usize, x: usize, y: usize, color: u32, t
         for x in l..=r {
             let i = y * w + x;
             seen[i / 8] |= 1 << (i % 8);
-            p[i] = over(p[i], c);
+            p[i] = paint::<LOCKED>(p[i], c);
         }
         (l, r)
     }
-    let (l, r) = run(p, &mut seen, w, x, y, target, tolerance, color);
+    let (l, r) = run::<LOCKED>(p, &mut seen, w, x, y, target, tolerance, color);
     stack.push((y as u16, l as u16, r as u16));
     while let Some((y, l, r)) = stack.pop() {
         for ny in [y as isize - 1, y as isize + 1] {
@@ -110,7 +162,7 @@ pub fn fill(p: &mut [u32], w: usize, h: usize, x: usize, y: usize, color: u32, t
             let mut x = l as usize;
             while x <= r as usize {
                 if eligible(p, &seen, ny * w + x, target, tolerance) {
-                    let (a, b) = run(p, &mut seen, w, x, ny, target, tolerance, color);
+                    let (a, b) = run::<LOCKED>(p, &mut seen, w, x, ny, target, tolerance, color);
                     stack.push((ny as u16, a as u16, b as u16));
                     x = b + 1;
                 } else {
@@ -121,6 +173,30 @@ pub fn fill(p: &mut [u32], w: usize, h: usize, x: usize, y: usize, color: u32, t
     }
 }
 pub fn gradient(
+    p: &mut [u32],
+    w: usize,
+    from: [f32; 2],
+    to: [f32; 2],
+    a: u32,
+    b: u32,
+    radial: bool,
+    spread: Spread,
+) {
+    gradient_mode::<false>(p, w, from, to, a, b, radial, spread)
+}
+pub fn gradient_locked(
+    p: &mut [u32],
+    w: usize,
+    from: [f32; 2],
+    to: [f32; 2],
+    a: u32,
+    b: u32,
+    radial: bool,
+    spread: Spread,
+) {
+    gradient_mode::<true>(p, w, from, to, a, b, radial, spread)
+}
+fn gradient_mode<const LOCKED: bool>(
     p: &mut [u32],
     w: usize,
     from: [f32; 2],
@@ -153,13 +229,38 @@ pub fn gradient(
                 c |= (((ap + (bp - ap) * t) / alpha).round() as u32).min(255) << s;
             }
         }
-        *pixel = over(*pixel, c);
+        *pixel = paint::<LOCKED>(*pixel, c);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn locked_color_fill_gradient_and_edge_masks_preserve_coverage() {
+        let original = vec![0x00abcdef, 0x40112233, 0x80112233, 0xff112233];
+        let mut p = original.clone();
+        fill_color::<true>(&mut p, 0xff00ff00);
+        assert_eq!(p, vec![0x00abcdef, 0x4000ff00, 0x8000ff00, 0xff00ff00]);
+        let mut p = original.clone();
+        gradient_locked(
+            &mut p,
+            4,
+            [0.5, 0.5],
+            [3.5, 0.5],
+            0xffff0000,
+            0x000000ff,
+            false,
+            Spread::Pad,
+        );
+        assert_eq!(p[0], original[0]);
+        assert!(p.iter().zip(&original).all(|(a, b)| a >> 24 == b >> 24));
+        let mut p = original.clone();
+        super::super::fill_mask::apply_locked(&mut p, 4, 1, 1, 0xffff0000, 255, false, 1, 2);
+        assert_eq!(p[0], original[0]);
+        assert!(p.iter().zip(&original).all(|(a, b)| a >> 24 == b >> 24));
+        assert_eq!(atop(0x80112233, 0x8000ff00), 0x80089119);
+    }
     #[test]
     fn fill_obeys_connectivity_tolerance_alpha_and_transparent_rgb() {
         let mut p = vec![0, 0x00ffffff, 0xff000000, 0, 0xff000000, 0];

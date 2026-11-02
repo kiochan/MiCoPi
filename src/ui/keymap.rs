@@ -439,6 +439,24 @@ pub static COMMANDS: &[Command] = &[
         43
     ),
     c!(
+        "layer.fill_foreground",
+        "Fill with Foreground",
+        "Layers",
+        "fill foreground qianjingse",
+        UiCommand(10142),
+        "Alt+Backspace",
+        10142
+    ),
+    c!(
+        "layer.fill_background",
+        "Fill with Background",
+        "Layers",
+        "fill background beijingse",
+        UiCommand(10143),
+        "Ctrl+Backspace",
+        10143
+    ),
+    c!(
         "brush.smaller",
         "Decrease Brush Size",
         "Brush",

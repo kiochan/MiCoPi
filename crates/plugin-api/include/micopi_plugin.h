@@ -85,6 +85,10 @@ typedef struct {
     int32_t (*configure)(void *, const MicopiToolOptions *);
 } MicopiToolOptionsApi;
 const MicopiToolOptionsApi *micopi_tool_options_v1(void);
+#define MICOPI_TOOL_OPTION_ALPHA_LOCK 1u
+/* Additive tails, available only if the prefix struct_size includes the tail. */
+typedef struct { MicopiToolOptions base; uint32_t flags; } MicopiToolOptionsExt;
+typedef struct { MicopiToolOptionsApi base; uint32_t features; } MicopiToolOptionsApiExt;
 /* SDK 1.2 additive compositor extension; no existing tables change. */
 typedef struct {
     const uint32_t *data; size_t len;

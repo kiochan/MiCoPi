@@ -1,5 +1,5 @@
 //! Optional fill-edge processing. The zero-option path remains in area.rs.
-use super::area::{matches, over};
+use super::area::{matches, paint};
 fn bit(mask: &[u8], i: usize) -> bool {
     mask[i / 8] & (1 << (i % 8)) != 0
 }
@@ -134,6 +134,32 @@ pub fn apply(
     expand: i32,
     feather: u32,
 ) {
+    apply_mode::<false>(p, w, h, seed, color, tolerance, contiguous, expand, feather)
+}
+pub fn apply_locked(
+    p: &mut [u32],
+    w: usize,
+    h: usize,
+    seed: usize,
+    color: u32,
+    tolerance: u32,
+    contiguous: bool,
+    expand: i32,
+    feather: u32,
+) {
+    apply_mode::<true>(p, w, h, seed, color, tolerance, contiguous, expand, feather)
+}
+fn apply_mode<const LOCKED: bool>(
+    p: &mut [u32],
+    w: usize,
+    h: usize,
+    seed: usize,
+    color: u32,
+    tolerance: u32,
+    contiguous: bool,
+    expand: i32,
+    feather: u32,
+) {
     if color >> 24 == 0 {
         return;
     }
@@ -178,13 +204,14 @@ pub fn apply(
         };
         let alpha = ((color >> 24) as f32 * coverage).round() as u32;
         if alpha > 0 {
-            *pixel = over(*pixel, (color & 0xffffff) | (alpha << 24));
+            *pixel = paint::<LOCKED>(*pixel, (color & 0xffffff) | (alpha << 24));
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::super::area::over;
     use super::*;
     #[test]
     fn expansion_contraction_and_feather_have_defined_pixel_edges() {

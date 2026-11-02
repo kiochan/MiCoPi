@@ -1,7 +1,14 @@
 use micopi_plugin_api as abi;
 use serde_json::{json, Value};
 use std::ffi::c_void;
+struct Kernel {
+    operation: Operation,
+    alpha_locked: bool,
+}
 enum Operation {
+    Solid {
+        color: u32,
+    },
     Fill {
         x: usize,
         y: usize,
@@ -50,7 +57,15 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
         return abi::ERROR;
     }
     let p = std::slice::from_raw_parts_mut(b.data, b.len);
-    match &*user.cast::<Operation>() {
+    let kernel = &*user.cast::<Kernel>();
+    match &kernel.operation {
+        Operation::Solid { color } => {
+            if kernel.alpha_locked {
+                super::area::fill_color::<true>(p, *color)
+            } else {
+                super::area::fill_color::<false>(p, *color)
+            }
+        }
         Operation::Fill {
             x,
             y,
@@ -61,7 +76,11 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
             feather,
         } => {
             if *expand != 0 || *feather != 0 {
-                super::fill_mask::apply(
+                (if kernel.alpha_locked {
+                    super::fill_mask::apply_locked
+                } else {
+                    super::fill_mask::apply
+                })(
                     p,
                     b.width as usize,
                     b.height as usize,
@@ -73,7 +92,11 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
                     *feather,
                 );
             } else if *contiguous {
-                super::area::fill(
+                (if kernel.alpha_locked {
+                    super::area::fill_locked
+                } else {
+                    super::area::fill
+                })(
                     p,
                     b.width as usize,
                     b.height as usize,
@@ -83,7 +106,11 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
                     *tolerance,
                 )
             } else {
-                super::area::fill_all(p, *y * b.width as usize + *x, *color, *tolerance)
+                (if kernel.alpha_locked {
+                    super::area::fill_all_locked
+                } else {
+                    super::area::fill_all
+                })(p, *y * b.width as usize + *x, *color, *tolerance)
             }
         }
         Operation::Gradient {
@@ -93,7 +120,11 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
             b: color,
             radial,
             spread,
-        } => super::area::gradient(
+        } => (if kernel.alpha_locked {
+            super::area::gradient_locked
+        } else {
+            super::area::gradient
+        })(
             p,
             b.width as usize,
             *from,
@@ -118,7 +149,11 @@ pub unsafe fn invoke(
     if !opacity.is_finite() || !(0. ..=1.).contains(&opacity) {
         return Err("Invalid opacity".into());
     }
-    let mut operation = if handler == "fill" {
+    let operation = if handler == "fill_color" {
+        Operation::Solid {
+            color: color(&args["color"], opacity as f32)?,
+        }
+    } else if handler == "fill" {
         let x = args["x"]
             .as_u64()
             .filter(|v| *v < w as u64)
@@ -192,6 +227,13 @@ pub unsafe fn invoke(
             spread,
         }
     };
+    let active = doc["active_layer"].as_u64().ok_or("Missing active layer")? as usize;
+    let mut kernel = Kernel {
+        operation,
+        alpha_locked: doc["layers"][active]["alpha_locked"]
+            .as_bool()
+            .unwrap_or(false),
+    };
     if (host.edit_region)(
         host.context,
         abi::Region {
@@ -201,7 +243,7 @@ pub unsafe fn invoke(
             height: h as u32,
         },
         Some(render),
-        (&mut operation as *mut Operation).cast(),
+        (&mut kernel as *mut Kernel).cast(),
     ) != abi::OK
     {
         return Err("Pixel edit rejected by host".into());

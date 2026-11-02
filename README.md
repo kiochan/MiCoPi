@@ -25,7 +25,7 @@ Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadma
 - DLL-based brush, eraser, eyedropper, hand and zoom tools.
 - Pen pressure, pressure curves, stroke stabilization and brush outline cursors.
 - HSV wheel, RGB controls, swatches and brush presets.
-- Layers, visibility, opacity, blend modes and tiled undo/redo.
+- Layers, visibility, opacity, transparency locking, color fills, blend modes and tiled undo/redo.
 - Dockable, floating and tabbed panels; configurable spacing, sizing, themes and shortcuts.
 - Searchable settings, JSON editing, command palette and shortcut recording.
 - Transparent PNG export, PNG/JPEG/BMP import and `.mcp` projects.

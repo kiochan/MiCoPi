@@ -3,6 +3,7 @@ use micopi_plugin_api as abi;
 use std::ffi::c_void;
 #[derive(Default)]
 pub struct Raster {
+    pub alpha_locked: bool,
     pub last: Option<(f32, f32)>,
     pub last_brush: Option<Brush>,
     pub distance: f32,
@@ -68,7 +69,12 @@ impl Raster {
         if x0 >= x1 || y0 >= y1 {
             return;
         }
-        let mut dab = Dab { x, y, brush: b };
+        let mut dab = Dab {
+            x,
+            y,
+            brush: b,
+            alpha_locked: self.alpha_locked,
+        };
         self.failed = unsafe {
             (host.pixels)(
                 host.context,
@@ -85,6 +91,7 @@ impl Raster {
     }
 }
 struct Dab {
+    alpha_locked: bool,
     x: f32,
     y: f32,
     brush: Brush,
@@ -141,7 +148,13 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
             }
             let pixel = &mut pixels[row * stride + column];
             let old = *pixel;
-            *pixel = if b.erase {
+            *pixel = if dab.alpha_locked {
+                if b.erase {
+                    old
+                } else {
+                    atop(old, (b.color & 0xffffff) | (a << 24))
+                }
+            } else if b.erase {
                 (old & 0xffffff) | ((((old >> 24) * (255 - a) + 127) / 255) << 24)
             } else {
                 over(old, (b.color & 0xffffff) | (a << 24))
@@ -149,6 +162,17 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
         }
     }
     abi::OK
+}
+fn atop(dst: u32, src: u32) -> u32 {
+    if dst >> 24 == 0 {
+        return dst;
+    }
+    let a = src >> 24;
+    let mut out = dst & 0xff000000;
+    for s in [0, 8, 16] {
+        out |= ((((src >> s) & 255) * a + ((dst >> s) & 255) * (255 - a) + 127) / 255) << s;
+    }
+    out
 }
 pub fn over(dst: u32, src: u32) -> u32 {
     let a = src >> 24;
@@ -173,6 +197,45 @@ pub fn over(dst: u32, src: u32) -> u32 {
 #[cfg(test)]
 mod spacing_tests {
     use super::*;
+    #[test]
+    fn locked_dabs_recolor_partial_alpha_and_preserve_transparent_storage() {
+        let original = [0x00abcdef, 0x40112233, 0x80112233, 0xff112233];
+        let mut p = original;
+        let mut buffer = abi::Pixels {
+            data: p.as_mut_ptr(),
+            len: 4,
+            width: 4,
+            height: 1,
+            stride: 4,
+            origin_x: 0,
+            origin_y: 0,
+        };
+        let mut dab = Dab {
+            x: 2.,
+            y: 0.5,
+            alpha_locked: true,
+            brush: Brush {
+                radius: 20.,
+                opacity: 1.,
+                hardness: 1.,
+                color: 0x00ff00,
+                erase: false,
+            },
+        };
+        assert_eq!(
+            unsafe { render((&mut dab as *mut Dab).cast(), &mut buffer) },
+            abi::OK
+        );
+        assert_eq!(p, [0x00abcdef, 0x4000ff00, 0x8000ff00, 0xff00ff00]);
+        p.copy_from_slice(&original);
+        dab.brush.erase = true;
+        assert_eq!(
+            unsafe { render((&mut dab as *mut Dab).cast(), &mut buffer) },
+            abi::OK
+        );
+        assert_eq!(p, original);
+        assert_eq!(atop(0x80112233, 0x8000ff00), 0x80089119);
+    }
     unsafe extern "C" fn count(
         ctx: *mut c_void,
         _: abi::Region,

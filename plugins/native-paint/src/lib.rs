@@ -102,6 +102,7 @@ unsafe fn run(
         "translate",
         "fill",
         "gradient",
+        "fill_color",
     ]
     .contains(&handler)
     {
@@ -122,7 +123,7 @@ unsafe fn run(
         return Err("canvas.state failed".into());
     }
     let document: Value = serde_json::from_slice(&reply).map_err(|e| e.to_string())?;
-    if handler == "fill" || handler == "gradient" {
+    if handler == "fill" || handler == "gradient" || handler == "fill_color" {
         return area_action::invoke(host, &document["result"], &args, handler);
     }
     let region = if handler == "invert_region" {

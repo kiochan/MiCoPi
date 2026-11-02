@@ -277,6 +277,29 @@
         ],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "layer.fill_color",
+      "title": "Fill Layer Color",
+      "native": "fill_color",
+      "document_atomic": true,
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
+          "color"
+        ],
+        "additionalProperties": false
+      }
     }
   ],
   "panels": [

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add undoable, persistent layer transparency locking with native source-atop brush, fill and gradient behavior, host alpha validation and atomic rollback.
+- Add foreground/background layer fills and Alt+Backspace / Ctrl+Backspace shortcuts through the same native action; keep pending layer renames when toggling lock.
+- Add size-checked optional alpha-lock capability tails to stroke options while retaining old v1 prefixes and unlocked legacy DLL compatibility.
+
 - Add fill expansion/contraction and linear feather controls to GUI, native actions and workflow schemas; preserve atomic rollback and verified outcomes.
 - Reuse a capped byte-distance buffer after region selection, feather the final geometry and keep the existing zero-edge kernels.
 - Fix identical translucent fills incorrectly returning early instead of accumulating source-over alpha.

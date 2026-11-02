@@ -38,6 +38,34 @@ impl Editor {
             }
         }
         ui.separator();
+        for (title, color) in [
+            ("Fill with Foreground", &self.session.parameters.color),
+            (
+                "Fill with Background",
+                &self.session.parameters.background_color,
+            ),
+        ] {
+            if ui
+                .add_enabled(
+                    self.session
+                        .registry
+                        .actions
+                        .contains_key("layer.fill_color"),
+                    Button::new(tr(title)),
+                )
+                .clicked()
+            {
+                action = Some(Action::new(
+                    "pipeline.run",
+                    serde_json::json!({"atomic":true,"steps":[
+                        {"id":"select","action":"layer.select","args":{"layer_id":id}},
+                        {"id":"fill","action":"layer.fill_color","args":{"color":color,"opacity":self.opacity}}
+                    ]}),
+                ));
+                ui.close();
+            }
+        }
+        ui.separator();
         for (command, title) in [
             ("layer.flip_horizontal", "Flip Layer Horizontally"),
             ("layer.flip_vertical", "Flip Layer Vertically"),
@@ -78,7 +106,7 @@ impl Editor {
         action
     }
     pub(super) fn layers_ui(&mut self, ui: &mut Ui) {
-        let mut pending = None;
+        let mut pending = Vec::new();
         ui.horizontal(|ui| {
             if icon_button(ui, self, 42, false).clicked() {
                 self.actions.push(Action::NewLayer);
@@ -92,7 +120,9 @@ impl Editor {
         });
         ui.horizontal(|ui| {
             ui.menu_button(tr("Layer Actions"), |ui| {
-                pending = self.layer_menu(ui, self.session.doc.active);
+                if let Some(action) = self.layer_menu(ui, self.session.doc.active) {
+                    pending.push(action);
+                }
             });
         });
         let index = self.session.doc.active;
@@ -123,14 +153,27 @@ impl Editor {
             || (response.has_focus() && ui.input(|i| i.key_pressed(Key::Enter)))
         {
             if draft != current && !draft.trim().is_empty() {
-                pending = Some(crate::application::Action::new(
-                    "layer.rename",
-                    serde_json::json!({"layer_id":id,"name":draft}),
-                ));
+                pending.insert(
+                    0,
+                    crate::application::Action::new(
+                        "layer.rename",
+                        serde_json::json!({"layer_id":id,"name":draft}),
+                    ),
+                );
             }
             ui.data_mut(|d| d.remove::<String>(edit_id));
         }
         ui.add_space(self.settings.ui.item_spacing);
+        let mut locked = self.session.doc.alpha_locked(index);
+        if ui
+            .checkbox(&mut locked, tr("Lock Layer Transparency"))
+            .changed()
+        {
+            pending.push(crate::application::Action::new(
+                "layer.set",
+                serde_json::json!({"layer_id":id,"alpha_locked":locked}),
+            ));
+        }
         ui.horizontal(|ui| {
             ui.weak(tr("Blend Mode"));
             let mut mode = self.session.doc.layers[self.session.doc.active].mode;
@@ -267,11 +310,11 @@ impl Editor {
             }
             response.context_menu(|ui| {
                 if let Some(action) = self.layer_menu(ui, index) {
-                    pending = Some(action);
+                    pending.push(action);
                 }
             });
         }
-        if let Some(action) = pending {
+        for action in pending {
             self.finish_stroke();
             self.core(&action.action, action.args);
         }

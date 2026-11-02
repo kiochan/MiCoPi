@@ -20,6 +20,19 @@ Choose **Gradient** and drag on the canvas. Release commits one edit across the 
 
 Selecting a normal tool returns to its regular input behavior; temporary hand, picker and zoom modifiers remain available. These GUI modes adapt gestures into public plugin actions and do not change the tool ABI. Attached clients can select their GUI mode using `ui.dispatch` with `id: "painting.mode"` and `value: "brush"`, `"fill"` or `"gradient"`.
 
+## Preserve painted transparency and fill colors
+
+Enable **Lock Layer Transparency** in the Layers panel to recolor existing marks while retaining each pixel's alpha. Brush, connected/global fill, feathered fill and gradients use source-atop color blending while locked. Fully transparent pixels retain their stored values. Layer opacity, visibility and blending controls continue to work. Erasing and clearing reject a locked layer; plugin edits and transforms that change its per-pixel alpha also fail without committing pixels.
+
+The layer menu provides **Fill with Foreground** and **Fill with Background**. **Alt+Backspace** fills the current layer with the foreground color; **Ctrl+Backspace** uses the background color. Both use current brush opacity. In an unlocked layer this fills across the canvas; in a locked layer it recolors only existing coverage. Global shortcuts remain inactive while editing text. The public `layer.fill_color` action requires `color` (`#RRGGBB` or `#RRGGBBAA`) and accepts `opacity` from 0 to 1, defaulting to 1.
+
+```json
+{"action":"layer.set","args":{"alpha_locked":true}}
+{"action":"layer.fill_color","args":{"color":"#ee7744","opacity":0.7}}
+```
+
+Lock state is part of the layer's document metadata, follows its stable ID through reorder/duplicate and supports undo, atomic groups, projects and verified replay. `canvas.state.layers` always reports `alpha_locked`. False values are omitted from recorded layer metadata, preserving older recording hashes. Locked painting requires a tool DLL advertising the optional alpha-lock capability; older DLLs continue to paint unlocked layers and fail explicitly for locked painting.
+
 ## Public actions
 
 `layer.fill` and `layer.gradient` are supplied by the native painting plugin. They target the current layer, support expected revisions, workflow nodes, atomic pipelines, tiled undo and outcome replay. To retain a target across structural edits, atomically select its stable `layer_id` before the action. Hidden layers reject pixel edits. Algorithms never execute during verified replay.
@@ -40,3 +53,5 @@ Nonzero edge controls build a one-bit-per-pixel region mask and reuse one byte p
 Brush rasterization rejects pixels outside the dab circle before computing distance, and avoids distance evaluation inside solid hard dabs. Antialiased boundaries retain the previous distance formula. Legacy spacing, pressure, stabilization and the typed MOVE path remain unchanged at default options. No additional dependency is introduced. Exact DLL-versus-reference stroke tests protect existing pixels. A deterministic 100-pixel line at radius 5 uses 11 stamp callbacks at 100% spacing, versus more than 80 at default spacing; this measures work reduction for sparse brushes, rather than end-to-end input latency.
 
 Regression checks include an independent breadth-first fill oracle, tolerance/connectivity/transparency fixtures, gradient endpoints and alpha fringes, gesture commit/cancel behavior, undo, atomic failure, replay parity and PNG comparisons across JSONL, MCP and GUI. Selections, fill gap closing, merged-layer sampling, textured brush tips and arbitrary pressure curves remain future work.
+
+Locked typed strokes reuse undo tile snapshots for alpha validation. Fully transparent locked regions are culled before capturing tiles. Unlocked strokes retain their existing pixel path; no region-sized copy or JSON call is added to typed MOVE. Region-based plugin actions use the existing staging buffer and validate alpha before committing.

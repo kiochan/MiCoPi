@@ -83,12 +83,26 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                     l.mode
                 };
                 s.doc
-                    .set_layer_properties(i, visible, opacity, mode)
+                    .set_layer_properties_with_lock(
+                        i,
+                        visible,
+                        opacity,
+                        mode,
+                        args["alpha_locked"]
+                            .as_bool()
+                            .unwrap_or(s.doc.alpha_locked(i)),
+                    )
                     .map_err(|e| ActionError::new("layer_properties", e))?;
             }
             Ok(s.state())
         }
         ClearLayer => {
+            if s.doc.alpha_locked(s.doc.active) {
+                return Err(ActionError::new(
+                    "alpha_locked",
+                    "Unlock layer transparency before clearing it",
+                ));
+            }
             s.finish_stroke();
             s.doc.clear_layer();
             Ok(s.state())

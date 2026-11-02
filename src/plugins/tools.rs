@@ -78,6 +78,12 @@ impl StrokeEngine {
             };
             let painting = matches!(kind, ToolKind::Brush | ToolKind::Eraser);
             if painting {
+                if s.doc.alpha_locked(s.doc.active) && (kind == ToolKind::Eraser || p.eraser) {
+                    return Err(ActionError::new(
+                        "alpha_locked",
+                        "Unlock layer transparency before erasing",
+                    ));
+                }
                 if p.x < 0. || p.y < 0. || p.x >= s.doc.width as f32 || p.y >= s.doc.height as f32 {
                     return Err(ActionError::new(
                         "outside_canvas",

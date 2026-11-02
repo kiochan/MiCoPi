@@ -531,6 +531,19 @@ impl Studio {
                         continue;
                     }
                     match id {
+                        10142 | 10143 => {
+                            self.editor.finish_stroke();
+                            self.editor.push_gui_parameters();
+                            let color = if id == 10142 {
+                                self.editor.session.parameters.color.clone()
+                            } else {
+                                self.editor.session.parameters.background_color.clone()
+                            };
+                            self.editor.core(
+                                "layer.fill_color",
+                                serde_json::json!({"color":color,"opacity":self.editor.opacity}),
+                            );
+                        }
                         10140 => {
                             self.editor.core("layer.duplicate", serde_json::json!({}));
                         }

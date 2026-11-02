@@ -15,6 +15,7 @@ pub struct Brush {
     pub erase: bool,
 }
 struct State {
+    alpha_locked: bool,
     filter: Stabilizer,
     contact: Option<Contact>,
     spacing: f32,
@@ -23,6 +24,7 @@ struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
+            alpha_locked: false,
             filter: Default::default(),
             contact: None,
             spacing: 0.11,
@@ -121,6 +123,7 @@ impl State {
                     last: p,
                     minimum_opacity: self.minimum_opacity,
                     raster: Raster {
+                        alpha_locked: self.alpha_locked,
                         spacing: self.spacing,
                         width: p.width,
                         height: p.height,
@@ -291,6 +294,17 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
     {
         return abi::ERROR;
     }
+    let flags = if header.struct_size >= std::mem::size_of::<abi::ToolOptionsExt>() as u32 {
+        std::ptr::read_unaligned(options.cast::<abi::ToolOptionsExt>()).flags
+    } else {
+        0
+    };
+    if (header.struct_size > std::mem::size_of::<abi::ToolOptions>() as u32
+        && header.struct_size < std::mem::size_of::<abi::ToolOptionsExt>() as u32)
+        || flags & !abi::TOOL_OPTION_ALPHA_LOCK != 0
+    {
+        return abi::ERROR;
+    }
     let options = std::ptr::read_unaligned(options);
     if !options.spacing.is_finite()
         || !(0.01..=2.).contains(&options.spacing)
@@ -305,16 +319,20 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
     }
     state.spacing = options.spacing;
     state.minimum_opacity = options.minimum_opacity;
+    state.alpha_locked = flags & abi::TOOL_OPTION_ALPHA_LOCK != 0;
     abi::OK
 }
-static OPTIONS: abi::ToolOptionsApi = abi::ToolOptionsApi {
-    abi_version: 1,
-    struct_size: std::mem::size_of::<abi::ToolOptionsApi>() as u32,
-    configure: Some(configure),
+static OPTIONS: abi::ToolOptionsApiExt = abi::ToolOptionsApiExt {
+    base: abi::ToolOptionsApi {
+        abi_version: 1,
+        struct_size: std::mem::size_of::<abi::ToolOptionsApiExt>() as u32,
+        configure: Some(configure),
+    },
+    features: abi::TOOL_OPTION_ALPHA_LOCK,
 };
 #[no_mangle]
 pub extern "C" fn micopi_tool_options_v1() -> *const abi::ToolOptionsApi {
-    &OPTIONS
+    &OPTIONS.base
 }
 
 #[cfg(test)]
@@ -379,5 +397,26 @@ mod option_tests {
         assert_eq!(unsafe { configure(pointer, std::ptr::null()) }, abi::ERROR);
         state.contact = Some(contact());
         assert_eq!(unsafe { configure(pointer, &valid) }, abi::ERROR);
+    }
+    #[test]
+    fn additive_lock_options_accept_legacy_prefix_and_reject_unknown_flags() {
+        let mut state = State::default();
+        let ptr = (&mut state as *mut State).cast();
+        let mut extended = abi::ToolOptionsExt {
+            base: abi::ToolOptions {
+                struct_size: std::mem::size_of::<abi::ToolOptionsExt>() as u32,
+                ..options()
+            },
+            flags: abi::TOOL_OPTION_ALPHA_LOCK,
+        };
+        assert_eq!(unsafe { configure(ptr, &extended.base) }, abi::OK);
+        assert!(state.alpha_locked);
+        extended.flags = 2;
+        assert_eq!(unsafe { configure(ptr, &extended.base) }, abi::ERROR);
+        assert!(state.alpha_locked);
+        assert_eq!(unsafe { configure(ptr, &options()) }, abi::OK);
+        assert!(!state.alpha_locked);
+        extended.base.struct_size = 17;
+        assert_eq!(unsafe { configure(ptr, &extended.base) }, abi::ERROR);
     }
 }

@@ -18,6 +18,9 @@ pub struct Composition {
     #[serde(default, skip_serializing_if = "is_zero")]
     pub next_layer_id: u64,
 }
+fn is_false(value: &bool) -> bool {
+    !*value
+}
 fn is_zero(value: &u64) -> bool {
     *value == 0
 }
@@ -26,6 +29,8 @@ fn is_zero(value: &u64) -> bool {
 pub struct LayerMetadata {
     pub id: u64,
     pub name: String,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub alpha_locked: bool,
 }
 impl Composition {
     pub fn validate_layer_metadata(&self) -> Result<(), String> {
@@ -197,6 +202,7 @@ impl Document {
             layer_metadata: vec![LayerMetadata {
                 id: 1,
                 name: String::new(),
+                alpha_locked: false,
             }],
             next_layer_id: 2,
             workflow: Default::default(),
@@ -266,6 +272,7 @@ impl Document {
                 .map(|i| LayerMetadata {
                     id: i as u64 + 1,
                     name: String::new(),
+                    alpha_locked: false,
                 })
                 .collect()
         } else {
@@ -298,7 +305,7 @@ impl Document {
                 + before
                     .layer_metadata
                     .iter()
-                    .map(|m| m.name.len() + 16)
+                    .map(|m| m.name.len() + std::mem::size_of::<LayerMetadata>())
                     .sum::<usize>()
                 + 64,
             composition: Some(before),
@@ -343,6 +350,20 @@ impl Document {
         opacity: u8,
         mode: BlendMode,
     ) -> Result<(), String> {
+        let locked = self
+            .layer_metadata
+            .get(index)
+            .is_some_and(|m| m.alpha_locked);
+        self.set_layer_properties_with_lock(index, visible, opacity, mode, locked)
+    }
+    pub fn set_layer_properties_with_lock(
+        &mut self,
+        index: usize,
+        visible: bool,
+        opacity: u8,
+        mode: BlendMode,
+        alpha_locked: bool,
+    ) -> Result<(), String> {
         if index >= self.layers.len() {
             return Err("Layer does not exist".into());
         }
@@ -350,7 +371,9 @@ impl Document {
             return Err("Layer compositor DLL is not loaded".into());
         }
         let l = &self.layers[index];
-        if (l.visible, l.opacity, l.mode) == (visible, opacity, mode) {
+        if (l.visible, l.opacity, l.mode, self.alpha_locked(index))
+            == (visible, opacity, mode, alpha_locked)
+        {
             return Ok(());
         }
         self.finish();
@@ -359,6 +382,7 @@ impl Document {
         l.visible = visible;
         l.opacity = opacity;
         l.mode = mode;
+        self.layer_metadata[index].alpha_locked = alpha_locked;
         self.commit_composition(before, None);
         Ok(())
     }
@@ -520,6 +544,56 @@ impl Document {
         self.last = None;
         self.last_brush = None;
     }
+    pub(crate) fn locked_region_empty(&self, x: usize, y: usize, w: usize, h: usize) -> bool {
+        self.alpha_locked(self.active)
+            && self.stroke.is_some()
+            && self.layers[self.active].visible
+            && w > 0
+            && h > 0
+            && x.checked_add(w).is_some_and(|v| v <= self.width)
+            && y.checked_add(h).is_some_and(|v| v <= self.height)
+            && (y..y + h).all(|py| {
+                self.layers[self.active].pixels[py * self.width + x..py * self.width + x + w]
+                    .iter()
+                    .all(|p| p >> 24 == 0)
+            })
+    }
+    /// Reuse the existing undo tiles to validate locked tool edits, without a
+    /// region copy or allocation on the typed path.
+    pub(crate) fn locked_tool_region_valid(&self, x: usize, y: usize, w: usize, h: usize) -> bool {
+        if !self.alpha_locked(self.active) {
+            return true;
+        }
+        let Some(edit) = &self.stroke else {
+            return false;
+        };
+        let cols = self.width.div_ceil(TILE);
+        for ty in y / TILE..=(y + h - 1) / TILE {
+            for tx in x / TILE..=(x + w - 1) / TILE {
+                let tile = ty * cols + tx;
+                let Some(saved) = edit.tiles.get(&tile) else {
+                    return false;
+                };
+                let tile_x = tx * TILE;
+                let tile_y = ty * TILE;
+                let tile_width = (self.width - tile_x).min(TILE);
+                let start = x.max(tile_x);
+                let end = (x + w).min(tile_x + tile_width);
+                for py in y.max(tile_y)..(y + h).min(tile_y + TILE) {
+                    let offset = (py - tile_y) * tile_width + start - tile_x;
+                    let before = &saved[offset..offset + end - start];
+                    let after = &self.layers[self.active].pixels
+                        [py * self.width + start..py * self.width + end];
+                    for (&before, &after) in before.iter().zip(after) {
+                        if before >> 24 != after >> 24 || (before >> 24 == 0 && before != after) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        true
+    }
     pub fn begin(&mut self, x: f32, y: f32, b: Brush) {
         self.finish();
         if !self.layers[self.active].visible {
@@ -594,6 +668,9 @@ impl Document {
         edit.tiles.insert(id, Arc::new(data));
     }
     fn dab(&mut self, x: f32, y: f32, b: Brush) {
+        if self.alpha_locked(self.active) {
+            return;
+        }
         if b.opacity <= 0. || b.radius <= 0. {
             return;
         }
@@ -691,7 +768,7 @@ impl Document {
                 + state
                     .layer_metadata
                     .iter()
-                    .map(|m| m.name.len() + 16)
+                    .map(|m| m.name.len() + std::mem::size_of::<LayerMetadata>())
                     .sum::<usize>()
                 + 64;
         }
@@ -741,6 +818,7 @@ impl Document {
             self.layer_metadata.push(LayerMetadata {
                 id: self.next_layer_id,
                 name: String::new(),
+                alpha_locked: false,
             });
             self.next_layer_id += 1;
             self.layers.push(Layer {
@@ -774,6 +852,15 @@ impl Document {
             || x.checked_add(width).is_none_or(|v| v > self.width)
             || y.checked_add(height).is_none_or(|v| v > self.height)
             || width.checked_mul(height) != Some(pixels.len())
+        {
+            return false;
+        }
+        if self.alpha_locked(self.active)
+            && pixels.iter().enumerate().any(|(i, after)| {
+                let before =
+                    self.layers[self.active].pixels[(y + i / width) * self.width + x + i % width];
+                before >> 24 != *after >> 24 || (before >> 24 == 0 && before != *after)
+            })
         {
             return false;
         }
@@ -816,6 +903,9 @@ impl Document {
         changed
     }
     pub fn clear_layer(&mut self) {
+        if self.alpha_locked(self.active) {
+            return;
+        }
         self.finish();
         self.stroke = Some(Edit {
             layer_change: None,
@@ -921,6 +1011,7 @@ impl Document {
             .map(|i| LayerMetadata {
                 id: i as u64 + 1,
                 name: String::new(),
+                alpha_locked: false,
             })
             .collect();
         doc.next_layer_id = n as u64 + 1;

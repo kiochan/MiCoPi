@@ -13,6 +13,8 @@ pub use session::{parse_color, Parameters, Pointer, PointerPhase, Session, ToolK
 mod tests;
 
 #[cfg(test)]
+mod alpha_lock_tests;
+#[cfg(test)]
 mod editing_tests;
 #[cfg(test)]
 mod graph_tests;

@@ -221,6 +221,18 @@ pub struct ToolOptionsApi {
     pub configure: Option<unsafe extern "C" fn(*mut c_void, *const ToolOptions) -> i32>,
 }
 pub type ToolOptionsEntry = unsafe extern "C" fn() -> *const ToolOptionsApi;
+pub const TOOL_OPTION_ALPHA_LOCK: u32 = 1;
+/// Additive tails; read only when the prefix struct_size covers the whole tail.
+#[repr(C)]
+pub struct ToolOptionsExt {
+    pub base: ToolOptions,
+    pub flags: u32,
+}
+#[repr(C)]
+pub struct ToolOptionsApiExt {
+    pub base: ToolOptionsApi,
+    pub features: u32,
+}
 
 /// Additive synchronous compositor extension. Input layers are immutable;
 /// output is a separate strided ARGB region. No pointer may outlive the call.

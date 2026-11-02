@@ -1,6 +1,10 @@
 //! Structural edits move pixel buffers; only duplication allocates another layer.
 use super::*;
 impl Document {
+    pub fn alpha_locked(&self, index: usize) -> bool {
+        self.layer_metadata[index].alpha_locked
+    }
+
     pub fn layer_id(&self, index: usize) -> u64 {
         self.layer_metadata[index].id
     }
@@ -77,6 +81,7 @@ impl Document {
             LayerMetadata {
                 id: self.next_layer_id,
                 name: self.layer_metadata[index].name.clone(),
+                alpha_locked: self.layer_metadata[index].alpha_locked,
             },
         );
         let graph = self.reindexed_graph(&metadata)?;

@@ -375,6 +375,87 @@ fn layer_name_entry_commits_and_duplicate_shortcut_uses_the_shared_action() {
 }
 
 #[test]
+fn alpha_lock_toggle_keeps_pending_names_and_color_shortcuts_keep_coverage() {
+    fn label(shape: &Shape) -> Option<Pos2> {
+        match shape {
+            Shape::Text(t) if t.galley.job.text == "Lock Layer Transparency" => {
+                Some(t.pos + t.galley.rect.center().to_vec2())
+            }
+            Shape::Vec(shapes) => shapes.iter().find_map(label),
+            _ => None,
+        }
+    }
+    let mut app = studio();
+    app.editor.session = crate::application::Session::new(
+        crate::plugins::Registry::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"))
+            .unwrap(),
+    )
+    .unwrap();
+    app.editor
+        .core("canvas.new", serde_json::json!({"width":12,"height":8}));
+    app.editor
+        .core("layer.fill_color", serde_json::json!({"color":"#33669960"}));
+    app.editor.core(
+        "brush.set",
+        serde_json::json!({"color":"#ff0000","background_color":"#00ff00","opacity":1}),
+    );
+    app.editor.sync_from_session();
+    let ctx = Context::default();
+    let size = vec2(1360., 920.);
+    for t in 0..3 {
+        frame(&mut app, &ctx, size, vec![], t as f64);
+    }
+    let id = Id::new((
+        "layer-name",
+        app.editor.session.doc.identity,
+        app.editor.session.doc.layer_id(0),
+    ));
+    ctx.memory_mut(|m| m.request_focus(id));
+    ctx.data_mut(|d| d.insert_temp(id, "Cutout".to_string()));
+    let output = frame(&mut app, &ctx, size, vec![], 3.);
+    let point = output.shapes.iter().find_map(|s| label(&s.shape)).unwrap();
+    let pointer = |pressed| Event::PointerButton {
+        pos: point,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: Modifiers::NONE,
+    };
+    frame(
+        &mut app,
+        &ctx,
+        size,
+        vec![Event::PointerMoved(point), pointer(true), pointer(false)],
+        4.,
+    );
+    assert_eq!(app.editor.session.doc.layer_name(0), "Cutout");
+    assert!(app.editor.session.doc.alpha_locked(0));
+    ctx.memory_mut(|m| {
+        if let Some(id) = m.focused() {
+            m.surrender_focus(id);
+        }
+    });
+    frame(&mut app, &ctx, size, vec![], 5.);
+    let key = |pressed, modifiers| Event::Key {
+        key: Key::Backspace,
+        physical_key: Some(Key::Backspace),
+        pressed,
+        repeat: false,
+        modifiers,
+    };
+    frame(&mut app, &ctx, size, vec![key(true, Modifiers::ALT)], 6.);
+    assert!(app.editor.session.doc.layers[0]
+        .pixels
+        .iter()
+        .all(|p| *p == 0x60ff0000));
+    frame(&mut app, &ctx, size, vec![key(false, Modifiers::ALT)], 7.);
+    frame(&mut app, &ctx, size, vec![key(true, Modifiers::CTRL)], 8.);
+    assert!(app.editor.session.doc.layers[0]
+        .pixels
+        .iter()
+        .all(|p| *p == 0x6000ff00));
+}
+
+#[test]
 fn canvas_area_gestures_commit_once_cancel_and_guard_the_document_target() {
     let mut app = studio();
     let ctx = Context::default();

@@ -757,5 +757,9 @@
   "Drag on the canvas to set gradient direction and length.": "ドラッグしてグラデーションの方向と長さを指定します。",
   "Fill Expansion": "塗りつぶし拡張",
   "Fill Feather": "塗りつぶしぼかし",
-  "Positive expands; negative contracts. Feather softens both sides.": "正値で拡張、負値で縮小。ぼかしは境界の両側に適用します。"
+  "Positive expands; negative contracts. Feather softens both sides.": "正値で拡張、負値で縮小。ぼかしは境界の両側に適用します。",
+  "Lock Layer Transparency": "レイヤーの透明度を保護",
+  "Fill with Foreground": "前景色で塗りつぶす",
+  "Fill with Background": "背景色で塗りつぶす",
+  "Fill Layer Color": "レイヤーを単色で塗りつぶす"
 }

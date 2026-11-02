@@ -6,17 +6,17 @@ use crate::{
 };
 use serde_json::{json, Value};
 use std::path::PathBuf;
-fn session() -> Session {
+pub(super) fn session() -> Session {
     let registry =
         Registry::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins")).unwrap();
     let mut s = Session::new(registry).unwrap();
     call(&mut s, "canvas.new", json!({"width":12,"height":8}));
     s
 }
-fn call(s: &mut Session, id: &str, args: Value) -> Value {
+pub(super) fn call(s: &mut Session, id: &str, args: Value) -> Value {
     s.apply(Action::new(id, args)).unwrap()["result"].clone()
 }
-fn check(s: &mut Session) {
+pub(super) fn check(s: &mut Session) {
     assert_eq!(call(s, "replay.verify", json!({}))["valid"], true);
     let last = s.replay_journal(false).unwrap().entries.len() - 1;
     let pixels = codec::png(&mut s.doc).unwrap();

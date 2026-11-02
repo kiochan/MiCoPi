@@ -41,3 +41,7 @@ Image-node sources keep referring to the same layer when another layer is insert
 This increment covers stable identities, layer rename/duplicate/reorder/delete and exact pixel transforms. Selections, masks, arbitrary rotation/scaling, canvas resize/crop, groups, merge and PSD interchange remain future work in the [roadmap](../ROADMAP.md). PhotoCraft's GPU/web frontend and wider module architecture are not adopted.
 
 Regression coverage checks graph remapping, undo/redo pixels, stable ID allocation, failed atomic groups, saved projects, old verified journals and new replay frame parity. Native transform tests compare asymmetric images and overlapping translations with an independent out-of-place oracle. Buffer pointer checks verify reorder and ordinary delete/undo reuse pixel allocations; atomic checkpoints may share removed undo buffers and can require a copy on restoration.
+
+## Transparency lock
+
+`layer.set` accepts optional `alpha_locked` with either the existing index or stable ID selector. It defaults to false. A property change that combines lock, opacity or blend properties creates one composition undo entry. Duplicates inherit their source lock; new layers start unlocked. Locking preserves raw pixel alpha during painting and color processing. Layer removal, history navigation and project replacement remain structural operations. See [Painting tools](painting-tools.md) for behavior, shortcuts and native compatibility.

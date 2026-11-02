@@ -757,5 +757,9 @@
   "Drag on the canvas to set gradient direction and length.": "在画布上拖动，设置渐变的方向和长度。",
   "Fill Expansion": "填充扩展",
   "Fill Feather": "填充羽化",
-  "Positive expands; negative contracts. Feather softens both sides.": "正值扩展，负值收缩；羽化柔化边界两侧。"
+  "Positive expands; negative contracts. Feather softens both sides.": "正值扩展，负值收缩；羽化柔化边界两侧。",
+  "Lock Layer Transparency": "锁定图层透明度",
+  "Fill with Foreground": "以前景色填充",
+  "Fill with Background": "以背景色填充",
+  "Fill Layer Color": "图层颜色填充"
 }

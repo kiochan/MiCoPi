@@ -95,6 +95,9 @@ def main():
         dict(action="layer.add",args={}),
         dict(action="brush.set",args=dict(color="#f29a50",radius=20,opacity=.65)),
         dict(action="canvas.stroke",args=dict(points=[dict(x=40,y=80),dict(x=210,y=100)])),
+        dict(action="layer.set",args=dict(alpha_locked=True)),
+        dict(action="layer.fill_color",args=dict(color="#a64eff",opacity=.6)),
+        dict(action="canvas.stroke",args=dict(points=[dict(x=60,y=80),dict(x=180,y=100)])),
         dict(action="graph.set",args=dict(graph=graph)),
         dict(action="history.undo",args={}),dict(action="history.redo",args={}),
     ]

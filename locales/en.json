@@ -757,5 +757,9 @@
   "Drag on the canvas to set gradient direction and length.": "Drag on the canvas to set gradient direction and length.",
   "Fill Expansion": "Fill Expansion",
   "Fill Feather": "Fill Feather",
-  "Positive expands; negative contracts. Feather softens both sides.": "Positive expands; negative contracts. Feather softens both sides."
+  "Positive expands; negative contracts. Feather softens both sides.": "Positive expands; negative contracts. Feather softens both sides.",
+  "Lock Layer Transparency": "Lock Layer Transparency",
+  "Fill with Foreground": "Fill with Foreground",
+  "Fill with Background": "Fill with Background",
+  "Fill Layer Color": "Fill Layer Color"
 }
