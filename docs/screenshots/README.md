@@ -7,7 +7,8 @@ These are actual application captures, not interface mockups. Current images com
 | [Atomic workflow](atomic-workflow.png) | Default atomic execution control in the plugin node editor |
 | [Verified replay](replay.png) | Event timeline and read-only recorded outcome preview |
 | [Workbench](workbench.png) | Default independent control bar, canvas and property windows |
-| [Floating windows](floating-windows.png) | Independent control bar and canvas, floating inside the application |
+| [Floating windows](floating-windows.png) | Independent native canvas window |
+| [Native Tools](native-tools.png) | Independent native control bar |
 | [Image nodes](image-nodes.png) | Linked layer sources, per-layer filters, synchronized merges and output |
 | [Workflow nodes](workflow-nodes.png) | DLL-contributed public state connected to an action |
 | [English settings](settings-en.png) | Display language setting |
@@ -21,4 +22,4 @@ Run `scripts/smoke-runtime.py`, `scripts/smoke-linked-graphs.py`, `scripts/smoke
 
 Older screenshots live in [archive](archive/README.md) for historical reference. They do not represent the current interface and are omitted from portable release screenshots.
 
-`floating-windows.png` shows the independent Tools and Canvas windows. `workbench.png` shows their default docked arrangement. Both are captured from the running application by `scripts/smoke-windows.py`.
+`floating-windows.png` and `native-tools.png` show the independent native Canvas and Tools windows. `workbench.png` shows their default docked arrangement. These are captured directly by the application renderer by `scripts/smoke-windows.py`.

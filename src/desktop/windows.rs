@@ -50,12 +50,28 @@ impl Editor {
     }
 }
 impl Studio {
+    pub(super) fn reset_window_input(&mut self) {
+        self.editor.finish_stroke();
+        self.editor.pen_active = false;
+        self.editor.pen_hover = None;
+        self.editor.mouse_position = None;
+        self.editor.packets.clear();
+        if let Some(native) = &self.editor.native {
+            native.clear_pen();
+        }
+        for window in self.native_windows.values() {
+            if let Some(native) = &window.native {
+                native.clear_pen();
+            }
+        }
+    }
     pub(super) fn report_windows(&mut self) {
         let actual:Vec<_>=self.editor.session.registry.panels.values().map(|definition| {
             let location=self.dock.find_tab(&contributed_panel(definition));
             let bounds=location.and_then(|(s,n,_)|match &self.dock[s][n] {egui_dock::Node::Leaf(leaf) if leaf.rect.is_finite() && leaf.rect.is_positive()=>Some(json!({"x":leaf.rect.left(),"y":leaf.rect.top(),"width":leaf.rect.width(),"height":leaf.rect.height()})),_=>None});
+            let native=location.and_then(|(s,_,_)|self.native_window_state(s));
             let active=location.is_some_and(|(s,n,t)|matches!(&self.dock[s][n],egui_dock::Node::Leaf(leaf) if leaf.active==t));
-            json!({"id":definition.id,"open":location.is_some(),"active":active,"floating":location.is_some_and(|(s,_,_)|!s.is_main()),"bounds":bounds})
+            json!({"id":definition.id,"open":location.is_some(),"active":active,"floating":location.is_some_and(|(s,_,_)|!s.is_main()),"bounds":bounds,"native":native})
         }).collect();
         self.editor.session.ui["windows.actual"] = json!(actual);
     }
@@ -72,6 +88,30 @@ impl Studio {
             .get(args["panel"].as_str().ok_or("Missing window ID")?)
             .ok_or("Window plugin is unavailable")?;
         let panel = contributed_panel(definition);
+        let operation = args["operation"]
+            .as_str()
+            .ok_or("Missing window operation")?;
+        if matches!(operation, "minimize" | "maximize" | "restore") {
+            self.reset_window_input();
+            let (surface, _, _) = self.dock.find_tab(&panel).ok_or("Open the window first")?;
+            let window = self
+                .native_windows
+                .get(&surface.0)
+                .ok_or("Float the window first")?;
+            match operation {
+                "minimize" => {
+                    ctx.send_viewport_cmd_to(window.viewport, ViewportCommand::Minimized(true))
+                }
+                "maximize" => {
+                    ctx.send_viewport_cmd_to(window.viewport, ViewportCommand::Maximized(true))
+                }
+                _ => {
+                    ctx.send_viewport_cmd_to(window.viewport, ViewportCommand::Minimized(false));
+                    ctx.send_viewport_cmd_to(window.viewport, ViewportCommand::Maximized(false));
+                }
+            }
+            return Ok(());
+        }
         let target = args["target"]
             .as_str()
             .map(|id| {
@@ -87,8 +127,7 @@ impl Studio {
         let operation = args["operation"]
             .as_str()
             .ok_or("Missing window operation")?;
-        self.editor.finish_stroke();
-        self.editor.pen_active = false;
+        self.reset_window_input();
         let mut dock = self
             .dock_before_focus
             .as_ref()
@@ -152,7 +191,7 @@ impl Studio {
             );
             let decoration = ctx.style().spacing.window_margin.sum()
                 + Vec2::splat(ctx.style().visuals.window_stroke.width * 2.);
-            let size = vec2(
+            let mut size = vec2(
                 args["width"]
                     .as_f64()
                     .map(|n| n as f32)
@@ -168,16 +207,34 @@ impl Studio {
                     .map(|n| n as f32)
                     .unwrap_or(if panel == Panel::Tools {
                         self.editor.settings.ui.toolbox_height
+                            + if ctx.embed_viewports() {
+                                0.
+                            } else {
+                                appearance.title_height
+                            }
                     } else {
                         460.
                     }),
-            )
-            .min((area.size() - decoration).max(vec2(48., 48.)));
+            );
+            if ctx.embed_viewports() {
+                size = size.min((area.size() - decoration).max(vec2(48., 48.)));
+            }
+            let origin = ctx
+                .input(|i| i.viewport().outer_rect.map(|r| r.min))
+                .unwrap_or_default();
             let position = pos2(
-                args["x"].as_f64().unwrap_or(area.left() as f64 + 24.) as f32,
-                args["y"].as_f64().unwrap_or(area.top() as f64 + 24.) as f32,
-            )
-            .clamp(area.min, area.max - size - decoration);
+                args["x"]
+                    .as_f64()
+                    .unwrap_or((origin.x + area.left() + 24.) as f64) as f32,
+                args["y"]
+                    .as_f64()
+                    .unwrap_or((origin.y + area.top() + 24.) as f64) as f32,
+            );
+            let position = if ctx.embed_viewports() {
+                position.clamp(area.min, area.max - size - decoration)
+            } else {
+                position
+            };
             dock.get_window_state_mut(surface)
                 .unwrap()
                 .set_position(position)
@@ -246,6 +303,9 @@ impl Studio {
             if let Some((s, n, t)) = dock.find_tab(&panel) {
                 dock.set_active_tab((s, n, t));
                 dock.set_focused_node_and_surface((s, n));
+                if let Some(w) = self.native_windows.get(&s.0) {
+                    ctx.send_viewport_cmd_to(w.viewport, ViewportCommand::Focus);
+                }
             }
         }
         if !valid_dock(&dock) {
@@ -380,6 +440,28 @@ mod tests {
         );
         assert!(app.dock.find_tab(&Panel::Workflow).is_some());
         assert!(app.dock.find_tab(&Panel::Nodes).is_none());
+    }
+    #[test]
+    fn native_placement_preserves_negative_desktop_coordinates_in_saved_layouts() {
+        let mut app = studio();
+        let ctx = Context::default();
+        frame(&mut app, &ctx, vec2(1360., 920.), vec![], 0.);
+        ctx.set_embed_viewports(false);
+        command(
+            &mut app,
+            &ctx,
+            json!({"panel":"canvas","operation":"float","x":-1500,"y":-800,"width":900,"height":600}),
+        );
+        let (surface, _, _) = app.dock.find_tab(&Panel::Canvas).unwrap();
+        let value = serde_json::to_value(app.dock.get_window_state(surface).unwrap()).unwrap();
+        assert_eq!(value["next_position"]["x"], -1500.);
+        assert_eq!(value["next_position"]["y"], -800.);
+        let saved = encode_workspace(&app.dock, &app.editor.session.registry).unwrap();
+        let (mut restored, _) = decode_workspace(&saved).unwrap();
+        assert_eq!(
+            serde_json::to_value(restored.get_window_state(surface).unwrap()).unwrap(),
+            value
+        );
     }
     #[test]
     fn all_content_can_float_with_an_empty_main_workspace() {

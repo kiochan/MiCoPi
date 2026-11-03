@@ -791,5 +791,12 @@
   "Dock Right: {name}": "오른쪽에 도킹: {name}",
   "Dock Top: {name}": "위쪽에 도킹: {name}",
   "Dock Bottom: {name}": "아래쪽에 도킹: {name}",
-  "Group as Tabs: {name}": "탭으로 그룹화: {name}"
+  "Group as Tabs: {name}": "탭으로 그룹화: {name}",
+  "Dock Window": "창 도킹",
+  "Minimize Window": "창 최소화",
+  "Minimize Window: {name}": "창 최소화: {name}",
+  "Maximize Window": "창 최대화",
+  "Maximize Window: {name}": "창 최대화: {name}",
+  "Restore Window": "창 복원",
+  "Restore Window: {name}": "창 복원: {name}"
 }

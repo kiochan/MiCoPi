@@ -791,5 +791,12 @@
   "Dock Right: {name}": "右にドッキング: {name}",
   "Dock Top: {name}": "上にドッキング: {name}",
   "Dock Bottom: {name}": "下にドッキング: {name}",
-  "Group as Tabs: {name}": "タブとしてグループ化: {name}"
+  "Group as Tabs: {name}": "タブとしてグループ化: {name}",
+  "Dock Window": "ウィンドウをドッキング",
+  "Minimize Window": "ウィンドウを最小化",
+  "Minimize Window: {name}": "ウィンドウを最小化: {name}",
+  "Maximize Window": "ウィンドウを最大化",
+  "Maximize Window: {name}": "ウィンドウを最大化: {name}",
+  "Restore Window": "ウィンドウを元に戻す",
+  "Restore Window: {name}": "ウィンドウを元に戻す: {name}"
 }

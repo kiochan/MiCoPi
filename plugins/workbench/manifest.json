@@ -223,6 +223,11 @@
         "type": "object",
         "additionalProperties": false
       }
+    },
+    {
+      "id": "window.capture",
+      "title": "Capture Window",
+      "operation": "window_capture"
     }
   ],
   "panels": [],

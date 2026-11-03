@@ -7,6 +7,9 @@ pub(super) fn studio() -> Studio {
     editor.workspace = Workspace::default();
     let applied = editor.settings.ui.clone();
     Studio {
+        window_capture_results: Default::default(),
+        pending_window_captures: Default::default(),
+        native_windows: Default::default(),
         replay: replay::ReplayWindow::default(),
         action_server: None,
         from_core_ui: false,

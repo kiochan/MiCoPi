@@ -12,6 +12,9 @@ pub const OPERATIONS: &[&str] = &[
     "dock_top",
     "dock_bottom",
     "tab",
+    "minimize",
+    "maximize",
+    "restore",
 ];
 pub fn commands(panel: &PanelDefinition) -> Vec<ActionDefinition> {
     OPERATIONS.iter().map(|operation| {
@@ -20,7 +23,7 @@ pub fn commands(panel: &PanelDefinition) -> Vec<ActionDefinition> {
             args["target"] = json!({"$arg":"target"});
             json!({"type":"object","required":["target"],"properties":{"target":{"type":"string"}},"additionalProperties":false})
         } else { json!({"type":"object","additionalProperties":false}) };
-        let title=match *operation {"show"=>"Show Window","hide"=>"Hide Window","focus"=>"Focus Window","float"=>"Float Window","dock_left"=>"Dock Left","dock_right"=>"Dock Right","dock_top"=>"Dock Top","dock_bottom"=>"Dock Bottom",_=>"Group as Tabs"};
+        let title=match *operation {"show"=>"Show Window","hide"=>"Hide Window","focus"=>"Focus Window","float"=>"Float Window","dock_left"=>"Dock Left","dock_right"=>"Dock Right","dock_top"=>"Dock Top","dock_bottom"=>"Dock Bottom","minimize"=>"Minimize Window","maximize"=>"Maximize Window","restore"=>"Restore Window",_=>"Group as Tabs"};
         ActionDefinition { id:format!("window.{}.{}",panel.id,operation), title:format!("{title}: {}",panel.title), operation:None,native:None,
             steps:vec![Action::new("window.command",args)], input_schema:Some(schema),read_only:false,document_atomic:false,output_schema:None }
     }).collect()
@@ -28,7 +31,7 @@ pub fn commands(panel: &PanelDefinition) -> Vec<ActionDefinition> {
 pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     if op == Operation::WindowState {
         return Ok(
-            json!({"runtime":s.runtime,"panels":s.registry.panels.values().collect::<Vec<_>>(),"actual":s.ui.get("windows.actual"),"last_request":s.ui.get("windows.request"),"last_result":s.ui.get("windows.result")}),
+            json!({"runtime":s.runtime,"panels":s.registry.panels.values().collect::<Vec<_>>(),"actual":s.ui.get("windows.actual"),"last_capture":s.ui.get("windows.capture"),"last_request":s.ui.get("windows.request"),"last_result":s.ui.get("windows.result")}),
         );
     }
     if s.runtime == "desktop" && s.ui_effects.len() >= 128 {
@@ -36,6 +39,18 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
             "presentation_queue_full",
             "Wait for queued presentation commands before retrying",
         ));
+    }
+    if op == Operation::WindowCapture {
+        let panel = args["panel"].as_str().unwrap();
+        if !s.registry.panels.contains_key(panel) {
+            return Err(ActionError::new("unknown_window", panel));
+        }
+        let queued = s.runtime == "desktop";
+        if queued {
+            s.ui_effects
+                .push_back(json!({"id":"window.capture","value":args}));
+        }
+        return Ok(json!({"queued":queued,"applied":false,"runtime":s.runtime}));
     }
     if op == Operation::WindowLayout {
         if serde_json::to_vec(&args["layout"])?.len() > 1024 * 1024 {
@@ -82,6 +97,23 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn viewport_capture_is_explicitly_unavailable_headlessly_and_queued_on_desktop() {
+        let mut s = Session::new(crate::plugins::Registry::bundled()).unwrap();
+        let args = json!({"panel":"canvas","path":"target/test-output/window.png"});
+        assert_eq!(
+            s.apply(Action::new("window.capture", args.clone()))
+                .unwrap()["result"]["queued"],
+            false
+        );
+        assert!(s.ui_effects.is_empty());
+        s.runtime = "desktop".into();
+        assert_eq!(
+            s.apply(Action::new("window.capture", args)).unwrap()["result"]["queued"],
+            true
+        );
+        assert_eq!(s.ui_effects.back().unwrap()["id"], "window.capture");
+    }
     #[test]
     fn window_commands_are_plugin_owned_schema_checked_and_headless_is_explicit() {
         let mut s = Session::new(crate::plugins::Registry::bundled()).unwrap();

@@ -10,6 +10,7 @@ mod commands;
 mod document_texture;
 #[path = "../../plugins/layers/panel.rs"]
 mod layers;
+mod native_windows;
 #[path = "../../plugins/navigator/panel.rs"]
 mod navigator;
 #[path = "../../plugins/compositing/panel.rs"]
@@ -398,6 +399,9 @@ impl Editor {
 }
 
 pub struct Studio {
+    window_capture_results: std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
+    pending_window_captures: std::collections::HashMap<ViewportId, PathBuf>,
+    native_windows: std::collections::BTreeMap<usize, native_windows::NativeWindow>,
     replay: replay::ReplayWindow,
     action_server: Option<crate::automation::ipc::Server>,
     from_core_ui: bool,
@@ -524,6 +528,9 @@ impl Studio {
         };
         Self {
             action_server,
+            window_capture_results: Default::default(),
+            pending_window_captures: Default::default(),
+            native_windows: Default::default(),
             replay: replay::ReplayWindow::default(),
             from_core_ui: false,
             pending_capture: None,
@@ -557,6 +564,24 @@ impl Studio {
                     }
                     _ => {}
                 },
+                Some("window.capture") => {
+                    let panel = effect["value"]["panel"]
+                        .as_str()
+                        .and_then(|id| self.editor.session.registry.panels.get(id))
+                        .map(contributed_panel);
+                    let viewport = panel
+                        .and_then(|p| self.dock.find_tab(&p))
+                        .and_then(|(s, _, _)| self.native_windows.get(&s.0))
+                        .map(|w| w.viewport);
+                    if let (Some(viewport), Some(path)) =
+                        (viewport, effect["value"]["path"].as_str())
+                    {
+                        self.pending_window_captures
+                            .insert(viewport, PathBuf::from(path));
+                    } else {
+                        self.editor.status = "Float the window before capturing it".into();
+                    }
+                }
                 Some("window.layout") => {
                     let result = decode_workspace(&effect["value"].to_string());
                     if let Some((mut dock, _)) = result {
@@ -569,7 +594,7 @@ impl Studio {
                             .cloned()
                             .collect::<Vec<_>>();
                         reconcile_plugins(&mut dock, &self.editor.session.registry, Some(&known));
-                        self.editor.finish_stroke();
+                        self.reset_window_input();
                         self.dock = dock;
                         self.dock_before_focus = None;
                         self.layout_changed = Some(Instant::now());
@@ -760,6 +785,13 @@ impl Studio {
         }
         if let Some(native) = &self.editor.native {
             native.drain_pen(&mut self.editor.packets);
+            if self
+                .dock
+                .find_tab(&Panel::Canvas)
+                .is_some_and(|(s, _, _)| !s.is_main())
+            {
+                self.editor.packets.clear();
+            }
         }
         self.consume_ui_effects(ctx);
         if self.dock.find_tab(&Panel::Canvas).is_none() {
@@ -787,6 +819,13 @@ impl Studio {
             self.dock.translations.tab_context_menu.eject_button =
                 localize("Float Window").into_owned();
         }
+        // Render the main tree independently; detached trees belong to real OS viewports.
+        let separate = !ctx.embed_viewports();
+        let mut main = DockState::new(vec![]);
+        if separate {
+            std::mem::swap(main.main_surface_mut(), self.dock.main_surface_mut());
+            main.translations = self.dock.translations.clone();
+        }
         CentralPanel::default()
             .frame(
                 Frame::new()
@@ -794,25 +833,9 @@ impl Studio {
                     .inner_margin(Margin::same(a.outer_padding as i8)),
             )
             .show(ctx, |ui| {
-                let mut style = egui_dock::Style::from_egui(ui.style().as_ref());
-                style.dock_area_padding = Some(Margin::ZERO);
-                style.tab_bar.height = a.tab_height;
-                style.tab_bar.bg_fill = colors.panel;
-                style.tab_bar.inner_margin = Margin::symmetric(8, 0);
-                style.tab.tab_body.inner_margin = Margin::same(a.panel_padding as i8);
-                style.tab.tab_body.bg_fill = colors.panel;
-                style.tab.tab_body.stroke = Stroke::new(1., colors.border);
-                style.tab.tab_body.corner_radius = CornerRadius::same(a.corner_radius as u8);
-                style.tab.hline_below_active_tab_name = true;
-                style.tab.active.bg_fill = colors.panel;
-                style.tab.focused.bg_fill = colors.panel;
-                style.tab.focused.text_color = colors.accent;
-                style.separator.width = a.item_spacing;
-                style.separator.extra = a.tab_height + a.control_height + a.panel_padding * 2. + 8.;
-                style.separator.color_idle = colors.background;
-                style.main_surface_border_stroke = Stroke::NONE;
+                let style = native_windows::dock_style(ctx, &a);
                 let can_float = self.dock.iter_surfaces().filter(|s| !s.is_empty()).count() < 32;
-                DockArea::new(&mut self.dock)
+                DockArea::new(if separate { &mut main } else { &mut self.dock })
                     .id(Id::new("micopi-workspace"))
                     .style(style)
                     .show_leaf_close_all_buttons(false)
@@ -825,6 +848,11 @@ impl Studio {
                         },
                     );
             });
+        if separate {
+            std::mem::swap(main.main_surface_mut(), self.dock.main_surface_mut());
+            self.absorb_native_surfaces(main);
+            self.render_native_windows(ctx);
+        }
         let area = ctx.content_rect();
         let area_changed = ctx.data_mut(|data| {
             let key = Id::new("reported-plugin-window-area");
@@ -846,7 +874,13 @@ impl Studio {
         self.editor.palette_ui(ctx);
         self.new_document_window(ctx);
         self.run_actions(ctx);
-        if !ctx.input(|i| i.focused) && self.editor.input_owned {
+        if !ctx.input(|i| i.focused)
+            && self.editor.input_owned
+            && self
+                .dock
+                .find_tab(&Panel::Canvas)
+                .is_some_and(|(s, _, _)| s.is_main())
+        {
             self.editor.finish_stroke();
             self.editor.pen_active = false;
         }

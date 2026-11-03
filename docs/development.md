@@ -74,4 +74,4 @@ The 0.21 development benchmark (including atomic contact checkpoints and compact
 
 ## Plugin window regression
 
-Run `python scripts/smoke-windows.py` after staging the portable build. It checks command discovery, dock/float/tab/hide/show behavior, explicit headless presentation results, unchanged PNG pixels, project persistence and replay verification in an isolated GUI/profile. Captures remain under ignored `target/test-output/window-smoke/`.
+Run `python scripts/smoke-windows.py` after staging the portable build. The check validates independent top-level HWNDs, native mouse input, monitor movement where displays are available, restart persistence, command discovery and dock/float/tab/hide/show behavior, explicit headless presentation results, unchanged PNG pixels, project persistence and replay verification in an isolated GUI/profile. Captures remain under ignored `target/test-output/window-smoke/`.

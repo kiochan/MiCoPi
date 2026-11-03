@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Render floating plugin surfaces as independent native OS viewports with shared themes/textures, monitor placement, stable panel commands and persisted normal geometry.
+- Route Windows Ink through per-HWND bounded queues with viewport-specific DPI conversion; preserve pressure, stabilization, focus cancellation and verified outcomes.
+- Expose native window observations and registered minimize/maximize/restore commands; verify top-level HWNDs, independent movement, native mouse drawing and restart persistence.
+
 - Replace the left control area with an independent Tools bar and movable Canvas window; share dock/float/tab/hide/show commands across registered feature windows.
 - Move feature UI adapters into plugin packages, separate workflow and compositing windows, and expose every action in command search and configurable shortcuts.
 - Coalesce workspace gestures into registered layout commands, preserve legacy layouts with a backup, and verify fractional window metadata without JSON precision drift.

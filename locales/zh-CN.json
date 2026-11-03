@@ -791,5 +791,12 @@
   "Dock Right: {name}": "停靠右侧: {name}",
   "Dock Top: {name}": "停靠顶部: {name}",
   "Dock Bottom: {name}": "停靠底部: {name}",
-  "Group as Tabs: {name}": "组合为标签页: {name}"
+  "Group as Tabs: {name}": "组合为标签页: {name}",
+  "Dock Window": "停靠窗口",
+  "Minimize Window": "最小化窗口",
+  "Minimize Window: {name}": "最小化窗口: {name}",
+  "Maximize Window": "最大化窗口",
+  "Maximize Window: {name}": "最大化窗口: {name}",
+  "Restore Window": "还原窗口",
+  "Restore Window: {name}": "还原窗口: {name}"
 }

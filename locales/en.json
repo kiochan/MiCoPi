@@ -791,5 +791,12 @@
   "Dock Right: {name}": "Dock Right: {name}",
   "Dock Top: {name}": "Dock Top: {name}",
   "Dock Bottom: {name}": "Dock Bottom: {name}",
-  "Group as Tabs: {name}": "Group as Tabs: {name}"
+  "Group as Tabs: {name}": "Group as Tabs: {name}",
+  "Dock Window": "Dock Window",
+  "Minimize Window": "Minimize Window",
+  "Minimize Window: {name}": "Minimize Window: {name}",
+  "Maximize Window": "Maximize Window",
+  "Maximize Window: {name}": "Maximize Window: {name}",
+  "Restore Window": "Restore Window",
+  "Restore Window: {name}": "Restore Window: {name}"
 }

@@ -2,7 +2,7 @@
 //! The egui shell never borrows the legacy App or creates a second message loop.
 use super::*;
 use eframe::egui;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PenPhase {
@@ -28,7 +28,7 @@ struct Hook {
     context: egui::Context,
     samples: VecDeque<PenSample>,
 }
-thread_local! { static HOOK: RefCell<Option<Hook>> = const { RefCell::new(None) }; }
+thread_local! { static HOOKS: RefCell<BTreeMap<usize, Hook>> = const { RefCell::new(BTreeMap::new()) }; }
 
 pub struct Native {
     hwnd: Hwnd,
@@ -52,13 +52,16 @@ impl Native {
             let hwnd = hwnd as Hwnd;
             if !hwnd.is_null() {
                 let previous = SetWindowLongPtrW(hwnd, -4, procedure as *const () as isize);
-                HOOK.with(|slot| {
-                    *slot.borrow_mut() = Some(Hook {
-                        hwnd,
-                        previous,
-                        context,
-                        samples: VecDeque::with_capacity(128),
-                    })
+                HOOKS.with(|slot| {
+                    slot.borrow_mut().insert(
+                        hwnd as usize,
+                        Hook {
+                            hwnd,
+                            previous,
+                            context,
+                            samples: VecDeque::with_capacity(128),
+                        },
+                    )
                 });
                 chrome::appearance(hwnd, crate::ui::Theme::preset(2), true);
                 // Recalculate the frame after subclassing, without moving or showing it.
@@ -70,10 +73,43 @@ impl Native {
             }
         }
     }
+    /// Discover a newly created viewport by its unique bootstrap title on this UI thread.
+    /// Titles are never used to attach to another process or an already hooked window.
+    pub fn for_viewport(title: &str, context: egui::Context) -> Option<Self> {
+        unsafe extern "system" fn visit(hwnd: Hwnd, data: isize) -> i32 {
+            let search = &mut *(data as *mut (String, Hwnd));
+            let mut buffer = [0u16; 512];
+            let n = GetWindowTextW(hwnd, buffer.as_mut_ptr(), buffer.len() as i32);
+            if n > 0 && String::from_utf16_lossy(&buffer[..n as usize]) == search.0 {
+                search.1 = hwnd;
+                return 0;
+            }
+            1
+        }
+        unsafe {
+            let mut search: (String, Hwnd) = (title.to_owned(), null_mut());
+            EnumThreadWindows(GetCurrentThreadId(), visit, &mut search as *mut _ as isize);
+            if search.1.is_null() {
+                None
+            } else {
+                Some(Self::new(search.1 as isize, context))
+            }
+        }
+    }
+    pub fn window_id(&self) -> usize {
+        self.hwnd as usize
+    }
+    pub fn clear_pen(&self) {
+        HOOKS.with(|hooks| {
+            if let Some(hook) = hooks.borrow_mut().get_mut(&(self.hwnd as usize)) {
+                hook.samples.clear();
+            }
+        });
+    }
     pub fn drain_pen(&self, into: &mut Vec<PenSample>) {
         into.clear();
-        HOOK.with(|slot| {
-            if let Some(h) = slot.borrow_mut().as_mut() {
+        HOOKS.with(|slot| {
+            if let Some(h) = slot.borrow_mut().get_mut(&(self.hwnd as usize)) {
                 into.extend(h.samples.drain(..));
             }
         });
@@ -149,8 +185,9 @@ impl Native {
 impl Drop for Native {
     fn drop(&mut self) {
         unsafe {
-            HOOK.with(|slot| {
-                if let Some(hook) = slot.borrow_mut().take() {
+            HOOKS.with(|slot| {
+                let hook = slot.borrow_mut().remove(&(self.hwnd as usize));
+                if let Some(hook) = hook {
                     if GetWindowLongPtrW(hook.hwnd, -4) == procedure as *const () as isize {
                         SetWindowLongPtrW(hook.hwnd, -4, hook.previous);
                     }
@@ -177,8 +214,8 @@ unsafe fn enqueue(hwnd: Hwnd, info: PenInfo, phase: PenPhase) {
         eraser: info.flags & 6 != 0,
         time: info.pointer.time,
     };
-    HOOK.with(|slot| {
-        if let Some(hook) = slot.borrow_mut().as_mut() {
+    HOOKS.with(|slot| {
+        if let Some(hook) = slot.borrow_mut().get_mut(&(hwnd as usize)) {
             if hook.samples.len() >= 4096 {
                 hook.samples.clear();
                 hook.samples.push_back(PenSample {
@@ -193,8 +230,8 @@ unsafe fn enqueue(hwnd: Hwnd, info: PenInfo, phase: PenPhase) {
 }
 unsafe extern "system" fn procedure(hwnd: Hwnd, msg: u32, w: usize, l: isize) -> isize {
     // Release the hook borrow before forwarding: winit and Windows can reenter.
-    let previous = HOOK
-        .with(|slot| slot.borrow().as_ref().map(|h| h.previous))
+    let previous = HOOKS
+        .with(|slot| slot.borrow().get(&(hwnd as usize)).map(|h| h.previous))
         .unwrap_or(0);
     match msg {
         0x83 => {
@@ -290,6 +327,11 @@ unsafe extern "system" fn procedure(hwnd: Hwnd, msg: u32, w: usize, l: isize) ->
             let info: PenInfo = mem::zeroed();
             enqueue(hwnd, info, PenPhase::Leave);
         }
+        0x82 => {
+            HOOKS.with(|slot| {
+                slot.borrow_mut().remove(&(hwnd as usize));
+            });
+        }
         _ => {}
     }
     if previous != 0 {
@@ -306,5 +348,70 @@ pub fn report_error(error: &str) {
             wide("MiCoPi Failed to Start").as_ptr(),
             0x10,
         );
+    }
+}
+
+#[link(name = "user32")]
+unsafe extern "system" {
+    fn EnumThreadWindows(
+        thread: u32,
+        callback: unsafe extern "system" fn(Hwnd, isize) -> i32,
+        data: isize,
+    ) -> i32;
+}
+#[link(name = "kernel32")]
+unsafe extern "system" {
+    fn GetCurrentThreadId() -> u32;
+}
+
+#[cfg(test)]
+mod viewport_input_tests {
+    use super::*;
+    #[test]
+    fn pen_queues_are_window_local_and_keep_pressure_and_cancel_order() {
+        let first = Native {
+            hwnd: 0x7fff001usize as Hwnd,
+            gdiplus: 0,
+        };
+        let second = Native {
+            hwnd: 0x7fff002usize as Hwnd,
+            gdiplus: 0,
+        };
+        for native in [&first, &second] {
+            HOOKS.with(|hooks| {
+                hooks.borrow_mut().insert(
+                    native.hwnd as usize,
+                    Hook {
+                        hwnd: native.hwnd,
+                        previous: 0,
+                        context: egui::Context::default(),
+                        samples: VecDeque::new(),
+                    },
+                );
+            });
+        }
+        unsafe {
+            let mut pen: PenInfo = mem::zeroed();
+            pen.mask = 1;
+            pen.pressure = 256;
+            enqueue(first.hwnd, pen, PenPhase::Down);
+            pen.pressure = 1024;
+            enqueue(second.hwnd, pen, PenPhase::Move);
+            enqueue(first.hwnd, pen, PenPhase::Cancel);
+        }
+        let mut packets = vec![];
+        second.drain_pen(&mut packets);
+        assert_eq!(packets.len(), 1);
+        assert_eq!(packets[0].phase, PenPhase::Move);
+        assert_eq!(packets[0].pressure, 1.);
+        first.drain_pen(&mut packets);
+        assert_eq!(packets.len(), 2);
+        assert_eq!(packets[0].phase, PenPhase::Down);
+        assert_eq!(packets[0].pressure, 0.25);
+        assert_eq!(packets[1].phase, PenPhase::Cancel);
+        drop(first);
+        second.drain_pen(&mut packets);
+        assert!(packets.is_empty());
+        HOOKS.with(|hooks| assert!(hooks.borrow().contains_key(&(second.hwnd as usize))));
     }
 }

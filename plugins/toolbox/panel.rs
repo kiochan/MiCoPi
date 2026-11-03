@@ -105,7 +105,7 @@ impl Editor {
             }
         };
         if wide {
-            ui.horizontal_wrapped(body);
+            ui.horizontal(body);
         } else {
             ScrollArea::vertical()
                 .auto_shrink([false, false])

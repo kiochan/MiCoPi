@@ -1,6 +1,8 @@
 """Verify plugin windows, command discovery and unchanged pixels in an isolated desktop."""
 import argparse
 import base64
+import ctypes
+from ctypes import wintypes
 import json
 from pathlib import Path
 import shutil
@@ -8,6 +10,35 @@ import subprocess
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
+USER = ctypes.WinDLL('user32', use_last_error=True)
+USER.IsWindow.argtypes = [wintypes.HWND]
+USER.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+USER.GetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int]
+USER.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+USER.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+                              ctypes.c_int, ctypes.c_int, wintypes.UINT]
+USER.SetForegroundWindow.argtypes = [wintypes.HWND]
+USER.SendMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+USER.SendMessageW.restype = wintypes.LPARAM
+
+
+def native_rect(hwnd):
+    rect = wintypes.RECT()
+    assert USER.GetWindowRect(hwnd, ctypes.byref(rect))
+    return rect.left, rect.top, rect.right, rect.bottom
+
+
+def monitors():
+    result = []
+    callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HANDLE, wintypes.HDC,
+                                      ctypes.POINTER(wintypes.RECT), wintypes.LPARAM)
+    def visit(_, __, rect, ___):
+        r = rect.contents
+        result.append((r.left, r.top, r.right, r.bottom))
+        return True
+    callback = callback_type(visit)
+    assert USER.EnumDisplayMonitors(None, None, callback, 0)
+    return result
 
 
 def main():
@@ -96,6 +127,93 @@ def main():
                 window(panel['id'], 'hide')
         actual = {p['id']: p for p in call('window.list', {})['actual']}
         assert actual['canvas']['floating'] and actual['toolbox']['floating']
+        deadline = time.monotonic()+10
+        while not all((actual[p].get('native') or {}).get('hwnd') for p in ['canvas', 'toolbox']):
+            assert time.monotonic() < deadline, actual
+            time.sleep(.1)
+            actual = {p['id']: p for p in call('window.list', {})['actual']}
+        canvas_hwnd, tools_hwnd = [actual[p]['native']['hwnd'] for p in ['canvas', 'toolbox']]
+        assert canvas_hwnd != tools_hwnd
+        for hwnd in [canvas_hwnd, tools_hwnd]:
+            assert USER.IsWindow(hwnd)
+            assert not USER.GetWindowLongPtrW(hwnd, -16) & 0x40000000, 'Expected top-level OS window'
+        canvas_rect = native_rect(canvas_hwnd)
+        displays = monitors()
+        monitor = displays[-1]
+        # Move to another display when available, otherwise move independently on this display.
+        x, y = monitor[0]+40, monitor[1]+80
+        assert USER.SetWindowPos(tools_hwnd, None, x, y, 720, 160, 0x4 | 0x10)
+        deadline = time.monotonic()+10
+        while native_rect(tools_hwnd)[:2] != (x, y):
+            assert time.monotonic() < deadline, native_rect(tools_hwnd)
+            time.sleep(.1)
+        assert native_rect(canvas_hwnd) == canvas_rect, 'Moving Tools moved Canvas'
+        assert base64.b64decode(call('canvas.snapshot', {})['data']) == expected
+        tools_rect = native_rect(tools_hwnd)
+        old_native = actual['canvas']['native']['bounds']
+        assert USER.SetWindowPos(canvas_hwnd, None, monitor[0]+60, monitor[1]+280, 900, 590, 0x4 | 0x10)
+        deadline=time.monotonic()+10
+        while True:
+            actual = {p['id']: p for p in call('window.list', {})['actual']}
+            if actual['canvas']['native']['bounds'] != old_native:
+                break
+            assert time.monotonic()<deadline, 'Canvas placement did not update'
+            time.sleep(.1)
+        assert native_rect(tools_hwnd)==tools_rect, 'Moving Canvas moved Tools'
+        # Native client coordinates must reach the same painting Session.
+        USER.SetForegroundWindow(canvas_hwnd)
+        time.sleep(.2)
+        actual = {p['id']: p for p in call('window.list', {})['actual']}
+        native = actual['canvas']['native']
+        rect = native['image_rect']
+        ppp = native['pixels_per_point']
+        px = int((rect['min']['x']+rect['max']['x'])*.5*ppp)
+        py = int((rect['min']['y']+rect['max']['y'])*.5*ppp)
+        def mouse(message, dx=0, pressed=0):
+            USER.SendMessageW(canvas_hwnd, message, pressed, ((py & 65535) << 16) | ((px+dx) & 65535))
+        mouse(0x200)
+        mouse(0x201, pressed=1)
+        time.sleep(.08)
+        mouse(0x200, dx=50, pressed=1)
+        time.sleep(.08)
+        mouse(0x202, dx=50)
+        deadline = time.monotonic()+10
+        while base64.b64decode(call('canvas.snapshot', {})['data']) == expected:
+            assert time.monotonic() < deadline, 'Native Canvas did not receive a mouse stroke'
+            time.sleep(.1)
+        call('history.undo', {})
+        assert base64.b64decode(call('canvas.snapshot', {})['data']) == expected
+        # Renderer captures contain only this viewport, independent of occlusion and monitor coordinates.
+        for panel in ['canvas', 'toolbox']:
+            path=output/f'native-{panel}.png'
+            call('window.capture', dict(panel=panel, path=str(path)))
+            deadline=time.monotonic()+10
+            while not path.exists():
+                assert time.monotonic()<deadline, 'Native viewport capture timed out'
+                time.sleep(.05)
+        normal_rect=native_rect(canvas_hwnd)
+        window('canvas','maximize')
+        deadline=time.monotonic()+10
+        while not {p['id']:p for p in call('window.list', {})['actual']}['canvas']['native']['maximized']:
+            assert time.monotonic()<deadline, 'Canvas maximize timed out'
+            time.sleep(.05)
+        window('canvas','restore')
+        deadline=time.monotonic()+10
+        while native_rect(canvas_hwnd)!=normal_rect:
+            assert time.monotonic()<deadline, (normal_rect,native_rect(canvas_hwnd))
+            time.sleep(.05)
+        # Theme updates are shared by every native viewport without changing pixels.
+        call('settings.update', dict(path=str(profile/'settings.json'),ui=dict(theme='light')))
+        time.sleep(.25)
+        for panel in ['canvas','toolbox']:
+            path=output/f'native-{panel}-light.png'
+            call('window.capture',dict(panel=panel,path=str(path)))
+            deadline=time.monotonic()+10
+            while not path.exists():
+                assert time.monotonic()<deadline,'Light viewport capture timed out'
+                time.sleep(.05)
+        assert base64.b64decode(call('canvas.snapshot', {})['data'])==expected
+        call('settings.update',dict(path=str(profile/'settings.json'),ui=dict(theme='graphite')))
         capture('floating-windows.png')
         assert base64.b64decode(call('canvas.snapshot', {})['data']) == expected
         window('canvas', 'hide')
@@ -136,6 +254,7 @@ def main():
             process.kill()
             process.wait(timeout=10)
     print('Plugin windows: queued/applied state, dock/float/tab/hide/show, headless fallback and PNG/replay parity passed.')
+    print(f'Independent top-level HWNDs, native mouse drawing and movement passed; {len(displays)} display(s) available.')
     print(output)
 
 
