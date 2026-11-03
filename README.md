@@ -29,7 +29,7 @@ Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadma
 - Dockable, floating and tabbed panels; configurable spacing, sizing, themes and shortcuts.
 - Searchable settings, JSON editing, command palette and shortcut recording.
 - Transparent PNG export, PNG/JPEG/BMP import and `.mcp` projects.
-- Non-destructive [image graphs](docs/node-editor.md) for filters and blending.
+- Non-destructive [image graphs](docs/node-editor.md) with linked layer stacks, per-layer filters and explicit free compositing.
 - [Plugin workflow graphs](docs/workflow-nodes.md) generated from action and state schemas.
 - Independent native DLL plugins, headless JSONL, MCP stdio and attachment to a running GUI.
 - [Atomic document groups](docs/atomic-operations.md), shared-tile rollback and compact verified events.

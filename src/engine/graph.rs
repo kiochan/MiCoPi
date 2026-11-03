@@ -7,7 +7,7 @@ pub fn schema() -> serde_json::Value {
     use serde_json::json;
     let id = json!({"type":"integer","minimum":0,"maximum":4294967295u64});
     json!({"type":"object","required":["enabled","nodes","edges"],"additionalProperties":false,"properties":{
-        "enabled":{"type":"boolean"},
+        "enabled":{"type":"boolean"},"linked":{"type":"boolean","default":false,"description":"A validated layer-stack chain; structural layer edits keep its branches synchronized"},
         "nodes":{"type":"array","maxItems":64,"items":{"type":"object","required":["id","position","kind"],"additionalProperties":false,"properties":{
             "node_type":{"type":"string"},"id":id,"position":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-1000000,"maximum":1000000}},
             "kind":{"type":"string","enum":["layer","filter","blend","output"]},"index":{"type":"integer","minimum":0,"maximum":15},
@@ -135,8 +135,13 @@ pub struct Edge {
 #[serde(deny_unknown_fields)]
 pub struct Graph {
     pub enabled: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub linked: bool,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+}
+fn is_false(value: &bool) -> bool {
+    !*value
 }
 pub trait Renderer {
     fn render(
@@ -210,7 +215,7 @@ impl Graph {
             return Err("Node or edge limit exceeded".into());
         }
         if self.nodes.is_empty() {
-            return if self.enabled {
+            return if self.enabled || self.linked {
                 Err("An enabled image graph requires an output node".into())
             } else {
                 Ok(vec![])
@@ -319,6 +324,9 @@ impl Graph {
             .enumerate()
             .map(|(slot, id)| (*id, slot as u32))
             .collect();
+        if self.linked {
+            self.stack_branches(layer_count)?;
+        }
         Ok(order
             .iter()
             .map(|&i| {

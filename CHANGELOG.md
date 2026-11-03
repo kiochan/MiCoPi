@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Make new documents use linked layer compositing: graph branches follow layer insertion, duplication, reorder and deletion; per-layer filters retain identity and copy with their layer.
+- Synchronize linked blend-node modes with layer properties, apply opacity once, protect stack wiring and provide connected plugin filter insertion/removal, source controls and automatic clean-view refresh.
+- Preserve legacy/free graph semantics with an explicit advanced mode; validate linked topology, retain atomic undo/replay contracts and keep unfiltered stacks on the existing fast path.
+
 - Add dab spacing and minimum pressure opacity in the Brush panel and persistent Painting settings. Freeze typed options at DOWN through an optional extension while preserving default pixels and legacy recording hashes.
 - Reject custom options explicitly for DLLs without the extension, retaining existing tool tables and default compatibility.
 

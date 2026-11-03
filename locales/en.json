@@ -745,5 +745,18 @@
   "Dab Spacing": "Dab Spacing",
   "Minimum Opacity": "Minimum Opacity",
   "Distance between brush dabs as a fraction of diameter.": "Distance between brush dabs as a fraction of diameter.",
-  "Opacity retained at light pressure; zero pressure deposits no paint.": "Opacity retained at light pressure; zero pressure deposits no paint."
+  "Opacity retained at light pressure; zero pressure deposits no paint.": "Opacity retained at light pressure; zero pressure deposits no paint.",
+  "Linked Layer Stack": "Linked Layer Stack",
+  "Free Compositing": "Free Compositing",
+  "Switch to Free Compositing": "Switch to Free Compositing",
+  "Arrange Stack": "Arrange Stack",
+  "Insert Filter": "Insert Filter",
+  "Right-click to insert a layer filter": "Right-click to insert a layer filter",
+  "Stack connections follow layer order; switch to Free Compositing to rewire": "Stack connections follow layer order; switch to Free Compositing to rewire",
+  "Layer edits keep this chain synchronized. Right-click a layer or filter to insert an effect.": "Layer edits keep this chain synchronized. Right-click a layer or filter to insert an effect.",
+  "Free Compositing uses explicit connections. Rebuild from Layers replaces this draft and its effects.": "Free Compositing uses explicit connections. Rebuild from Layers replaces this draft and its effects.",
+  "Drag nodes · Ctrl+scroll to zoom · Double-click to center · Right-click for filters": "Drag nodes · Ctrl+scroll to zoom · Double-click to center · Right-click for filters",
+  "Visible": "Visible",
+  "Blend": "Blend",
+  "Graph Options": "Graph Options"
 }

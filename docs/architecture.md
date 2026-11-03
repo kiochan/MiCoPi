@@ -68,7 +68,7 @@ Document transactions and provisional pen contacts use replay state plus shared 
 
 ## Stable layer editing
 
-Optional composition metadata stores document-scoped layer IDs, custom names and the next ID. Legacy projects receive deterministic IDs when opened. IDs persist across save, undo and reorder; committed undo does not reuse allocated IDs. Atomic failure restores the allocator with the document checkpoint. Image graphs retain their index-based wire format; structural edits remap indices through stable IDs, and reject deletion of a referenced layer, including disabled graph sources.
+Optional composition metadata stores document-scoped layer IDs, custom names and the next ID. Legacy projects receive deterministic IDs when opened. IDs persist across save, undo and reorder; committed undo does not reuse allocated IDs. Atomic failure restores the allocator with the document checkpoint. Image graphs retain their index-based wire format. New documents use validated linked stacks: structural edits rebuild branches through stable IDs, preserving per-layer filters; duplication copies filters and deletion removes the corresponding branch. Linked blend modes stay synchronized with layer properties. Legacy/free graphs keep explicit wiring and reject deletion of referenced layers, including disabled sources. See [Image Node Editor](node-editor.md).
 
 Reorder moves existing pixel buffers. Delete stores the removed buffer in a shared undo entry; duplication copies only its source layer. Integer pixel transforms execute in the native painting DLL without an additional image-sized scratch buffer. Host tile snapshots, atomic checkpoints and replay recording retain their existing costs and limits. Typed pen movement is unchanged.
 

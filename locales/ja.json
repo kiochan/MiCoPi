@@ -745,5 +745,18 @@
   "Dab Spacing": "描点間隔",
   "Minimum Opacity": "最小不透明度",
   "Distance between brush dabs as a fraction of diameter.": "描点間の距離をブラシ直径に対する割合で指定します。",
-  "Opacity retained at light pressure; zero pressure deposits no paint.": "弱い筆圧で維持する不透明度です。筆圧がゼロのときは描画しません。"
+  "Opacity retained at light pressure; zero pressure deposits no paint.": "弱い筆圧で維持する不透明度です。筆圧がゼロのときは描画しません。",
+  "Linked Layer Stack": "レイヤー連動合成",
+  "Free Compositing": "自由合成",
+  "Switch to Free Compositing": "自由合成に切り替え",
+  "Arrange Stack": "合成チェーンを整列",
+  "Insert Filter": "フィルターを挿入",
+  "Right-click to insert a layer filter": "右クリックでレイヤーフィルターを挿入",
+  "Stack connections follow layer order; switch to Free Compositing to rewire": "接続はレイヤー順に連動します。自由合成に切り替えると接続を変更できます",
+  "Layer edits keep this chain synchronized. Right-click a layer or filter to insert an effect.": "レイヤー編集と合成チェーンは同期します。レイヤーやフィルターを右クリックして効果を挿入できます。",
+  "Free Compositing uses explicit connections. Rebuild from Layers replaces this draft and its effects.": "自由合成では接続が出力を決めます。「レイヤーから再構築」は現在の下書きと効果を置き換えます。",
+  "Drag nodes · Ctrl+scroll to zoom · Double-click to center · Right-click for filters": "ノードをドラッグ · Ctrl+スクロールでズーム · ダブルクリックで中央表示 · 右クリックでフィルター",
+  "Visible": "表示",
+  "Blend": "合成",
+  "Graph Options": "グラフ設定"
 }

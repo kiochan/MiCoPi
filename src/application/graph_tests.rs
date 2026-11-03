@@ -17,6 +17,7 @@ fn fresh(w: usize, h: usize) -> Session {
 fn filtered(filter: Filter, amount: f32) -> Graph {
     Graph {
         enabled: true,
+        linked: false,
         nodes: vec![
             Node {
                 node_type: None,
@@ -262,10 +263,11 @@ fn enabled_graph_keeps_incremental_damage_and_missing_renderer_is_explicit() {
     assert!(s.doc.render_error.is_none());
     let mut blank = fresh(2, 2);
     blank.doc.renderer = None;
+    let before = blank.doc.graph.clone();
     assert!(blank
         .apply(Action::new("graph.set", json!({"graph":graph})))
         .is_err());
-    assert!(!blank.doc.graph.enabled);
+    assert_eq!(blank.doc.graph, before);
 }
 #[test]
 fn graph_actions_and_public_resources_work_inside_the_unified_pipeline() {

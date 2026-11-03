@@ -135,16 +135,19 @@ impl Editor {
             ui.weak(tr("Blend Mode"));
             let mut mode = self.session.doc.layers[self.session.doc.active].mode;
             let before = mode;
-            ui.add_enabled_ui(!self.session.doc.graph.enabled, |ui| {
-                ComboBox::from_id_salt("layer-blend")
-                    .selected_text(tr(mode.title()))
-                    .width(110.)
-                    .show_ui(ui, |ui| {
-                        for item in crate::engine::graph::BlendMode::ALL {
-                            ui.selectable_value(&mut mode, item, tr(item.title()));
-                        }
-                    });
-            });
+            ui.add_enabled_ui(
+                self.session.doc.graph.linked || !self.session.doc.graph.enabled,
+                |ui| {
+                    ComboBox::from_id_salt("layer-blend")
+                        .selected_text(tr(mode.title()))
+                        .width(110.)
+                        .show_ui(ui, |ui| {
+                            for item in crate::engine::graph::BlendMode::ALL {
+                                ui.selectable_value(&mut mode, item, tr(item.title()));
+                            }
+                        });
+                },
+            );
             if mode != before {
                 self.core(
                     "layer.set",
@@ -155,7 +158,7 @@ impl Editor {
         if ui.button(tr("Node Editor…")).clicked() {
             self.core("graph.open", serde_json::json!({}));
         }
-        if self.session.doc.graph.enabled {
+        if self.session.doc.graph.enabled && !self.session.doc.graph.linked {
             ui.weak(tr(
                 "Node Graph Controls Compositing; Set Modes on Blend Nodes",
             ));

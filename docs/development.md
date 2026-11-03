@@ -36,6 +36,7 @@ Unit tests cover document/history, codec, schemas, actions, public state, pipeli
 ```powershell
 python scripts/smoke-runtime.py
 python scripts/smoke-workflows.py
+python scripts/smoke-linked-graphs.py
 python scripts/smoke-localization.py
 ```
 

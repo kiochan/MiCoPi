@@ -10,6 +10,7 @@ This roadmap starts from the **0.21.0 implementation**. Milestones describe inte
 - DLL tools with pressure and stabilization, layers, tiled undo/redo and non-destructive image composition.
 - Schema-described actions, public plugin state, workflow nodes, JSONL, MCP and GUI attachment.
 - Verified outcome replay, compact MCRPLY02 events, atomic document groups and legacy recording support.
+- Linked layer composition with per-layer plugin filters, synchronized structural edits and an explicit legacy/free graph mode.
 
 Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no selections, free transforms or layer groups/merging. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
 

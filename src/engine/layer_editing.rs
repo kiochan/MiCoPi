@@ -23,7 +23,26 @@ impl Document {
         self.replay_tiles
             .extend((0..self.layers.len()).flat_map(|l| (0..count).map(move |t| (l, t))));
     }
-    fn reindexed_graph(&self, metadata: &[LayerMetadata]) -> Result<Graph, String> {
+    pub(super) fn reindexed_graph(
+        &self,
+        metadata: &[LayerMetadata],
+        duplicate: Option<(u64, u64)>,
+    ) -> Result<Graph, String> {
+        if self.graph.linked {
+            let old_ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
+            let new_ids: Vec<_> = metadata.iter().map(|m| m.id).collect();
+            let modes: Vec<_> = new_ids
+                .iter()
+                .map(|id| {
+                    let source = duplicate
+                        .filter(|(_, to)| to == id)
+                        .map_or(*id, |(from, _)| from);
+                    let layer = self.layer_index(source).map(|i| &self.layers[i]);
+                    layer.map_or(BlendMode::Normal, |l| l.mode)
+                })
+                .collect();
+            return self.graph.sync_stack(&modes, &old_ids, &new_ids, duplicate);
+        }
         let mut graph = self.graph.clone();
         for node in &mut graph.nodes {
             if let super::super::graph::NodeKind::Layer { index } = &mut node.data {
@@ -79,7 +98,8 @@ impl Document {
                 name: self.layer_metadata[index].name.clone(),
             },
         );
-        let graph = self.reindexed_graph(&metadata)?;
+        let graph =
+            self.reindexed_graph(&metadata, Some((self.layer_id(index), self.next_layer_id)))?;
         self.finish();
         let before = self.composition();
         let active = self.active;
@@ -111,7 +131,7 @@ impl Document {
         let mut metadata = self.layer_metadata.clone();
         let moved = metadata.remove(index);
         metadata.insert(to, moved);
-        let graph = self.reindexed_graph(&metadata)?;
+        let graph = self.reindexed_graph(&metadata, None)?;
         self.finish();
         let before = self.composition();
         let active = self.active;
@@ -142,7 +162,7 @@ impl Document {
         }
         let mut metadata = self.layer_metadata.clone();
         metadata.remove(index);
-        let graph = self.reindexed_graph(&metadata)?;
+        let graph = self.reindexed_graph(&metadata, None)?;
         self.finish();
         let before = self.composition();
         let active = self.active;

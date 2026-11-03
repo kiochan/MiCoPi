@@ -107,7 +107,7 @@ try {
         $existing = $coreConfig.actions | Where-Object { $_.id -eq $action.id }
         if ($existing -and !$existing.output_schema) { $existing | Add-Member -NotePropertyName output_schema -NotePropertyValue $action.output_schema }
     }
-    foreach ($action in $currentCore.actions | Where-Object { $_.id -in @('app.describe','context.read','pipeline.run') }) {
+    foreach ($action in $currentCore.actions) {
         if (!($coreConfig.actions | Where-Object { $_.id -eq $action.id })) { $coreConfig.actions = @($coreConfig.actions) + @($action) }
     }
     $coreConfig | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $corePath -Encoding utf8

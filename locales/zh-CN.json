@@ -745,5 +745,18 @@
   "Dab Spacing": "笔触间距",
   "Minimum Opacity": "最小不透明度",
   "Distance between brush dabs as a fraction of diameter.": "笔触之间的距离，以笔刷直径的比例表示。",
-  "Opacity retained at light pressure; zero pressure deposits no paint.": "轻压时保留的不透明度；零压力不会绘制。"
+  "Opacity retained at light pressure; zero pressure deposits no paint.": "轻压时保留的不透明度；零压力不会绘制。",
+  "Linked Layer Stack": "图层联动合成",
+  "Free Compositing": "自由合成",
+  "Switch to Free Compositing": "切换到自由合成",
+  "Arrange Stack": "整理合成链",
+  "Insert Filter": "插入滤镜",
+  "Right-click to insert a layer filter": "右键插入图层滤镜",
+  "Stack connections follow layer order; switch to Free Compositing to rewire": "合成链跟随图层顺序；切换到自由合成后可重新连线",
+  "Layer edits keep this chain synchronized. Right-click a layer or filter to insert an effect.": "合成链随图层编辑同步。右键点击图层或滤镜可插入效果。",
+  "Free Compositing uses explicit connections. Rebuild from Layers replaces this draft and its effects.": "自由合成由连线决定。点击“从图层重建”会替换当前草稿及其效果。",
+  "Drag nodes · Ctrl+scroll to zoom · Double-click to center · Right-click for filters": "拖动节点 · Ctrl+滚轮缩放 · 双击居中 · 右键编辑滤镜",
+  "Visible": "可见",
+  "Blend": "合成",
+  "Graph Options": "合成图选项"
 }

@@ -1,5 +1,5 @@
 //! Pixels are straight-alpha 0xAARRGGBB. History stores only touched 64px tiles.
-use super::graph::{BlendMode, Graph, Renderer};
+use super::graph::{BlendMode, Graph, Node, NodeKind, Renderer};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::{
@@ -29,6 +29,23 @@ pub struct LayerMetadata {
 }
 impl Composition {
     pub fn validate_layer_metadata(&self) -> Result<(), String> {
+        if self.graph.linked {
+            let branches = self.graph.stack_branches(self.layers.len())?;
+            for (branch, (_, _, mode)) in branches.iter().zip(&self.layers) {
+                if let Some(Node {
+                    data:
+                        NodeKind::Blend {
+                            mode: graph_mode, ..
+                        },
+                    ..
+                }) = &branch.blend
+                {
+                    if graph_mode != mode {
+                        return Err("Linked blend mode differs from its layer".into());
+                    }
+                }
+            }
+        }
         if self.layer_metadata.is_empty() {
             return if self.next_layer_id == 0 {
                 Ok(())
@@ -193,6 +210,14 @@ impl Document {
     pub fn new(width: usize, height: usize) -> Self {
         assert!(width > 0 && height > 0 && width <= MAX_SIDE && height <= MAX_SIDE);
         let n = width * height;
+        let layers = vec![Layer {
+            pixels: vec![0; n],
+            visible: true,
+            opacity: 255,
+            mode: BlendMode::Normal,
+        }];
+        let graph = Graph::linked_from_layers(&layers);
+        let plan = graph.compile(1).unwrap();
         Self {
             layer_metadata: vec![LayerMetadata {
                 id: 1,
@@ -204,21 +229,16 @@ impl Document {
                 static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
                 NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
             },
-            graph: Graph::default(),
+            graph,
             replay_tiles: Default::default(),
             replay_surface: Some([0, 0, width, height]),
             replay_data: None,
             renderer: None,
-            plan: vec![],
+            plan,
             render_error: None,
             width,
             height,
-            layers: vec![Layer {
-                pixels: vec![0; n],
-                visible: true,
-                opacity: 255,
-                mode: BlendMode::Normal,
-            }],
+            layers,
             active: 0,
             composite: vec![0; n],
             dirty: false,
@@ -238,10 +258,12 @@ impl Document {
         self.display_changed = self.changed;
     }
     pub fn requires_renderer(&self) -> bool {
-        self.graph.enabled || self.layers.iter().any(|l| l.mode != BlendMode::Normal)
+        (self.graph.enabled && (!self.graph.linked || self.graph.has_filters()))
+            || self.layers.iter().any(|l| l.mode != BlendMode::Normal)
     }
     pub fn layer_is_rendered(&self, index: usize) -> bool {
-        !self.graph.enabled
+        self.graph.linked
+            || !self.graph.enabled
             || self
                 .plan
                 .iter()
@@ -309,7 +331,13 @@ impl Document {
     }
     pub fn set_graph(&mut self, graph: Graph) -> Result<(), String> {
         let plan = graph.compile(self.layers.len())?;
-        if graph.enabled && self.renderer.is_none() {
+        if ((graph.enabled && (!graph.linked || graph.has_filters()))
+            || (graph.linked
+                && graph.nodes.iter().any(
+                    |n| matches!(n.data, NodeKind::Blend { mode, .. } if mode != BlendMode::Normal),
+                )))
+            && self.renderer.is_none()
+        {
             return Err("Node compositor DLL is not loaded".into());
         }
         if self.graph == graph {
@@ -317,6 +345,16 @@ impl Document {
         }
         self.finish();
         let before = self.composition();
+        if graph.linked {
+            let branches = graph.stack_branches(self.layers.len())?;
+            for (layer, branch) in self.layers.iter_mut().zip(branches) {
+                if let Some(node) = branch.blend {
+                    if let NodeKind::Blend { mode, .. } = node.data {
+                        layer.mode = mode;
+                    }
+                }
+            }
+        }
         self.graph = graph;
         self.plan = plan;
         self.commit_composition(before, None);
@@ -359,6 +397,12 @@ impl Document {
         l.visible = visible;
         l.opacity = opacity;
         l.mode = mode;
+        if self.graph.linked {
+            let ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
+            let modes: Vec<_> = self.layers.iter().map(|l| l.mode).collect();
+            self.graph = self.graph.sync_stack(&modes, &ids, &ids, None)?;
+            self.plan = self.graph.compile(self.layers.len())?;
+        }
         self.commit_composition(before, None);
         Ok(())
     }
@@ -418,7 +462,13 @@ impl Document {
                     };
                     self.render_error = renderer
                         .render(
-                            if self.graph.enabled { &self.plan } else { &[] },
+                            if self.graph.enabled
+                                && (!self.graph.linked || self.graph.has_filters())
+                            {
+                                &self.plan
+                            } else {
+                                &[]
+                            },
                             &layers[..self.layers.len()],
                             self.width as u32,
                             self.height as u32,
@@ -731,34 +781,47 @@ impl Document {
         }
     }
     pub fn add_layer(&mut self) {
-        self.finish();
-        if self.layers.len() < MAX_LAYERS {
-            if self.next_layer_id > u32::MAX as u64 {
-                return;
-            }
-            let before = self.composition();
-            let active = self.active;
-            self.layer_metadata.push(LayerMetadata {
-                id: self.next_layer_id,
-                name: String::new(),
-            });
-            self.next_layer_id += 1;
-            self.layers.push(Layer {
-                pixels: vec![0; self.width * self.height],
-                visible: true,
-                opacity: 255,
-                mode: BlendMode::Normal,
-            });
-            self.active = self.layers.len() - 1;
-            self.commit_composition(
-                before,
-                Some(LayerChange::Toggle {
-                    index: self.active,
-                    active,
-                    removed: None,
-                }),
-            );
+        let _ = self.try_add_layer();
+    }
+    pub fn try_add_layer(&mut self) -> Result<(), String> {
+        if self.layers.len() >= MAX_LAYERS
+            || self.width * self.height * (self.layers.len() + 1) > 64 * 1024 * 1024
+        {
+            return Err("Layer count or document pixel limit reached".into());
         }
+        let mut metadata = self.layer_metadata.clone();
+        metadata.push(LayerMetadata {
+            id: self.next_layer_id,
+            name: String::new(),
+        });
+        let graph = self.reindexed_graph(&metadata, None)?;
+        if self.next_layer_id > u32::MAX as u64 {
+            return Err("Layer identity limit reached".into());
+        }
+        let plan = graph.compile(metadata.len())?;
+        self.finish();
+        let before = self.composition();
+        let active = self.active;
+        self.layer_metadata = metadata;
+        self.next_layer_id += 1;
+        self.layers.push(Layer {
+            pixels: vec![0; self.width * self.height],
+            visible: true,
+            opacity: 255,
+            mode: BlendMode::Normal,
+        });
+        self.active = self.layers.len() - 1;
+        self.graph = graph;
+        self.plan = plan;
+        self.commit_composition(
+            before,
+            Some(LayerChange::Toggle {
+                index: self.active,
+                active,
+                removed: None,
+            }),
+        );
+        Ok(())
     }
     /// Commit a contiguous plugin-owned region, recording only changed tiles.
     pub fn replace_region(
@@ -944,6 +1007,9 @@ impl Document {
                 mode: BlendMode::Normal,
             });
         }
+        // A legacy project did not opt into linked semantics. Preserve its exact metadata.
+        doc.graph = Graph::default();
+        doc.plan.clear();
         if &magic == b"MICOPI02" || &magic == b"MICOPI03" {
             let mut length = [0u8; 4];
             f.read_exact(&mut length)?;
