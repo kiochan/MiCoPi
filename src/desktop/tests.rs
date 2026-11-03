@@ -178,7 +178,12 @@ fn workbench_keeps_a_visible_canvas_across_sizes_themes_and_density() {
             size,
             app.editor.canvas
         );
-        assert!(app.editor.canvas.height() > 350.);
+        assert!(
+            app.editor.canvas.height() > 350.,
+            "{size:?}: {:?}, dock={}",
+            app.editor.canvas,
+            encode_dock(&app.dock).unwrap()
+        );
         assert!(Rect::from_min_size(Pos2::ZERO, size).contains_rect(app.editor.canvas));
         app.settings_open = true;
         let _ = frame(&mut app, &ctx, size, vec![], 10. + index as f64);

@@ -6,7 +6,7 @@ This roadmap starts from the **0.21.0 implementation**. Milestones describe inte
 
 ## Implemented baseline
 
-- Native Rust desktop with dockable panels, searchable settings, configurable shortcuts and four display languages.
+- Native Rust desktop with independent plugin-owned control bar and canvas windows, dock/float/tab commands, searchable settings, configurable shortcuts and four display languages.
 - DLL tools with pressure and stabilization, layers, tiled undo/redo and non-destructive image composition.
 - Schema-described actions, public plugin state, workflow nodes, JSONL, MCP and GUI attachment.
 - Verified outcome replay, compact MCRPLY02 events, atomic document groups and legacy recording support.

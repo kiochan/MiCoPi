@@ -10,6 +10,8 @@ MiCoPi runs on **Windows 10/11 x64**. The desktop workbench uses **egui + egui_d
 
 ![Painting workbench](docs/screenshots/workbench.png)
 
+The independent Tools bar and Canvas can float, dock on any side or form tab groups. Feature packages own their window contributions and UI source; every registered action is searchable and bindable. See [Plugin Windows](docs/plugin-windows.md).
+
 Connected fill with tolerance, linear/radial gradient gestures and inline pressure dynamics are available in the Brush panel. See [Painting tools](docs/painting-tools.md).
 
 ## Why MiCoPi

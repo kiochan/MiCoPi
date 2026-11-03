@@ -6,7 +6,7 @@ The egui-snarl editor shares the workbench's theme, configurable spacing and doc
 
 ## Editing
 
-Open View > Node Editor, the Layers panel button or the command palette. The panel initially docks below the canvas and can be moved, grouped or floated. Select **Image Compositing**.
+Open View > Node Editor, the Layers panel button or the command palette. The panel initially docks below the canvas and can be moved, grouped or floated. This independent window edits image compositing. Plugin workflows have their own window.
 
 New documents use **Linked Layer Stack**. Each source is followed by its own optional filters, then blended over the accumulated lower layers. The graph and Layers panel describe the same stacking order:
 

@@ -44,9 +44,9 @@ Workspace commands reset layout or group Color with Brush and Navigator with Lay
 
 Layers provide visibility, opacity, blend mode and thumbnails. A hidden layer cannot receive a painting stroke. Undo and redo are recorded by touched pixel tiles, rather than full-document snapshots.
 
-Open View > Node Editor. The **Image Compositing** tab provides layer, filter, blend and output nodes. Applying a graph is non-destructive. Optional live preview waits for parameter/connection changes to settle; moving a node alone does not force full-image processing. See [Image Graphs](node-editor.md).
+Open View > Node Editor. The **Image Compositing** window provides layer, filter, blend and output nodes. Applying a graph is non-destructive. Optional live preview waits for parameter/connection changes to settle; moving a node alone does not force full-image processing. See [Image Graphs](node-editor.md).
 
-The **Plugin Workflow** tab searches action/state nodes, exposes schema-driven parameters and connects typed values or execution-order ports. Editing does not execute actions. Save Workflow retains the graph; Run All Nodes executes every node in topological order. See [Workflow Nodes](workflow-nodes.md).
+The independent **Plugin Workflow** window searches action/state nodes, exposes schema-driven parameters and connects typed values or execution-order ports. Editing does not execute actions. Save Workflow retains the graph; Run All Nodes executes every node in topological order. See [Workflow Nodes](workflow-nodes.md).
 
 ## Plugins and automation
 
@@ -63,3 +63,5 @@ Use **Layer Actions** or right-click a layer to duplicate, move up/down, delete,
 ## Fill, gradients and pressure
 
 The Brush panel contains **Flood Fill**, **Gradient** and expandable **Pressure Dynamics** controls. Click to fill a connected area or drag to define a gradient. See [Painting tools](painting-tools.md) for tolerance, alpha, gesture cancellation and the shared automation actions.
+
+See [Plugin Windows](plugin-windows.md) for the independent control bar, floating canvas, window commands and workspace migration.

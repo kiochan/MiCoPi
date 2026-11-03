@@ -12,5 +12,58 @@
       "title": "Tools",
       "builtin": "tools"
     }
+  ],
+  "actions": [
+    {
+      "id": "toolbox.mode.brush",
+      "title": "Paint with Brush",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "painting.mode",
+            "value": "brush"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "toolbox.mode.fill",
+      "title": "Activate Flood Fill",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "painting.mode",
+            "value": "fill"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "toolbox.mode.gradient",
+      "title": "Activate Gradient",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "painting.mode",
+            "value": "gradient"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    }
   ]
 }

@@ -19,9 +19,7 @@ impl Studio {
                     ctx.send_viewport_cmd(ViewportCommand::StartDrag);
                 }
                 if drag.double_clicked() {
-                    ctx.send_viewport_cmd(ViewportCommand::Maximized(
-                        !ctx.input(|i| i.viewport().maximized.unwrap_or(false)),
-                    ));
+                    self.editor.core(if ctx.input(|i|i.viewport().maximized.unwrap_or(false)) {"application.restore"} else {"application.maximize"},serde_json::json!({}));
                 }
                 let center_y = r.center().y;
                 ui.painter()
@@ -35,7 +33,7 @@ impl Studio {
                 );
                 let menu = Rect::from_min_max(
                     pos2(r.left() + 46., r.top()),
-                    pos2(r.left() + 340., r.bottom()),
+                    pos2(r.left() + 390., r.bottom()),
                 );
                 ui.scope_builder(
                     UiBuilder::new()
@@ -129,6 +127,18 @@ impl Studio {
                                     }
                                 });
                             }
+                            ui.menu_button(tr("Windows"), |ui| {
+                                let panels:Vec<_>=self.editor.session.registry.panels.values().cloned().collect();
+                                for panel in panels {
+                                    ui.menu_button(tr(&panel.title), |ui| {
+                                        for (operation,label) in [("show","Show Window"),("float","Float Window"),("hide","Hide Window")] {
+                                            if ui.button(tr(label)).clicked() {
+                                                self.editor.core("window.command",serde_json::json!({"panel":panel.id,"operation":operation})); ui.close();
+                                            }
+                                        }
+                                    });
+                                }
+                            });
                         });
                     },
                 );
@@ -159,13 +169,12 @@ impl Studio {
                         )
                         .on_hover_text(tr(hint));
                     if response.clicked() {
-                        ctx.send_viewport_cmd(match index {
-                            0 => ViewportCommand::Minimized(true),
-                            1 => ViewportCommand::Maximized(
-                                !ctx.input(|i| i.viewport().maximized.unwrap_or(false)),
-                            ),
-                            _ => ViewportCommand::Close,
-                        });
+                        let command=match index {
+                            0=>"application.minimize",
+                            1=>if ctx.input(|i|i.viewport().maximized.unwrap_or(false)) {"application.restore"} else {"application.maximize"},
+                            _=>"application.close",
+                        };
+                        self.editor.core(command,serde_json::json!({}));
                     }
                 }
                 let width = (r.width() - 580.).clamp(180., 400.);
@@ -221,112 +230,6 @@ impl Studio {
                     self.editor.open_palette(Mode::Commands);
                 }
             });
-        TopBottomPanel::top("toolbar")
-            .exact_height(a.toolbar_height + a.outer_padding)
-            .frame(
-                Frame::new()
-                    .fill(c.background)
-                    .inner_margin(Margin::symmetric(a.outer_padding as i8, 0)),
-            )
-            .show(ctx, |ui| {
-                Frame::new()
-                    .fill(c.panel)
-                    .corner_radius(a.corner_radius)
-                    .inner_margin(Margin::symmetric(
-                        a.panel_padding as i8,
-                        ((a.toolbar_height - a.control_height) / 2.) as i8,
-                    ))
-                    .show(ui, |ui| {
-                        ui.set_min_width(ui.available_width());
-                        ui.horizontal(|ui| {
-                            for (id, tool) in [
-                                (10, Tool::Brush),
-                                (11, Tool::Eraser),
-                                (12, Tool::Picker),
-                                (13, Tool::Hand),
-                                (14, Tool::Zoom),
-                            ] {
-                                if panels::icon_button(
-                                    ui,
-                                    &self.editor,
-                                    id,
-                                    self.editor.tool == tool,
-                                )
-                                .clicked()
-                                {
-                                    self.editor.finish_stroke();
-                                    self.editor.select_tool(match tool {
-                                        Tool::Brush => "brush",
-                                        Tool::Eraser => "eraser",
-                                        Tool::Picker => "picker",
-                                        Tool::Hand => "hand",
-                                        Tool::Zoom => "zoom",
-                                    });
-                                }
-                            }
-                            ui.separator();
-                            if ui.available_width() > 540. {
-                                ui.weak(tr("Size"));
-                                let mut diameter = self.editor.radius * 2.;
-                                if ui
-                                    .add(
-                                        DragValue::new(&mut diameter)
-                                            .range(1.0..=400.)
-                                            .speed(0.5)
-                                            .suffix(" px"),
-                                    )
-                                    .changed()
-                                {
-                                    self.editor.radius = diameter / 2.;
-                                }
-                                ui.add_space(a.item_spacing);
-                                ui.weak(tr(format!(
-                                    "Stabilizer {:.0}%",
-                                    self.editor.workspace.stabilizer * 100.
-                                )));
-                            }
-                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                if ui
-                                    .add(
-                                        Button::new(tr(RichText::new(localize("Export PNG"))
-                                            .color(if a.theme == "graphite" {
-                                                Color32::from_rgb(20, 30, 35)
-                                            } else {
-                                                Color32::WHITE
-                                            })))
-                                        .fill(c.accent)
-                                        .min_size(vec2(94., a.control_height)),
-                                    )
-                                    .clicked()
-                                {
-                                    self.editor.actions.push(Action::Export);
-                                }
-                                ui.separator();
-                                if ui
-                                    .add_sized([42., a.control_height], Button::new(tr("1:1")))
-                                    .on_hover_text(tr(self.editor.hint(41)))
-                                    .clicked()
-                                {
-                                    self.editor.actions.push(Action::ActualPixels);
-                                }
-                                if panels::icon_button(ui, &self.editor, 40, false).clicked() {
-                                    self.editor.actions.push(Action::Fit);
-                                }
-                                ui.label(tr(RichText::new(localize(format!(
-                                    "{:.0}%",
-                                    self.editor.zoom * 100.
-                                )))
-                                .small()));
-                                if panels::icon_button(ui, &self.editor, 85, false).clicked() {
-                                    self.editor.actions.push(Action::ZoomIn);
-                                }
-                                if panels::icon_button(ui, &self.editor, 86, false).clicked() {
-                                    self.editor.actions.push(Action::ZoomOut);
-                                }
-                            });
-                        });
-                    });
-            });
         TopBottomPanel::bottom("status")
             .exact_height(24. + a.outer_padding)
             .frame(Frame::new().fill(c.background).inner_margin(Margin {
@@ -364,66 +267,6 @@ impl Studio {
                         )))
                         .small()
                         .color(c.muted)));
-                    });
-                });
-            });
-        SidePanel::left("activity")
-            .exact_width(48. + a.outer_padding)
-            .resizable(false)
-            .frame(Frame::new().fill(c.background).inner_margin(Margin {
-                left: a.outer_padding as i8,
-                right: 0,
-                top: a.outer_padding as i8,
-                bottom: a.outer_padding as i8,
-            }))
-            .show(ctx, |ui| {
-                ui.vertical_centered(|ui| {
-                    for panel in [Panel::Color, Panel::Brush, Panel::Layers, Panel::Nodes] {
-                        if !self.panel_available(panel) {
-                            continue;
-                        }
-                        if ui
-                            .add_sized(
-                                [40., 40.],
-                                Button::new(tr(theme::icon(panel.icon(), 24.))).frame(false),
-                            )
-                            .on_hover_text(tr(panel.title()))
-                            .clicked()
-                        {
-                            self.focus_panel(panel);
-                        }
-                    }
-                    if ui
-                        .add_sized(
-                            [40., 40.],
-                            Button::new(tr(theme::icon('\u{ef7a}', 24.))).frame(false),
-                        )
-                        .on_hover_text(tr("Command Palette"))
-                        .clicked()
-                    {
-                        self.editor.open_palette(Mode::Commands);
-                    }
-                    ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
-                        if ui
-                            .add_sized(
-                                [40., 40.],
-                                Button::new(tr(theme::icon('\u{e8b8}', 24.))).frame(false),
-                            )
-                            .on_hover_text(tr("Settings · Ctrl+Comma"))
-                            .clicked()
-                        {
-                            self.editor.actions.push(Action::Preferences);
-                        }
-                        if ui
-                            .add_sized(
-                                [40., 40.],
-                                Button::new(tr(theme::icon('\u{e312}', 24.))).frame(false),
-                            )
-                            .on_hover_text(tr("Keyboard Shortcuts"))
-                            .clicked()
-                        {
-                            self.editor.actions.push(Action::ShowShortcuts);
-                        }
                     });
                 });
             });

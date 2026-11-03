@@ -3,8 +3,7 @@
   "id": "layers",
   "name": "Layers window",
   "requires": [
-    "workbench",
-    "canvas"
+    "workbench"
   ],
   "panels": [
     {

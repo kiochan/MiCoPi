@@ -72,4 +72,4 @@ The default `plugins/replay/manifest.json` exposes the host-owned recorder as sc
 {"action":"replay.frames","args":{"path":"target/example-output/frames","max_frames":120,"fps":12}}
 ```
 
-`src/engine/replay.rs` owns storage and verification; `src/application/replay.rs` owns action boundaries and persistence; `src/desktop/replay.rs` owns presentation. `scripts/smoke-replay.py` verifies PNG parity, bounded frame export, project persistence and MCP playback without drawing/compositor DLLs.
+`src/engine/replay.rs` owns storage and verification; `src/application/replay.rs` owns action boundaries and persistence; `plugins/replay/panel.rs` owns presentation. `scripts/smoke-replay.py` verifies PNG parity, bounded frame export, project persistence and MCP playback without drawing/compositor DLLs.

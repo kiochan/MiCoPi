@@ -12,6 +12,8 @@
 
 ![MiCoPi 实际工作台，截图为英语界面](docs/screenshots/workbench.png)
 
+工具栏与画布均为独立的应用内窗口，可浮动、四向停靠或组成标签页。各功能插件拥有自己的窗口声明与界面源码，注册的 action 均可搜索和配置快捷键。参见 [Plugin Windows](docs/plugin-windows.md)。
+
 笔刷面板新增带容差的连通填充、线性/径向渐变拖拽，以及压感动态和曲线预览。详见[绘画工具](docs/painting-tools.md)。
 
 ## 主要理念

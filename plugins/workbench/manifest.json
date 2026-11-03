@@ -150,6 +150,79 @@
       "id": "window.list",
       "title": "Inspect Plugin Windows",
       "operation": "window_state"
+    },
+    {
+      "id": "workspace.layout.apply",
+      "title": "Apply Window Layout",
+      "operation": "window_layout"
+    },
+    {
+      "id": "application.minimize",
+      "title": "Minimize Application",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "application.window",
+            "value": "minimize"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "application.maximize",
+      "title": "Maximize Application",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "application.window",
+            "value": "maximize"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "application.restore",
+      "title": "Restore Application",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "application.window",
+            "value": "restore"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "application.close",
+      "title": "Close Application",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "close",
+            "value": true
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
     }
   ],
   "panels": [],

@@ -260,7 +260,7 @@ impl Registry {
                 "At most 128 plugin packages can be loaded",
             ));
         }
-        let inputs = paths
+        let mut inputs: Vec<_> = paths
             .into_iter()
             .map(|path| {
                 let parsed = std::fs::read_to_string(&path)
@@ -282,6 +282,72 @@ impl Registry {
                 (path, parsed)
             })
             .collect();
+        // Adapt the old monolithic workbench in memory; never rewrite customized manifests.
+        let legacy = inputs
+            .iter_mut()
+            .find_map(|(_, m)| m.as_mut().ok().filter(|m| m.id == "workbench"))
+            .map(|m| {
+                let mut panels = Vec::new();
+                m.panels.retain(|p| {
+                    if matches!(
+                        p.builtin.as_deref(),
+                        Some("color" | "brush" | "navigator" | "layers")
+                    ) && p.builtin.as_deref() == Some(p.id.as_str())
+                    {
+                        panels.push(p.clone());
+                        false
+                    } else {
+                        true
+                    }
+                });
+                if !panels.is_empty() {
+                    let current: Manifest =
+                        serde_json::from_str(include_str!("../../plugins/workbench/manifest.json"))
+                            .unwrap();
+                    for action in current.actions {
+                        if !m.actions.iter().any(|a| a.id == action.id) {
+                            m.actions.push(action);
+                        }
+                    }
+                    for state in current.states {
+                        if !m.states.iter().any(|s| s.id == state.id) {
+                            m.states.push(state);
+                        }
+                    }
+                }
+                (panels, m.enabled)
+            });
+        if let Some((panels, enabled)) = legacy.filter(|(p, _)| !p.is_empty()) {
+            if let Some(workflow) = inputs
+                .iter_mut()
+                .find_map(|(_, m)| m.as_mut().ok().filter(|m| m.id == "workflows"))
+            {
+                let current: Manifest =
+                    serde_json::from_str(include_str!("../../plugins/workflows/manifest.json"))
+                        .unwrap();
+                for panel in current.panels {
+                    if !workflow.panels.iter().any(|p| p.id == panel.id) {
+                        workflow.panels.push(panel);
+                    }
+                }
+            }
+            for (path, text) in BUILTINS {
+                let mut module: Manifest = serde_json::from_str(text).unwrap();
+                if !["canvas", "toolbox", "color", "brush", "navigator", "layers"]
+                    .contains(&module.id.as_str())
+                    || inputs
+                        .iter()
+                        .any(|(_, m)| m.as_ref().is_ok_and(|m| m.id == module.id))
+                {
+                    continue;
+                }
+                if let Some(panel) = panels.iter().find(|p| p.id == module.id) {
+                    module.panels = vec![panel.clone()];
+                }
+                module.enabled = enabled && !disabled.contains(&module.id);
+                inputs.push((root.join(path), Ok(module)));
+            }
+        }
         Ok(Self::assemble(inputs, root.to_path_buf()))
     }
     fn assemble(inputs: Vec<(PathBuf, Result<Manifest, String>)>, root: PathBuf) -> Self {
@@ -352,6 +418,13 @@ impl Registry {
                         continue;
                     }
                 }
+            }
+            if out.panels.len() + m.panels.len() > 128 {
+                out.diagnostics.push(PluginDiagnostic {
+                    path,
+                    error: "At most 128 plugin windows can be registered".into(),
+                });
+                continue;
             }
             for panel in &m.panels {
                 m.actions.extend(super::windows::commands(panel));
@@ -476,6 +549,7 @@ impl Registry {
                 }
                 let mut panel_ids = BTreeSet::new();
                 let mut panel_keys = BTreeSet::new();
+                let mut builtins = BTreeSet::new();
                 for p in &m.panels {
                     if !valid_id(&p.id)
                         || !panel_ids.insert(&p.id)
@@ -498,10 +572,21 @@ impl Registry {
                             "navigator",
                             "layers",
                             "nodes",
+                            "workflow",
                         ]
                         .contains(&name)
                     }) {
                         return Err("Unknown built-in panel adapter".into());
+                    }
+                    if let Some(builtin) = &p.builtin {
+                        if !builtins.insert(builtin)
+                            || out
+                                .panels
+                                .values()
+                                .any(|p| p.builtin.as_ref() == Some(builtin))
+                        {
+                            return Err(format!("Duplicate built-in window adapter: {builtin}"));
+                        }
                     }
                 }
                 Ok(())

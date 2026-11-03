@@ -792,17 +792,11 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
 }
 impl Editor {
     pub(super) fn nodes_ui(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            ui.selectable_value(&mut self.nodes_workflow, false, tr("Image Compositing"));
-            ui.selectable_value(&mut self.nodes_workflow, true, tr("Plugin Workflow"));
-        });
+        ui.label(tr("Image Compositing"));
         ui.separator();
-        if self.nodes_workflow {
-            self.workflow_ui(ui);
-        } else {
-            self.image_nodes_ui(ui);
-        }
+        self.image_nodes_ui(ui);
     }
+
     fn image_nodes_ui(&mut self, ui: &mut Ui) {
         let mut state = std::mem::take(&mut self.nodes);
         if state.identity != self.session.doc.identity {

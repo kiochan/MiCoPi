@@ -27,14 +27,16 @@ impl Editor {
             return;
         };
         let schema = def.schema();
-        if schema["properties"]
-            .as_object()
-            .is_none_or(|p| p.is_empty())
+        if !def.is_read_only()
+            && schema["type"] == "object"
+            && schema["properties"]
+                .as_object()
+                .is_none_or(|p| p.is_empty())
         {
             self.core(action, json!({}));
             return;
         }
-        let mut args = json!({});
+        let mut args = schema::default_value(&schema);
         if let Some(properties) = schema["properties"].as_object() {
             for (key, s) in properties {
                 if schema["required"]
@@ -73,6 +75,28 @@ impl Editor {
                 ScrollArea::vertical()
                     .max_height(ctx.content_rect().height() * 0.55)
                     .show(ui, |ui| {
+                        if form.schema["type"] != "object" {
+                            if matches!(form.schema["type"].as_str(), Some("array") | None) {
+                                let text = form
+                                    .complex
+                                    .entry("$".into())
+                                    .or_insert_with(|| form.args.to_string());
+                                ui.add(
+                                    TextEdit::multiline(text)
+                                        .font(TextStyle::Monospace)
+                                        .desired_width(f32::INFINITY),
+                                );
+                                match serde_json::from_str::<Value>(text) {
+                                    Ok(v) => form.args = v,
+                                    Err(_) => {
+                                        invalid = true;
+                                        ui.weak(tr("Incomplete JSON"));
+                                    }
+                                }
+                            } else {
+                                schema::edit(ui, form.action.clone(), &form.schema, &mut form.args);
+                            }
+                        }
                         if let Some(properties) = form.schema["properties"].as_object() {
                             for (key, s) in properties {
                                 let required = form.schema["required"]
@@ -168,6 +192,9 @@ impl Editor {
                 }
                 Err(error) => form.message = error.to_string(),
             }
+        }
+        if ctx.input(|i| i.key_pressed(Key::Escape)) {
+            open = false;
         }
         if open {
             self.command_form = Some(form);

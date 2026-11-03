@@ -1,12 +1,25 @@
 //! egui workbench. Painting and platform input remain independent of widget layout.
 mod area;
+#[path = "../../plugins/brush/panel.rs"]
+mod brush;
+#[path = "../../plugins/canvas/panel.rs"]
 mod canvas;
+#[path = "../../plugins/color/panel.rs"]
+mod color;
 mod commands;
+mod document_texture;
+#[path = "../../plugins/layers/panel.rs"]
 mod layers;
+#[path = "../../plugins/navigator/panel.rs"]
+mod navigator;
+#[path = "../../plugins/compositing/panel.rs"]
 mod nodes;
 mod panels;
+#[path = "../../plugins/workbench/command_panel.rs"]
 mod plugin_commands;
+#[path = "../../plugins/workbench/preferences.rs"]
 mod preferences;
+#[path = "../../plugins/replay/panel.rs"]
 mod replay;
 mod schema;
 pub mod settings;
@@ -16,6 +29,8 @@ mod tests;
 mod theme;
 #[path = "../../plugins/toolbox/panel.rs"]
 mod toolbox;
+mod windows;
+#[path = "../../plugins/workflows/panel.rs"]
 mod workflow;
 
 use crate::i18n::localize;
@@ -30,7 +45,9 @@ use crate::{
     },
 };
 use eframe::egui::{self, *};
-use egui_dock::{DockArea, DockState, NodeIndex, SurfaceIndex};
+#[cfg(test)]
+use egui_dock::SurfaceIndex;
+use egui_dock::{DockArea, DockState, NodeIndex};
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use serde::{Deserialize, Serialize};
 use settings::{Appearance, Settings};
@@ -48,6 +65,7 @@ pub enum Panel {
     Navigator,
     Layers,
     Nodes,
+    Workflow,
     Plugin(u32),
 }
 impl Panel {
@@ -60,20 +78,9 @@ impl Panel {
             Self::Navigator => "Navigator",
             Self::Layers => "Layers",
             Self::Nodes => "Node Editor",
+            Self::Workflow => "Plugin Workflow",
             Self::Plugin(_) => "Plugins",
         }
-    }
-    fn icon(self) -> char {
-        theme::action_icon(match self {
-            Self::Canvas => 14,
-            Self::Tools => 10,
-            Self::Color => 10110,
-            Self::Brush => 10,
-            Self::Navigator => 95,
-            Self::Layers => 61,
-            Self::Nodes => 50,
-            Self::Plugin(_) => 50,
-        })
     }
 }
 type Tool = crate::application::ToolKind;
@@ -98,7 +105,6 @@ pub(super) struct Editor {
     area_target: Option<(u64, u64, u64)>,
     plugin_nodes: std::collections::BTreeMap<String, crate::plugins::nodes::Resolved>,
     workflow: workflow::WorkflowEditor,
-    nodes_workflow: bool,
     nodes: nodes::GraphEditor,
     settings: Settings,
     workspace: Workspace,
@@ -188,7 +194,6 @@ impl Editor {
             command_form: None,
             plugin_nodes,
             workflow: Default::default(),
-            nodes_workflow: false,
             nodes: Default::default(),
             settings,
             workspace: Workspace::load(&path.with_file_name("MiCoPi.workspace.ini")),
@@ -415,21 +420,22 @@ pub struct Studio {
 }
 pub fn default_dock(a: &Appearance, width: f32) -> DockState<Panel> {
     let mut dock = DockState::new(vec![Panel::Canvas]);
-    let total = width.max(a.left_panel_width + a.right_panel_width + 380.);
-    let [center, left] = dock.main_surface_mut().split_left(
+    let total = width.max(a.right_panel_width + 500.);
+    let [center, right] = dock.main_surface_mut().split_right(
         NodeIndex::root(),
-        (a.left_panel_width / total).clamp(0.15, 0.35),
-        vec![Panel::Color],
-    );
-    dock.main_surface_mut()
-        .split_below(left, 0.50, vec![Panel::Brush]);
-    let [_, right] = dock.main_surface_mut().split_right(
-        center,
-        1. - (a.right_panel_width / (total - a.left_panel_width)).clamp(0.15, 0.38),
+        1. - (a.right_panel_width / total).clamp(0.16, 0.38),
         vec![Panel::Navigator],
     );
-    dock.main_surface_mut()
-        .split_below(right, 0.32, vec![Panel::Layers]);
+    dock.main_surface_mut().split_below(
+        right,
+        0.32,
+        vec![Panel::Layers, Panel::Brush, Panel::Color],
+    );
+    dock.main_surface_mut().split_above(
+        center,
+        (a.toolbox_height / 820.).clamp(0.10, 0.25),
+        vec![Panel::Tools],
+    );
     dock
 }
 impl Studio {
@@ -461,9 +467,23 @@ impl Studio {
         }
         theme::apply(&cc.egui_ctx, &editor.settings.ui);
         let layout_path = editor.settings.path.with_file_name("workspace.egui.json");
-        let saved = std::fs::read_to_string(&layout_path)
-            .ok()
-            .and_then(|text| decode_workspace(&text));
+        let saved_text = std::fs::read_to_string(&layout_path).ok();
+        let saved = saved_text.as_deref().and_then(decode_workspace);
+        if saved
+            .as_ref()
+            .is_some_and(|(_, known)| !known.iter().any(|id| id == "toolbox"))
+        {
+            if let Some(text) = &saved_text {
+                use std::io::Write;
+                if let Ok(mut backup) = std::fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .open(layout_path.with_file_name("workspace.before-plugin-windows.json"))
+                {
+                    let _ = backup.write_all(text.as_bytes());
+                }
+            }
+        }
         let known = saved.as_ref().map(|(_, known)| known.clone());
         let mut dock = saved.map(|(dock, _)| dock).unwrap_or_else(|| {
             default_dock(
@@ -528,9 +548,56 @@ impl Studio {
         let effects = std::mem::take(&mut self.editor.session.ui_effects);
         for effect in effects {
             match effect["id"].as_str() {
+                Some("application.window") => match effect["value"].as_str() {
+                    Some("minimize") => ctx.send_viewport_cmd(ViewportCommand::Minimized(true)),
+                    Some("maximize") => ctx.send_viewport_cmd(ViewportCommand::Maximized(true)),
+                    Some("restore") => {
+                        ctx.send_viewport_cmd(ViewportCommand::Minimized(false));
+                        ctx.send_viewport_cmd(ViewportCommand::Maximized(false));
+                    }
+                    _ => {}
+                },
+                Some("window.layout") => {
+                    let result = decode_workspace(&effect["value"].to_string());
+                    if let Some((mut dock, _)) = result {
+                        let known = self
+                            .editor
+                            .session
+                            .registry
+                            .panels
+                            .keys()
+                            .cloned()
+                            .collect::<Vec<_>>();
+                        reconcile_plugins(&mut dock, &self.editor.session.registry, Some(&known));
+                        self.editor.finish_stroke();
+                        self.dock = dock;
+                        self.dock_before_focus = None;
+                        self.layout_changed = Some(Instant::now());
+                        self.editor.session.ui["windows.result"] =
+                            serde_json::json!({"status":"applied","operation":"layout"});
+                        self.report_windows();
+                    } else {
+                        self.editor.session.ui["windows.result"] =
+                            serde_json::json!({"status":"failed","error":"Invalid window layout"});
+                    }
+                }
+                Some("window.command") => {
+                    let result = self.apply_window_command(ctx, &effect["value"]);
+                    self.editor.session.ui["windows.result"] = match result {
+                        Ok(()) => serde_json::json!({"status":"applied","request":effect["value"]}),
+                        Err(error) => {
+                            self.editor.status = error.clone();
+                            serde_json::json!({"status":"failed","error":error,"request":effect["value"]})
+                        }
+                    };
+                    self.report_windows();
+                }
                 Some("nodes.open") => {
-                    self.editor.nodes_workflow = effect["value"]["mode"] == "workflow";
-                    self.focus_panel(Panel::Nodes);
+                    self.focus_panel(if effect["value"]["mode"] == "workflow" {
+                        Panel::Workflow
+                    } else {
+                        Panel::Nodes
+                    });
                 }
                 Some("replay.open") => {
                     self.editor.finish_stroke();
@@ -609,14 +676,12 @@ impl Studio {
         }
     }
     fn panel_available(&self, panel: Panel) -> bool {
-        panel == Panel::Canvas
-            || self
-                .editor
-                .session
-                .registry
-                .panels
-                .values()
-                .any(|p| contributed_panel(p) == panel)
+        self.editor
+            .session
+            .registry
+            .panels
+            .values()
+            .any(|p| contributed_panel(p) == panel)
     }
     fn reset_layout(&mut self, width: f32) {
         self.dock_before_focus = None;
@@ -628,6 +693,7 @@ impl Studio {
             self.editor.status = "Panel Plugin Disabled".into();
             return;
         }
+        self.layout_changed = Some(Instant::now());
         if let Some(before) = self.dock_before_focus.take() {
             self.dock = before;
         }
@@ -635,7 +701,7 @@ impl Studio {
             self.dock.set_active_tab((s, n, t));
             self.dock.set_focused_node_and_surface((s, n));
         } else {
-            if panel == Panel::Nodes {
+            if matches!(panel, Panel::Nodes | Panel::Workflow) {
                 if let Some((surface, node, _)) = self.dock.find_tab(&Panel::Canvas) {
                     self.dock[surface].split_below(node, 0.42, vec![panel]);
                     return;
@@ -696,6 +762,11 @@ impl Studio {
             native.drain_pen(&mut self.editor.packets);
         }
         self.consume_ui_effects(ctx);
+        if self.dock.find_tab(&Panel::Canvas).is_none() {
+            self.editor.packets.clear();
+            self.editor.canvas = Rect::NOTHING;
+            self.editor.image_rect = Rect::NOTHING;
+        }
         self.editor.shortcuts(ctx);
         self.run_actions(ctx);
         self.editor.blocked = self.settings_open
@@ -706,6 +777,16 @@ impl Studio {
         self.draw_shell(ctx);
         let a = self.editor.settings.ui.clone();
         let colors = theme::Colors::new(&a);
+        if self.dock.translations.tab_context_menu.close_button != crate::i18n::text("Hide Window")
+        {
+            self.dock.translations.tab_context_menu.close_button =
+                localize("Hide Window").into_owned();
+        }
+        if self.dock.translations.tab_context_menu.eject_button != crate::i18n::text("Float Window")
+        {
+            self.dock.translations.tab_context_menu.eject_button =
+                localize("Float Window").into_owned();
+        }
         CentralPanel::default()
             .frame(
                 Frame::new()
@@ -727,8 +808,10 @@ impl Studio {
                 style.tab.focused.bg_fill = colors.panel;
                 style.tab.focused.text_color = colors.accent;
                 style.separator.width = a.item_spacing;
+                style.separator.extra = a.tab_height + a.control_height + a.panel_padding * 2. + 8.;
                 style.separator.color_idle = colors.background;
                 style.main_surface_border_stroke = Stroke::NONE;
+                let can_float = self.dock.iter_surfaces().filter(|s| !s.is_empty()).count() < 32;
                 DockArea::new(&mut self.dock)
                     .id(Id::new("micopi-workspace"))
                     .style(style)
@@ -738,9 +821,25 @@ impl Studio {
                         ui,
                         &mut panels::Viewer {
                             editor: &mut self.editor,
+                            can_float,
                         },
                     );
             });
+        let area = ctx.content_rect();
+        let area_changed = ctx.data_mut(|data| {
+            let key = Id::new("reported-plugin-window-area");
+            let changed = data.get_temp::<Rect>(key) != Some(area);
+            if changed {
+                data.insert_temp(key, area);
+            }
+            changed
+        });
+        if self.editor.session.ui.get("windows.actual").is_none()
+            || self.layout_changed.is_some()
+            || area_changed
+        {
+            self.report_windows();
+        }
         self.settings_window(ctx);
         self.editor.plugin_command_window(ctx);
         self.replay_window(ctx);
@@ -759,6 +858,7 @@ fn encode_dock(dock: &DockState<Panel>) -> Result<String, String> {
     // Runtime rectangles use infinity before their first layout. They are recomputed
     // every frame and must never be written as JSON nulls in a saved workspace.
     let mut saved = dock.clone();
+    saved.translations = egui_dock::Translations::english();
     for (_, node) in saved.iter_all_nodes_mut() {
         match node {
             egui_dock::Node::Leaf(leaf) => {
@@ -782,6 +882,7 @@ fn contributed_panel(p: &crate::plugins::PanelDefinition) -> Panel {
         Some("navigator") => Panel::Navigator,
         Some("layers") => Panel::Layers,
         Some("nodes") => Panel::Nodes,
+        Some("workflow") => Panel::Workflow,
         _ => Panel::Plugin(crate::plugins::panel_key(&p.id)),
     }
 }
@@ -819,11 +920,38 @@ fn reconcile_plugins(
     registry: &crate::plugins::Registry,
     known: Option<&[String]>,
 ) {
+    if known.is_some_and(|ids| !ids.iter().any(|id| id == "toolbox"))
+        && registry.panels.contains_key("toolbox")
+    {
+        // Upgrade the former broad left sidebar once; preserve closed/floating panels.
+        for panel in [Panel::Color, Panel::Brush] {
+            if let Some(location) = dock.find_tab(&panel).filter(|(s, _, _)| s.is_main()) {
+                dock.remove_tab(location);
+                if let Some((s, n, _)) = dock.find_tab(&Panel::Layers) {
+                    dock.set_focused_node_and_surface((s, n));
+                    dock.push_to_focused_leaf(panel);
+                } else if dock.main_surface().is_empty() {
+                    dock.push_to_first_leaf(panel);
+                } else {
+                    dock.main_surface_mut()
+                        .split_right(NodeIndex::root(), 0.75, vec![panel]);
+                }
+            }
+        }
+        if dock.find_tab(&Panel::Tools).is_none() {
+            if dock.main_surface().is_empty() {
+                dock.push_to_first_leaf(Panel::Tools);
+            } else {
+                dock.main_surface_mut()
+                    .split_above(NodeIndex::root(), 0.15, vec![Panel::Tools]);
+            }
+        }
+    }
     let panels: Vec<_> = registry.panels.values().map(contributed_panel).collect();
     let remove: Vec<_> = dock
         .iter_all_tabs()
         .map(|(_, p)| *p)
-        .filter(|p| *p != Panel::Canvas && !panels.contains(p))
+        .filter(|p| !panels.contains(p))
         .collect();
     for p in remove {
         if let Some(location) = dock.find_tab(&p) {
@@ -833,11 +961,23 @@ fn reconcile_plugins(
     for definition in registry.panels.values() {
         let panel = contributed_panel(definition);
         let new = known.is_none_or(|ids| !ids.contains(&definition.id));
-        if new && panel != Panel::Nodes && dock.find_tab(&panel).is_none() {
+        if new
+            && !matches!(panel, Panel::Nodes | Panel::Workflow)
+            && dock.find_tab(&panel).is_none()
+        {
             if let Some((surface, node, _)) = dock.find_tab(&Panel::Layers) {
+                let active = match &dock[surface][node] {
+                    egui_dock::Node::Leaf(leaf) => Some(leaf.active),
+                    _ => None,
+                };
                 dock.set_focused_node_and_surface((surface, node));
+                dock.push_to_focused_leaf(panel);
+                if let Some(active) = active {
+                    dock.set_active_tab((surface, node, active));
+                }
+            } else {
+                dock.push_to_focused_leaf(panel);
             }
-            dock.push_to_focused_leaf(panel);
         }
     }
 }
@@ -845,7 +985,7 @@ fn valid_dock(dock: &DockState<Panel>) -> bool {
     if !matches!(
         dock.iter_surfaces().next(),
         Some(egui_dock::Surface::Main(_))
-    ) || dock.iter_surfaces().count() > 8
+    ) || dock.iter_surfaces().count() > 32
     {
         return false;
     }
@@ -854,6 +994,9 @@ fn valid_dock(dock: &DockState<Panel>) -> bool {
             continue;
         }
         let nodes: Vec<_> = surface.iter_nodes().collect();
+        if nodes.is_empty() && matches!(surface, egui_dock::Surface::Main(_)) {
+            continue;
+        }
         if nodes.is_empty() || nodes.len() > 128 {
             return false;
         }
@@ -891,12 +1034,9 @@ fn valid_dock(dock: &DockState<Panel>) -> bool {
         }
     }
     let tabs: Vec<_> = dock.iter_all_tabs().map(|(_, p)| *p).collect();
-    tabs.iter().filter(|p| **p == Panel::Canvas).count() == 1
+    tabs.iter().filter(|p| **p == Panel::Canvas).count() <= 1
         && tabs.len() <= 128
         && tabs.iter().enumerate().all(|(i, p)| !tabs[..i].contains(p))
-        && dock
-            .find_tab(&Panel::Canvas)
-            .is_some_and(|(s, _, _)| s == SurfaceIndex::main())
 }
 impl eframe::App for Studio {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
@@ -951,6 +1091,18 @@ impl eframe::App for Studio {
         }
         if let Some(then) = self.layout_changed {
             if then.elapsed() > Duration::from_millis(750) && !ctx.input(|i| i.pointer.any_down()) {
+                // Coalesce splitter/window drags into one registered presentation command.
+                let layout = encode_workspace(
+                    self.dock_before_focus.as_ref().unwrap_or(&self.dock),
+                    &self.editor.session.registry,
+                );
+                if let Ok(layout) = layout {
+                    if self.editor.core("workspace.layout.apply",serde_json::json!({"layout":serde_json::from_str::<serde_json::Value>(&layout).unwrap()})) {
+                        if self.editor.session.ui_effects.back().is_some_and(|v|v["id"]=="window.layout") { self.editor.session.ui_effects.pop_back(); }
+                        self.editor.session.ui["windows.result"]=serde_json::json!({"status":"applied","operation":"layout"});
+                        self.report_windows();
+                    }
+                }
                 self.save_layout();
             } else {
                 ctx.request_repaint_after(Duration::from_millis(800));

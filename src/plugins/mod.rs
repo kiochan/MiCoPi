@@ -38,7 +38,7 @@ pub(crate) fn execute(
         SelectTool | Parameters | Pointer | Stroke | Pick | View => {
             painting::execute(session, op, args)
         }
-        WindowCommand | WindowState => windows::execute(session, op, args),
+        WindowCommand | WindowState | WindowLayout => windows::execute(session, op, args),
         SettingsRead | SettingsWrite | Ui => workbench::execute(session, op, args),
         State | Plugins | Events => system::execute(session, op, args),
         Describe => Ok(crate::application::pipeline::describe(session)),

@@ -3,8 +3,7 @@
   "id": "navigator",
   "name": "Navigator window",
   "requires": [
-    "workbench",
-    "canvas"
+    "workbench"
   ],
   "panels": [
     {

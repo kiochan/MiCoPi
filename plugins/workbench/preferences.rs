@@ -180,12 +180,20 @@ const SETTINGS: &[Setting] = &[
         28.
     ),
     metric!(
-        "ui.left_panel_width",
-        "Default Left Panel Width",
-        "Used for the default layout; custom layouts are saved separately.",
+        "ui.toolbox_width",
+        "Floating Toolbox Width",
+        "Default width when floating the independent control bar.",
         Layout,
         200.,
-        440.
+        1200.
+    ),
+    metric!(
+        "ui.toolbox_height",
+        "Toolbox Height",
+        "Default height of the independent control bar.",
+        Layout,
+        80.,
+        200.
     ),
     metric!(
         "ui.right_panel_width",

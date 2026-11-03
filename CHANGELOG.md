@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Replace the left control area with an independent Tools bar and movable Canvas window; share dock/float/tab/hide/show commands across registered feature windows.
+- Move feature UI adapters into plugin packages, separate workflow and compositing windows, and expose every action in command search and configurable shortcuts.
+- Coalesce workspace gestures into registered layout commands, preserve legacy layouts with a backup, and verify fractional window metadata without JSON precision drift.
+
 - Make new documents use linked layer compositing: graph branches follow layer insertion, duplication, reorder and deletion; per-layer filters retain identity and copy with their layer.
 - Synchronize linked blend-node modes with layer properties, apply opacity once, protect stack wiring and provide connected plugin filter insertion/removal, source controls and automatic clean-view refresh.
 - Preserve legacy/free graph semantics with an explicit advanced mode; validate linked topology, retain atomic undo/replay contracts and keep unfiltered stacks on the existing fast path.

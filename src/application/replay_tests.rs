@@ -35,6 +35,22 @@ fn paint(s: &mut Session) {
     );
 }
 #[test]
+fn fractional_window_metadata_round_trips_without_changing_verified_hashes() {
+    let mut s = session();
+    // Floating bounds and split ratios produce nontrivial f64 JSON values from f32 UI geometry.
+    let bounds: Vec<_> = (1..256)
+        .map(|n| json!({"x": (n as f32 / 3.7) as f64, "fraction": n as f64 / 257.}))
+        .collect();
+    s.ui["windows.actual"] = json!(bounds);
+    call(&mut s, "brush.set", json!({"radius":7}));
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+    let bytes = s.journal.as_mut().unwrap().bytes(None).unwrap();
+    assert_eq!(
+        Journal::import(&bytes).unwrap().verify(None).unwrap()["valid"],
+        true
+    );
+}
+#[test]
 fn exact_outcomes_cover_native_plugins_pressure_undo_and_redo_without_reexecution() {
     let mut s = session();
     call(&mut s, "native.checkerboard", json!({"cell":8}));

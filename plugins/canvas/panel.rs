@@ -9,6 +9,9 @@ impl Editor {
         )
     }
     pub(super) fn zoom_at(&mut self, p: Pos2, factor: f32) {
+        if !self.canvas.is_positive() {
+            return;
+        }
         let before = self.document_position(p);
         self.fit = false;
         self.zoom = (self.zoom * factor).clamp(0.02, 32.);
@@ -113,6 +116,34 @@ impl Editor {
         );
     }
     pub(super) fn canvas_ui(&mut self, ui: &mut Ui) {
+        let appearance = self.settings.ui.clone();
+        Frame::new()
+            .inner_margin(Margin::same((appearance.panel_padding / 2.) as i8))
+            .show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    for (id, action) in [
+                        (86, Action::ZoomOut),
+                        (85, Action::ZoomIn),
+                        (40, Action::Fit),
+                    ] {
+                        if super::panels::icon_button(ui, self, id, false).clicked() {
+                            self.actions.push(action);
+                        }
+                    }
+                    if ui
+                        .add_sized([42., appearance.control_height], Button::new(tr("1:1")))
+                        .on_hover_text(tr(self.hint(41)))
+                        .clicked()
+                    {
+                        self.actions.push(Action::ActualPixels);
+                    }
+                    ui.label(format!("{:.0}%", self.zoom * 100.));
+                    if ui.button(tr("Export PNG")).clicked() {
+                        self.actions.push(Action::Export);
+                    }
+                });
+            });
+        ui.separator();
         let c = theme::Colors::new(&self.settings.ui);
         let (bounds, response) = ui.allocate_exact_size(
             ui.available_size().max(vec2(1., 1.)),
@@ -304,36 +335,6 @@ impl Editor {
                         );
                     }
                 }
-            }
-        }
-    }
-    pub(super) fn refresh_texture(&mut self, ctx: &Context) {
-        if let Some([x0, y0, x1, y1]) = self.session.doc.update_display(&mut self.display) {
-            if let Some(texture) = &mut self.texture {
-                let pixels = (y0..y1)
-                    .flat_map(|y| {
-                        self.display
-                            [y * self.session.doc.width + x0..y * self.session.doc.width + x1]
-                            .iter()
-                            .map(|p| Color32::from_rgb((p >> 16) as u8, (p >> 8) as u8, *p as u8))
-                    })
-                    .collect();
-                texture.set_partial(
-                    [x0, y0],
-                    ColorImage::new([x1 - x0, y1 - y0], pixels),
-                    TextureOptions::LINEAR,
-                );
-            } else {
-                let pixels = self
-                    .display
-                    .iter()
-                    .map(|p| Color32::from_rgb((p >> 16) as u8, (p >> 8) as u8, *p as u8))
-                    .collect();
-                self.texture = Some(ctx.load_texture(
-                    "document",
-                    ColorImage::new([self.session.doc.width, self.session.doc.height], pixels),
-                    TextureOptions::LINEAR,
-                ));
             }
         }
     }

@@ -591,8 +591,7 @@ mod tests {
                 json!({"graph":g}),
             ))
             .unwrap();
-        app.editor.nodes_workflow = true;
-        app.focus_panel(Panel::Nodes);
+        app.focus_panel(Panel::Workflow);
         app.editor.fit = false;
         frame(&mut app, &ctx, vec2(1360., 920.), vec![], 0.);
         let revision = app.editor.session.revision;

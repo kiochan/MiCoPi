@@ -81,6 +81,20 @@ try {
     Copy-Item -LiteralPath $cliOutput -Destination 'dist/micopi-cli.exe' -Force
     Copy-Item -LiteralPath $cliOutput -Destination "dist/MiCoPi-CLI-$packageVersion.exe" -Force
     if (!(Test-Path -LiteralPath 'dist/plugins')) { Copy-Item -LiteralPath 'plugins' -Destination 'dist/plugins' -Recurse }
+    foreach ($feature in @('canvas','toolbox','color','brush','navigator','layers')) {
+        $featureDirectory = Join-Path 'dist/plugins' $feature
+        New-Item -ItemType Directory -Path $featureDirectory -Force | Out-Null
+        $featureManifest = Join-Path $featureDirectory 'manifest.json'
+        if (!(Test-Path -LiteralPath $featureManifest)) {
+            $featureConfig = Get-Content -LiteralPath (Join-Path (Join-Path 'plugins' $feature) 'manifest.json') -Raw | ConvertFrom-Json
+            if (Test-Path -LiteralPath 'dist/plugins/workbench/manifest.json') {
+                $legacyWorkbench = Get-Content -LiteralPath 'dist/plugins/workbench/manifest.json' -Raw | ConvertFrom-Json
+                $legacyPanels = @($legacyWorkbench.panels | Where-Object { $_.id -eq $feature -and $_.builtin -eq $feature })
+                if ($legacyPanels.Count -gt 0) { $featureConfig.panels = $legacyPanels }
+            }
+            $featureConfig | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $featureManifest -Encoding utf8
+        }
+    }
     New-Item -ItemType Directory -Path 'dist/plugins/compositing' -Force | Out-Null
     if (!(Test-Path 'dist/plugins/compositing/manifest.json')) { Copy-Item 'plugins/compositing/manifest.json' 'dist/plugins/compositing/manifest.json' }
     Copy-Item -LiteralPath $compositorOutput -Destination 'dist/plugins/compositing/micopi_compositing.dll' -Force
@@ -111,6 +125,20 @@ try {
         if (!($coreConfig.actions | Where-Object { $_.id -eq $action.id })) { $coreConfig.actions = @($coreConfig.actions) + @($action) }
     }
     $coreConfig | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $corePath -Encoding utf8
+    foreach ($systemPackage in @('workbench','workflows')) {
+        $installedManifest = Join-Path (Join-Path 'dist/plugins' $systemPackage) 'manifest.json'
+        $systemConfig = Get-Content -LiteralPath $installedManifest -Raw | ConvertFrom-Json
+        $currentSystem = Get-Content -LiteralPath (Join-Path (Join-Path 'plugins' $systemPackage) 'manifest.json') -Raw | ConvertFrom-Json
+        foreach ($field in @('actions','states','panels')) {
+            foreach ($contribution in $currentSystem.$field) {
+                if (!($systemConfig.$field | Where-Object { $_.id -eq $contribution.id })) {
+                    if (!$systemConfig.PSObject.Properties[$field]) { $systemConfig | Add-Member -NotePropertyName $field -NotePropertyValue @() }
+                    $systemConfig.$field = @($systemConfig.$field) + @($contribution)
+                }
+            }
+        }
+        $systemConfig | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $installedManifest -Encoding utf8
+    }
     New-Item -ItemType Directory -Path 'dist/plugins/painting' -Force | Out-Null
     $paintingManifest = 'dist/plugins/painting/manifest.json'
     if (!(Test-Path -LiteralPath $paintingManifest)) { Copy-Item 'plugins/painting/manifest.json' $paintingManifest }

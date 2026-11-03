@@ -125,6 +125,18 @@
           ],
           "default": "en",
           "description": "Display language. English is the default; changes apply immediately."
+        },
+        "toolbox_width": {
+          "type": "number",
+          "minimum": 200,
+          "maximum": 1200,
+          "default": 720
+        },
+        "toolbox_height": {
+          "type": "number",
+          "minimum": 80,
+          "maximum": 200,
+          "default": 112
         }
       }
     },

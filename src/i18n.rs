@@ -122,7 +122,7 @@ pub fn search_text(message: &str) -> String {
     let mut result = message.to_owned();
     for language in Language::ALL.into_iter().skip(1) {
         result.push(' ');
-        result.push_str(text_in(language, message));
+        result.push_str(&translated_in(language, message));
     }
     result
 }

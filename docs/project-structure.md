@@ -15,7 +15,7 @@ micopi/
 │   ├── bin/micopi-cli.rs    CLI and MCP entry point
 │   ├── application/         Session, action and pipeline contracts
 │   ├── automation/          JSONL, MCP and GUI attachment
-│   ├── desktop/             UI, settings, canvas and node editors
+│   ├── desktop/             Shared window host, input routing and texture cache
 │   ├── engine/              Document, composition, tiled history and replay codec
 │   ├── plugins/             Host registry, DLL loader and adapters
 │   ├── platform/            Windows input, chrome and file integration
@@ -23,7 +23,7 @@ micopi/
 │   ├── configuration.rs     Validated settings persistence
 │   └── i18n.rs              Embedded translation lookup
 ├── crates/plugin-api/       Independent C ABI SDK and C header
-├── plugins/                 Installable plugin manifests and DLL source
+├── plugins/                 Feature UI adapters, manifests and DLL source
 ├── locales/                 Four versioned UI catalogs
 ├── assets/                  Runtime assets and upstream notices
 ├── docs/
@@ -47,7 +47,7 @@ micopi/
 
 ## Runtime ownership
 
-`src/plugins/` and root `plugins/` have different jobs. The former is host integration: registration, validation, lifecycle and dispatch. The latter is the installable extension boundary: manifests and independent DLL implementations. Keep new pixel algorithms in the appropriate plugin, while the host retains document and history ownership.
+`src/plugins/` and root `plugins/` have different jobs. The former is host integration: registration, validation, lifecycle and dispatch. The latter is the installable extension boundary: manifests and independent DLL implementations. Feature UI adapters are source-owned in `plugins/<feature>/panel.rs` and compiled into the desktop host. Shared window lifecycle lives in `src/desktop/windows.rs`; the document texture cache lives in `src/desktop/document_texture.rs`. This source boundary does not expose egui objects through the native C ABI. See [Plugin Windows](plugin-windows.md). Keep new pixel algorithms in the appropriate plugin, while the host retains document and history ownership.
 
 The `engine` directory contains shared document structures and the image graph model. The legacy GDI UI under `src/platform/windows/` remains a regression reference. It is not the production desktop entry point; moving it requires its own measured refactor, not a cosmetic directory change.
 
@@ -61,7 +61,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/document.rs` | Pixels, composition and copy-on-write undo tiles |
 | `src/engine/linked_graph.rs` | Validated layer-stack topology, per-layer filter branches and metadata-only synchronization |
 | `src/engine/replay.rs` | Journal storage, compressed tile/metadata encoding and integrity verification |
-| `src/desktop/replay.rs` | Read-only time-lapse presentation |
+| `plugins/replay/panel.rs` | Read-only time-lapse presentation |
 | `plugins/replay/manifest.json` | Public action/state registration for automation and workflow nodes |
 
 The host owns transaction and verification rules. Plugins own drawing and processing algorithms; transports and the desktop dispatch through the same Session. See [Atomic Operations](atomic-operations.md) and [Verified Replay](replay.md) for the contracts.
