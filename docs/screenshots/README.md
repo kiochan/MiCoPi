@@ -8,6 +8,7 @@ These are actual application captures, not interface mockups. Current images com
 | [Verified replay](replay.png) | Event timeline and read-only recorded outcome preview |
 | [Workbench](workbench.png) | Default independent control bar, canvas and property windows |
 | [Floating windows](floating-windows.png) | Independent native canvas window |
+| [Panel group](native-panel-group.png) | One native window preserving tab groups and nested splits |
 | [Native Tools](native-tools.png) | Independent native control bar |
 | [Image nodes](image-nodes.png) | Linked layer sources, per-layer filters, synchronized merges and output |
 | [Workflow nodes](workflow-nodes.png) | DLL-contributed public state connected to an action |

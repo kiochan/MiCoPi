@@ -92,7 +92,18 @@ impl TabViewer for Viewer<'_> {
     ) {
         self.editor.window_menu(*panel, ui);
     }
-    fn on_tab_button(&mut self, _: &mut Panel, response: &Response) {
+    fn on_tab_button(&mut self, panel: &mut Panel, response: &Response) {
+        if response.double_clicked() {
+            if let Some(id) = self.editor.panel_id(*panel) {
+                self.editor.core(
+                    "window.command",
+                    serde_json::json!({"panel":id,"operation":"float","scope":"group"}),
+                );
+            }
+        }
+        response
+            .clone()
+            .on_hover_text(tr("Double-click a Tab to Float Its Group"));
         response.clone().on_hover_text(tr(
             "Drag Tabs to Split, Group or Float Panels; Right-click for Actions",
         ));

@@ -27,6 +27,7 @@ struct Hook {
     previous: isize,
     context: egui::Context,
     samples: VecDeque<PenSample>,
+    sizing: bool,
 }
 thread_local! { static HOOKS: RefCell<BTreeMap<usize, Hook>> = const { RefCell::new(BTreeMap::new()) }; }
 
@@ -60,6 +61,7 @@ impl Native {
                             previous,
                             context,
                             samples: VecDeque::with_capacity(128),
+                            sizing: false,
                         },
                     )
                 });
@@ -98,6 +100,25 @@ impl Native {
     }
     pub fn window_id(&self) -> usize {
         self.hwnd as usize
+    }
+    pub fn owner(&self) -> usize {
+        unsafe { GetWindowLongPtrW(self.hwnd, -8) as usize }
+    }
+    pub fn set_owner(&self, owner: usize) {
+        if owner != self.hwnd as usize && self.owner() != owner {
+            unsafe {
+                SetWindowLongPtrW(self.hwnd, -8, owner as isize);
+                SetWindowPos(self.hwnd, null_mut(), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+            }
+        }
+    }
+    pub fn is_sizing(&self) -> bool {
+        HOOKS.with(|hooks| {
+            hooks
+                .borrow()
+                .get(&(self.hwnd as usize))
+                .is_some_and(|h| h.sizing)
+        })
     }
     pub fn clear_pen(&self) {
         HOOKS.with(|hooks| {
@@ -234,6 +255,14 @@ unsafe extern "system" fn procedure(hwnd: Hwnd, msg: u32, w: usize, l: isize) ->
         .with(|slot| slot.borrow().get(&(hwnd as usize)).map(|h| h.previous))
         .unwrap_or(0);
     match msg {
+        0x231 | 0x232 => {
+            HOOKS.with(|hooks| {
+                if let Some(h) = hooks.borrow_mut().get_mut(&(hwnd as usize)) {
+                    h.sizing = msg == 0x231;
+                    h.context.request_repaint();
+                }
+            });
+        }
         0x83 => {
             chrome::calculate_client(hwnd, l);
             return 0;
@@ -386,6 +415,7 @@ mod viewport_input_tests {
                         previous: 0,
                         context: egui::Context::default(),
                         samples: VecDeque::new(),
+                        sizing: false,
                     },
                 );
             });

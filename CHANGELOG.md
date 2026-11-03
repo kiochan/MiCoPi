@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep native palettes above the application with a main-window/canvas/palette ownership chain instead of system-wide topmost flags.
+- Add whole-group float, hide, dock and tab-merge commands; preserve active tabs, order and nested split topology, with tab double-click and a visible group drag title.
+- Separate explicit viewport placement from observed OS geometry to prevent resize/DPI feedback; defer layout commits until native sizing ends.
+
 - Render floating plugin surfaces as independent native OS viewports with shared themes/textures, monitor placement, stable panel commands and persisted normal geometry.
 - Route Windows Ink through per-HWND bounded queues with viewport-specific DPI conversion; preserve pressure, stabilization, focus cancellation and verified outcomes.
 - Expose native window observations and registered minimize/maximize/restore commands; verify top-level HWNDs, independent movement, native mouse drawing and restart persistence.

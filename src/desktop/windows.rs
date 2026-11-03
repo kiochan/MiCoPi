@@ -27,6 +27,31 @@ impl Editor {
                     ui.close();
                 }
             }
+            ui.menu_button(tr("Group Actions"), |ui| {
+                for (operation, label) in [
+                    ("float", "Float Panel Group"),
+                    ("dock_left", "Dock Group Left"),
+                    ("dock_right", "Dock Group Right"),
+                    ("dock_top", "Dock Group Top"),
+                    ("dock_bottom", "Dock Group Bottom"),
+                    ("hide", "Hide Panel Group"),
+                ] {
+                    if ui.button(tr(label)).clicked() {
+                        self.core(
+                            "window.command",
+                            json!({"panel":id,"scope":"group","operation":operation}),
+                        );
+                        ui.close();
+                    }
+                }
+                ui.menu_button(tr("Merge Panel Group as Tabs"),|ui| {
+                    let members=self.session.ui["windows.actual"].as_array().and_then(|a|a.iter().find(|v|v["id"]==id)).map(|v|v["group"].clone()).unwrap_or_default();
+                    let targets:Vec<_>=self.session.registry.panels.values().filter(|p|p.id!=id && !members.as_array().is_some_and(|a|a.iter().any(|v|v==&p.id))).cloned().collect();
+                    for target in targets {if ui.button(tr(&target.title)).clicked() {
+                        self.core("window.command",json!({"panel":id,"scope":"group","operation":"tab","target":target.id}));ui.close();
+                    }}
+                });
+            });
             ui.menu_button(tr("Group as Tabs"), |ui| {
                 let targets: Vec<_> = self
                     .session
@@ -69,9 +94,11 @@ impl Studio {
         let actual:Vec<_>=self.editor.session.registry.panels.values().map(|definition| {
             let location=self.dock.find_tab(&contributed_panel(definition));
             let bounds=location.and_then(|(s,n,_)|match &self.dock[s][n] {egui_dock::Node::Leaf(leaf) if leaf.rect.is_finite() && leaf.rect.is_positive()=>Some(json!({"x":leaf.rect.left(),"y":leaf.rect.top(),"width":leaf.rect.width(),"height":leaf.rect.height()})),_=>None});
+            let members:Vec<Panel>=location.map(|(s,n,_)|if s.is_main() {self.dock[s][n].iter_tabs().copied().collect()} else {self.dock[s].iter().flat_map(|n|n.iter_tabs()).copied().collect()}).unwrap_or_default();
+            let group:Vec<_>=members.iter().filter_map(|p|self.editor.panel_id(*p)).collect();
             let native=location.and_then(|(s,_,_)|self.native_window_state(s));
             let active=location.is_some_and(|(s,n,t)|matches!(&self.dock[s][n],egui_dock::Node::Leaf(leaf) if leaf.active==t));
-            json!({"id":definition.id,"open":location.is_some(),"active":active,"floating":location.is_some_and(|(s,_,_)|!s.is_main()),"bounds":bounds,"native":native})
+            json!({"id":definition.id,"open":location.is_some(),"active":active,"floating":location.is_some_and(|(s,_,_)|!s.is_main()),"bounds":bounds,"native":native,"group":group})
         }).collect();
         self.editor.session.ui["windows.actual"] = json!(actual);
     }
@@ -111,6 +138,9 @@ impl Studio {
                 }
             }
             return Ok(());
+        }
+        if args["scope"] == "group" && !matches!(operation, "show" | "focus") {
+            return self.apply_window_group(ctx, args, panel);
         }
         let target = args["target"]
             .as_str()
@@ -175,70 +205,12 @@ impl Studio {
                 dock.remove_tab(location);
             }
             let surface = dock.add_window(vec![panel]);
-            let appearance = &self.editor.settings.ui;
-            let root = ctx.content_rect();
-            let area = Rect::from_min_max(
-                root.min
-                    + vec2(
-                        appearance.outer_padding,
-                        appearance.title_height + appearance.outer_padding * 2.,
-                    ),
-                root.max
-                    - vec2(
-                        appearance.outer_padding,
-                        24. + appearance.outer_padding * 2.,
-                    ),
-            );
-            let decoration = ctx.style().spacing.window_margin.sum()
-                + Vec2::splat(ctx.style().visuals.window_stroke.width * 2.);
-            let mut size = vec2(
-                args["width"]
-                    .as_f64()
-                    .map(|n| n as f32)
-                    .unwrap_or(if panel == Panel::Canvas {
-                        640.
-                    } else if panel == Panel::Tools {
-                        self.editor.settings.ui.toolbox_width
-                    } else {
-                        320.
-                    }),
-                args["height"]
-                    .as_f64()
-                    .map(|n| n as f32)
-                    .unwrap_or(if panel == Panel::Tools {
-                        self.editor.settings.ui.toolbox_height
-                            + if ctx.embed_viewports() {
-                                0.
-                            } else {
-                                appearance.title_height
-                            }
-                    } else {
-                        460.
-                    }),
-            );
-            if ctx.embed_viewports() {
-                size = size.min((area.size() - decoration).max(vec2(48., 48.)));
-            }
-            let origin = ctx
-                .input(|i| i.viewport().outer_rect.map(|r| r.min))
-                .unwrap_or_default();
-            let position = pos2(
-                args["x"]
-                    .as_f64()
-                    .unwrap_or((origin.x + area.left() + 24.) as f64) as f32,
-                args["y"]
-                    .as_f64()
-                    .unwrap_or((origin.y + area.top() + 24.) as f64) as f32,
-            );
-            let position = if ctx.embed_viewports() {
-                position.clamp(area.min, area.max - size - decoration)
-            } else {
-                position
-            };
+            let rect =
+                window_groups::floating_rect(ctx, args, panel, &self.editor.settings.ui, None);
             dock.get_window_state_mut(surface)
                 .unwrap()
-                .set_position(position)
-                .set_size(size);
+                .set_position(rect.min)
+                .set_size(rect.size());
         } else {
             if let Some(location) = dock.find_tab(&panel) {
                 dock.remove_tab(location);

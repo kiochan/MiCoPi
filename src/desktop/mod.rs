@@ -30,6 +30,7 @@ mod tests;
 mod theme;
 #[path = "../../plugins/toolbox/panel.rs"]
 mod toolbox;
+mod window_groups;
 mod windows;
 #[path = "../../plugins/workflows/panel.rs"]
 mod workflow;
@@ -1124,7 +1125,13 @@ impl eframe::App for Studio {
             self.layout_changed = Some(Instant::now());
         }
         if let Some(then) = self.layout_changed {
-            if then.elapsed() > Duration::from_millis(750) && !ctx.input(|i| i.pointer.any_down()) {
+            if then.elapsed() > Duration::from_millis(750)
+                && !ctx.input(|i| i.pointer.any_down())
+                && !self
+                    .native_windows
+                    .values()
+                    .any(|w| w.native.as_ref().is_some_and(Native::is_sizing))
+            {
                 // Coalesce splitter/window drags into one registered presentation command.
                 let layout = encode_workspace(
                     self.dock_before_focus.as_ref().unwrap_or(&self.dock),

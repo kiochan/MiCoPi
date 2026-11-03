@@ -6,6 +6,7 @@ use serde_json::{json, Value};
 pub(super) struct NativeWindow {
     pub native: Option<Native>,
     pub geometry: Rect,
+    placement: Rect,
     pub viewport: ViewportId,
     pub focused: bool,
     pub pixels_per_point: f32,
@@ -35,7 +36,7 @@ pub(super) fn dock_style(ctx: &Context, a: &Appearance) -> egui_dock::Style {
     style.main_surface_border_stroke = Stroke::NONE;
     style
 }
-fn geometry(state: &WindowState) -> Rect {
+pub(super) fn geometry(state: &WindowState) -> Rect {
     // The pinned docking library has setters but no getters for pending geometry.
     // This layout-only conversion never runs in the native pen hook or DLL sample path.
     let value = serde_json::to_value(state).unwrap_or_default();
@@ -108,16 +109,20 @@ impl Studio {
             let desired = geometry(&state);
             let viewport = ViewportId::from_hash_of(("micopi-plugin-viewport", index));
             let bootstrap = format!("MiCoPi viewport {}:{index}", std::process::id());
-            let label = panels
+            let mut label = panels
                 .first()
                 .and_then(|p| self.editor.panel_id(*p))
                 .and_then(|id| self.editor.session.registry.panels.get(&id))
                 .map(|p| localize(p.title.clone()))
                 .unwrap_or_else(|| "MiCoPi".into());
+            if panels.len() > 1 {
+                label = format!("{} · {}", crate::i18n::text("Panel Group"), panels.len());
+            }
             let title = format!("MiCoPi — {label}");
             let mut window = self.native_windows.remove(&index).unwrap_or(NativeWindow {
                 native: None,
                 geometry: desired,
+                placement: desired,
                 viewport,
                 focused: false,
                 pixels_per_point: 1.,
@@ -127,6 +132,12 @@ impl Studio {
                 minimized: false,
             });
             let first = window.native.is_none();
+            // Only explicit layout commands change the builder. OS observations are persisted
+            // separately, so asynchronous resize/DPI events cannot feed back stale dimensions.
+            if desired != window.geometry {
+                window.placement = desired;
+            }
+
             let previous = (
                 window.geometry,
                 window.focused,
@@ -142,8 +153,8 @@ impl Studio {
                 .with_active(false)
                 .with_decorations(false)
                 .with_resizable(true)
-                .with_inner_size(desired.size())
-                .with_position(desired.min)
+                .with_inner_size(window.placement.size())
+                .with_position(window.placement.min)
                 .with_min_inner_size(if contains_canvas {
                     vec2(260., 220.)
                 } else if panels.contains(&Panel::Tools) {
@@ -200,7 +211,10 @@ impl Studio {
                     .filter(|r| r.is_finite() && r.is_positive())
                 {
                     window.outer_rect=rect;
-                    if !window.maximized && !window.minimized {window.geometry = rect;}
+                    if !window.maximized && !window.minimized {
+                        let size=ctx.input(|i|i.viewport().inner_rect.map(|r|r.size())).unwrap_or(rect.size());
+                        window.geometry=Rect::from_min_size(rect.min,size);
+                    }
                 }
                 window.focused = ctx.input(|i| i.focused);
                 window.pixels_per_point=ctx.pixels_per_point();
@@ -226,6 +240,11 @@ impl Studio {
                                 [width, a.title_height],
                                 Label::new(tr(&label)).sense(Sense::click_and_drag()),
                             );
+                            // Draw the grip instead of relying on a font-specific glyph.
+                            for column in 0..2 {for row in 0..3 {
+                                ui.painter().circle_filled(pos2(response.rect.left()+5.+column as f32*5.,response.rect.center().y-5.+row as f32*5.),1.2,colors.muted);
+                            }}
+                            let response=response.on_hover_cursor(CursorIcon::Grab).on_hover_text(tr("Drag This Title Bar to Move the Entire Group"));
                             if response.drag_started() {
                                 ctx.send_viewport_cmd(ViewportCommand::StartDrag);
                             }
@@ -234,10 +253,10 @@ impl Studio {
                                     self.editor.core("window.command",json!({"panel":id,"operation":if ctx.input(|i|i.viewport().maximized.unwrap_or(false)) {"restore"} else {"maximize"}}));
                                 }
                             }
-                            if ui.button("▣").on_hover_text(tr("Dock Window")).clicked() {
+                            if ui.button("▣").on_hover_text(tr(if panels.len()>1 {"Dock Group Right"} else {"Dock Window"})).clicked() {
                                 dock_back = true;
                             }
-                            if ui.button("×").on_hover_text(tr("Hide Window")).clicked() {
+                            if ui.button("×").on_hover_text(tr(if panels.len()>1 {"Hide Panel Group"} else {"Hide Window"})).clicked() {
                                 close = true;
                             }
                         });
@@ -283,13 +302,8 @@ impl Studio {
             };
             self.absorb_native_surfaces(local);
             if close || dock_back {
-                for panel in panels {
-                    if let Some(id) = self.editor.panel_id(panel) {
-                        self.editor.core(
-                            "window.command",
-                            json!({"panel":id,"operation":if close {"hide"} else {"dock_right"}}),
-                        );
-                    }
+                if let Some(id) = panels.first().and_then(|p| self.editor.panel_id(*p)) {
+                    self.editor.core("window.command",json!({"panel":id,"scope":"group","operation":if close {"hide"} else {"dock_right"}}));
                 }
             }
             report_changed |= first
@@ -305,8 +319,35 @@ impl Studio {
                     );
             self.native_windows.insert(index, window);
         }
+        self.maintain_window_owners();
         if report_changed {
             self.report_windows();
+        }
+    }
+    fn maintain_window_owners(&self) {
+        let root = self
+            .editor
+            .native
+            .as_ref()
+            .map(Native::window_id)
+            .unwrap_or(0);
+        if root == 0 {
+            return;
+        }
+        let canvas = self.dock.find_tab(&Panel::Canvas).map(|(s, _, _)| s.0);
+        let canvas_hwnd = canvas
+            .and_then(|s| self.native_windows.get(&s))
+            .and_then(|w| w.native.as_ref())
+            .map(Native::window_id)
+            .unwrap_or(root);
+        for (index, window) in &self.native_windows {
+            if let Some(native) = &window.native {
+                native.set_owner(if Some(*index) == canvas {
+                    root
+                } else {
+                    canvas_hwnd
+                });
+            }
         }
     }
     pub(super) fn native_window_state(&self, surface: SurfaceIndex) -> Option<Value> {
@@ -314,7 +355,7 @@ impl Studio {
         let r = w.outer_rect;
         Some(
             json!({"viewport":format!("{:?}",w.viewport),"hwnd":w.native.as_ref().map(Native::window_id),
-            "focused":w.focused,"maximized":w.maximized,"minimized":w.minimized,"pixels_per_point":w.pixels_per_point,"image_rect":w.image_rect,"bounds":{"x":r.min.x,"y":r.min.y,"width":r.width(),"height":r.height()}}),
+            "owner":w.native.as_ref().map(Native::owner),"focused":w.focused,"maximized":w.maximized,"minimized":w.minimized,"pixels_per_point":w.pixels_per_point,"image_rect":w.image_rect,"bounds":{"x":r.min.x,"y":r.min.y,"width":r.width(),"height":r.height()}}),
         )
     }
 }

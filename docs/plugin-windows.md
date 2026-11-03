@@ -46,3 +46,22 @@ Check the queued request via `window.list` before issuing dependent layout opera
 Native window placement and size use the existing workspace snapshot and quiet-period event compression. Maximized/minimized frames preserve the normal restore rectangle. Closing a feature window hides its panels; closing the main application retains the existing unsaved-document confirmation. Docking/grouping across native windows uses registered commands and tab context menus; direct tab dragging between separate OS viewports is not implemented.
 
 `window.capture` takes `panel` and `path` and writes that native viewport directly from the OpenGL renderer, independent of window occlusion. Inspect `window.list.last_capture` for saved/failed completion. Screenshot capture is an explicit presentation/file effect and is unavailable in headless execution. The native smoke check verifies both dark and light render output without capturing the surrounding desktop.
+
+## Owned palettes, group movement and native sizing
+
+Floating canvases are owned by the main application window. Other floating panel windows are owned by the floating canvas, or by the main window when the canvas is docked/hidden. This keeps palettes above the application when its windows are activated. They do not use system-wide topmost placement. Ownership is reattached before an obsolete viewport is destroyed when docking or hiding a canvas.
+
+![A movable group retaining tabbed and split panels](screenshots/native-panel-group.png)
+
+Double-click a tab, or use **Group Actions > Float Panel Group**, to detach its complete tab group. Drag the marked group title bar to move the whole native window, including any nested splits. Its dock button moves the whole tree back together. A single tab can still be dragged out individually.
+
+`window.command` accepts optional `scope: "group"` (default `"panel"`). For a docked panel, a group means all tabs in its leaf. For a floating panel, it means the entire native window, including nested splits. Group float and directional dock operations preserve tab order, active tabs and split fractions. Group hide removes its members together. A group tab merge explicitly flattens its tabs into the target leaf. Targets within the source group are rejected before changing the layout.
+
+Generated actions also expose `.float_group`, `.hide_group`, `.dock_left_group`, `.dock_right_group`, `.dock_top_group`, `.dock_bottom_group` and `.tab_group`. They use the same command palette, shortcut, schema and MCP pipeline as individual panel commands. `window.list.actual[].group` contains the member panel IDs.
+
+```json
+{"action":"window.command","args":{"panel":"layers","operation":"float","scope":"group"}}
+{"action":"window.command","args":{"panel":"layers","operation":"dock_right","scope":"group","target":"canvas"}}
+```
+
+Native placement requests and observed geometry have separate ownership. Only creation or an explicit layout command changes the viewport builder's requested position/inner size. OS resize and DPI events update observed normal geometry for workspace persistence without issuing another resize. The native move/size loop also blocks quiet-period layout commits until the gesture ends. This prevents old asynchronous size observations from fighting a live border drag.

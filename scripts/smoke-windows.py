@@ -20,6 +20,18 @@ USER.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes
 USER.SetForegroundWindow.argtypes = [wintypes.HWND]
 USER.SendMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
 USER.SendMessageW.restype = wintypes.LPARAM
+USER.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
+USER.GetWindow.restype = wintypes.HWND
+USER.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+
+
+def above(first, second):
+    current = first
+    while current:
+        current = USER.GetWindow(current, 2)  # GW_HWNDNEXT, from top toward bottom
+        if current == second:
+            return True
+    return False
 
 
 def native_rect(hwnd):
@@ -118,6 +130,40 @@ def main():
         state = call('window.list', {})
         assert {'canvas', 'toolbox', 'color', 'brush', 'navigator', 'layers', 'workflows.editor'}.issubset({p['id'] for p in state['panels']})
         capture('default-workspace.png')
+        # A docked tab group detaches as a unit; docking a nested floating tree keeps its shape.
+        grouped = window('layers', 'float', scope='group', x=80, y=180, width=420, height=500)
+        deadline = time.monotonic()+10
+        while True:
+            grouped = {p['id']: p for p in call('window.list', {})['actual']}
+            group_hwnd = (grouped['layers'].get('native') or {}).get('hwnd')
+            if group_hwnd:
+                assert all(grouped[p]['native']['hwnd'] == group_hwnd for p in ['layers', 'brush', 'color'])
+                break
+            assert time.monotonic()<deadline, grouped
+            time.sleep(.1)
+        assert USER.SetWindowPos(group_hwnd, None, 100, 160, 440, 520, 0x4 | 0x10)
+        window('color', 'dock_bottom', target='brush', fraction=.48)
+        grouped = {p['id']: p for p in call('window.list', {})['actual']}
+        assert all(grouped[p]['native']['hwnd'] == group_hwnd for p in ['layers','brush','color'])
+        window('layers', 'float', scope='group', width=480, height=750)
+        deadline = time.monotonic()+10
+        while True:
+            grouped = {p['id']: p for p in call('window.list', {})['actual']}
+            if grouped['layers']['native']['bounds']['height'] >= 700:
+                break
+            assert time.monotonic()<deadline, 'Explicit group placement was not applied'
+            time.sleep(.05)
+        group_capture = output/'native-panel-group.png'
+        call('window.capture', dict(panel='layers', path=str(group_capture)))
+        deadline = time.monotonic()+10
+        while not group_capture.exists():
+            assert time.monotonic()<deadline, 'Group capture timed out'
+            time.sleep(.05)
+        window('layers', 'dock_right', scope='group', target='navigator')
+        grouped = {p['id']: p for p in call('window.list', {})['actual']}
+        assert all(not grouped[p]['floating'] for p in ['layers','brush','color'])
+        assert grouped['layers']['bounds'] == grouped['brush']['bounds']
+        assert grouped['color']['bounds'] != grouped['brush']['bounds']
         window('color', 'float', x=40, y=160, width=300, height=460)
         window('color', 'tab', target='brush')
         window('toolbox', 'float', x=40, y=65, width=820, height=125)
@@ -137,6 +183,14 @@ def main():
         for hwnd in [canvas_hwnd, tools_hwnd]:
             assert USER.IsWindow(hwnd)
             assert not USER.GetWindowLongPtrW(hwnd, -16) & 0x40000000, 'Expected top-level OS window'
+            assert not USER.GetWindowLongPtrW(hwnd, -20) & 0x8, 'Palette must not be globally topmost'
+        root_hwnd = USER.GetWindow(canvas_hwnd, 4)  # GW_OWNER
+        assert root_hwnd and USER.GetWindow(tools_hwnd, 4) == canvas_hwnd
+        USER.ShowWindow(root_hwnd, 4)
+        for activated in [root_hwnd, canvas_hwnd, root_hwnd]:
+            USER.SetForegroundWindow(activated)
+            time.sleep(.08)
+            assert above(tools_hwnd, canvas_hwnd) and above(canvas_hwnd, root_hwnd), 'Owned palette was covered by the application'
         canvas_rect = native_rect(canvas_hwnd)
         displays = monitors()
         monitor = displays[-1]
@@ -160,6 +214,18 @@ def main():
             assert time.monotonic()<deadline, 'Canvas placement did not update'
             time.sleep(.1)
         assert native_rect(tools_hwnd)==tools_rect, 'Moving Canvas moved Tools'
+        # Native resize observations must not be written back as repeated builder commands.
+        USER.SendMessageW(canvas_hwnd, 0x231, 0, 0)  # WM_ENTERSIZEMOVE
+        for n in range(12):
+            assert USER.SetWindowPos(canvas_hwnd, None, monitor[0]+60+n, monitor[1]+280,
+                                     900-n*12, 590-n*6, 0x4 | 0x10)
+            time.sleep(.025)
+        USER.SendMessageW(canvas_hwnd, 0x232, 0, 0)  # WM_EXITSIZEMOVE
+        settled = native_rect(canvas_hwnd)
+        for _ in range(6):
+            time.sleep(.08)
+            call('window.list', {})
+            assert native_rect(canvas_hwnd) == settled, 'Native resize oscillated after release'
         # Native client coordinates must reach the same painting Session.
         USER.SetForegroundWindow(canvas_hwnd)
         time.sleep(.2)
@@ -254,7 +320,7 @@ def main():
             process.kill()
             process.wait(timeout=10)
     print('Plugin windows: queued/applied state, dock/float/tab/hide/show, headless fallback and PNG/replay parity passed.')
-    print(f'Independent top-level HWNDs, native mouse drawing and movement passed; {len(displays)} display(s) available.')
+    print(f'Owned palette stacking, group topology, stable native resizing and mouse drawing passed; {len(displays)} display(s) available.')
     print(output)
 
 

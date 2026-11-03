@@ -17,7 +17,7 @@ pub const OPERATIONS: &[&str] = &[
     "restore",
 ];
 pub fn commands(panel: &PanelDefinition) -> Vec<ActionDefinition> {
-    OPERATIONS.iter().map(|operation| {
+    let mut commands:Vec<_>=OPERATIONS.iter().map(|operation| {
         let mut args = json!({"panel":panel.id,"operation":operation});
         let schema = if *operation == "tab" {
             args["target"] = json!({"$arg":"target"});
@@ -26,7 +26,27 @@ pub fn commands(panel: &PanelDefinition) -> Vec<ActionDefinition> {
         let title=match *operation {"show"=>"Show Window","hide"=>"Hide Window","focus"=>"Focus Window","float"=>"Float Window","dock_left"=>"Dock Left","dock_right"=>"Dock Right","dock_top"=>"Dock Top","dock_bottom"=>"Dock Bottom","minimize"=>"Minimize Window","maximize"=>"Maximize Window","restore"=>"Restore Window",_=>"Group as Tabs"};
         ActionDefinition { id:format!("window.{}.{}",panel.id,operation), title:format!("{title}: {}",panel.title), operation:None,native:None,
             steps:vec![Action::new("window.command",args)], input_schema:Some(schema),read_only:false,document_atomic:false,output_schema:None }
-    }).collect()
+    }).collect();
+    for (operation, title) in [
+        ("float", "Float Panel Group"),
+        ("hide", "Hide Panel Group"),
+        ("dock_left", "Dock Group Left"),
+        ("dock_right", "Dock Group Right"),
+        ("dock_top", "Dock Group Top"),
+        ("dock_bottom", "Dock Group Bottom"),
+        ("tab", "Merge Panel Group as Tabs"),
+    ] {
+        let mut command = commands
+            .iter()
+            .find(|c| c.id == format!("window.{}.{operation}", panel.id))
+            .unwrap()
+            .clone();
+        command.id.push_str("_group");
+        command.title = format!("{title}: {}", panel.title);
+        command.steps[0].args["scope"] = json!("group");
+        commands.push(command);
+    }
+    commands
 }
 pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     if op == Operation::WindowState {
