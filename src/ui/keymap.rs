@@ -1072,10 +1072,30 @@ pub static COMMANDS: &[Command] = &[
 #[derive(Clone)]
 pub struct Keymap {
     pub bindings: Vec<Vec<Chord>>,
+    extra: Vec<PluginCommand>,
+    pending: std::collections::BTreeMap<String, Vec<Chord>>,
+}
+#[derive(Clone)]
+struct PluginCommand {
+    id: String,
+    title: String,
+    action: String,
+    ui: u32,
+}
+#[derive(Clone, Copy)]
+pub struct CommandView<'a> {
+    pub id: &'a str,
+    pub title: &'a str,
+    pub category: &'a str,
+    pub keywords: &'a str,
+    pub kind: Kind,
+    pub ui: u32,
 }
 impl Default for Keymap {
     fn default() -> Self {
         Self {
+            extra: vec![],
+            pending: Default::default(),
             bindings: COMMANDS
                 .iter()
                 .map(|c| parse_list(c.defaults).unwrap())
@@ -1098,8 +1118,77 @@ pub struct InputState {
     pub tool_zoom_out: bool,
 }
 impl Keymap {
+    pub fn command(&self, index: usize) -> CommandView<'_> {
+        if index < COMMANDS.len() {
+            let c = &COMMANDS[index];
+            CommandView {
+                id: c.id,
+                title: c.title,
+                category: c.category,
+                keywords: c.keywords,
+                kind: c.kind,
+                ui: c.ui,
+            }
+        } else {
+            let c = &self.extra[index - COMMANDS.len()];
+            CommandView {
+                id: &c.id,
+                title: &c.title,
+                category: "Plugin Commands",
+                keywords: &c.action,
+                kind: Kind::Press(Action::UiCommand(c.ui)),
+                ui: c.ui,
+            }
+        }
+    }
+    pub fn commands(&self) -> impl Iterator<Item = CommandView<'_>> {
+        (0..COMMANDS.len() + self.extra.len()).map(|i| self.command(i))
+    }
+    pub fn plugin_action(&self, ui: u32) -> Option<&str> {
+        self.extra
+            .iter()
+            .find(|c| c.ui == ui)
+            .map(|c| c.action.as_str())
+    }
+    pub fn register_actions(
+        &mut self,
+        actions: impl IntoIterator<Item = (String, String)>,
+    ) -> Result<(), String> {
+        let mut next = self.clone();
+        for (action, title) in actions {
+            let id = format!("plugin.{action}");
+            if next.extra.iter().any(|c| c.id == id) {
+                continue;
+            }
+            let ui = id
+                .bytes()
+                .fold(2166136261u32, |h, b| (h ^ b as u32).wrapping_mul(16777619))
+                | 0x80000000;
+            if next.commands().any(|c| c.ui == ui) {
+                return Err(format!("Command identity collision: {id}"));
+            }
+            let keys = next.pending.remove(&id).unwrap_or_default();
+            next.extra.push(PluginCommand {
+                id,
+                title,
+                action,
+                ui,
+            });
+            next.bindings.push(keys);
+        }
+        if let Err(error) = next.validate() {
+            for keys in &mut next.bindings[COMMANDS.len()..] {
+                keys.clear();
+            }
+            *self = next;
+            return Err(format!("Plugin Bindings Disabled: {error}"));
+        }
+        *self = next;
+        Ok(())
+    }
+
     pub fn resolve(&self, key: usize, mods: u8) -> Option<Action> {
-        COMMANDS.iter().enumerate().find_map(|(i, c)| {
+        self.commands().enumerate().find_map(|(i, c)| {
             if let Kind::Press(a) = c.kind {
                 self.bindings[i]
                     .iter()
@@ -1111,7 +1200,7 @@ impl Keymap {
         })
     }
     pub fn wheel(&self, mods: u8) -> Option<Wheel> {
-        COMMANDS.iter().enumerate().find_map(|(i, c)| {
+        self.commands().enumerate().find_map(|(i, c)| {
             if let Kind::Wheel(a) = c.kind {
                 self.bindings[i].iter().any(|b| b.mods == mods).then(|| a)
             } else {
@@ -1121,7 +1210,7 @@ impl Keymap {
     }
     pub fn held(&self, mods: u8, mut pressed: impl FnMut(u16) -> bool) -> InputState {
         let mut s = InputState::default();
-        for (i, c) in COMMANDS.iter().enumerate() {
+        for (i, c) in self.commands().enumerate() {
             if let Kind::Hold(h) = c.kind {
                 if self.bindings[i]
                     .iter()
@@ -1140,7 +1229,7 @@ impl Keymap {
         s
     }
     pub fn hold_event(&self, key: usize, mods: u8) -> bool {
-        COMMANDS.iter().enumerate().any(|(i, c)| {
+        self.commands().enumerate().any(|(i, c)| {
             matches!(c.kind, Kind::Hold(_))
                 && self.bindings[i].iter().any(|b| {
                     b.mods == mods
@@ -1150,7 +1239,10 @@ impl Keymap {
         })
     }
     pub fn label(&self, index: usize) -> String {
-        self.bindings[index]
+        self.bindings
+            .get(index)
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
             .iter()
             .map(|b| b.text())
             .collect::<Vec<_>>()
@@ -1160,11 +1252,11 @@ impl Keymap {
         if id == 0 {
             return None;
         }
-        COMMANDS.iter().position(|c| c.ui == id).map(|i| {
+        self.commands().position(|c| c.ui == id).map(|i| {
             let k = self.label(i);
             format!(
                 "{}{}{}",
-                crate::i18n::text(COMMANDS[i].title),
+                crate::i18n::text(self.command(i).title),
                 if k.is_empty() { "" } else { "  " },
                 k
             )
@@ -1173,10 +1265,13 @@ impl Keymap {
     pub fn validate(&self) -> Result<(), String> {
         for (i, keys) in self.bindings.iter().enumerate() {
             for (a, k) in keys.iter().enumerate() {
-                match COMMANDS[i].kind {
+                match self.command(i).kind {
                     Kind::Press(_) => {
                         if k.key == 0 || k.key == WHEEL {
-                            return Err(format!("{} Requires a Regular Key", COMMANDS[i].title));
+                            return Err(format!(
+                                "{} Requires a Regular Key",
+                                self.command(i).title
+                            ));
                         }
                     }
                     Kind::Hold(_) => {
@@ -1191,12 +1286,12 @@ impl Keymap {
                     }
                 }
                 if keys[..a].contains(k) {
-                    return Err(format!("Duplicate Shortcut in {}", COMMANDS[i].title));
+                    return Err(format!("Duplicate Shortcut in {}", self.command(i).title));
                 }
                 for j in 0..i {
                     if self.bindings[j].contains(k) {
                         let shared = matches!(
-                            (COMMANDS[i].kind, COMMANDS[j].kind),
+                            (self.command(i).kind, self.command(j).kind),
                             (Kind::Hold(Hold::Pick), Kind::Hold(Hold::ToolZoomOut))
                                 | (Kind::Hold(Hold::ToolZoomOut), Kind::Hold(Hold::Pick))
                         );
@@ -1204,8 +1299,8 @@ impl Keymap {
                             return Err(format!(
                                 "{} Conflicts between {} and {}",
                                 k.text(),
-                                COMMANDS[j].title,
-                                COMMANDS[i].title
+                                self.command(j).title,
+                                self.command(i).title
                             ));
                         }
                     }
@@ -1223,26 +1318,42 @@ impl Keymap {
     pub fn decode(text: &str) -> Result<Self, String> {
         let mut map = Self::default();
         for (id, keys) in super::settings::read(text)? {
-            let i = COMMANDS
-                .iter()
-                .position(|c| c.id == id)
-                .ok_or_else(|| format!("Unknown Command: {}", id))?;
-            map.bindings[i] = keys
+            let parsed = keys
                 .iter()
                 .map(|k| Chord::parse(k))
                 .collect::<Result<Vec<_>, _>>()?;
+            if let Some(i) = COMMANDS.iter().position(|c| c.id == id) {
+                map.bindings[i] = parsed;
+            } else if id.starts_with("plugin.")
+                && id.len() <= 160
+                && id
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b"._-".contains(&b))
+            {
+                if parsed.iter().any(|k| k.key == 0 || k.key == WHEEL) {
+                    return Err("Plugin commands require a regular key".into());
+                }
+                map.pending.insert(id, parsed);
+            } else {
+                return Err(format!("Unknown Command: {id}"));
+            }
         }
         map.validate()?;
         Ok(map)
     }
     pub fn encode(&self) -> String {
         super::settings::write(
-            COMMANDS
-                .iter()
+            self.commands()
                 .enumerate()
-                .map(|(i, c)| (c.id, self.bindings[i].iter().map(|k| k.text()).collect())),
+                .map(|(i, c)| (c.id, self.bindings[i].iter().map(|k| k.text()).collect()))
+                .chain(
+                    self.pending
+                        .iter()
+                        .map(|(id, keys)| (id.as_str(), keys.iter().map(|k| k.text()).collect())),
+                ),
         )
     }
+
     pub fn path() -> PathBuf {
         Workspace::path().with_file_name("settings.json")
     }
@@ -1278,6 +1389,35 @@ impl Keymap {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn plugin_commands_are_bindable_and_survive_unloaded_plugins_and_restart() {
+        let mut map = Keymap::decode(
+            r#"{"version":1,"keybindings":{"plugin.window.toolbox.float":["Ctrl+Alt+F12"]}}"#,
+        )
+        .unwrap();
+        let encoded = map.encode();
+        assert!(encoded.contains("plugin.window.toolbox.float"));
+        map.register_actions(vec![("window.toolbox.float".into(), "Float Tools".into())])
+            .unwrap();
+        let i = map
+            .commands()
+            .position(|c| c.id == "plugin.window.toolbox.float")
+            .unwrap();
+        let action = map.resolve(123, CTRL | ALT).unwrap();
+        assert_eq!(action, Action::UiCommand(map.command(i).ui));
+        assert_eq!(
+            map.plugin_action(map.command(i).ui),
+            Some("window.toolbox.float")
+        );
+        let mut copy = Keymap::decode(&map.encode()).unwrap();
+        copy.register_actions(vec![("window.toolbox.float".into(), "Float Tools".into())])
+            .unwrap();
+        assert_eq!(copy.bindings, map.bindings);
+        let mut palette =
+            crate::ui::palette::Palette::new(crate::ui::palette::Mode::Commands, &copy);
+        palette.query("Float Tools".into(), &copy);
+        assert!(palette.results.contains(&i));
+    }
     fn index(id: &str) -> usize {
         COMMANDS.iter().position(|c| c.id == id).unwrap()
     }

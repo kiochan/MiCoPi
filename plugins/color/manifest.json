@@ -1,0 +1,15 @@
+{
+  "api_version": 1,
+  "id": "color",
+  "name": "Color window",
+  "requires": [
+    "workbench"
+  ],
+  "panels": [
+    {
+      "id": "color",
+      "title": "Color",
+      "builtin": "color"
+    }
+  ]
+}

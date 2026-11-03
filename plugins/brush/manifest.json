@@ -1,0 +1,16 @@
+{
+  "api_version": 1,
+  "id": "brush",
+  "name": "Brush window",
+  "requires": [
+    "workbench",
+    "painting"
+  ],
+  "panels": [
+    {
+      "id": "brush",
+      "title": "Brush",
+      "builtin": "brush"
+    }
+  ]
+}

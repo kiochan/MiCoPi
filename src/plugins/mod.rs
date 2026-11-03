@@ -16,6 +16,7 @@ mod document;
 mod layers;
 mod painting;
 mod system;
+pub(crate) mod windows;
 mod workbench;
 pub(crate) fn execute(
     session: &mut crate::application::Session,
@@ -37,6 +38,7 @@ pub(crate) fn execute(
         SelectTool | Parameters | Pointer | Stroke | Pick | View => {
             painting::execute(session, op, args)
         }
+        WindowCommand | WindowState => windows::execute(session, op, args),
         SettingsRead | SettingsWrite | Ui => workbench::execute(session, op, args),
         State | Plugins | Events => system::execute(session, op, args),
         Describe => Ok(crate::application::pipeline::describe(session)),

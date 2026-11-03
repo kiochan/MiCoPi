@@ -1,0 +1,16 @@
+{
+  "api_version": 1,
+  "id": "layers",
+  "name": "Layers window",
+  "requires": [
+    "workbench",
+    "canvas"
+  ],
+  "panels": [
+    {
+      "id": "layers",
+      "title": "Layers",
+      "builtin": "layers"
+    }
+  ]
+}

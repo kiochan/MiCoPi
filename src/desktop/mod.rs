@@ -5,6 +5,7 @@ mod commands;
 mod layers;
 mod nodes;
 mod panels;
+mod plugin_commands;
 mod preferences;
 mod replay;
 mod schema;
@@ -13,6 +14,8 @@ mod shell;
 #[cfg(test)]
 mod tests;
 mod theme;
+#[path = "../../plugins/toolbox/panel.rs"]
+mod toolbox;
 mod workflow;
 
 use crate::i18n::localize;
@@ -39,6 +42,7 @@ use std::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Panel {
     Canvas,
+    Tools,
     Color,
     Brush,
     Navigator,
@@ -50,6 +54,7 @@ impl Panel {
     fn title(self) -> &'static str {
         match self {
             Self::Canvas => "Canvas",
+            Self::Tools => "Tools",
             Self::Color => "Color",
             Self::Brush => "Brush",
             Self::Navigator => "Navigator",
@@ -61,6 +66,7 @@ impl Panel {
     fn icon(self) -> char {
         theme::action_icon(match self {
             Self::Canvas => 14,
+            Self::Tools => 10,
             Self::Color => 10110,
             Self::Brush => 10,
             Self::Navigator => 95,
@@ -84,6 +90,7 @@ fn tr(value: impl Into<WidgetText>) -> RichText {
 }
 
 pub(super) struct Editor {
+    command_form: Option<plugin_commands::CommandForm>,
     area_mode: u8,
     area_tolerance: u32,
     area_radial: bool,
@@ -178,6 +185,7 @@ impl Editor {
         session.runtime = "desktop";
         let plugin_nodes = session.registry.node_catalog();
         let mut editor = Self {
+            command_form: None,
             plugin_nodes,
             workflow: Default::default(),
             nodes_workflow: false,
@@ -232,6 +240,7 @@ impl Editor {
             new_height: 900,
             new_open: false,
         };
+        editor.register_commands();
         editor.session.parameters.stabilizer = editor.workspace.stabilizer;
         editor.session.parameters.pressure_size = editor.workspace.dynamics.size;
         editor.session.parameters.pressure_opacity = editor.workspace.dynamics.opacity;
@@ -573,6 +582,7 @@ impl Studio {
                                 settings.painting.apply(&mut self.editor.session.parameters);
                                 self.editor.sync_from_session();
                                 self.editor.settings = settings;
+                                self.editor.register_commands();
                                 ctx.request_repaint();
                             }
                             Err(e) => self.editor.status = e,
@@ -691,6 +701,7 @@ impl Studio {
         self.editor.blocked = self.settings_open
             || self.editor.palette.is_some()
             || self.editor.new_open
+            || self.editor.command_form.is_some()
             || self.replay.open;
         self.draw_shell(ctx);
         let a = self.editor.settings.ui.clone();
@@ -731,6 +742,7 @@ impl Studio {
                     );
             });
         self.settings_window(ctx);
+        self.editor.plugin_command_window(ctx);
         self.replay_window(ctx);
         self.editor.palette_ui(ctx);
         self.new_document_window(ctx);
@@ -763,6 +775,8 @@ fn encode_dock(dock: &DockState<Panel>) -> Result<String, String> {
 }
 fn contributed_panel(p: &crate::plugins::PanelDefinition) -> Panel {
     match p.builtin.as_deref() {
+        Some("canvas") => Panel::Canvas,
+        Some("tools") => Panel::Tools,
         Some("color") => Panel::Color,
         Some("brush") => Panel::Brush,
         Some("navigator") => Panel::Navigator,

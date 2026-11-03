@@ -44,6 +44,7 @@ impl TabViewer for Viewer<'_> {
                 Panel::Navigator => "navigator",
                 Panel::Layers => "layers",
                 Panel::Nodes => "nodes",
+                Panel::Tools => "tools",
                 _ => "",
             };
             self.editor
@@ -88,6 +89,10 @@ impl TabViewer for Viewer<'_> {
         Some(style)
     }
     fn ui(&mut self, ui: &mut Ui, p: &mut Panel) {
+        if *p == Panel::Tools {
+            self.editor.toolbox_ui(ui);
+            return;
+        }
         if *p == Panel::Canvas {
             self.editor.canvas_ui(ui);
             return;

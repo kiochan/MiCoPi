@@ -1,8 +1,5 @@
 use super::*;
-use crate::{
-    configuration::PaintingPreferences,
-    ui::keymap::{Chord, COMMANDS},
-};
+use crate::{configuration::PaintingPreferences, ui::keymap::Chord};
 
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 pub(super) enum Category {
@@ -803,7 +800,8 @@ fn category_buttons(ui: &mut Ui, prefs: &mut Preferences) {
 fn keybindings(ui: &mut Ui, ctx: &Context, prefs: &mut Preferences, draft: &mut Settings) -> usize {
     let defaults = Keymap::default();
     let mut count = 0;
-    for (index, command) in COMMANDS.iter().enumerate() {
+    let commands = draft.keys.clone();
+    for (index, command) in commands.commands().enumerate() {
         let current = draft.keys.label(index);
         let modified = current != defaults.label(index);
         if !matches(

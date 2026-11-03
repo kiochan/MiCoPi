@@ -1,0 +1,16 @@
+{
+  "api_version": 1,
+  "id": "toolbox",
+  "name": "Tools window",
+  "requires": [
+    "workbench",
+    "painting"
+  ],
+  "panels": [
+    {
+      "id": "toolbox",
+      "title": "Tools",
+      "builtin": "tools"
+    }
+  ]
+}

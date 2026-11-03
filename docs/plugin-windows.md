@@ -1,0 +1,11 @@
+# Plugin windows and commands
+
+Window contributions are owned by feature packages under `plugins/`: canvas, toolbox, color, brush, navigator and layers. The workbench provides shared layout, input routing, settings and command infrastructure. It does not own another painting document.
+
+Each registered panel automatically contributes `window.<panel-id>.show`, `.hide`, `.focus`, `.float`, `.dock_left`, `.dock_right`, `.dock_top`, `.dock_bottom` and `.tab` actions. Tab grouping takes a `target` panel ID. `window.command` exposes the same operations with optional target, split fraction and floating bounds. Disabled plugins do not register their windows or commands. Native DLL panel contributions use the same registration path.
+
+`window.list` and the `workbench.windows` public state report available contributions, the last request/result and any desktop-reported actual layout. A desktop command initially returns `queued: true, applied: false`; clients inspect state for presentation completion. A headless runtime returns `presentation_unavailable` and never creates or claims to have moved a window. Presentation commands cannot participate in atomic document groups.
+
+Every action is available to the desktop command palette and shortcut editor under a `plugin.<action-id>` binding ID. These IDs are distinct from existing Photoshop-style UI shortcuts. Plugin commands default to unbound, retain configuration while their plugin is unloaded, and join ordinary conflict validation when registered. Invalid plugin shortcut conflicts disable plugin bindings with an explanatory status while keeping commands available. Parameterized commands open an argument editor; edits do not execute actions. Execution uses schema validation and a document revision guard for mutations.
+
+GUI rendering uses shared host adapters; drawing algorithms continue to use DLLs and the typed pen ABI. The toolbox adapter is source-owned by its feature package and uses registered tools/actions. This is not an ABI that passes Rust or egui objects into arbitrary DLLs. Native plugins can contribute independent command-backed button panels through the existing descriptor API. Headless builds exclude egui rendering entirely.

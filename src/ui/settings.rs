@@ -234,7 +234,7 @@ fn quote(text: &str) -> String {
     out.push('"');
     out
 }
-pub(super) fn write(bindings: impl Iterator<Item = (&'static str, Vec<String>)>) -> String {
+pub(super) fn write<'a>(bindings: impl Iterator<Item = (&'a str, Vec<String>)>) -> String {
     let lines = bindings
         .map(|(id, keys)| {
             format!(

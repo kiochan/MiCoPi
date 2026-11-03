@@ -57,6 +57,7 @@ pub(super) fn vk_to_key(vk: u16) -> Option<Key> {
 }
 impl Editor {
     pub(super) fn open_palette(&mut self, mode: Mode) {
+        self.register_commands();
         self.finish_stroke();
         self.palette = Some(Palette::new(mode, &self.settings.keys));
         self.palette_focus = true;
@@ -64,6 +65,9 @@ impl Editor {
         self.capture_binding = false;
     }
     pub(super) fn shortcuts(&mut self, ctx: &Context) {
+        if self.settings.keys.bindings.len() == COMMANDS.len() {
+            self.register_commands();
+        }
         if self.palette.is_some() || self.blocked || ctx.wants_keyboard_input() {
             return;
         }
@@ -265,21 +269,21 @@ impl Editor {
                         ui.painter().text(
                             pos2(r.left() + 20., r.center().y),
                             Align2::CENTER_CENTER,localize(
-                            theme::action_icon(COMMANDS[index].ui).to_string()),
+                            theme::action_icon(self.settings.keys.command(index).ui).to_string()),
                             FontId::new(a.icon_size, FontFamily::Name("Material".into())),
                             c.muted,
                         );
                         ui.painter().text(
                             pos2(r.left() + 44., r.center().y - 8.),
                             Align2::LEFT_CENTER,localize(
-                            COMMANDS[index].title),
+                            self.settings.keys.command(index).title),
                             FontId::proportional(a.font_size),
                             c.text,
                         );
                         ui.painter().text(
                             pos2(r.left() + 44., r.center().y + 11.),
                             Align2::LEFT_CENTER,localize(
-                            COMMANDS[index].category),
+                            self.settings.keys.command(index).category),
                             FontId::proportional(a.small_font_size),
                             c.muted,
                         );
@@ -341,7 +345,7 @@ impl Editor {
             }
             if let Some(index) = self.binding_index {
                 ui.add_space(a.item_spacing);
-                ui.label(tr(format!("Edit: {}", COMMANDS[index].title)));
+                ui.label(tr(format!("Edit: {}", self.settings.keys.command(index).title)));
                 let response = ui.add_sized(
                     [ui.available_width(), a.control_height + 4.],
                     TextEdit::singleline(&mut self.binding_draft)
@@ -440,7 +444,7 @@ impl Editor {
             self.capture_binding = false;
         }
         if let Some(index) = execute {
-            if let Kind::Press(action) = COMMANDS[index].kind {
+            if let Kind::Press(action) = self.settings.keys.command(index).kind {
                 self.actions.push(action);
                 open = false;
             }
@@ -515,6 +519,16 @@ impl Studio {
 
             match action {
                 Action::UiCommand(id) => {
+                    if let Some(action) = self
+                        .editor
+                        .settings
+                        .keys
+                        .plugin_action(id)
+                        .map(str::to_owned)
+                    {
+                        self.editor.begin_plugin_command(&action);
+                        continue;
+                    }
                     if let Some(mapped) = COMMANDS
                         .iter()
                         .find(|c| c.ui == id)
@@ -714,6 +728,7 @@ impl Studio {
                 Action::ReloadBindings => match Settings::load(self.editor.settings.path.clone()) {
                     Ok(s) => {
                         self.editor.settings = s;
+                        self.editor.register_commands();
                         self.editor.status = "UI and Shortcuts Reloaded".into();
                     }
                     Err(e) => self.editor.status = e,
@@ -721,6 +736,7 @@ impl Studio {
                 Action::ResetBindings => {
                     let before =
                         std::mem::replace(&mut self.editor.settings.keys, Keymap::default());
+                    self.editor.register_commands();
                     if let Err(e) = self.editor.save_settings() {
                         self.editor.settings.keys = before;
                         self.editor.status = e;

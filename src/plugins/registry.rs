@@ -7,6 +7,30 @@ use std::{
 };
 const BUILTINS: &[(&str, &str)] = &[
     (
+        "canvas/manifest.json",
+        include_str!("../../plugins/canvas/manifest.json"),
+    ),
+    (
+        "toolbox/manifest.json",
+        include_str!("../../plugins/toolbox/manifest.json"),
+    ),
+    (
+        "color/manifest.json",
+        include_str!("../../plugins/color/manifest.json"),
+    ),
+    (
+        "brush/manifest.json",
+        include_str!("../../plugins/brush/manifest.json"),
+    ),
+    (
+        "navigator/manifest.json",
+        include_str!("../../plugins/navigator/manifest.json"),
+    ),
+    (
+        "layers/manifest.json",
+        include_str!("../../plugins/layers/manifest.json"),
+    ),
+    (
         "replay/manifest.json",
         include_str!("../../plugins/replay/manifest.json"),
     ),
@@ -329,6 +353,9 @@ impl Registry {
                     }
                 }
             }
+            for panel in &m.panels {
+                m.actions.extend(super::windows::commands(panel));
+            }
             let validation = (|| -> Result<(), String> {
                 if m.api_version != 1 {
                     return Err("Unsupported plugin API version".into());
@@ -463,7 +490,16 @@ impl Registry {
                         return Err("Persistent panel ID collision".into());
                     }
                     if p.builtin.as_deref().is_some_and(|name| {
-                        !["color", "brush", "navigator", "layers", "nodes"].contains(&name)
+                        ![
+                            "canvas",
+                            "tools",
+                            "color",
+                            "brush",
+                            "navigator",
+                            "layers",
+                            "nodes",
+                        ]
+                        .contains(&name)
                     }) {
                         return Err("Unknown built-in panel adapter".into());
                     }
