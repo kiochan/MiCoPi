@@ -1,10 +1,10 @@
-//! Embedded, English-first UI translations. Protocol identifiers never pass through this module.
+//! Embedded English fallback and replaceable external UI catalogs; protocol IDs stay stable.
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
-    cell::Cell,
+    cell::{Cell, RefCell},
     collections::{BTreeMap, BTreeSet},
-    sync::OnceLock,
+    sync::{Arc, OnceLock},
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -52,36 +52,70 @@ struct Catalogs {
     legacy: BTreeMap<String, String>,
     localized: [BTreeSet<String>; 4],
 }
-fn catalogs() -> &'static Catalogs {
-    static DATA: OnceLock<Catalogs> = OnceLock::new();
-    DATA.get_or_init(|| {
-        let values: [Catalog; 4] = [
-            include_str!("../locales/en.json"),
-            include_str!("../locales/zh-CN.json"),
-            include_str!("../locales/ja.json"),
-            include_str!("../locales/ko.json"),
-        ]
-        .map(|s| serde_json::from_str(s).expect("validated built-in language catalog"));
-        let templates = values[0]
-            .keys()
-            .filter(|s| {
-                s.contains('{') && s.chars().filter(|c| c.is_ascii_alphabetic()).count() >= 3
-            })
-            .cloned()
-            .collect();
-        let legacy = values[1]
-            .iter()
-            .map(|(en, zh)| (zh.clone(), en.clone()))
-            .collect();
-        let localized = std::array::from_fn(|i| values[i].values().cloned().collect());
-        Catalogs {
-            values,
-            templates,
-            legacy,
-            localized,
-        }
+fn build_catalogs(values: [Catalog; 4]) -> Catalogs {
+    let templates = values
+        .iter()
+        .flat_map(|v| v.keys())
+        .filter(|s| s.contains('{') && s.chars().filter(|c| c.is_ascii_alphabetic()).count() >= 3)
+        .cloned()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect();
+    let legacy = values[1]
+        .iter()
+        .map(|(en, zh)| (zh.clone(), en.clone()))
+        .collect();
+    let localized = std::array::from_fn(|i| values[i].values().cloned().collect());
+    Catalogs {
+        values,
+        templates,
+        legacy,
+        localized,
+    }
+}
+fn english() -> &'static Catalog {
+    static ENGLISH: OnceLock<Catalog> = OnceLock::new();
+    ENGLISH.get_or_init(|| {
+        serde_json::from_str(include_str!("../locales/en.json")).expect("validated English catalog")
     })
 }
+fn fallback() -> Arc<Catalogs> {
+    static DATA: OnceLock<Arc<Catalogs>> = OnceLock::new();
+    DATA.get_or_init(|| {
+        Arc::new(build_catalogs(std::array::from_fn(|i| {
+            if i == 0 {
+                english().clone()
+            } else {
+                Catalog::new()
+            }
+        })))
+    })
+    .clone()
+}
+thread_local! { static CATALOGS: RefCell<Arc<Catalogs>> = RefCell::new(fallback()); }
+fn install(data: Arc<Catalogs>) {
+    CATALOGS.with(|v| *v.borrow_mut() = data);
+}
+#[path = "i18n_external.rs"]
+mod external;
+pub use external::HotReload;
+#[cfg(test)]
+pub(crate) fn load_test_catalogs() {
+    static DATA: OnceLock<Arc<Catalogs>> = OnceLock::new();
+    install(
+        DATA.get_or_init(|| {
+            let mut reader =
+                external::Reader::new(vec![
+                    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("locales")
+                ]);
+            let update = reader.refresh().expect("initial language catalog load");
+            assert!(update.errors.is_empty(), "{:?}", update.errors);
+            update.data
+        })
+        .clone(),
+    );
+}
+
 fn index(language: Language) -> usize {
     match language {
         Language::English => 0,
@@ -90,32 +124,37 @@ fn index(language: Language) -> usize {
         Language::Korean => 3,
     }
 }
-pub fn text(message: &str) -> &str {
+pub fn text(message: &str) -> Cow<'_, str> {
     text_in(current(), message)
 }
-pub fn text_in(language: Language, message: &str) -> &str {
-    if language != Language::English && catalogs().localized[index(language)].contains(message) {
-        return message;
+pub fn text_in(language: Language, message: &str) -> Cow<'_, str> {
+    CATALOGS.with(|v| lookup(&v.borrow(), language, message))
+}
+fn lookup<'a>(data: &Catalogs, language: Language, message: &'a str) -> Cow<'a, str> {
+    if language != Language::English && data.localized[index(language)].contains(message) {
+        return Cow::Borrowed(message);
     }
-    let message = if message
+    let canonical = if message
         .chars()
         .any(|c| ('\u{3400}'..='\u{9fff}').contains(&c))
     {
-        catalogs()
-            .legacy
+        data.legacy
             .get(message)
             .map(String::as_str)
             .unwrap_or(message)
     } else {
         message
     };
-    if language == Language::English {
-        return message;
+    if language != Language::English {
+        if let Some(value) = data.values[index(language)].get(canonical) {
+            return Cow::Owned(value.clone());
+        }
     }
-    catalogs().values[index(language)]
-        .get(message)
-        .map(String::as_str)
-        .unwrap_or(message)
+    if canonical == message {
+        Cow::Borrowed(message)
+    } else {
+        Cow::Owned(canonical.to_owned())
+    }
 }
 /// Localized text for searching, including English and every bundled translation.
 pub fn search_text(message: &str) -> String {
@@ -199,28 +238,27 @@ pub fn translated(message: &str) -> Cow<'_, str> {
     translated_in(current(), message)
 }
 pub fn translated_in(language: Language, message: &str) -> Cow<'_, str> {
-    let direct = text_in(language, message);
-    if language == Language::English || direct != message {
-        return Cow::Borrowed(direct);
-    }
-    let data = catalogs();
-    for template in &data.templates {
-        let prefix = template.split('{').next().unwrap_or("");
-        if !message.starts_with(prefix) {
-            continue;
+    CATALOGS.with(|v| {
+        let data = v.borrow();
+        let direct = lookup(&data, language, message);
+        if language == Language::English || direct != message {
+            return direct;
         }
-        let suffix = template.rsplit('}').next().unwrap_or("");
-        if !message.ends_with(suffix) {
-            continue;
-        }
-        let translation = text_in(language, template);
-        if translation != template {
-            if let Some(value) = interpolate(template, translation, message) {
-                return Cow::Owned(value);
+        for template in &data.templates {
+            let prefix = template.split('{').next().unwrap_or("");
+            let suffix = template.rsplit('}').next().unwrap_or("");
+            if !message.starts_with(prefix) || !message.ends_with(suffix) {
+                continue;
+            }
+            let translation = lookup(&data, language, template);
+            if translation != template.as_str() {
+                if let Some(value) = interpolate(template, &translation, message) {
+                    return Cow::Owned(value);
+                }
             }
         }
-    }
-    Cow::Borrowed(message)
+        Cow::Borrowed(message)
+    })
 }
 pub trait Localize {
     type Output;
@@ -276,7 +314,8 @@ mod tests {
     use super::*;
     #[test]
     fn catalogs_have_matching_keys_and_format_fields() {
-        let data = catalogs();
+        load_test_catalogs();
+        let data = CATALOGS.with(|v| v.borrow().clone());
         for catalog in &data.values {
             assert_eq!(
                 catalog.keys().collect::<Vec<_>>(),
@@ -300,6 +339,7 @@ mod tests {
     }
     #[test]
     fn english_default_fallback_and_languages_are_independent() {
+        load_test_catalogs();
         assert_eq!(Language::default(), Language::English);
         assert_eq!(text_in(Language::English, "File"), "File");
         assert_eq!(text_in(Language::Japanese, "File"), "ファイル");
@@ -308,7 +348,7 @@ mod tests {
         assert_eq!(text_in(Language::English, "图层"), "Layers");
         assert_eq!(text_in(Language::Japanese, "图层"), "レイヤー");
         assert_eq!(
-            text_in(Language::Japanese, text_in(Language::Japanese, "Color")),
+            text_in(Language::Japanese, &text_in(Language::Japanese, "Color")),
             "色"
         );
         assert_eq!(
@@ -318,6 +358,7 @@ mod tests {
     }
     #[test]
     fn dynamic_numbers_and_user_data_are_not_reformatted() {
+        load_test_catalogs();
         assert_eq!(translated_in(Language::Japanese, "Layer 03"), "レイヤー 03");
         assert_eq!(
             interpolate(

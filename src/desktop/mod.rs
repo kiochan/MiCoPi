@@ -103,6 +103,7 @@ fn tr(value: impl Into<WidgetText>) -> RichText {
 }
 
 pub(super) struct Editor {
+    locales: Option<crate::i18n::HotReload>,
     headers: std::collections::HashMap<Panel, group_bar::HeaderLayout>,
     command_form: Option<plugin_commands::CommandForm>,
     area_mode: u8,
@@ -167,6 +168,25 @@ pub(super) struct Editor {
 }
 impl Editor {
     fn new(path: PathBuf, native: Option<Native>) -> Self {
+        #[cfg(not(test))]
+        let locales = {
+            let args: Vec<_> = std::env::args().collect();
+            let directory = args
+                .iter()
+                .position(|a| a == "--locales-dir")
+                .and_then(|i| args.get(i + 1))
+                .map(PathBuf::from)
+                .unwrap_or_else(|| std::env::current_exe().unwrap().with_file_name("locales"));
+            Some(crate::i18n::HotReload::new(vec![
+                directory,
+                path.with_file_name("locales"),
+            ]))
+        };
+        #[cfg(test)]
+        let locales = {
+            crate::i18n::load_test_catalogs();
+            None
+        };
         let loaded = Settings::load(path.clone());
         let (settings, mut status) = match loaded {
             Ok(s) => (s, "Ready · Start drawing".into()),
@@ -205,6 +225,7 @@ impl Editor {
         session.runtime = "desktop";
         let plugin_nodes = session.registry.node_catalog();
         let mut editor = Self {
+            locales,
             headers: Default::default(),
             command_form: None,
             plugin_nodes,
@@ -808,6 +829,22 @@ impl Studio {
             }
         }
         crate::i18n::set_language(self.editor.settings.ui.language);
+        if let Some(errors) = self.editor.locales.as_ref().and_then(|l| l.poll()) {
+            if !errors.is_empty() {
+                self.editor.status = format!("Language Pack Not Loaded: {}", errors.join("; "));
+            } else if self.editor.status.starts_with("Language Pack Not Loaded:") {
+                self.editor.status = "Ready to Paint".into();
+            }
+            self.editor.workflow.fit();
+            self.editor.nodes.fit();
+            if let Some(palette) = &mut self.editor.palette {
+                palette.refresh(&self.editor.settings.keys);
+            }
+            ctx.request_repaint();
+        }
+        if self.editor.locales.is_some() {
+            ctx.request_repaint_after(Duration::from_millis(500));
+        }
         if self.applied != self.editor.settings.ui {
             if self.applied.language != self.editor.settings.ui.language {
                 theme::fonts(ctx);

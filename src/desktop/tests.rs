@@ -34,6 +34,98 @@ pub(super) fn studio() -> Studio {
 }
 
 #[test]
+fn external_language_reload_refreshes_open_search_and_keeps_document_pixels() {
+    fn has_text(shape: &Shape, value: &str) -> bool {
+        match shape {
+            Shape::Text(t) => t.galley.text() == value,
+            Shape::Vec(v) => v.iter().any(|s| has_text(s, value)),
+            _ => false,
+        }
+    }
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("target/test-output/locales")
+        .join(format!(
+            "gui-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+    std::fs::create_dir_all(&root).unwrap();
+    let file = root.join("zh-CN.json");
+    std::fs::write(&file, r#"{"File":"External File"}"#).unwrap();
+    let mut app = studio();
+    let pixels = app.editor.session.doc.layers[0].pixels.clone();
+    let history = app.editor.session.doc.history_bytes();
+    app.editor.locales = Some(crate::i18n::HotReload::new(vec![root]));
+    app.editor.settings.ui.language = crate::i18n::Language::Chinese;
+    let ctx = Context::default();
+    let output = frame(&mut app, &ctx, vec2(1360., 920.), vec![], 0.);
+    assert!(output
+        .shapes
+        .iter()
+        .any(|s| has_text(&s.shape, "External File")));
+    let mut palette = Palette::new(
+        crate::ui::palette::Mode::Commands,
+        &app.editor.settings.keys,
+    );
+    palette.query("HotSwap123".into(), &app.editor.settings.keys);
+    assert!(palette.results.is_empty());
+    app.editor.palette = Some(palette);
+    std::fs::write(&file, r#"{"File":"HotSwap123"}"#).unwrap();
+    let start = Instant::now();
+    loop {
+        let output = frame(
+            &mut app,
+            &ctx,
+            vec2(1360., 920.),
+            vec![],
+            start.elapsed().as_secs_f64() + 1.,
+        );
+        if output
+            .shapes
+            .iter()
+            .any(|s| has_text(&s.shape, "HotSwap123"))
+            && !app.editor.palette.as_ref().unwrap().results.is_empty()
+        {
+            break;
+        }
+        assert!(start.elapsed() < Duration::from_secs(5));
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(!app.editor.palette.as_ref().unwrap().results.is_empty());
+    assert_eq!(crate::i18n::text("File"), "HotSwap123");
+    std::fs::write(
+        &file,
+        r#"{"File":"Rejected File","Layer {:02}":"Missing placeholder"}"#,
+    )
+    .unwrap();
+    let start = Instant::now();
+    loop {
+        let output = frame(
+            &mut app,
+            &ctx,
+            vec2(1360., 920.),
+            vec![],
+            start.elapsed().as_secs_f64() + 7.,
+        );
+        if app.editor.status.starts_with("Language Pack Not Loaded:") {
+            assert!(output
+                .shapes
+                .iter()
+                .any(|s| has_text(&s.shape, "HotSwap123")));
+            assert_eq!(crate::i18n::text("File"), "HotSwap123");
+            break;
+        }
+        assert!(start.elapsed() < Duration::from_secs(5));
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+    assert_eq!(app.editor.session.doc.history_bytes(), history);
+}
+
+#[test]
 fn configured_theme_survives_opposite_system_theme_on_first_frame() {
     for (name, system, dark) in [
         ("graphite", egui::Theme::Light, true),
@@ -104,7 +196,7 @@ fn all_languages_render_localized_menus_and_settings_without_changing_the_docume
             assert!(
                 out.shapes
                     .iter()
-                    .any(|s| contains(&s.shape, crate::i18n::text_in(locale, "File"))),
+                    .any(|s| contains(&s.shape, &crate::i18n::text_in(locale, "File"))),
                 "{}",
                 locale.code()
             );
@@ -118,7 +210,7 @@ fn all_languages_render_localized_menus_and_settings_without_changing_the_docume
         assert!(out
             .shapes
             .iter()
-            .any(|s| contains(&s.shape, crate::i18n::text_in(locale, "Display Language"))));
+            .any(|s| contains(&s.shape, &crate::i18n::text_in(locale, "Display Language"))));
         app.cancel_settings();
         assert_eq!(app.editor.session.doc.layers[0].pixels, before);
     }

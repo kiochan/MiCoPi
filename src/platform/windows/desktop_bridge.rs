@@ -270,7 +270,7 @@ impl Native {
         unsafe {
             MessageBoxW(
                 self.hwnd,
-                wide(crate::i18n::text(
+                wide(&crate::i18n::text(
                     "Discard Unsaved Changes to This Artwork?",
                 ))
                 .as_ptr(),
@@ -283,7 +283,7 @@ impl Native {
         unsafe {
             MessageBoxW(
                 self.hwnd,
-                wide(crate::i18n::text(
+                wide(&crate::i18n::text(
                     "Clear the Current Layer? This Can Be Undone.",
                 ))
                 .as_ptr(),

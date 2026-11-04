@@ -56,7 +56,7 @@ Project headers are recognized independently of the filename extension; renamed 
 
 `settings.json` contains appearance, language, keybindings, painting defaults and plugin preferences. Saving validates ranges/conflicts, preserves unknown root fields and atomically replaces the file. Dock trees and floating rectangles are kept in `workspace.egui.json`; new plugin panels are reconciled without reopening previously closed panels.
 
-Localization is applied at presentation boundaries. English metadata, machine IDs, schemas, file paths and documents stay independent of display language. Catalogs are embedded and loaded once. Existing Windows CJK fonts provide glyph fallback without a bundled font pack.
+Localization is applied at presentation boundaries. English metadata, machine IDs, schemas, file paths and documents stay independent of display language. Only English is embedded; external Chinese, Japanese and Korean JSON catalogs hot-reload through a bounded background watcher and immutable UI snapshots. Existing Windows CJK fonts provide glyph fallback without a bundled font pack. See [Localization](localization.md) for file precedence, validation and fallback behavior.
 
 Window activation is forwarded to winit. `WM_NCACTIVATE` uses `lParam=-1` to preserve activation handling while suppressing native non-client repaint; see [Microsoft's message contract](https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-ncactivate).
 

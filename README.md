@@ -87,7 +87,7 @@ Supported codes: `en`, `zh-CN`, `ja`, `ko`. Existing configurations without a la
 | `src/desktop/` | Workbench, canvas presentation, settings and node editors |
 | `src/engine/` | Document, image graph, tiled history and input models |
 | `src/configuration.rs` | Validated settings and atomic persistence |
-| `src/i18n.rs`, `locales/` | Embedded English-first translations |
+| `src/i18n.rs`, `locales/` | Embedded English fallback and external, hot-reloadable translations |
 | `src/platform/` | Windows Ink, DWM, native dialogs and file replacement |
 | `docs/` | English guides, reference schema and curated screenshots |
 | `examples/` | Automation, configuration, MCP and plugin examples |

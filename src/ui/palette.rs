@@ -13,6 +13,7 @@ mod tests {
     use super::*;
     #[test]
     fn commands_are_searchable_in_every_supported_language() {
+        crate::i18n::load_test_catalogs();
         let map = Keymap::default();
         let mut palette = Palette::new(Mode::Commands, &map);
         for query in ["Undo", "撤销", "元に戻す", "실행 취소"] {
@@ -28,6 +29,7 @@ mod tests {
     }
     #[test]
     fn searches_chinese_english_pinyin_bindings_and_fuzzy_words() {
+        crate::i18n::load_test_catalogs();
         let map = Keymap::default();
         let mut p = Palette::new(Mode::Commands, &map);
         for (query, id) in [

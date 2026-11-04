@@ -186,7 +186,7 @@ impl SnarlViewer<ViewNode> for Viewer<'_> {
             self.catalog
                 .get(&n.node.node_type)
                 .map(|d| crate::i18n::text(d.title.as_str()))
-                .unwrap_or("Node Type Unavailable"),
+                .unwrap_or_else(|| crate::i18n::text("Node Type Unavailable")),
             n.node.id
         )
     }

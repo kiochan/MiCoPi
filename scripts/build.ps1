@@ -79,6 +79,13 @@ try {
     }
     $cliOutput = if ($Headless) { $output } else { $output.Replace('micopi.exe','micopi-cli.exe') }
     Copy-Item -LiteralPath $cliOutput -Destination 'dist/micopi-cli.exe' -Force
+    New-Item -ItemType Directory -Path 'dist/locales' -Force | Out-Null
+    foreach ($locale in @('zh-CN','ja','ko')) {
+        $catalogPath = Join-Path 'dist/locales' "$locale.json"
+        if (!(Test-Path -LiteralPath $catalogPath)) {
+            Copy-Item -LiteralPath (Join-Path 'locales' "$locale.json") -Destination $catalogPath
+        }
+    }
     Copy-Item -LiteralPath $cliOutput -Destination "dist/MiCoPi-CLI-$packageVersion.exe" -Force
     if (!(Test-Path -LiteralPath 'dist/plugins')) { Copy-Item -LiteralPath 'plugins' -Destination 'dist/plugins' -Recurse }
     foreach ($feature in @('canvas','toolbox','color','brush','navigator','layers')) {

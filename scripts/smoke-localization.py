@@ -21,6 +21,10 @@ def main():
     plugins, profile = output / 'plugins', output / 'profile'
     shutil.copytree(ROOT / 'plugins', plugins)
     profile.mkdir()
+    locale_dir = profile / 'locales'
+    locale_dir.mkdir()
+    for language in ['zh-CN', 'ja', 'ko']:
+        shutil.copy2(ROOT/'locales'/f'{language}.json', locale_dir/f'{language}.json')
     settings = profile / 'settings.json'
     flags = ['--plugins', str(plugins), '--config-dir', str(profile)]
     p = subprocess.run([str(cli), 'call', 'settings.read', json.dumps(dict(path=str(settings))), *flags], capture_output=True, text=True, encoding='utf-8', check=True)
@@ -97,6 +101,24 @@ def main():
             assert call('workflow.read',{})['graph']==graph
             # Close only this isolated settings preview through the UI effect API.
             call('ui.dispatch',dict(id='settings.close',value=True))
+        call('settings.update',dict(path=str(settings),ui=dict(language='en')))
+        # Exercise the live watcher without restarting the GUI or changing artwork.
+        call('settings.update',dict(path=str(settings),ui=dict(language='zh-CN')))
+        chinese = locale_dir/'zh-CN.json'
+        original = chinese.read_text(encoding='utf-8')
+        edited = json.loads(original)
+        edited['File'] = '热加载测试'
+        chinese.write_text(json.dumps(edited,ensure_ascii=False),encoding='utf-8')
+        time.sleep(1.2)
+        screenshot('hot-reload-valid.png')
+        chinese.write_text('{',encoding='utf-8')
+        time.sleep(1.2)
+        screenshot('hot-reload-invalid-keeps-last.png')
+        chinese.write_text(original,encoding='utf-8')
+        time.sleep(1.2)
+        screenshot('hot-reload-restored.png')
+        assert base64.b64decode(call('canvas.snapshot',{})['data'])==expected
+        assert call('workflow.read',{})['graph']==graph
         call('settings.update',dict(path=str(settings),ui=dict(language='en')))
         call('document.save',dict(path=str(output/'locale-roundtrip.mcp')))
         call('document.open',dict(path=str(output/'locale-roundtrip.mcp')))
