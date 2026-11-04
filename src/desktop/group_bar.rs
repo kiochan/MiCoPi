@@ -42,6 +42,63 @@ pub(super) fn layout(body: Rect, padding: f32, a: &Appearance) -> HeaderLayout {
         card: Rect::from_min_max(bar.min, pos2(bar.right(), body.bottom() + padding)),
     }
 }
+/// Gaps between neighbouring cards, merged per splitter line. `vertical` gaps
+/// separate side-by-side cards and are dragged horizontally.
+pub(super) fn splitter_gaps(cards: &[Rect], limit: f32) -> Vec<(bool, Rect)> {
+    let mut gaps: Vec<(bool, Rect)> = vec![];
+    let mut add = |vertical: bool, gap: Rect| {
+        let along = |r: &Rect| if vertical { r.center().x } else { r.center().y };
+        if let Some((_, merged)) = gaps
+            .iter_mut()
+            .find(|(v, r)| *v == vertical && (along(r) - along(&gap)).abs() < 1.)
+        {
+            *merged = merged.union(gap);
+        } else {
+            gaps.push((vertical, gap));
+        }
+    };
+    for a in cards {
+        for b in cards {
+            let x = b.left() - a.right();
+            let y = a.y_range().intersection(b.y_range());
+            if x > 0. && x <= limit && y.span() > 0. {
+                add(true, Rect::from_x_y_ranges(a.right()..=b.left(), y));
+            }
+            let y = b.top() - a.bottom();
+            let x = a.x_range().intersection(b.x_range());
+            if y > 0. && y <= limit && x.span() > 0. {
+                add(false, Rect::from_x_y_ranges(x, a.bottom()..=b.top()));
+            }
+        }
+    }
+    gaps
+}
+/// Rounded grab handles centred in splitter gaps; they lengthen and take the
+/// accent while hovered or dragged so resizing is discoverable.
+pub(super) fn splitter_handles(ui: &Ui, cards: &[Rect], a: &Appearance) {
+    let colors = theme::Colors::new(a);
+    let pointer = ui.ctx().pointer_latest_pos();
+    let (down, origin) = ui.input(|i| (i.pointer.primary_down(), i.pointer.press_origin()));
+    for (vertical, gap) in splitter_gaps(cards, a.outer_padding * 2.) {
+        let zone = if vertical { gap.expand2(vec2(4., 0.)) } else { gap.expand2(vec2(0., 4.)) };
+        let active = pointer.is_some_and(|p| zone.contains(p))
+            || down && origin.is_some_and(|p| zone.contains(p));
+        let key = Id::new(("splitter-handle", vertical, (gap.center().x + gap.center().y) as i32));
+        let t = ui.ctx().animate_bool_with_time(key, active, 0.12);
+        let thick = 4.;
+        let length = (32. + 24. * t).min(if vertical { gap.height() } else { gap.width() } - 8.);
+        if length <= 0. {
+            continue;
+        }
+        let size = if vertical { vec2(thick, length) } else { vec2(length, thick) };
+        let idle = colors.muted.gamma_multiply(if colors.dark { 0.6 } else { 0.55 });
+        ui.painter().rect_filled(
+            Rect::from_center_size(gap.center(), size),
+            thick * 0.5,
+            idle.lerp_to_gamma(colors.accent, t),
+        );
+    }
+}
 impl panels::Viewer<'_> {
     pub(super) fn group_bar(&mut self, ui: &Ui, panel: Panel) {
         let a = self.editor.settings.ui.clone();
@@ -68,7 +125,13 @@ impl panels::Viewer<'_> {
         row.painter().rect_filled(
             h.bar,
             CornerRadius { nw: radius, ne: radius, sw: 0, se: 0 },
-            colors.panel,
+            colors.header,
+        );
+        // A hairline divides the tab row from the panel content.
+        row.painter().hline(
+            h.bar.x_range(),
+            h.bar.bottom() - 0.5,
+            Stroke::new(1., if colors.dark { colors.border.gamma_multiply(0.8) } else { colors.border }),
         );
         // Hairline card outline, painted on the body layer so content stays on top.
         ui.ctx()
@@ -139,7 +202,7 @@ impl panels::Viewer<'_> {
                         .color(if active { colors.text } else { colors.muted });
                     let response = ui.add(Button::new(tr(title))
                         .frame_when_inactive(active)
-                        .fill(if active { colors.tint(if colors.dark { 0.2 } else { 0.16 }) } else { colors.raised })
+                        .fill(if active { colors.tint(if colors.dark { 0.22 } else { 0.3 }) } else { colors.raised })
                         .corner_radius((a.corner_radius * 2.).min(a.tab_height * 0.5))
                         .sense(Sense::click_and_drag())
                         .min_size(vec2(0., a.tab_height - 4.)));
@@ -375,6 +438,24 @@ mod tests {
         }
         assert!(app.dock.find_tab(&Panel::Canvas).is_some());
         assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+    }
+    #[test]
+    fn splitter_gaps_merge_one_line_per_splitter() {
+        let r = |x0: f32, y0: f32, x1: f32, y1: f32| Rect::from_min_max(pos2(x0, y0), pos2(x1, y1));
+        // Tools over Canvas on the left; Navigator over Layers on the right.
+        let cards = [
+            r(10., 10., 600., 100.),
+            r(10., 110., 600., 800.),
+            r(610., 10., 900., 300.),
+            r(610., 310., 900., 800.),
+        ];
+        let gaps = splitter_gaps(&cards, 20.);
+        let vertical: Vec<_> = gaps.iter().filter(|(v, _)| *v).collect();
+        let horizontal: Vec<_> = gaps.iter().filter(|(v, _)| !*v).collect();
+        assert_eq!(vertical.len(), 1);
+        assert_eq!(vertical[0].1, r(600., 10., 610., 800.));
+        assert_eq!(horizontal.len(), 2);
+        assert!(splitter_gaps(&cards, 5.).is_empty());
     }
     #[test]
     fn grip_tabs_and_group_buttons_share_one_non_overlapping_row() {

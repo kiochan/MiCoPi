@@ -904,6 +904,8 @@ impl Studio {
                     .map(|h| soft.as_shape(h.card, radius).into())
                     .collect();
                 ui.painter().set(shadows, Shape::Vec(cards));
+                let rects: Vec<Rect> = self.editor.headers.values().map(|h| h.card).collect();
+                group_bar::splitter_handles(ui, &rects, &a);
                 // The title mark and status dot align with the outermost card edge.
                 if let Some(left) = self
                     .editor

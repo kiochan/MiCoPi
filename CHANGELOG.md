@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Set group tab rows apart from panel content with a tinted band and hairline divider; show rounded grab handles on splitters that highlight while hovered or dragged.
 - Present panels as rounded floating cards with hairline outlines and soft shadows; the canvas sits on a recessed stage with a layered paper shadow.
 - Deepen theme palettes, add a lavender-to-peach brand mark, Segoe UI text with semibold titles and active tabs, hover-revealed group chrome, a pill command search and an accent marker on the active layer.
 

@@ -21,7 +21,7 @@ pub(super) fn dock_style(ctx: &Context, a: &Appearance) -> egui_dock::Style {
     let radius = theme::card_radius(a);
     style.dock_area_padding = Some(Margin::ZERO);
     style.tab_bar.height = a.tab_height;
-    style.tab_bar.bg_fill = colors.panel;
+    style.tab_bar.bg_fill = colors.header;
     style.tab_bar.inner_margin = Margin::symmetric(8, 0);
     style.tab_bar.show_scroll_bar_on_overflow = false;
     // Group row and body read as one floating card.
@@ -49,8 +49,10 @@ pub(super) fn dock_style(ctx: &Context, a: &Appearance) -> egui_dock::Style {
     style.separator.width = a.outer_padding;
     style.separator.extra = a.tab_height + a.control_height + a.panel_padding * 2. + 8.;
     style.separator.color_idle = colors.background;
-    style.separator.color_hovered = colors.tint(0.5);
-    style.separator.color_dragged = colors.accent;
+    style.separator.extra_interact_width = 4.;
+    // Splitter gaps stay calm; the drawn grab handle carries the hover accent.
+    style.separator.color_hovered = colors.background.lerp_to_gamma(colors.accent, 0.12);
+    style.separator.color_dragged = colors.background.lerp_to_gamma(colors.accent, 0.2);
     style.overlay.selection_color = colors.accent.gamma_multiply(0.35);
     style.main_surface_border_stroke = Stroke::NONE;
     style

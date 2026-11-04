@@ -17,6 +17,8 @@ pub struct Colors {
     /// Backdrop behind the artwork, slightly recessed from the workspace.
     pub stage: Color32,
     pub shadow: Color32,
+    /// Group-row band, set apart from the panel body below it.
+    pub header: Color32,
     pub dark: bool,
 }
 pub fn rgb(value: u32) -> Color32 {
@@ -51,6 +53,11 @@ impl Colors {
                 Color32::from_black_alpha(110)
             } else {
                 Color32::from_rgba_unmultiplied(60, 40, 80, 30)
+            },
+            header: if dark {
+                rgb(panel).lerp_to_gamma(rgb(background), 0.45)
+            } else {
+                rgb(panel).lerp_to_gamma(rgb(raised), 0.8)
             },
             dark,
         }
