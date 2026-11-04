@@ -173,7 +173,7 @@ pub(super) fn floating_rect(
     let root = ctx.content_rect();
     let area = Rect::from_min_max(
         root.min + vec2(a.outer_padding, a.title_height + a.outer_padding * 2.),
-        root.max - vec2(a.outer_padding, 24. + a.outer_padding * 2.),
+        root.max - vec2(a.outer_padding, a.outer_padding * 2.),
     );
     let decoration = ctx.style().spacing.window_margin.sum()
         + Vec2::splat(ctx.style().visuals.window_stroke.width * 2.);

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Move canvas zoom from the top toolbar into a thin strip beneath the stage with a logarithmic slider and an editable percentage field; remove the workspace status bar and show status, pen pressure, document size and history memory in that strip.
+- Replace rounded tab capsules with browser-style tabs: the active tab shares the panel surface and flares into it, while resting tabs are labels separated by thin dividers.
 - Set group tab rows apart from panel content with a tinted band and hairline divider; show rounded grab handles on splitters that highlight while hovered or dragged.
 - Present panels as rounded floating cards with hairline outlines and soft shadows; the canvas sits on a recessed stage with a layered paper shadow.
 - Deepen theme palettes, add a lavender-to-peach brand mark, Segoe UI text with semibold titles and active tabs, hover-revealed group chrome, a pill command search and an accent marker on the active layer.

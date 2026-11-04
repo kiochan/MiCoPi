@@ -232,56 +232,6 @@ impl Studio {
                     self.editor.open_palette(Mode::Commands);
                 }
             });
-        TopBottomPanel::bottom("status")
-            .show_separator_line(false)
-            .exact_height(24. + a.outer_padding)
-            .frame(Frame::new().fill(c.background).inner_margin(Margin {
-                left: edge.round() as i8,
-                right: edge.round() as i8,
-                top: 0,
-                bottom: a.outer_padding as i8,
-            }))
-            .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    let status = if self.editor.pen_active {
-                        format!("Windows Ink · Pressure {:.0}%", self.editor.pressure * 100.)
-                    } else {
-                        self.editor.status.clone()
-                    };
-                    ui.allocate_ui_with_layout(
-                        vec2(ui.available_width() - 330., 24.),
-                        Layout::left_to_right(Align::Center),
-                        |ui| {
-                            let (dot, _) = ui.allocate_exact_size(vec2(6., 8.), Sense::hover());
-                            ui.painter().circle_filled(
-                                pos2(dot.left() + 3., dot.center().y),
-                                3.,
-                                if self.editor.pen_active { c.blush } else { c.accent },
-                            );
-                            ui.add(
-                                Label::new(tr(RichText::new(localize(status))
-                                    .small()
-                                    .color(c.muted)))
-                                .truncate(),
-                            );
-                        },
-                    );
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.label(tr(RichText::new(localize(format!(
-                            "{} × {} px   ·   {:.1}%",
-                            self.editor.session.doc.width,
-                            self.editor.session.doc.height,
-                            self.editor.zoom * 100.
-                        )))
-                        .small()
-                        .color(c.muted)))
-                            .on_hover_text(tr(format!(
-                                "History {:.1} MB",
-                                self.editor.session.doc.history_bytes() as f64 / 1048576.
-                            )));
-                    });
-                });
-            });
     }
     pub(super) fn new_document_window(&mut self, ctx: &Context) {
         if !self.editor.new_open {

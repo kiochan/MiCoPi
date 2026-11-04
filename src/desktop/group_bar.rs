@@ -176,16 +176,25 @@ impl panels::Viewer<'_> {
         }
         let group = tabs[0];
         let drag_id = Id::new("dragged-panel-tab");
+        // Tabs rise from the bottom of the row; the active one shares the body
+        // surface and flares into it. Their surfaces are painted beneath the labels.
+        let lift = (a.tab_height * 0.16).round().clamp(3., 8.);
+        let flare = (a.corner_radius * 0.75).clamp(3., 8.);
+        let strip = Rect::from_x_y_ranges(h.tabs.x_range(), h.bar.top() + lift..=h.bar.bottom());
+        let surfaces = row
+            .painter()
+            .with_clip_rect(h.tabs.expand2(vec2(flare, 0.)).intersect(h.bar));
+        let slot = surfaces.add(Shape::Noop);
+        let mut shapes: Vec<Shape> = vec![];
+        let mut tab_rects: Vec<(Rect, bool, bool)> = vec![];
         let mut tab_ui = Ui::new(
             ui.ctx().clone(),
             Id::new(("group-tabs", group)),
-            UiBuilder::new()
-                .max_rect(h.tabs.shrink2(vec2(0., 2.)))
-                .layer_id(ui.layer_id()),
+            UiBuilder::new().max_rect(strip).layer_id(ui.layer_id()),
         );
         tab_ui.set_clip_rect(h.tabs.intersect(ui.ctx().content_rect()));
-        tab_ui.spacing_mut().button_padding.y = 0.;
-        tab_ui.spacing_mut().interact_size.y = a.tab_height - 4.;
+        tab_ui.spacing_mut().button_padding = vec2(a.panel_padding + 2., 0.);
+        tab_ui.spacing_mut().interact_size.y = strip.height();
         ScrollArea::horizontal()
             .id_salt(("group-tab-scroll", group))
             .auto_shrink([false, false])
@@ -193,19 +202,20 @@ impl panels::Viewer<'_> {
             .scroll_source(egui::scroll_area::ScrollSource { drag: false, ..Default::default() })
             .show(&mut tab_ui, |ui| {
             ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = a.item_spacing * 0.5;
+                ui.spacing_mut().item_spacing.x = 1.;
                 for (index, mut tab) in tabs.iter().copied().enumerate() {
                     let title = self.tab_title(&mut tab);
                     let active = tab == panel;
                     let title = RichText::new(title.text())
                         .font(if active { theme::strong(ui.ctx(), a.font_size) } else { FontId::proportional(a.font_size) })
                         .color(if active { colors.text } else { colors.muted });
+                    // A transparent frame keeps button padding; surfaces are painted separately.
                     let response = ui.add(Button::new(tr(title))
-                        .frame_when_inactive(active)
-                        .fill(if active { colors.tint(if colors.dark { 0.22 } else { 0.3 }) } else { colors.raised })
-                        .corner_radius((a.corner_radius * 2.).min(a.tab_height * 0.5))
+                        .fill(Color32::TRANSPARENT)
+                        .stroke(Stroke::NONE)
                         .sense(Sense::click_and_drag())
-                        .min_size(vec2(0., a.tab_height - 4.)));
+                        .min_size(vec2(0., strip.height())));
+                    tab_rects.push((response.rect, active, response.hovered()));
                     if let Some(id) = self.editor.panel_id(tab) {
                         if response.clicked() {
                             self.editor.core("window.command", json!({"panel":id,"operation":"focus"}));
@@ -247,6 +257,44 @@ impl panels::Viewer<'_> {
                 }
             });
         });
+        let radius = (a.corner_radius * 0.9).min(strip.height() * 0.5);
+        let top = CornerRadius { nw: radius as u8, ne: radius as u8, sw: 0, se: 0 };
+        for (index, &(rect, active, hovered)) in tab_rects.iter().enumerate() {
+            let body = Rect::from_x_y_ranges(rect.x_range(), strip.y_range());
+            if active {
+                shapes.push(Shape::rect_filled(body.expand2(vec2(0., 1.)).translate(vec2(0., 0.5)), top, colors.panel));
+                for (x, side) in [(body.left(), -1.), (body.right(), 1.)] {
+                    let corner = Rect::from_min_max(
+                        pos2(x.min(x + side * flare), body.bottom() - flare),
+                        pos2(x.max(x + side * flare), body.bottom() + 1.),
+                    );
+                    shapes.push(Shape::rect_filled(corner, 0, colors.panel));
+                    shapes.push(Shape::circle_filled(
+                        pos2(x + side * flare, body.bottom() - flare),
+                        flare,
+                        colors.header,
+                    ));
+                }
+            } else if hovered {
+                shapes.push(Shape::rect_filled(
+                    body.shrink2(vec2(2., 0.)).with_max_y(body.bottom() - lift),
+                    radius,
+                    colors.header.lerp_to_gamma(colors.border, 0.7),
+                ));
+            }
+            // Thin dividers sit between neighbouring tabs that are both at rest.
+            if let Some(&(next, next_active, next_hovered)) = tab_rects.get(index + 1) {
+                if !(active || hovered || next_active || next_hovered) {
+                    let x = (rect.right() + next.left()) * 0.5;
+                    let y = body.center().y - lift * 0.5;
+                    shapes.push(Shape::line_segment(
+                        [pos2(x, y - 7.), pos2(x, y + 7.)],
+                        Stroke::new(1., colors.border),
+                    ));
+                }
+            }
+        }
+        surfaces.set(slot, Shape::Vec(shapes));
         if row.input(|i| i.pointer.primary_released() || i.key_pressed(Key::Escape)) {
             row.ctx().data_mut(|d| d.remove::<DraggedTab>(drag_id));
         }
