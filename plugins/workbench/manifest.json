@@ -228,6 +228,11 @@
       "id": "window.capture",
       "title": "Capture Window",
       "operation": "window_capture"
+    },
+    {
+      "id": "window.drop",
+      "title": "Dock Group at Desktop Point",
+      "operation": "window_drop"
     }
   ],
   "panels": [],

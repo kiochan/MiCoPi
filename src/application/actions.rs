@@ -108,6 +108,7 @@ pub enum Operation {
     WindowState,
     WindowLayout,
     WindowCapture,
+    WindowDrop,
     Plugins,
     Events,
 }
@@ -225,6 +226,10 @@ impl Operation {
                 vec![],
             ),
             Self::Ui => (json!({"id":{"type":"string"},"value":{}}), vec!["id"]),
+            Self::WindowDrop => (
+                json!({"panel":{"type":"string"},"target":{"type":"string"},"x":{"type":"integer","minimum":-100000,"maximum":100000},"y":{"type":"integer","minimum":-100000,"maximum":100000}}),
+                vec!["panel", "x", "y"],
+            ),
             Self::WindowCapture => (
                 json!({"panel":{"type":"string"},"path":{"type":"string"}}),
                 vec!["panel", "path"],

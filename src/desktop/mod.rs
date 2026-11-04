@@ -8,6 +8,7 @@ mod canvas;
 mod color;
 mod commands;
 mod document_texture;
+mod group_drop;
 #[path = "../../plugins/layers/panel.rs"]
 mod layers;
 mod native_windows;
@@ -565,6 +566,32 @@ impl Studio {
                     }
                     _ => {}
                 },
+                Some("window.drop") => {
+                    let panel = effect["value"]["panel"]
+                        .as_str()
+                        .and_then(|id| self.editor.session.registry.panels.get(id))
+                        .map(contributed_panel);
+                    if let Some((surface, _, _)) = panel
+                        .and_then(|p| self.dock.find_tab(&p))
+                        .filter(|(s, _, _)| !s.is_main())
+                    {
+                        self.request_group_drop_hint(
+                            ctx,
+                            surface.0,
+                            (
+                                effect["value"]["x"].as_i64().unwrap() as i32,
+                                effect["value"]["y"].as_i64().unwrap() as i32,
+                            ),
+                            effect["value"]["target"]
+                                .as_str()
+                                .and_then(|id| self.editor.session.registry.panels.get(id))
+                                .map(contributed_panel),
+                        );
+                    } else {
+                        self.editor.session.ui["windows.drop"] =
+                            serde_json::json!({"status":"no_source"});
+                    }
+                }
                 Some("window.capture") => {
                     let panel = effect["value"]["panel"]
                         .as_str()
@@ -820,6 +847,8 @@ impl Studio {
             self.dock.translations.tab_context_menu.eject_button =
                 localize("Float Window").into_owned();
         }
+        let main_docking_bounds = ctx.available_rect();
+        ctx.data_mut(|d| d.insert_temp(Id::new("native-group-main-bounds"), main_docking_bounds));
         // Render the main tree independently; detached trees belong to real OS viewports.
         let separate = !ctx.embed_viewports();
         let mut main = DockState::new(vec![]);

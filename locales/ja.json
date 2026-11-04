@@ -816,5 +816,7 @@
   "Dock Group Bottom: {name}": "グループを下にドッキング: {name}",
   "Double-click a Tab to Float Its Group": "タブをダブルクリックしてグループ全体をフロート",
   "Merge Panel Group as Tabs": "グループ全体をタブに統合",
-  "Merge Panel Group as Tabs: {name}": "グループ全体をタブに統合: {name}"
+  "Merge Panel Group as Tabs: {name}": "グループ全体をタブに統合: {name}",
+  "Release to Dock the Entire Group": "離してグループ全体をドッキング",
+  "Dock Group at Desktop Point": "デスクトップ位置にグループをドッキング"
 }

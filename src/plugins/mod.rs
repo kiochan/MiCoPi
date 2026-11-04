@@ -38,7 +38,7 @@ pub(crate) fn execute(
         SelectTool | Parameters | Pointer | Stroke | Pick | View => {
             painting::execute(session, op, args)
         }
-        WindowCommand | WindowState | WindowLayout | WindowCapture => {
+        WindowCommand | WindowState | WindowLayout | WindowCapture | WindowDrop => {
             windows::execute(session, op, args)
         }
         SettingsRead | SettingsWrite | Ui => workbench::execute(session, op, args),

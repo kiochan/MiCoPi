@@ -28,6 +28,30 @@ struct Hook {
     context: egui::Context,
     samples: VecDeque<PenSample>,
     sizing: bool,
+    moving: bool,
+    move_cancelled: bool,
+    group_drop: Option<(i32, i32)>,
+    drag_offset: Option<(i32, i32)>,
+    drag_point: Option<(i32, i32)>,
+}
+impl Hook {
+    fn observe_group_move(&mut self, rect: Option<&Rect>, cursor: Option<(i32, i32)>) {
+        if self.sizing {
+            self.moving = true;
+            self.drag_point = cursor.or_else(|| {
+                rect.and_then(|r| self.drag_offset.map(|(x, y)| (r.left + x, r.top + y)))
+            });
+        }
+    }
+    fn finish_group_move(&mut self, cursor: Option<(i32, i32)>, escape: bool) {
+        if self.moving && !self.move_cancelled && !escape {
+            self.group_drop = cursor.or(self.drag_point);
+        }
+        self.sizing = false;
+        self.moving = false;
+        self.drag_offset = None;
+        self.drag_point = None;
+    }
 }
 thread_local! { static HOOKS: RefCell<BTreeMap<usize, Hook>> = const { RefCell::new(BTreeMap::new()) }; }
 
@@ -62,6 +86,11 @@ impl Native {
                             context,
                             samples: VecDeque::with_capacity(128),
                             sizing: false,
+                            moving: false,
+                            move_cancelled: false,
+                            group_drop: None,
+                            drag_offset: None,
+                            drag_point: None,
                         },
                     )
                 });
@@ -119,6 +148,83 @@ impl Native {
                 .get(&(self.hwnd as usize))
                 .is_some_and(|h| h.sizing)
         })
+    }
+    pub fn begin_group_drag(&self, client: egui::Pos2) {
+        HOOKS.with(|hooks| {
+            if let Some(h) = hooks.borrow_mut().get_mut(&(self.hwnd as usize)) {
+                h.drag_offset = Some((client.x.round() as i32, client.y.round() as i32));
+                h.drag_point = None;
+            }
+        });
+    }
+    pub fn group_drag_cursor(&self) -> Option<(i32, i32)> {
+        HOOKS.with(|hooks| {
+            hooks
+                .borrow()
+                .get(&(self.hwnd as usize))
+                .filter(|h| h.moving && !h.move_cancelled)
+                .and_then(|h| h.drag_point)
+        })
+    }
+    pub fn take_group_drop(&self) -> Option<(i32, i32)> {
+        HOOKS.with(|hooks| {
+            hooks
+                .borrow_mut()
+                .get_mut(&(self.hwnd as usize))
+                .and_then(|h| h.group_drop.take())
+        })
+    }
+    pub fn client_point(&self, point: (i32, i32), pixels_per_point: f32) -> Option<egui::Pos2> {
+        unsafe {
+            let mut p = Point {
+                x: point.0,
+                y: point.1,
+            };
+            (ScreenToClient(self.hwnd, &mut p) != 0)
+                .then(|| egui::pos2(p.x as f32, p.y as f32) / pixels_per_point)
+        }
+    }
+    pub fn window_under(point: (i32, i32), except: usize) -> Option<usize> {
+        unsafe {
+            let hit = WindowFromPoint(Point {
+                x: point.0,
+                y: point.1,
+            });
+            if !hit.is_null() && hit as usize != except {
+                let top = GetAncestor(hit, 2);
+                if !top.is_null() && top as usize != except {
+                    return Some(top as usize);
+                }
+            }
+            // Start below the dragged HWND rather than a global desktop enumeration.
+            // This also works on restricted desktops where GetTopWindow(NULL) is unavailable.
+            let mut hwnd = GetWindow(except as Hwnd, 2);
+            for _ in 0..4096 {
+                if hwnd.is_null() {
+                    break;
+                }
+                let mut r = Rect::default();
+                let mut cloaked = 0u32;
+                DwmGetWindowAttribute(hwnd, 14, &mut cloaked as *mut _ as *mut std::ffi::c_void, 4);
+                let ex_style = GetWindowLongPtrW(hwnd, -20) as u32;
+                let passthrough = ex_style & 0x80000 != 0 && ex_style & 0x20 != 0;
+                if cloaked == 0
+                    && !passthrough
+                    && hwnd as usize != except
+                    && IsWindowVisible(hwnd) != 0
+                    && IsIconic(hwnd) == 0
+                    && GetWindowRect(hwnd, &mut r) != 0
+                    && point.0 >= r.left
+                    && point.0 < r.right
+                    && point.1 >= r.top
+                    && point.1 < r.bottom
+                {
+                    return Some(hwnd as usize);
+                }
+                hwnd = GetWindow(hwnd, 2);
+            }
+        }
+        None
     }
     pub fn clear_pen(&self) {
         HOOKS.with(|hooks| {
@@ -255,10 +361,50 @@ unsafe extern "system" fn procedure(hwnd: Hwnd, msg: u32, w: usize, l: isize) ->
         .with(|slot| slot.borrow().get(&(hwnd as usize)).map(|h| h.previous))
         .unwrap_or(0);
     match msg {
-        0x231 | 0x232 => {
+        0x231 => {
             HOOKS.with(|hooks| {
                 if let Some(h) = hooks.borrow_mut().get_mut(&(hwnd as usize)) {
-                    h.sizing = msg == 0x231;
+                    h.sizing = true;
+                    h.moving = false;
+                    h.move_cancelled = false;
+                    h.group_drop = None;
+                    h.context.request_repaint();
+                }
+            });
+        }
+        0x216 => {
+            let mut cursor = Point::default();
+            let have_cursor = GetCursorPos(&mut cursor) != 0;
+            HOOKS.with(|hooks| {
+                if let Some(h) = hooks.borrow_mut().get_mut(&(hwnd as usize)) {
+                    h.observe_group_move(
+                        if l != 0 {
+                            Some(&*(l as *const Rect))
+                        } else {
+                            None
+                        },
+                        have_cursor.then_some((cursor.x, cursor.y)),
+                    );
+                    h.context.request_repaint();
+                }
+            });
+        }
+        0x100 if w == 27 => {
+            HOOKS.with(|hooks| {
+                if let Some(h) = hooks.borrow_mut().get_mut(&(hwnd as usize)) {
+                    if h.sizing {
+                        h.move_cancelled = true;
+                    }
+                }
+            });
+        }
+        0x232 => {
+            let mut p = Point::default();
+            let have_cursor = GetCursorPos(&mut p) != 0;
+            let escape = GetAsyncKeyState(27) < 0;
+            HOOKS.with(|hooks| {
+                if let Some(h) = hooks.borrow_mut().get_mut(&(hwnd as usize)) {
+                    h.finish_group_move(have_cursor.then_some((p.x, p.y)), escape);
                     h.context.request_repaint();
                 }
             });
@@ -349,6 +495,16 @@ unsafe extern "system" fn procedure(hwnd: Hwnd, msg: u32, w: usize, l: isize) ->
             }
         }
         0x08 | 0x1f | 0x24c => {
+            if msg == 0x1f {
+                HOOKS.with(|hooks| {
+                    if let Some(h) = hooks.borrow_mut().get_mut(&(hwnd as usize)) {
+                        if h.sizing {
+                            h.move_cancelled = true;
+                        }
+                    }
+                });
+            }
+
             let info: PenInfo = mem::zeroed();
             enqueue(hwnd, info, PenPhase::Cancel);
         }
@@ -397,6 +553,46 @@ unsafe extern "system" {
 mod viewport_input_tests {
     use super::*;
     #[test]
+    fn native_move_release_keeps_physical_negative_coordinates_and_respects_cancellation() {
+        let mut h = Hook {
+            hwnd: null_mut(),
+            previous: 0,
+            context: egui::Context::default(),
+            samples: VecDeque::new(),
+            sizing: true,
+            moving: false,
+            move_cancelled: false,
+            group_drop: None,
+            drag_offset: Some((50, 20)),
+            drag_point: None,
+        };
+        let rect = Rect {
+            left: -1400,
+            top: 240,
+            right: -900,
+            bottom: 900,
+        };
+        h.observe_group_move(Some(&rect), None);
+        assert_eq!(h.drag_point, Some((-1350, 260)));
+        h.finish_group_move(None, false);
+        assert_eq!(h.group_drop.take(), Some((-1350, 260)));
+        h.sizing = true;
+        h.drag_offset = Some((50, 20));
+        h.observe_group_move(Some(&rect), Some((-1320, 280)));
+        h.move_cancelled = true;
+        h.finish_group_move(None, false);
+        assert!(h.group_drop.is_none());
+        h.sizing = true;
+        h.moving = false;
+        h.move_cancelled = false;
+        h.finish_group_move(Some((-1000, 200)), false);
+        assert!(h.group_drop.is_none(), "resizing must not dock a group");
+        h.sizing = true;
+        h.observe_group_move(Some(&rect), Some((-1200, 220)));
+        h.finish_group_move(None, true);
+        assert!(h.group_drop.is_none());
+    }
+    #[test]
     fn pen_queues_are_window_local_and_keep_pressure_and_cancel_order() {
         let first = Native {
             hwnd: 0x7fff001usize as Hwnd,
@@ -416,6 +612,11 @@ mod viewport_input_tests {
                         context: egui::Context::default(),
                         samples: VecDeque::new(),
                         sizing: false,
+                        moving: false,
+                        move_cancelled: false,
+                        group_drop: None,
+                        drag_offset: None,
+                        drag_point: None,
                     },
                 );
             });
@@ -444,4 +645,24 @@ mod viewport_input_tests {
         assert!(packets.is_empty());
         HOOKS.with(|hooks| assert!(hooks.borrow().contains_key(&(second.hwnd as usize))));
     }
+}
+
+#[link(name = "user32")]
+unsafe extern "system" {
+    fn WindowFromPoint(point: Point) -> Hwnd;
+    fn GetAncestor(hwnd: Hwnd, flags: u32) -> Hwnd;
+    fn GetWindow(hwnd: Hwnd, command: u32) -> Hwnd;
+    fn IsWindowVisible(hwnd: Hwnd) -> i32;
+    fn IsIconic(hwnd: Hwnd) -> i32;
+    fn GetAsyncKeyState(key: i32) -> i16;
+}
+
+#[link(name = "dwmapi")]
+unsafe extern "system" {
+    fn DwmGetWindowAttribute(
+        hwnd: Hwnd,
+        attribute: u32,
+        value: *mut std::ffi::c_void,
+        size: u32,
+    ) -> i32;
 }

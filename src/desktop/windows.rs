@@ -218,7 +218,7 @@ impl Studio {
             let target = target
                 .or_else(|| {
                     dock.iter_all_tabs()
-                        .find(|((surface, _), p)| surface.is_main() && **p == Panel::Canvas)
+                        .find(|(_, p)| **p == Panel::Canvas)
                         .map(|(_, p)| *p)
                 })
                 .or_else(|| {

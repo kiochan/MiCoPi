@@ -88,6 +88,10 @@ impl Studio {
         for result in std::mem::take(&mut *self.window_capture_results.lock().unwrap()) {
             self.editor.session.ui["windows.capture"] = result;
         }
+        let drag_preview = self.group_drag_preview(root);
+        if let Some((_, target)) = &drag_preview {
+            Self::paint_group_drop(root, target, &self.editor.settings.ui);
+        }
         let indices: Vec<_> = self
             .dock
             .iter_surfaces()
@@ -246,6 +250,8 @@ impl Studio {
                             }}
                             let response=response.on_hover_cursor(CursorIcon::Grab).on_hover_text(tr("Drag This Title Bar to Move the Entire Group"));
                             if response.drag_started() {
+                                if let (Some(native),Some(pointer))=(&window.native,response.interact_pointer_pos()) {native.begin_group_drag(pointer*ctx.pixels_per_point());}
+
                                 ctx.send_viewport_cmd(ViewportCommand::StartDrag);
                             }
                             if response.double_clicked() {
@@ -282,6 +288,18 @@ impl Studio {
                             );
                     });
                 window.image_rect=if contains_canvas && self.editor.image_rect.is_finite() {Some(self.editor.image_rect)} else {None};
+                if let Some((source,target))=&drag_preview {
+                    Self::paint_group_drop(ctx,target,&a);
+                    if *source==index && !target.operation.is_empty() {
+                        let painter=ctx.layer_painter(LayerId::new(Order::Tooltip,Id::new("group-docking-hint")));
+                        let hint=Rect::from_min_size(pos2(a.outer_padding,a.title_height+a.outer_padding),vec2((ctx.content_rect().width()-a.outer_padding*2.).max(1.),a.control_height*2.));
+                        painter.rect_filled(hint,4.,colors.raised);
+                        let operation=match target.operation {"dock_left"=>"Dock Group Left","dock_right"=>"Dock Group Right","dock_top"=>"Dock Group Top","dock_bottom"=>"Dock Group Bottom",_=>"Merge Panel Group as Tabs"};
+                        let name=target.target.and_then(|p|self.editor.panel_id(p)).and_then(|id|self.editor.session.registry.panels.get(&id)).map(|p|localize(p.title.clone())).unwrap_or_else(||crate::i18n::text("Workspace").into());
+                        painter.text(hint.center()-vec2(0.,a.font_size*0.7),Align2::CENTER_CENTER,crate::i18n::text("Release to Dock the Entire Group"),FontId::proportional(a.small_font_size),colors.muted);
+                        painter.text(hint.center()+vec2(0.,a.font_size*0.7),Align2::CENTER_CENTER,format!("{} · {name}",crate::i18n::text(operation)),FontId::proportional(a.font_size),colors.accent);
+                    }
+                }
                 self.schedule_viewport_capture(ctx,viewport);
                 if contains_canvas && !window.focused && self.editor.input_owned {
                     self.editor.finish_stroke();
@@ -320,6 +338,7 @@ impl Studio {
             self.native_windows.insert(index, window);
         }
         self.maintain_window_owners();
+        self.finish_group_drops(root);
         if report_changed {
             self.report_windows();
         }

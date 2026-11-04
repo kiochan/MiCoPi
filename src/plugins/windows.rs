@@ -51,7 +51,7 @@ pub fn commands(panel: &PanelDefinition) -> Vec<ActionDefinition> {
 pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     if op == Operation::WindowState {
         return Ok(
-            json!({"runtime":s.runtime,"panels":s.registry.panels.values().collect::<Vec<_>>(),"actual":s.ui.get("windows.actual"),"last_capture":s.ui.get("windows.capture"),"last_request":s.ui.get("windows.request"),"last_result":s.ui.get("windows.result")}),
+            json!({"runtime":s.runtime,"panels":s.registry.panels.values().collect::<Vec<_>>(),"actual":s.ui.get("windows.actual"),"last_drop":s.ui.get("windows.drop"),"last_capture":s.ui.get("windows.capture"),"last_request":s.ui.get("windows.request"),"last_result":s.ui.get("windows.result")}),
         );
     }
     if s.runtime == "desktop" && s.ui_effects.len() >= 128 {
@@ -59,6 +59,25 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
             "presentation_queue_full",
             "Wait for queued presentation commands before retrying",
         ));
+    }
+    if op == Operation::WindowDrop {
+        let panel = args["panel"].as_str().unwrap();
+        if !s.registry.panels.contains_key(panel) {
+            return Err(ActionError::new("unknown_window", panel));
+        }
+        if let Some(target) = args["target"].as_str() {
+            if !s.registry.panels.contains_key(target) {
+                return Err(ActionError::new("unknown_window", target));
+            }
+        }
+        let queued = s.runtime == "desktop";
+        s.ui["windows.drop"] =
+            json!({"status":if queued {"queued"} else {"presentation_unavailable"}});
+        if queued {
+            s.ui_effects
+                .push_back(json!({"id":"window.drop","value":args}));
+        }
+        return Ok(json!({"queued":queued,"applied":false,"runtime":s.runtime}));
     }
     if op == Operation::WindowCapture {
         let panel = args["panel"].as_str().unwrap();
@@ -117,6 +136,30 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn desktop_point_drop_has_explicit_headless_results_and_validates_target_ids() {
+        let mut s = Session::new(crate::plugins::Registry::bundled()).unwrap();
+        let args = json!({"panel":"layers","target":"navigator","x":-1400,"y":240});
+        assert_eq!(
+            s.apply(Action::new("window.drop", args.clone())).unwrap()["result"]["queued"],
+            false
+        );
+        assert_eq!(s.ui["windows.drop"]["status"], "presentation_unavailable");
+        s.runtime = "desktop".into();
+        assert_eq!(
+            s.apply(Action::new("window.drop", args)).unwrap()["result"]["queued"],
+            true
+        );
+        assert_eq!(s.ui["windows.drop"]["status"], "queued");
+        assert_eq!(s.ui_effects.len(), 1);
+        assert!(s
+            .apply(Action::new(
+                "window.drop",
+                json!({"panel":"layers","target":"missing","x":0,"y":0})
+            ))
+            .is_err());
+        assert_eq!(s.ui_effects.len(), 1);
+    }
     #[test]
     fn viewport_capture_is_explicitly_unavailable_headlessly_and_queued_on_desktop() {
         let mut s = Session::new(crate::plugins::Registry::bundled()).unwrap();

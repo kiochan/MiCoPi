@@ -816,5 +816,7 @@
   "Dock Group Bottom: {name}": "그룹 아래쪽 도킹: {name}",
   "Double-click a Tab to Float Its Group": "탭을 두 번 클릭하여 전체 그룹 플로팅",
   "Merge Panel Group as Tabs": "전체 그룹을 탭으로 병합",
-  "Merge Panel Group as Tabs: {name}": "전체 그룹을 탭으로 병합: {name}"
+  "Merge Panel Group as Tabs: {name}": "전체 그룹을 탭으로 병합: {name}",
+  "Release to Dock the Entire Group": "마우스를 놓아 전체 그룹 도킹",
+  "Dock Group at Desktop Point": "데스크톱 위치에 그룹 도킹"
 }

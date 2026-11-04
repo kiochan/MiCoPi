@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Dock complete native panel groups by dragging their title bars back onto workspace guides, with split/tab previews, destination hints and Escape cancellation.
+- Route native releases and desktop-point automation through shared group hit testing; preserve nested layouts, pen input, replay verification and resize stability.
+
 - Keep native palettes above the application with a main-window/canvas/palette ownership chain instead of system-wide topmost flags.
 - Add whole-group float, hide, dock and tab-merge commands; preserve active tabs, order and nested split topology, with tab double-click and a visible group drag title.
 - Separate explicit viewport placement from observed OS geometry to prevent resize/DPI feedback; defer layout commits until native sizing ends.

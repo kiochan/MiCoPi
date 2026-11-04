@@ -11,6 +11,11 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 USER = ctypes.WinDLL('user32', use_last_error=True)
+USER.SetProcessDpiAwarenessContext.argtypes = [ctypes.c_void_p]
+USER.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
+USER.SetThreadDpiAwarenessContext.argtypes = [ctypes.c_void_p]
+USER.SetThreadDpiAwarenessContext.restype = ctypes.c_void_p
+assert USER.SetThreadDpiAwarenessContext(ctypes.c_void_p(-4)), ctypes.get_last_error()
 USER.IsWindow.argtypes = [wintypes.HWND]
 USER.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
 USER.GetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int]
@@ -23,6 +28,8 @@ USER.SendMessageW.restype = wintypes.LPARAM
 USER.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
 USER.GetWindow.restype = wintypes.HWND
 USER.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+USER.ClientToScreen.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.POINT)]
+USER.GetDpiForWindow.argtypes = [wintypes.HWND]
 
 
 def above(first, second):
@@ -159,7 +166,37 @@ def main():
         while not group_capture.exists():
             assert time.monotonic()<deadline, 'Group capture timed out'
             time.sleep(.05)
-        window('layers', 'dock_right', scope='group', target='navigator')
+        root_group_owner = USER.GetWindow(group_hwnd, 4)
+        USER.ShowWindow(root_group_owner, 4)
+        USER.SetForegroundWindow(root_group_owner)
+        assert USER.SetWindowPos(root_group_owner,None,0,0,0,0,0x1|0x2|0x10|0x40)
+        nav = {p['id']: p for p in call('window.list', {})['actual']}['navigator']['bounds']
+        root_scale = USER.GetDpiForWindow(root_group_owner)/96
+        drop_point = wintypes.POINT(int((nav['x']+4)*root_scale), int((nav['y']+nav['height']*.5)*root_scale))
+        assert USER.ClientToScreen(root_group_owner, ctypes.byref(drop_point))
+        # The automation transport exercises the same desktop hit testing and command dispatch
+        # as a native move-loop release, without moving the user's hardware pointer.
+        canvas_bounds={p['id']:p for p in call('window.list',{})['actual']}['canvas']['bounds']
+        no_guide=wintypes.POINT(int((canvas_bounds['x']+canvas_bounds['width']*.25)*root_scale),int((canvas_bounds['y']+canvas_bounds['height']*.3)*root_scale))
+        assert USER.ClientToScreen(root_group_owner,ctypes.byref(no_guide))
+        call('window.drop',dict(panel='layers',target='canvas',x=no_guide.x,y=no_guide.y))
+        deadline=time.monotonic()+10
+        while (call('window.list',{}).get('last_drop') or {}).get('status')=='queued':
+            assert time.monotonic()<deadline,'No-guide drop timed out'
+            time.sleep(.05)
+        assert call('window.list',{})['last_drop']['status']=='no_target'
+        assert {p['id']:p for p in call('window.list',{})['actual']}['layers']['floating']
+        response=call('window.drop',dict(panel='layers',target='navigator',x=drop_point.x,y=drop_point.y))
+        assert response['queued'] and not response['applied']
+        deadline=time.monotonic()+10
+        while {p['id']:p for p in call('window.list',{})['actual']}['layers']['floating']:
+            result=call('window.list',{})
+            assert (result.get('last_drop') or {}).get('status')!='no_target', result.get('last_drop')
+            assert time.monotonic()<deadline,result
+            time.sleep(.05)
+        request=call('window.list',{})['last_request']
+        assert request['scope']=='group' and request['operation']=='dock_left' and request['target']=='navigator',request
+        assert USER.SetWindowPos(root_group_owner,-2,0,0,0,0,0x1|0x2|0x10)
         grouped = {p['id']: p for p in call('window.list', {})['actual']}
         assert all(not grouped[p]['floating'] for p in ['layers','brush','color'])
         assert grouped['layers']['bounds'] == grouped['brush']['bounds']

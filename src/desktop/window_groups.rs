@@ -102,7 +102,7 @@ impl Studio {
             let target = target
                 .or_else(|| {
                     dock.iter_all_tabs()
-                        .find(|((s, _), p)| s.is_main() && **p == Panel::Canvas)
+                        .find(|(_, p)| **p == Panel::Canvas)
                         .map(|(_, p)| *p)
                 })
                 .or_else(|| {
@@ -305,6 +305,23 @@ mod tests {
                 .unwrap()["result"]["valid"],
             true
         );
+    }
+    #[test]
+    fn dock_group_button_prefers_the_visible_floating_canvas() {
+        let mut app = studio();
+        let ctx = Context::default();
+        frame(&mut app, &ctx, vec2(1360., 920.), vec![], 0.);
+        command(&mut app, &ctx, "canvas", "float", "panel", None);
+        let canvas_surface = app.dock.find_tab(&Panel::Canvas).unwrap().0;
+        command(&mut app, &ctx, "layers", "float", "group", None);
+        command(&mut app, &ctx, "layers", "dock_right", "group", None);
+        for p in [Panel::Layers, Panel::Brush, Panel::Color] {
+            assert_eq!(app.dock.find_tab(&p).unwrap().0, canvas_surface);
+        }
+        command(&mut app, &ctx, "color", "float", "panel", None);
+        command(&mut app, &ctx, "color", "dock_left", "panel", None);
+        assert_eq!(app.dock.find_tab(&Panel::Color).unwrap().0, canvas_surface);
+        assert!(valid_dock(&app.dock));
     }
     #[test]
     fn group_rejects_its_own_target_without_mutating_layout_and_hides_together() {

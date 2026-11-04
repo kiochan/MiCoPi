@@ -43,7 +43,7 @@ micopi-cli call window.list '{}' --attach session.json
 
 Check the queued request via `window.list` before issuing dependent layout operations. Use `app.describe` to discover complete schemas and `workbench.windows` for plugin-visible state.
 
-Native window placement and size use the existing workspace snapshot and quiet-period event compression. Maximized/minimized frames preserve the normal restore rectangle. Closing a feature window hides its panels; closing the main application retains the existing unsaved-document confirmation. Docking/grouping across native windows uses registered commands and tab context menus; direct tab dragging between separate OS viewports is not implemented.
+Native window placement and size use the existing workspace snapshot and quiet-period event compression. Maximized/minimized frames preserve the normal restore rectangle. Closing a feature window hides its panels; closing the main application retains the existing unsaved-document confirmation. Drag a native group title bar over another workspace or native viewport to dock the whole group. Individual tab dragging remains local to its docking viewport; use group title dragging or commands for cross-window moves.
 
 `window.capture` takes `panel` and `path` and writes that native viewport directly from the OpenGL renderer, independent of window occlusion. Inspect `window.list.last_capture` for saved/failed completion. Screenshot capture is an explicit presentation/file effect and is unavailable in headless execution. The native smoke check verifies both dark and light render output without capturing the surrounding desktop.
 
@@ -53,7 +53,7 @@ Floating canvases are owned by the main application window. Other floating panel
 
 ![A movable group retaining tabbed and split panels](screenshots/native-panel-group.png)
 
-Double-click a tab, or use **Group Actions > Float Panel Group**, to detach its complete tab group. Drag the marked group title bar to move the whole native window, including any nested splits. Its dock button moves the whole tree back together. A single tab can still be dragged out individually.
+Double-click a tab, or use **Group Actions > Float Panel Group**, to detach its complete tab group. Drag the marked group title bar to move the whole native window, including any nested splits. Its dock button moves the whole tree back together beside the open canvas, including when the canvas is in a separate native window. A single tab can still be dragged out individually.
 
 `window.command` accepts optional `scope: "group"` (default `"panel"`). For a docked panel, a group means all tabs in its leaf. For a floating panel, it means the entire native window, including nested splits. Group float and directional dock operations preserve tab order, active tabs and split fractions. Group hide removes its members together. A group tab merge explicitly flattens its tabs into the target leaf. Targets within the source group are rejected before changing the layout.
 
@@ -65,3 +65,13 @@ Generated actions also expose `.float_group`, `.hide_group`, `.dock_left_group`,
 ```
 
 Native placement requests and observed geometry have separate ownership. Only creation or an explicit layout command changes the viewport builder's requested position/inner size. OS resize and DPI events update observed normal geometry for workspace persistence without issuing another resize. The native move/size loop also blocks quiet-period layout commits until the gesture ends. This prevents old asynchronous size observations from fighting a live border drag.
+
+## Drag a group back into a workspace
+
+Drag the dotted group title bar over a destination pane. Directional guides and a translucent preview show the docking result; the moving group displays the operation and destination name. Release over an edge/guide to attach the complete split tree. Release on the center guide or tab strip to merge its tabs. Empty workspaces accept the whole tree. Esc cancels docking; ordinary border resizing never initiates it. Releasing away from a guide keeps the window floating.
+
+Native move-loop observations use desktop physical coordinates, converted through the destination viewport's pixel scale. Dock hit testing ignores the dragged window and skips cloaked/pass-through windows. Release resolves to a registered `window.command` with `scope: "group"` (or `workspace.layout.apply` for an empty main workspace), preserving existing atomic/presentation boundaries and replay behavior.
+
+`window.drop` exposes the same hit testing and dispatch for automation: pass `panel`, physical desktop integer `x`/`y`, and optionally `target` to identify a destination viewport for background automation. Without a target hint, it resolves the visible window under the point. Read `window.list.last_drop` for `queued`, `resolved`, `no_target` or `no_source`; then inspect the ordinary command completion/layout state. Headless execution explicitly reports presentation unavailability. The smoke test uses a target hint because isolated rendering sessions cannot reliably control the hardware pointer; native move tracking, cancellation and negative coordinate fallback are covered by unit tests.
+
+The visibility check follows the [DWM cloaking attributes](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute) so a window composed on a different desktop is not treated as a visible docking target.

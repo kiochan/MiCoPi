@@ -816,5 +816,7 @@
   "Dock Group Bottom: {name}": "Dock Group Bottom: {name}",
   "Double-click a Tab to Float Its Group": "Double-click a Tab to Float Its Group",
   "Merge Panel Group as Tabs": "Merge Panel Group as Tabs",
-  "Merge Panel Group as Tabs: {name}": "Merge Panel Group as Tabs: {name}"
+  "Merge Panel Group as Tabs: {name}": "Merge Panel Group as Tabs: {name}",
+  "Release to Dock the Entire Group": "Release to Dock the Entire Group",
+  "Dock Group at Desktop Point": "Dock Group at Desktop Point"
 }
