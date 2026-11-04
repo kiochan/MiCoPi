@@ -91,6 +91,11 @@ typedef struct {
     const uint8_t *data; size_t len;
     uint32_t width, height, stride;
 } MicopiCoverage;
+/* Optional HostApi tail: immutable action-entry snapshot, valid until invoke returns. */
+typedef struct {
+    MicopiHostApi base;
+    int32_t (*selection)(void *, MicopiCoverage *);
+} MicopiHostApiSelection;
 /* Additive tails, available only if the prefix struct_size includes the tail. */
 typedef struct { MicopiToolOptions base; uint32_t flags; } MicopiToolOptionsExt;
 typedef struct { MicopiToolOptionsExt base; MicopiCoverage selection; } MicopiToolOptionsSelection;

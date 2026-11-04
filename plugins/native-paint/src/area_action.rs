@@ -4,6 +4,7 @@ use std::ffi::c_void;
 struct Kernel {
     operation: Operation,
     alpha_locked: bool,
+    selection: abi::Coverage,
 }
 enum Operation {
     Solid {
@@ -75,7 +76,32 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
             expand,
             feather,
         } => {
-            if *expand != 0 || *feather != 0 {
+            if !kernel.selection.data.is_null() {
+                let m = kernel.selection;
+                if (m.width, m.height) != (b.width, b.height)
+                    || m.stride < m.width
+                    || m.len < (m.height as usize - 1) * m.stride as usize + m.width as usize
+                {
+                    return abi::ERROR;
+                }
+                let allowed = (std::slice::from_raw_parts(m.data, m.len), m.stride as usize);
+                (if kernel.alpha_locked {
+                    super::fill_mask::apply_selected::<true>
+                } else {
+                    super::fill_mask::apply_selected::<false>
+                })(
+                    p,
+                    b.width as usize,
+                    b.height as usize,
+                    *y * b.width as usize + *x,
+                    *color,
+                    *tolerance,
+                    *contiguous,
+                    *expand,
+                    *feather,
+                    allowed,
+                );
+            } else if *expand != 0 || *feather != 0 {
                 (if kernel.alpha_locked {
                     super::fill_mask::apply_locked
                 } else {
@@ -228,8 +254,43 @@ pub unsafe fn invoke(
         }
     };
     let active = doc["active_layer"].as_u64().ok_or("Missing active layer")? as usize;
+    let mut selection = abi::Coverage::default();
+    if handler == "fill" {
+        if host.struct_size >= std::mem::size_of::<abi::HostApiSelection>() as u32 {
+            let host = &*(host as *const abi::HostApi).cast::<abi::HostApiSelection>();
+            if (host.selection)(host.base.context, &mut selection) != abi::OK {
+                return Err("Selection snapshot unavailable".into());
+            }
+            if selection.data.is_null() {
+                if selection.len != 0
+                    || selection.width != 0
+                    || selection.height != 0
+                    || selection.stride != 0
+                {
+                    return Err("Invalid empty selection snapshot".into());
+                }
+            } else if (selection.width as usize, selection.height as usize) != (w, h)
+                || w > 4096
+                || h > 4096
+                || w == 0
+                || h == 0
+                || selection.stride < selection.width
+                || selection.stride > 4096
+                || selection.len > 4096 * 4096
+                || (h - 1)
+                    .checked_mul(selection.stride as usize)
+                    .and_then(|v| v.checked_add(w))
+                    .is_none_or(|v| v > selection.len)
+            {
+                return Err("Invalid selection snapshot dimensions or storage".into());
+            }
+        } else if doc["selection"]["active"].as_bool().unwrap_or(false) {
+            return Err("Host does not provide selection-aware fill input".into());
+        }
+    }
     let mut kernel = Kernel {
         operation,
+        selection,
         alpha_locked: doc["layers"][active]["alpha_locked"]
             .as_bool()
             .unwrap_or(false),
@@ -249,4 +310,71 @@ pub unsafe fn invoke(
         return Err("Pixel edit rejected by host".into());
     }
     Ok(json!({"width":w,"height":h}))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    static EDITS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    unsafe extern "C" fn dispatch(
+        _: *mut c_void,
+        _: abi::Bytes,
+        _: abi::Bytes,
+        _: abi::Reply,
+    ) -> i32 {
+        abi::ERROR
+    }
+    unsafe extern "C" fn edit(
+        _: *mut c_void,
+        _: abi::Region,
+        _: Option<abi::Transform>,
+        _: *mut c_void,
+    ) -> i32 {
+        EDITS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        abi::ERROR
+    }
+    unsafe extern "C" fn selection(context: *mut c_void, out: *mut abi::Coverage) -> i32 {
+        *out = std::ptr::read_unaligned(context.cast::<abi::Coverage>());
+        abi::OK
+    }
+    #[test]
+    fn selected_fill_rejects_old_host_and_invalid_selection_descriptors() {
+        EDITS.store(0, std::sync::atomic::Ordering::Relaxed);
+        let args = json!({"x":0,"y":0,"color":"#ff0000"});
+        let doc = json!({"width":2,"height":2,"active_layer":0,"selection":{"active":true}});
+        let base = abi::HostApi {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::HostApi>() as u32,
+            context: std::ptr::null_mut(),
+            dispatch,
+            edit_region: edit,
+        };
+        assert!(unsafe { invoke(&base, &doc, &args, "fill") }
+            .unwrap_err()
+            .contains("selection-aware fill input"));
+        let coverage = [255u8; 4];
+        let mut mask = abi::Coverage {
+            data: coverage.as_ptr(),
+            len: 3,
+            width: 2,
+            height: 2,
+            stride: 2,
+        };
+        let mut host = abi::HostApiSelection { base, selection };
+        host.base.struct_size = std::mem::size_of::<abi::HostApiSelection>() as u32;
+        host.base.context = (&mut mask as *mut abi::Coverage).cast();
+        assert!(unsafe { invoke(&host.base, &doc, &args, "fill") }
+            .unwrap_err()
+            .contains("snapshot dimensions or storage"));
+        mask = abi::Coverage {
+            data: std::ptr::null(),
+            len: 1,
+            ..abi::Coverage::default()
+        };
+        assert!(unsafe { invoke(&host.base, &doc, &args, "fill") }
+            .unwrap_err()
+            .contains("empty selection snapshot"));
+        std::hint::black_box(mask);
+        assert_eq!(EDITS.load(std::sync::atomic::Ordering::Relaxed), 0);
+    }
 }

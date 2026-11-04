@@ -378,16 +378,21 @@ impl Instance {
                 "Native action arguments exceed the limit",
             ));
         }
+        let selection = session.doc.selection().current.clone();
         let mut context = HostContext {
             session,
             busy: false,
+            selection,
         };
-        let host = abi::HostApi {
-            abi_version: abi::ABI_VERSION,
-            struct_size: std::mem::size_of::<abi::HostApi>() as u32,
-            context: (&mut context as *mut HostContext).cast(),
-            dispatch,
-            edit_region,
+        let host = abi::HostApiSelection {
+            base: abi::HostApi {
+                abi_version: abi::ABI_VERSION,
+                struct_size: std::mem::size_of::<abi::HostApiSelection>() as u32,
+                context: (&mut context as *mut HostContext).cast(),
+                dispatch,
+                edit_region,
+            },
+            selection: read_selection,
         };
         let mut output = Output::default();
         let reply = output.reply();
@@ -396,7 +401,7 @@ impl Instance {
                 self.state,
                 abi::Bytes::borrowed(handler.as_bytes()),
                 abi::Bytes::borrowed(&args),
-                &host,
+                &host.base,
                 reply,
             )
         };
@@ -478,6 +483,18 @@ unsafe extern "C" fn write_output(context: *mut c_void, bytes: abi::Bytes) -> i3
 struct HostContext {
     session: *mut Session,
     busy: bool,
+    selection: Option<crate::engine::selection::Mask>,
+}
+unsafe extern "C" fn read_selection(context: *mut c_void, output: *mut abi::Coverage) -> i32 {
+    if context.is_null() || output.is_null() {
+        return abi::ERROR;
+    }
+    let context = &*context.cast::<HostContext>();
+    if context.busy {
+        return abi::ERROR;
+    }
+    *output = context.selection.as_ref().map(coverage).unwrap_or_default();
+    abi::OK
 }
 fn coverage(mask: &crate::engine::selection::Mask) -> abi::Coverage {
     let (width, height) = mask.dimensions();
@@ -701,6 +718,43 @@ unsafe extern "C" fn edit_region(
 mod tests {
     use super::*;
     #[test]
+    fn action_selection_snapshot_remains_alive_across_nested_document_changes() {
+        use crate::engine::selection::{Mask, SelectionState};
+        let mut session = Session::new(super::super::Registry::bundled()).unwrap();
+        session.doc = crate::engine::Document::new(2, 2);
+        session
+            .doc
+            .set_selection(SelectionState {
+                current: Some(Mask::new(2, 2, vec![0, 32, 128, 255]).unwrap()),
+                previous: None,
+            })
+            .unwrap();
+        let selection = session.doc.selection().current.clone();
+        let mut context = HostContext {
+            session: &mut session,
+            busy: false,
+            selection,
+        };
+        let mut mask = abi::Coverage::default();
+        let pointer = (&mut context as *mut HostContext).cast();
+        assert_eq!(unsafe { read_selection(pointer, &mut mask) }, abi::OK);
+        session.doc = crate::engine::Document::new(8, 8);
+        assert_eq!(
+            unsafe { std::slice::from_raw_parts(mask.data, mask.len) },
+            [0, 32, 128, 255]
+        );
+        context.busy = true;
+        assert_eq!(unsafe { read_selection(pointer, &mut mask) }, abi::ERROR);
+        assert_eq!(
+            unsafe { read_selection(std::ptr::null_mut(), &mut mask) },
+            abi::ERROR
+        );
+        context.busy = false;
+        context.selection = None;
+        assert_eq!(unsafe { read_selection(pointer, &mut mask) }, abi::OK);
+        assert!(mask.data.is_null());
+    }
+    #[test]
     fn locked_tool_validation_uses_strided_edge_tiles_and_rolls_back_bad_pixels() {
         unsafe extern "C" fn recolor(_: *mut c_void, p: *mut abi::Pixels) -> i32 {
             for y in 0..(*p).height as usize {
@@ -865,6 +919,7 @@ mod tests {
         let mut context = HostContext {
             session: &mut session,
             busy: false,
+            selection: None,
         };
         let region = abi::Region {
             x: 2,

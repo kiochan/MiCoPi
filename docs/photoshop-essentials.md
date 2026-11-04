@@ -39,7 +39,7 @@ Acceptance: source buffers and metadata return on undo; redo restores the merged
 
 ### P2 — Selection and clipboard foundation
 
-In progress: bounded storage, geometry/combine commands, Select All/Deselect/Reselect/Invert, native drawing/action clipping and a cached static outline are implemented. Direct marquee/lasso gestures, Magic Wand, edge processing and clipboard remain pending. See [Selections](selections.md).
+In progress: bounded storage, geometry/combine commands, Select All/Deselect/Reselect/Invert, native drawing/action clipping, selection-aware fill connectivity and a cached static outline are implemented. Direct marquee/lasso gestures, Magic Wand, edge processing and clipboard remain pending. See [Selections](selections.md).
 
 - [x] Add bounded document selection data, persistence, undo, atomic rollback and outcome replay.
 - [ ] Add rectangular/elliptical marquees, freehand/polygonal lassos and replace/add/subtract/intersect modes.
@@ -47,7 +47,7 @@ In progress: bounded storage, geometry/combine commands, Select All/Deselect/Res
 - [ ] Add tolerance-based Magic Wand, connected/global color matching and Grow/Similar.
 - [ ] Add selection feather, expansion/contraction and smoothing.
 - [x] Clip brush, eraser, clear, fill, gradient and applicable direct filters to the selection through a cached typed path (output clipping; connected-fill traversal remains below).
-- [ ] Restrict connected fill traversal to selected coverage so excluded pixels cannot bridge separate selected islands (output clipping is already implemented).
+- [x] Restrict connected fill traversal to selected coverage so excluded pixels cannot bridge separate selected islands, including expansion/feathering.
 - [ ] Add copy, copy merged, cut, paste, paste in place, duplicate selection to layer and selection-to-layer cut.
 - [ ] Add internal clipboard state for headless execution and an explicit desktop system-clipboard adapter.
 

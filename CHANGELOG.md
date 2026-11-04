@@ -6,6 +6,7 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Painting and document editing
 
+- Restrict native connected fill traversal to selected coverage, including expanded/feathered fills, so excluded pixels cannot bridge independent selected islands. Add a size-checked immutable action-entry selection snapshot to the host ABI, preserve the unselected fast path and apply fractional selection coverage once at commit.
 - Add DLL-generated rectangle/ellipse/polygon selection commands, combine modes and configurable PS selection shortcuts. Clip typed pressure/stabilized brushes, erasers, clear and native pixel actions; show a cached outline and expose masks to MCP/headless/workflow clients. Persist shared compressed masks with undo, atomic rollback and verified replay; direct marquee/lasso gestures, feathering and clipboard remain pending. Reject oversized project metadata before replacing saved files.
 - Add compositor-backed Merge Down, Merge Visible, transparent-canvas flattening and Stamp Visible, with stable target IDs, hidden-layer preservation, single-entry undo, atomic rollback and verified outcomes. Expose four-language menus, configurable PS shortcuts and shared headless/workflow actions; explicitly reject unsupported free-graph/backdrop-dependent merges and locked destructive targets.
 - Add stable layer identities, names, duplication, reordering and deletion, plus native flips, 180° rotation and integer offsets. Structural edits retain undo and graph references.

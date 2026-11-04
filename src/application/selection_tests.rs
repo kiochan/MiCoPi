@@ -247,3 +247,70 @@ fn fractional_selection_preserves_unselected_storage_and_scales_alpha() {
     assert!(s.doc.layers[0].pixels.iter().all(|p| *p == 0x80112233));
     check(&mut s);
 }
+
+#[test]
+fn fill_connectivity_stays_in_seed_selection_component_and_replays() {
+    let mut s = session();
+    call(&mut s, "layer.fill_color", json!({"color":"#112233"}));
+    call(
+        &mut s,
+        "selection.shape",
+        json!({"kind":"rectangle","x":1,"y":1,"width":3,"height":5}),
+    );
+    call(
+        &mut s,
+        "selection.shape",
+        json!({"kind":"rectangle","x":5,"y":1,"width":4,"height":5,"mode":"add"}),
+    );
+    for (expand, feather) in [(0, 0), (2, 2), (32, 32)] {
+        let before = s.doc.layers[0].pixels.clone();
+        call(
+            &mut s,
+            "layer.fill",
+            json!({"x":2,"y":2,"color":"#ee5500","expand":expand,"feather":feather}),
+        );
+        assert_ne!(s.doc.layers[0].pixels[2 * 12 + 2], before[2 * 12 + 2]);
+        for y in 0..8 {
+            for x in 4..12 {
+                assert_eq!(s.doc.layers[0].pixels[y * 12 + x], before[y * 12 + x]);
+            }
+        }
+        outside_unchanged(&s, &before);
+        check(&mut s);
+        call(&mut s, "history.undo", json!({}));
+        assert_eq!(s.doc.layers[0].pixels, before);
+    }
+    call(
+        &mut s,
+        "layer.fill",
+        json!({"x":2,"y":2,"color":"#55ee00","contiguous":false}),
+    );
+    assert_eq!(s.doc.layers[0].pixels[2 * 12 + 2], 0xff55ee00);
+    assert_eq!(s.doc.layers[0].pixels[2 * 12 + 6], 0xff55ee00);
+    let before = s.doc.layers[0].pixels.clone();
+    call(
+        &mut s,
+        "layer.fill",
+        json!({"x":0,"y":0,"color":"#ff00ff","contiguous":false,"expand":32,"feather":32}),
+    );
+    assert_eq!(s.doc.layers[0].pixels, before);
+    check(&mut s);
+    // Positive fractional coverage is traversable, then weighted only once by
+    // the host compositor. Applying it in both places would square the alpha.
+    let mut s = session();
+    let mut coverage = vec![0; 96];
+    coverage[12 + 1] = 32;
+    coverage[12 + 2] = 128;
+    coverage[12 + 3] = 255;
+    s.doc
+        .set_selection(crate::engine::selection::SelectionState {
+            current: Some(crate::engine::selection::Mask::new(12, 8, coverage).unwrap()),
+            previous: None,
+        })
+        .unwrap();
+    call(&mut s, "layer.fill", json!({"x":1,"y":1,"color":"#ee5500"}));
+    assert_eq!(s.doc.layers[0].pixels[13], 0x20ee5500);
+    assert_eq!(s.doc.layers[0].pixels[14], 0x80ee5500);
+    assert_eq!(s.doc.layers[0].pixels[15], 0xffee5500);
+    check(&mut s);
+}

@@ -3,8 +3,8 @@
 //! All calls are synchronous on the session's thread. Borrowed strings, host APIs,
 //! reply contexts and pixel buffers must not be retained, freed or used on another
 //! thread. Plugins own their instance allocation and release it in `destroy`.
-//! An extension may explicitly grant a longer immutable contact-scoped borrow,
-//! as with Coverage in ToolOptionsSelection; that lifetime is documented there.
+//! An extension may explicitly grant a longer immutable scoped borrow,
+//! as with Coverage in ToolOptionsSelection/HostApiSelection; see their contracts.
 //! Every exported callback must catch its own unwinding panics. Native plugins are
 //! trusted code in the host process, not a sandbox.
 use std::ffi::c_void;
@@ -82,6 +82,13 @@ pub struct HostApi {
     /// nothing. Host calls from inside the transform callback are rejected.
     pub edit_region:
         unsafe extern "C" fn(*mut c_void, Region, Option<Transform>, *mut c_void) -> i32,
+}
+/// Optional immutable selection snapshot frozen at native action entry. The host
+/// retains its coverage allocation until invoke returns, including nested calls.
+#[repr(C)]
+pub struct HostApiSelection {
+    pub base: HostApi,
+    pub selection: unsafe extern "C" fn(*mut c_void, *mut Coverage) -> i32,
 }
 #[repr(C)]
 #[derive(Clone, Copy)]

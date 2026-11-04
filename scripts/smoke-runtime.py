@@ -83,7 +83,11 @@ def main():
     ]
     commands += [
         dict(action="layer.add", args={}),
+        dict(action="layer.fill_color", args=dict(color="#33445580")),
         dict(action="selection.shape", args=dict(kind="rectangle", x=30, y=30, width=110, height=75)),
+        dict(action="selection.shape", args=dict(kind="rectangle", x=170, y=30, width=30, height=75, mode="add")),
+        dict(action="layer.fill", args=dict(x=40,y=40,color="#ee5500",expand=2,feather=2)),
+        dict(action="history.undo", args={}),
         dict(action="layer.fill_color", args=dict(color="#5522cc80")),
         dict(action="canvas.stroke", args=dict(points=[dict(x=0,y=50,pen=True,pressure=.3),dict(x=190,y=60,pen=True,pressure=1.)])),
         dict(action="selection.invert", args={}),
