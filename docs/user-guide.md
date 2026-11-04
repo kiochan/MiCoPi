@@ -64,6 +64,10 @@ Use **Layer Actions** or right-click a layer to duplicate, move up/down, delete,
 
 Use **Edit > Canvas Size…** (**Ctrl+Alt+C**) to reframe all layers around an anchor, or **Edit > Crop Canvas…** to enter an exact pixel rectangle. Added space is transparent. Both support undo, retain layer/node identities and share the public actions described in [Canvas editing](canvas-editing.md).
 
+## Tools and tool options
+
+The **Tools** window holds one icon per tool, including **Flood Fill** and **Gradient**. **Tool Options** beside it shows the active tool and its size, opacity and stabilizer. Each window can be moved, grouped, floated or hidden on its own. To change the icon order or hide icons, open Settings and search for **Tools Icons**. You can also list IDs in `ui.tool_order` and `ui.hidden_tools`, for example `"tool_order": ["brush", "fill", "eraser"]` and `"hidden_tools": ["zoom"]`.
+
 ## Fill, gradients and pressure
 
 The Brush panel contains **Flood Fill**, **Gradient** and expandable **Pressure Dynamics** controls. Click to fill a connected area or drag to define a gradient. See [Painting tools](painting-tools.md) for tolerance, alpha, gesture cancellation and the shared automation actions.

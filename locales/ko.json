@@ -865,5 +865,10 @@
   "Enabling includes dependencies; disabling includes dependent plugins.": "활성화 시 필요한 플러그인도 활성화하고, 비활성화 시 이 플러그인에 의존하는 플러그인도 비활성화합니다.",
   "Requires MiCoPi {minimum}": "MiCoPi {minimum} 필요",
   "Plan plugin dependencies and restart changes": "플러그인 의존성과 재시작 변경 계획",
-  "List loaded plugins and diagnostics": "로드된 플러그인과 진단 정보 보기"
+  "List loaded plugins and diagnostics": "로드된 플러그인과 진단 정보 보기",
+  "Tool Options": "도구 옵션",
+  "Tools Icons": "도구 아이콘",
+  "Order and Visibility of Icons in the Tools Window": "도구 창 아이콘의 순서와 표시",
+  "Move Up": "위로 이동",
+  "Move Down": "아래로 이동"
 }

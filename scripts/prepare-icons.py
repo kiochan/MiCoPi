@@ -16,7 +16,7 @@ NAMES = """palette brush ink_eraser colorize back_hand zoom_in zoom_out layers
 search keyboard keyboard_return keyboard_tab shift space_bar backspace
 settings tune edit undo redo add remove fit_screen crop_free file_open save save_as
 image arrow_upward arrow_downward arrow_back arrow_forward download dock_to_left
-dock_to_right close check mouse note_add drag_indicator""".split()
+dock_to_right close check mouse note_add drag_indicator format_color_fill gradient""".split()
 
 
 def fetch(url, path, allow_download):

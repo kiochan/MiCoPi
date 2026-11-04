@@ -865,5 +865,10 @@
   "Enabling includes dependencies; disabling includes dependent plugins.": "Enabling includes dependencies; disabling includes dependent plugins.",
   "Requires MiCoPi {minimum}": "Requires MiCoPi {minimum}",
   "Plan plugin dependencies and restart changes": "Plan plugin dependencies and restart changes",
-  "List loaded plugins and diagnostics": "List loaded plugins and diagnostics"
+  "List loaded plugins and diagnostics": "List loaded plugins and diagnostics",
+  "Tool Options": "Tool Options",
+  "Tools Icons": "Tools Icons",
+  "Order and Visibility of Icons in the Tools Window": "Order and Visibility of Icons in the Tools Window",
+  "Move Up": "Move Up",
+  "Move Down": "Move Down"
 }

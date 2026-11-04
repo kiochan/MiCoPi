@@ -588,6 +588,7 @@ impl Registry {
                         ![
                             "canvas",
                             "tools",
+                            "tool_options",
                             "color",
                             "brush",
                             "navigator",

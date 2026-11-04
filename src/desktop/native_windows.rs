@@ -183,7 +183,7 @@ impl Studio {
                 .with_position(window.placement.min)
                 .with_min_inner_size(if contains_canvas {
                     vec2(260., 220.)
-                } else if panels.contains(&Panel::Tools) {
+                } else if panels.contains(&Panel::Tools) || panels.contains(&Panel::ToolOptions) {
                     vec2(
                         180.,
                         a.tab_height

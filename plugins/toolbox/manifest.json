@@ -11,6 +11,11 @@
       "id": "toolbox",
       "title": "Tools",
       "builtin": "tools"
+    },
+    {
+      "id": "tool-options",
+      "title": "Tool Options",
+      "builtin": "tool_options"
     }
   ],
   "actions": [

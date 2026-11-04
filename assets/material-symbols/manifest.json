@@ -2,7 +2,7 @@
   "upstream": "https://github.com/google/material-design-icons",
   "revision": "10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7",
   "source_sha256": "7e74e36533ccee12c2b81e75bfcf3ccf123d3bb7e7e46d65d94445f23db0c97c",
-  "subset_sha256": "be6737fc0b788e5bbc9602db127ff2d70022c581852e32c0d6faea6fc9b7e95e",
+  "subset_sha256": "d260455be13acd328a78fa3e3685c784b758a5a85715dbb237bf3a999416b625",
   "axes": {
     "FILL": 0,
     "GRAD": 0,
@@ -49,6 +49,8 @@
     "check": "e668",
     "mouse": "e323",
     "note_add": "e89c",
-    "drag_indicator": "e945"
+    "drag_indicator": "e945",
+    "format_color_fill": "e23a",
+    "gradient": "e3e9"
   }
 }

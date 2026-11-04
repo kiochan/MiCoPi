@@ -115,6 +115,20 @@
           "pattern": "^#[0-9a-fA-F]{6}$",
           "default": "#76C7BA"
         },
+        "tool_order": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "type": "string", "pattern": "^[a-z0-9._-]{1,64}$" },
+          "default": [],
+          "description": "Tools-window icons shown first, in this order; unlisted icons follow in their default order. IDs are tool IDs plus fill and gradient."
+        },
+        "hidden_tools": {
+          "type": "array",
+          "maxItems": 64,
+          "items": { "type": "string", "pattern": "^[a-z0-9._-]{1,64}$" },
+          "default": [],
+          "description": "Tools-window icons that are not shown."
+        },
         "language": {
           "type": "string",
           "enum": [

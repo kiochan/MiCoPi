@@ -334,6 +334,7 @@ mod tests {
             json!({"panel":"canvas","operation":"float"}),
             json!({"panel":"layers","operation":"float","scope":"group"}),
             json!({"panel":"toolbox","operation":"hide"}),
+            json!({"panel":"tool-options","operation":"hide"}),
             json!({"panel":"navigator","operation":"hide"}),
         ] {
             app.apply_window_command(&ctx, &args).unwrap();

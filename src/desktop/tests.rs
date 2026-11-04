@@ -947,3 +947,35 @@ fn zoom_strip_sits_below_the_stage_and_zooms_the_view() {
     );
     assert_eq!(app.editor.canvas.bottom(), canvas.bottom());
 }
+#[test]
+fn tools_strip_follows_configured_order_and_visibility() {
+    let mut app = studio();
+    let ids = |items: Vec<crate::desktop::toolbox::ToolbarItem>| {
+        items.into_iter().map(|i| i.id).collect::<Vec<_>>()
+    };
+    let default = ids(app.editor.toolbar_ordered());
+    assert_eq!(default.first().map(String::as_str), Some("brush"));
+    // Area modes appear only when the painting plugin registers their actions.
+    let actions = &app.editor.session.registry.actions;
+    assert_eq!(default.iter().any(|id| id == "fill"), actions.contains_key("layer.fill"));
+    assert_eq!(
+        default.iter().any(|id| id == "gradient"),
+        actions.contains_key("layer.gradient")
+    );
+    app.editor.settings.ui.tool_order = vec!["zoom".into(), "missing".into(), "eraser".into()];
+    let ordered = ids(app.editor.toolbar_ordered());
+    assert_eq!(&ordered[..2], ["zoom", "eraser"]);
+    assert_eq!(ordered.len(), default.len());
+    app.editor.settings.ui.hidden_tools = vec!["gradient".into()];
+    let ctx = Context::default();
+    for t in 0..3 {
+        frame(&mut app, &ctx, vec2(1360., 920.), vec![], t as f64);
+    }
+    // Tools and its options are separate panels in the default layout.
+    let dock = default_dock(&Appearance::default(), 1296.);
+    let (tools, options) = (
+        dock.find_tab(&Panel::Tools).unwrap(),
+        dock.find_tab(&Panel::ToolOptions).unwrap(),
+    );
+    assert_ne!((tools.0, tools.1), (options.0, options.1));
+}

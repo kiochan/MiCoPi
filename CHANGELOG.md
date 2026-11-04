@@ -23,6 +23,9 @@
 
 - Add whole-layer seed-color matching alongside connected fill, with no visited bitmap in the whole-layer path.
 - Add repeated/reflected gradients, endpoint reversal, a transparent endpoint control and Shift-constrained gradient gestures; retain existing action defaults, atomic rollback and outcome replay.
+
+- Split the Tools window into an icon-only Tools strip and a separate Tool Options window; flood fill and gradient gain icons. Existing layouts receive Tool Options once beside Tools.
+- Configure Tools icon order and visibility with `ui.tool_order` and `ui.hidden_tools`, or in Settings under **Tools Icons**.
 - Tighten default spacing for a denser workbench: 4 pt item gaps, 8 pt panel padding, 6 pt workspace edges, 26 pt controls and 30 pt tab rows; the Compact preset goes further.
 - Move canvas zoom from the top toolbar into a thin strip beneath the stage with a logarithmic slider and an editable percentage field; remove the workspace status bar and show status, pen pressure, document size and history memory in that strip.
 - Replace rounded tab capsules with browser-style tabs: the active tab shares the panel surface and flares into it, while resting tabs are labels separated by thin dividers.

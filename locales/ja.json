@@ -865,5 +865,10 @@
   "Enabling includes dependencies; disabling includes dependent plugins.": "有効化すると依存先も有効にし、無効化すると依存するプラグインも無効にします。",
   "Requires MiCoPi {minimum}": "MiCoPi {minimum} が必要",
   "Plan plugin dependencies and restart changes": "プラグインの依存関係と再起動後の変更を計画",
-  "List loaded plugins and diagnostics": "読み込んだプラグインと診断を表示"
+  "List loaded plugins and diagnostics": "読み込んだプラグインと診断を表示",
+  "Tool Options": "ツールオプション",
+  "Tools Icons": "ツールアイコン",
+  "Order and Visibility of Icons in the Tools Window": "ツールウィンドウのアイコンの並び順と表示",
+  "Move Up": "上へ移動",
+  "Move Down": "下へ移動"
 }

@@ -58,6 +58,7 @@ impl Viewer<'_> {
                 Panel::Nodes => "nodes",
                 Panel::Workflow => "workflow",
                 Panel::Tools => "tools",
+                Panel::ToolOptions => "tool_options",
                 _ => "",
             };
             self.editor
@@ -149,6 +150,10 @@ impl TabViewer for Viewer<'_> {
         self.group_bar(ui, *p);
         if *p == Panel::Tools {
             self.editor.toolbox_ui(ui);
+            return;
+        }
+        if *p == Panel::ToolOptions {
+            self.editor.tool_options_ui(ui);
             return;
         }
         if *p == Panel::Canvas {

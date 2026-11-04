@@ -66,6 +66,7 @@ use std::{
 pub enum Panel {
     Canvas,
     Tools,
+    ToolOptions,
     Color,
     Brush,
     Navigator,
@@ -79,6 +80,7 @@ impl Panel {
         match self {
             Self::Canvas => "Canvas",
             Self::Tools => "Tools",
+            Self::ToolOptions => "Tool Options",
             Self::Color => "Color",
             Self::Brush => "Brush",
             Self::Navigator => "Navigator",
@@ -489,12 +491,23 @@ pub fn default_dock(a: &Appearance, width: f32) -> DockState<Panel> {
         0.32,
         vec![Panel::Layers, Panel::Brush, Panel::Color],
     );
-    dock.main_surface_mut().split_above(
+    let [_, tools] = dock.main_surface_mut().split_above(
         center,
         (a.toolbox_height / 820.).clamp(0.10, 0.25),
         vec![Panel::Tools],
     );
+    // An icon-only Tools strip, with the active tool's options beside it.
+    let center_width = total - a.right_panel_width;
+    dock.main_surface_mut().split_right(
+        tools,
+        (tools_strip_width(a) / center_width.max(1.)).clamp(0.15, 0.5),
+        vec![Panel::ToolOptions],
+    );
     dock
+}
+/// Width that fits a default horizontal row of tool icons inside a card.
+pub(crate) fn tools_strip_width(a: &Appearance) -> f32 {
+    7. * (a.control_height + 2. + a.item_spacing) + 2. * a.panel_padding + 8.
 }
 impl Studio {
     fn new(cc: &eframe::CreationContext<'_>) -> Self {
@@ -1046,6 +1059,7 @@ fn contributed_panel(p: &crate::plugins::PanelDefinition) -> Panel {
     match p.builtin.as_deref() {
         Some("canvas") => Panel::Canvas,
         Some("tools") => Panel::Tools,
+        Some("tool_options") => Panel::ToolOptions,
         Some("color") => Panel::Color,
         Some("brush") => Panel::Brush,
         Some("navigator") => Panel::Navigator,
@@ -1114,6 +1128,20 @@ fn reconcile_plugins(
                 dock.main_surface_mut()
                     .split_above(NodeIndex::root(), 0.15, vec![Panel::Tools]);
             }
+        }
+    }
+    // Tool options split out of the Tools window; give older layouts the new panel once.
+    if known.is_some_and(|ids| !ids.iter().any(|id| id == "tool-options"))
+        && registry.panels.contains_key("tool-options")
+        && dock.find_tab(&Panel::ToolOptions).is_none()
+    {
+        if let Some((s, n, _)) = dock.find_tab(&Panel::Tools) {
+            dock[s].split_right(n, 0.3, vec![Panel::ToolOptions]);
+        } else if dock.main_surface().is_empty() {
+            dock.push_to_first_leaf(Panel::ToolOptions);
+        } else {
+            dock.main_surface_mut()
+                .split_above(NodeIndex::root(), 0.12, vec![Panel::ToolOptions]);
         }
     }
     let panels: Vec<_> = registry.panels.values().map(contributed_panel).collect();

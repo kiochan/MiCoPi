@@ -554,6 +554,86 @@ impl Studio {
             self.cancel_settings();
         }
     }
+    /// Reorder and show or hide Tools-strip icons; writes `ui.tool_order` and `ui.hidden_tools`.
+    fn toolbar_settings(
+        &mut self,
+        ui: &mut Ui,
+        draft: &mut Settings,
+        document: &mut serde_json::Value,
+    ) {
+        ui.strong(tr("Tools Icons"));
+        ui.weak(tr("Order and Visibility of Icons in the Tools Window"));
+        ui.label(tr(RichText::new(localize("ui.tool_order · ui.hidden_tools"))
+            .small()
+            .monospace()));
+        let mut catalog = self.editor.toolbar_catalog();
+        let mut items = vec![];
+        for id in &draft.ui.tool_order {
+            if let Some(index) = catalog.iter().position(|item| &item.id == id) {
+                items.push(catalog.remove(index));
+            }
+        }
+        items.extend(catalog);
+        let mut order: Vec<String> = items.iter().map(|item| item.id.clone()).collect();
+        let mut hidden = draft.ui.hidden_tools.clone();
+        let mut changed = false;
+        let count = items.len();
+        for (index, item) in items.iter().enumerate() {
+            ui.push_id(("toolbar-item", &item.id), |ui| {
+                ui.horizontal(|ui| {
+                    let mut visible = !hidden.contains(&item.id);
+                    if ui.checkbox(&mut visible, "").changed() {
+                        hidden.retain(|id| id != &item.id);
+                        if !visible {
+                            hidden.push(item.id.clone());
+                        }
+                        changed = true;
+                    }
+                    ui.label(tr(theme::icon(item.icon, 18.)));
+                    ui.allocate_ui_with_layout(
+                        vec2(140., ui.spacing().interact_size.y),
+                        Layout::left_to_right(Align::Center),
+                        |ui| {
+                            ui.set_min_width(140.);
+                            ui.add(Label::new(tr_for(item.owner.as_deref(), &item.title)).truncate());
+                        },
+                    );
+                    if ui
+                        .add_enabled(index > 0, Button::new(tr(theme::icon('\u{e5d8}', 16.))))
+                        .on_hover_text(tr("Move Up"))
+                        .clicked()
+                    {
+                        order.swap(index, index - 1);
+                        changed = true;
+                    }
+                    if ui
+                        .add_enabled(index + 1 < count, Button::new(tr(theme::icon('\u{e5db}', 16.))))
+                        .on_hover_text(tr("Move Down"))
+                        .clicked()
+                    {
+                        order.swap(index, index + 1);
+                        changed = true;
+                    }
+                });
+            });
+        }
+        if (!draft.ui.tool_order.is_empty() || !draft.ui.hidden_tools.is_empty())
+            && ui.small_button(tr("Reset")).clicked()
+        {
+            order.clear();
+            hidden.clear();
+            changed = true;
+        }
+        if changed {
+            draft.ui.tool_order = order;
+            draft.ui.hidden_tools = hidden;
+            document["ui"]["tool_order"] = serde_json::json!(draft.ui.tool_order);
+            document["ui"]["hidden_tools"] = serde_json::json!(draft.ui.hidden_tools);
+        }
+        ui.add_space(8.);
+        ui.separator();
+        ui.add_space(8.);
+    }
     #[allow(clippy::too_many_arguments)]
     fn settings_content(
         &mut self,
@@ -705,6 +785,17 @@ impl Studio {
                 *reset_layout = true;
             }
             ui.add_space(12.);
+        }
+        if matches!(prefs.category, Category::All | Category::Layout)
+            && matches(
+                &prefs.query,
+                "tools toolbar icons order visible ui.tool_order ui.hidden_tools 工具 图标 顺序 显示",
+                draft.ui.tool_order != defaults_ui(defaults).tool_order
+                    || draft.ui.hidden_tools != defaults_ui(defaults).hidden_tools,
+            )
+        {
+            count += 1;
+            self.toolbar_settings(ui, draft, document);
         }
         if matches!(prefs.category, Category::All | Category::Keys) {
             count += keybindings(ui, ctx, prefs, draft);
@@ -1061,4 +1152,7 @@ mod tests {
         app.cancel_settings();
         assert_eq!(app.editor.settings.ui.panel_padding, baseline);
     }
+}
+fn defaults_ui(defaults: &serde_json::Value) -> Appearance {
+    serde_json::from_value(defaults["ui"].clone()).unwrap_or_default()
 }

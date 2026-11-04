@@ -185,7 +185,9 @@ pub(super) fn floating_rect(
             .unwrap_or(if panel == Panel::Canvas {
                 640.
             } else if panel == Panel::Tools {
-                a.toolbox_width
+                crate::desktop::tools_strip_width(a)
+            } else if panel == Panel::ToolOptions {
+                a.toolbox_width * 0.75
             } else {
                 320.
             }),
@@ -193,7 +195,7 @@ pub(super) fn floating_rect(
             .as_f64()
             .map(|v| v as f32)
             .or(old.map(|r| r.height()))
-            .unwrap_or(if panel == Panel::Tools {
+            .unwrap_or(if matches!(panel, Panel::Tools | Panel::ToolOptions) {
                 a.toolbox_height
             } else {
                 460.

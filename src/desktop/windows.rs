@@ -205,6 +205,14 @@ impl Studio {
                     } else {
                         dock.push_to_first_leaf(panel);
                     }
+                } else if panel == Panel::ToolOptions {
+                    if let Some((s, n, _)) = dock.find_tab(&Panel::Tools) {
+                        dock[s].split_right(n, 0.3, vec![panel]);
+                    } else if let Some((s, n, _)) = dock.find_tab(&Panel::Canvas) {
+                        dock[s].split_above(n, 0.12, vec![panel]);
+                    } else {
+                        dock.push_to_first_leaf(panel);
+                    }
                 } else if panel == Panel::Tools {
                     if let Some((s, n, _)) = dock.find_tab(&Panel::Canvas) {
                         dock[s].split_above(n, 0.15, vec![panel]);
@@ -512,7 +520,7 @@ mod tests {
             &ctx,
             json!({"panel":"toolbox","operation":"float"}),
         );
-        for panel in ["brush", "color", "layers", "navigator"] {
+        for panel in ["brush", "color", "layers", "navigator", "tool-options"] {
             command(&mut app, &ctx, json!({"panel":panel,"operation":"hide"}));
         }
         assert!(app.dock.main_surface().is_empty());

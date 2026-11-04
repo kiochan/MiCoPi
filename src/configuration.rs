@@ -27,6 +27,11 @@ pub struct Appearance {
     pub right_panel_width: f32,
     pub canvas_margin: f32,
     pub accent: String,
+    /// Tools-strip entries shown first, in this order; unlisted entries follow
+    /// in their default order. IDs are tool IDs plus `fill` and `gradient`.
+    pub tool_order: Vec<String>,
+    /// Tools-strip entries that are not shown.
+    pub hidden_tools: Vec<String>,
 }
 impl Default for Appearance {
     fn default() -> Self {
@@ -51,6 +56,8 @@ impl Default for Appearance {
             right_panel_width: 272.,
             canvas_margin: 24.,
             accent: "#B8A2E4".into(),
+            tool_order: vec![],
+            hidden_tools: vec![],
         }
     }
 }
@@ -99,6 +106,15 @@ impl Appearance {
             return Err(
                 "Controls, tabs and toolbars must fit the font and vertical padding".into(),
             );
+        }
+        for (name, list) in [("tool_order", &self.tool_order), ("hidden_tools", &self.hidden_tools)] {
+            if list.len() > 64
+                || list
+                    .iter()
+                    .any(|id| !crate::plugins::valid_id(id) || id.len() > 64)
+            {
+                return Err(format!("ui.{name} must list at most 64 tool IDs"));
+            }
         }
         if self.section_spacing < self.item_spacing {
             return Err("Section spacing cannot be smaller than item spacing".into());
@@ -335,6 +351,14 @@ mod tests {
             assert!(Settings::decode(input, PathBuf::new()).is_err(), "{input}");
         }
         Appearance::default().validate().unwrap();
+        let s = Settings::decode(
+            r#"{"ui":{"tool_order":["zoom","brush"],"hidden_tools":["gradient"]}}"#,
+            PathBuf::new(),
+        )
+        .unwrap();
+        assert_eq!(s.ui.tool_order, ["zoom", "brush"]);
+        assert_eq!(s.ui.hidden_tools, ["gradient"]);
+        assert!(Settings::decode(r#"{"ui":{"tool_order":["Not An ID"]}}"#, PathBuf::new()).is_err());
         let mut a = Appearance::default();
         a.compact();
         a.validate().unwrap();

@@ -865,5 +865,10 @@
   "Enabling includes dependencies; disabling includes dependent plugins.": "启用时会一并启用依赖；禁用时会一并禁用依赖此插件的插件。",
   "Requires MiCoPi {minimum}": "需要 MiCoPi {minimum}",
   "Plan plugin dependencies and restart changes": "规划插件依赖与重启变更",
-  "List loaded plugins and diagnostics": "查看已加载插件和诊断信息"
+  "List loaded plugins and diagnostics": "查看已加载插件和诊断信息",
+  "Tool Options": "工具选项",
+  "Tools Icons": "工具图标",
+  "Order and Visibility of Icons in the Tools Window": "工具窗口中图标的顺序和显示",
+  "Move Up": "上移",
+  "Move Down": "下移"
 }
