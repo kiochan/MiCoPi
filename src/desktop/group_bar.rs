@@ -62,10 +62,6 @@ impl panels::Viewer<'_> {
         row.set_clip_rect(h.bar.intersect(ui.ctx().content_rect()));
         let colors = theme::Colors::new(&a);
         row.painter().rect_filled(h.bar, 0., colors.panel);
-        row.painter().line_segment(
-            [h.bar.left_bottom(), h.bar.right_bottom()],
-            Stroke::new(1., colors.border.gamma_multiply(0.65)),
-        );
         row.interact(
             h.bar,
             Id::new(("group-row-background", panel)),
@@ -96,9 +92,13 @@ impl panels::Viewer<'_> {
         let mut tab_ui = Ui::new(
             ui.ctx().clone(),
             Id::new(("group-tabs", group)),
-            UiBuilder::new().max_rect(h.tabs).layer_id(ui.layer_id()),
+            UiBuilder::new()
+                .max_rect(h.tabs.shrink2(vec2(0., 2.)))
+                .layer_id(ui.layer_id()),
         );
         tab_ui.set_clip_rect(h.tabs.intersect(ui.ctx().content_rect()));
+        tab_ui.spacing_mut().button_padding.y = 0.;
+        tab_ui.spacing_mut().interact_size.y = a.tab_height - 4.;
         ScrollArea::horizontal()
             .id_salt(("group-tab-scroll", group))
             .auto_shrink([false, false])
@@ -110,13 +110,11 @@ impl panels::Viewer<'_> {
                 for (index, mut tab) in tabs.iter().copied().enumerate() {
                     let title = self.tab_title(&mut tab);
                     let response = ui.add(Button::new(title.color(if tab == panel { colors.text } else { colors.muted }))
-                        .frame_when_inactive(false)
+                        .frame_when_inactive(tab == panel)
+                        .fill(if tab == panel {colors.panel.lerp_to_gamma(colors.accent, 0.17)} else {colors.raised})
+                        .corner_radius((a.corner_radius * 2.).min(a.tab_height * 0.5))
                         .sense(Sense::click_and_drag())
-                        .min_size(vec2(0., a.tab_height)));
-                    if tab == panel {
-                        let underline = Rect::from_min_max(pos2(response.rect.left()+a.item_spacing, h.bar.bottom()-2.),pos2(response.rect.right()-a.item_spacing,h.bar.bottom()));
-                        ui.painter().rect_filled(underline, 1., colors.accent);
-                    }
+                        .min_size(vec2(0., a.tab_height - 4.)));
                     if let Some(id) = self.editor.panel_id(tab) {
                         if response.clicked() {
                             self.editor.core("window.command", json!({"panel":id,"operation":"focus"}));

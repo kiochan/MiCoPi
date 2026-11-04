@@ -24,36 +24,52 @@ impl Editor {
         });
         let wide = ui.available_width() > 400.;
         let body = |ui: &mut Ui| {
+            let a = self.settings.ui.clone();
             ui.spacing_mut().button_padding = vec2(
                 self.settings.ui.item_spacing * 0.75,
                 self.settings.ui.item_spacing * 0.5,
             );
-            for tool in tools {
-                let icon = match tool.kind {
-                    Tool::Brush => 10,
-                    Tool::Eraser => 11,
-                    Tool::Picker => 12,
-                    Tool::Hand => 13,
-                    Tool::Zoom => 14,
-                };
-                let size = self.settings.ui.control_height + 2.;
-                let selected = self.session.selected_tool == tool.id && self.area_mode == 0;
-                if ui
-                    .add_sized(
-                        [size.min(ui.available_width().max(24.)), size],
-                        Button::new(tr(theme::icon(
-                            theme::action_icon(icon),
-                            self.settings.ui.icon_size,
-                        )))
-                        .frame_when_inactive(selected)
-                        .selected(selected),
-                    )
-                    .on_hover_text(tr(&tool.title))
-                    .clicked()
-                {
-                    self.select_tool(&tool.id);
+            let buttons = |ui: &mut Ui| {
+                for tool in tools {
+                    let icon = match tool.kind {
+                        Tool::Brush => 10,
+                        Tool::Eraser => 11,
+                        Tool::Picker => 12,
+                        Tool::Hand => 13,
+                        Tool::Zoom => 14,
+                    };
+                    let size = self.settings.ui.control_height + 2.;
+                    let selected = self.session.selected_tool == tool.id && self.area_mode == 0;
+                    if ui
+                        .add_sized(
+                            [size.min(ui.available_width().max(24.)), size],
+                            Button::new(tr(theme::icon(
+                                theme::action_icon(icon),
+                                self.settings.ui.icon_size,
+                            )))
+                            .frame_when_inactive(selected)
+                            .corner_radius(self.settings.ui.corner_radius * 1.25)
+                            .selected(selected),
+                        )
+                        .on_hover_text(tr(&tool.title))
+                        .clicked()
+                    {
+                        self.select_tool(&tool.id);
+                    }
                 }
-            }
+            };
+            let colors = theme::Colors::new(&a);
+            Frame::new()
+                .fill(colors.background.lerp_to_gamma(colors.panel, 0.4))
+                .corner_radius(a.corner_radius * 1.5)
+                .inner_margin(Margin::same((a.item_spacing * 0.5) as i8))
+                .show(ui, |ui| {
+                    if wide {
+                        ui.horizontal(buttons);
+                    } else {
+                        ui.vertical_centered(buttons);
+                    }
+                });
             if wide {
                 let show_area_modes = ui.available_width() > 320.;
                 if show_area_modes

@@ -819,5 +819,6 @@
   "Merge Panel Group as Tabs: {name}": "将整组并入标签页: {name}",
   "Release to Dock the Entire Group": "松开鼠标以停靠整个面板组",
   "Dock Group at Desktop Point": "将整组停靠到桌面位置",
-  "Ready to Paint": "可以开始绘画"
+  "Ready to Paint": "可以开始绘画",
+  "Find Tools and Commands…": "查找工具和命令…"
 }

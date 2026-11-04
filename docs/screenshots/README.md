@@ -12,6 +12,7 @@ These are actual application captures, not interface mockups. Current images com
 | [Floating windows](floating-windows.png) | Independent native canvas window |
 | [Panel group](native-panel-group.png) | One native window preserving tab groups and nested splits |
 | [Native Tools](native-tools.png) | Independent native control bar |
+| [Brush presets](brush-presets.png) | Rounded brush cards, tapered previews and preset selection |
 | [Image nodes](image-nodes.png) | Linked layer sources, per-layer filters, synchronized merges and output |
 | [Workflow nodes](workflow-nodes.png) | DLL-contributed public state connected to an action |
 | [English settings](settings-en.png) | Display language setting |

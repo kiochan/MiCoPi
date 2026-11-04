@@ -17,9 +17,9 @@ pub fn rgb(value: u32) -> Color32 {
 impl Colors {
     pub fn new(a: &Appearance) -> Self {
         let (background, panel, raised, border, text, muted) = match a.theme.as_str() {
-            "light" => (0xe9ebef, 0xf7f8fa, 0xffffff, 0xdde1e7, 0x303640, 0x747e8b),
-            "warm" => (0xeae6e0, 0xf8f5f0, 0xfffcf7, 0xe1dbd2, 0x3c3b38, 0x817c74),
-            _ => (0x17191e, 0x21242b, 0x2b2f38, 0x343943, 0xdde1e9, 0x8e97a6),
+            "light" => (0xebe7ef, 0xfaf7fc, 0xffffff, 0xdfd6e6, 0x40364b, 0x786a82),
+            "warm" => (0xeee7e1, 0xfbf5ee, 0xfffcf7, 0xe3d8cc, 0x4d403c, 0x827168),
+            _ => (0x23212a, 0x2c2934, 0x373240, 0x453f50, 0xede8f2, 0xaaa0b6),
         };
         Self {
             background: rgb(background),
@@ -29,7 +29,7 @@ impl Colors {
             text: rgb(text),
             muted: rgb(muted),
             accent: rgb(
-                u32::from_str_radix(a.accent.trim_start_matches('#'), 16).unwrap_or(0x76c7ba)
+                u32::from_str_radix(a.accent.trim_start_matches('#'), 16).unwrap_or(0xb8a2e4)
             ),
         }
     }

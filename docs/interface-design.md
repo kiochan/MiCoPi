@@ -1,6 +1,8 @@
 # Interface design
 
-MiCoPi keeps the painting surface visually dominant. Panels use neutral surfaces, quiet borders and a restrained accent for the active tool, selected layer and active tab. Window controls share a single row with the group grip and tabs. Hover feedback and tooltips preserve discoverability without filling every action with a permanent button background.
+MiCoPi is a drawing studio for anime and manga illustrators. Muted plum, paper white and warm ivory surfaces give the workbench a softer character while keeping the painting surface visually dominant. A lavender accent, rounded tab capsules and gently tinted selections establish a consistent visual identity. Window controls share a single row with the group grip and tabs.
+
+The tools sit in a compact rounded tray. Brush cards show stylized pressure-tapered marks, with an accent tint for the selected preset. These previews use small vector meshes and never call painting plugins or allocate bitmap textures. The command search remains available in the title row with a quiet shortcut hint. History memory usage is available on the document-status tooltip.
 
 ## Spacing and hierarchy
 
@@ -18,7 +20,8 @@ All dimensions below are logical points and follow each viewport's DPI scale. Se
 | `ui.tab_height` | 32 | Grip, tabs and group controls |
 | `ui.title_height` | 36 | Application title row |
 | `ui.icon_size` | 18 | Toolbar icon size |
-| `ui.corner_radius` | 6 | Controls and content surfaces |
+| `ui.corner_radius` | 8 | Controls and content surfaces |
+| `ui.accent` | `#B8A2E4` | Lavender selection and identity color |
 | `ui.toolbox_height` | 88 | Preferred control-bar group height |
 | `ui.right_panel_width` | 280 | Default property sidebar width |
 
@@ -29,6 +32,8 @@ The graphite, light and warm themes use the same spacing and interaction rules. 
 ![Workbench](screenshots/workbench.png)
 
 The same arrangement is also captured in [light](screenshots/workbench-light.png) and [warm](screenshots/workbench-warm.png) themes. The landscape is a small demonstration document drawn through ordinary gradient, stroke and fill actions.
+
+![Brush preset cards](screenshots/brush-presets.png)
 
 ## Verification
 

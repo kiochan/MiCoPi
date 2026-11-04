@@ -2,7 +2,7 @@
 
 [English](README.md) · [简体中文](README.zh.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
-A small Rust painting application focused on responsive pen input and an extensible, AI-ready execution core.
+A small Rust painting studio for anime and manga illustrators, focused on responsive pen input and an extensible, AI-ready execution core.
 
 MiCoPi runs on **Windows 10/11 x64**. The desktop workbench uses **egui + egui_dock** with OpenGL; pen input uses Windows Ink. The project is in early development.
 

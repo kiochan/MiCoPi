@@ -22,14 +22,17 @@ impl Studio {
                     self.editor.core(if ctx.input(|i|i.viewport().maximized.unwrap_or(false)) {"application.restore"} else {"application.maximize"},serde_json::json!({}));
                 }
                 let center_y = r.center().y;
-                ui.painter()
-                    .circle_filled(pos2(r.left() + 18., center_y), 12., c.accent);
+                ui.painter().rect_filled(
+                    Rect::from_center_size(pos2(r.left() + 18., center_y),Vec2::splat(26.)),
+                    a.corner_radius,
+                    c.panel.lerp_to_gamma(c.accent,0.22),
+                );
                 ui.painter().text(
                     pos2(r.left() + 18., center_y),
                     Align2::CENTER_CENTER,
                     localize("M"),
                     FontId::proportional(15.),
-                    c.background,
+                    c.accent,
                 );
                 let menu = Rect::from_min_max(
                     pos2(r.left() + 46., r.top()),
@@ -188,18 +191,12 @@ impl Studio {
                     .on_hover_text(tr("Search Commands, Tools and Settings"));
                 ui.painter().rect_filled(
                     search,
-                    a.corner_radius,
+                    (a.corner_radius * 2.).min(search.height()*0.5),
                     if response.hovered() {
                         c.raised
                     } else {
                         c.panel
                     },
-                );
-                ui.painter().rect_stroke(
-                    search,
-                    a.corner_radius,
-                    Stroke::new(1., c.border),
-                    StrokeKind::Inside,
                 );
                 ui.painter().text(
                     pos2(search.left() + 16., center_y),
@@ -211,7 +208,7 @@ impl Studio {
                 ui.painter().text(
                     pos2(search.left() + 34., center_y),
                     Align2::LEFT_CENTER,
-                    localize("Search Commands…"),
+                    localize("Find Tools and Commands…"),
                     FontId::proportional(a.small_font_size),
                     c.muted,
                 );
@@ -223,7 +220,11 @@ impl Studio {
                                 search.max,
                             ))
                             .layout(Layout::left_to_right(Align::Center)),
-                        |ui| theme::keycaps(ui, &self.editor.label(95)),
+                        |ui| {
+                            ui.visuals_mut().faint_bg_color = Color32::TRANSPARENT;
+                            ui.visuals_mut().widgets.noninteractive.bg_stroke = Stroke::NONE;
+                            theme::keycaps(ui, &self.editor.label(95));
+                        },
                     );
                 }
                 if response.clicked() {
@@ -259,14 +260,17 @@ impl Studio {
                     );
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         ui.label(tr(RichText::new(localize(format!(
-                            "{} × {} px   ·   {:.1}%   ·   History {:.1} MB",
+                            "{} × {} px   ·   {:.1}%",
                             self.editor.session.doc.width,
                             self.editor.session.doc.height,
-                            self.editor.zoom * 100.,
-                            self.editor.session.doc.history_bytes() as f64 / 1048576.
+                            self.editor.zoom * 100.
                         )))
                         .small()
-                        .color(c.muted)));
+                        .color(c.muted)))
+                            .on_hover_text(tr(format!(
+                                "History {:.1} MB",
+                                self.editor.session.doc.history_bytes() as f64 / 1048576.
+                            )));
                     });
                 });
             });

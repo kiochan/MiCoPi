@@ -27,30 +27,57 @@ impl Editor {
                 for tool in row {
                     let name = tool.title.strip_suffix(" Preset").unwrap_or(&tool.title);
                     let radius = tool.parameters["radius"].as_f64().unwrap_or(6.) as f32;
-                    let (r, response) = ui.allocate_exact_size(vec2(width, 56.), Sense::click());
+                    let (r, response) = ui.allocate_exact_size(
+                        vec2(width, a.control_height * 2. + a.item_spacing),
+                        Sense::click(),
+                    );
                     let colors = theme::Colors::new(&a);
+                    let selected = self.session.selected_tool == tool.id;
                     ui.painter().rect_filled(
                         r,
                         a.corner_radius,
-                        if response.hovered() {
+                        if selected {
+                            colors.panel.lerp_to_gamma(colors.accent, 0.18)
+                        } else if response.hovered() {
                             colors.border
                         } else {
                             colors.raised
                         },
                     );
-                    let points = (0..20)
-                        .map(|n| {
-                            let t = n as f32 / 19.;
-                            pos2(
-                                r.left() + 8. + (r.width() - 16.) * t,
-                                r.top() + 17. + (t * std::f32::consts::TAU).sin() * 2.5,
-                            )
-                        })
-                        .collect();
-                    ui.painter().add(egui::Shape::line(
-                        points,
-                        Stroke::new((radius * 0.2_f32).clamp(1., 5.), colors.text),
-                    ));
+                    // A small ribbon mesh suggests pressure taper without allocating
+                    // bitmap previews or invoking the painting DLL during UI frames.
+                    let mut preview = egui::Mesh::default();
+                    let inset = a.item_spacing + 2.;
+                    let span = (r.width() - inset * 2.).max(1.);
+                    let amplitude = a.control_height * 0.12;
+                    let color = if selected { colors.accent } else { colors.text };
+                    for n in 0..=24 {
+                        let t = n as f32 / 24.;
+                        let angle = t * std::f32::consts::TAU;
+                        let center = pos2(
+                            r.left() + inset + span * t,
+                            r.top() + a.control_height * 0.7 + angle.sin() * amplitude,
+                        );
+                        let normal = vec2(-angle.cos() * amplitude * std::f32::consts::TAU, span)
+                            .normalized();
+                        let half = ((radius * 0.22).clamp(0.7, 5.)
+                            * (t * std::f32::consts::PI).sin().max(0.).sqrt())
+                        .max(0.25);
+                        // A one-point transparent fringe provides antialiasing for
+                        // thin pen previews as well as broad brush silhouettes.
+                        preview.colored_vertex(center + normal * (half + 1.), Color32::TRANSPARENT);
+                        preview.colored_vertex(center + normal * half, color);
+                        preview.colored_vertex(center - normal * half, color);
+                        preview.colored_vertex(center - normal * (half + 1.), Color32::TRANSPARENT);
+                        if n > 0 {
+                            let i = n * 4;
+                            for strip in 0..3 {
+                                preview.add_triangle(i - 4 + strip, i - 3 + strip, i + strip);
+                                preview.add_triangle(i - 3 + strip, i + strip + 1, i + strip);
+                            }
+                        }
+                    }
+                    ui.painter().add(Shape::mesh(preview));
                     ui.painter().with_clip_rect(r.shrink(2.)).text(
                         pos2(r.center().x, r.bottom() - 13.),
                         Align2::CENTER_CENTER,

@@ -191,23 +191,13 @@ impl Editor {
                 r,
                 self.settings.ui.corner_radius,
                 if index == self.session.doc.active {
-                    colors.panel.lerp_to_gamma(colors.accent, 0.10)
+                    colors.panel.lerp_to_gamma(colors.accent, 0.15)
                 } else if response.hovered() {
                     colors.raised
                 } else {
                     colors.panel
                 },
             );
-            if index == self.session.doc.active {
-                ui.painter().rect_filled(
-                    Rect::from_min_size(
-                        r.min + vec2(0., self.settings.ui.item_spacing),
-                        vec2(2., r.height() - self.settings.ui.item_spacing * 2.),
-                    ),
-                    1.,
-                    colors.accent,
-                );
-            }
             let eye =
                 Rect::from_min_size(r.min + vec2(4., (row_height - 24.) / 2.), Vec2::splat(24.));
             let toggle = ui.interact(

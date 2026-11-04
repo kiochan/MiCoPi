@@ -2,7 +2,7 @@
 
 [English](README.md) · [简体中文](README.zh.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
-使用 Rust 编写的轻量原生绘画软件，优先保证绘画响应，同时提供可扩展、面向 AI 的执行核心。
+面向动漫与漫画创作者的轻量原生绘画软件，使用 Rust 编写，优先保证绘画响应，同时提供可扩展、面向 AI 的执行核心。
 
 目前支持 **Windows 10/11 x64**。桌面工作台使用 **egui + egui_dock** 和 OpenGL，数位笔输入使用 Windows Ink。项目仍处于早期开发阶段。
 

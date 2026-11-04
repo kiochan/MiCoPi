@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Shape the workbench for anime and manga illustrators with muted plum/paper/ivory themes, lavender accents, rounded tab capsules and a compact tool tray.
+- Give brush presets lightweight tapered vector previews and selection feedback; soften title-row command search and move history memory details into the status tooltip.
+
 - Refine the workbench with neutral themes, quiet icon controls, padded underline tabs, lighter panel boundaries and compact default metrics.
 - Align property labels and numeric fields, consolidate layer actions, reduce canvas toolbar weight and bound swatch sizes without leaking local spacing.
 
