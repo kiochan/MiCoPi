@@ -511,6 +511,42 @@ pub static COMMANDS: &[Command] = &[
         10150
     ),
     c!(
+        "toolbox.mode.selection_rectangle",
+        "Rectangular Marquee",
+        "Selection",
+        "rectangle marquee selection xuanqu",
+        UiCommand(10154),
+        "M",
+        10154
+    ),
+    c!(
+        "toolbox.mode.selection_ellipse",
+        "Elliptical Marquee",
+        "Selection",
+        "ellipse circle marquee selection",
+        UiCommand(10155),
+        "Shift+M",
+        10155
+    ),
+    c!(
+        "toolbox.mode.selection_lasso",
+        "Lasso",
+        "Selection",
+        "lasso freehand selection",
+        UiCommand(10156),
+        "L",
+        10156
+    ),
+    c!(
+        "toolbox.mode.selection_polygon",
+        "Polygonal Lasso",
+        "Selection",
+        "polygon selection vertices",
+        UiCommand(10157),
+        "Shift+L",
+        10157
+    ),
+    c!(
         "selection.deselect",
         "Deselect",
         "Selection",
@@ -1435,7 +1471,10 @@ impl Keymap {
     }
     pub fn decode(text: &str) -> Result<Self, String> {
         let mut map = Self::default();
-        for (id, keys) in super::settings::read(text)? {
+        let entries = super::settings::read(text)?;
+        let explicit: std::collections::BTreeSet<_> =
+            entries.iter().map(|(id, _)| id.clone()).collect();
+        for (id, keys) in entries {
             let parsed = keys
                 .iter()
                 .map(|k| Chord::parse(k))
@@ -1454,6 +1493,20 @@ impl Keymap {
                 map.pending.insert(id, parsed);
             } else {
                 return Err(format!("Unknown Command: {id}"));
+            }
+        }
+        // These gesture commands are new defaults. An older profile may already
+        // use M/L for another built-in or plugin action; keep that explicit choice.
+        let reserved: Vec<_> = COMMANDS
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| explicit.contains(c.id))
+            .flat_map(|(i, _)| map.bindings[i].iter().copied())
+            .chain(map.pending.values().flatten().copied())
+            .collect();
+        for (i, command) in COMMANDS.iter().enumerate() {
+            if command.id.starts_with("toolbox.mode.selection_") && !explicit.contains(command.id) {
+                map.bindings[i].retain(|key| !reserved.contains(key));
             }
         }
         map.validate()?;
@@ -1641,5 +1694,36 @@ mod tests {
             Keymap::default().bindings
         );
         std::fs::remove_file(path).unwrap();
+    }
+    #[test]
+    fn new_selection_defaults_preserve_older_explicit_builtin_and_plugin_keys() {
+        let mut map =
+            Keymap::decode(r#"{"keybindings":{"tool.brush":"M","plugin.custom.tool":"L"}}"#)
+                .unwrap();
+        let rectangle = COMMANDS
+            .iter()
+            .position(|c| c.id == "toolbox.mode.selection_rectangle")
+            .unwrap();
+        let lasso = COMMANDS
+            .iter()
+            .position(|c| c.id == "toolbox.mode.selection_lasso")
+            .unwrap();
+        let brush = COMMANDS.iter().position(|c| c.id == "tool.brush").unwrap();
+        assert!(map.bindings[rectangle].is_empty());
+        assert!(map.bindings[lasso].is_empty());
+        assert_eq!(map.bindings[brush], vec![Chord::parse("M").unwrap()]);
+        let copy = Keymap::decode(&map.encode()).unwrap();
+        assert_eq!(copy.bindings, map.bindings);
+        map.register_actions(vec![("custom.tool".into(), "Custom Tool".into())])
+            .unwrap();
+        let plugin = map
+            .commands()
+            .position(|c| c.id == "plugin.custom.tool")
+            .unwrap();
+        assert_eq!(map.bindings[plugin], vec![Chord::parse("L").unwrap()]);
+        assert!(Keymap::decode(
+            r#"{"keybindings":{"tool.brush":"M","toolbox.mode.selection_rectangle":"M"}}"#
+        )
+        .is_err());
     }
 }

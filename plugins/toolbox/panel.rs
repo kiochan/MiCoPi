@@ -14,6 +14,58 @@ pub(crate) struct ToolbarItem {
 }
 const FILL: &str = "fill";
 const GRADIENT: &str = "gradient";
+fn selection_mode(id: &str) -> Option<u8> {
+    match id {
+        "selection_rectangle" => Some(3),
+        "selection_ellipse" => Some(4),
+        "selection_lasso" => Some(5),
+        "selection_polygon" => Some(6),
+        _ => None,
+    }
+}
+
+fn selection_icon(painter: &Painter, r: Rect, mode: u8, color: Color32) {
+    let stroke = Stroke::new(1.5, color);
+    match mode {
+        3 => {
+            painter.rect_stroke(r, 0., stroke, StrokeKind::Inside);
+        }
+        4 => {
+            painter.circle_stroke(r.center(), r.width().min(r.height()) * 0.5, stroke);
+        }
+        _ => {
+            let points: &[[f32; 2]] = if mode == 5 {
+                &[
+                    [0., 0.5],
+                    [0.15, 0.1],
+                    [0.7, 0.],
+                    [1., 0.4],
+                    [0.7, 0.8],
+                    [0.2, 0.85],
+                    [0.15, 0.6],
+                    [0.5, 0.55],
+                    [0.4, 1.],
+                ]
+            } else {
+                &[
+                    [0., 0.],
+                    [1., 0.2],
+                    [0.8, 0.85],
+                    [0.15, 0.7],
+                    [0., 0.],
+                    [0.4, 1.],
+                ]
+            };
+            painter.add(egui::epaint::PathShape::line(
+                points
+                    .iter()
+                    .map(|q| r.min + vec2(q[0] * r.width(), q[1] * r.height()))
+                    .collect(),
+                stroke,
+            ));
+        }
+    }
+}
 
 impl Editor {
     /// Every available Tools-strip entry in its default order, ignoring settings.
@@ -29,9 +81,9 @@ impl Editor {
         let rank = |kind: Tool| match kind {
             Tool::Brush => 0,
             Tool::Eraser => 1,
-            Tool::Picker => 4,
-            Tool::Hand => 5,
-            Tool::Zoom => 6,
+            Tool::Picker => 8,
+            Tool::Hand => 9,
+            Tool::Zoom => 10,
         };
         tools.sort_by_key(|t| (rank(t.kind), t.id.clone()));
         let mut items: Vec<(u8, ToolbarItem)> = tools
@@ -59,8 +111,30 @@ impl Editor {
             })
             .collect();
         for (rank, id, action, title, icon) in [
-            (2, FILL, "layer.fill", "Flood Fill", '\u{e23a}'),
-            (3, GRADIENT, "layer.gradient", "Gradient", '\u{e3e9}'),
+            (6, FILL, "layer.fill", "Flood Fill", '\u{e23a}'),
+            (7, GRADIENT, "layer.gradient", "Gradient", '\u{e3e9}'),
+            (
+                2,
+                "selection_rectangle",
+                "selection.shape",
+                "Rectangular Marquee",
+                '\u{e3c2}',
+            ),
+            (
+                3,
+                "selection_ellipse",
+                "selection.shape",
+                "Elliptical Marquee",
+                '\u{e3c2}',
+            ),
+            (4, "selection_lasso", "selection.shape", "Lasso", '\u{e3c2}'),
+            (
+                5,
+                "selection_polygon",
+                "selection.shape",
+                "Polygonal Lasso",
+                '\u{e3c2}',
+            ),
         ] {
             if self.session.registry.actions.contains_key(action) {
                 items.push((
@@ -91,6 +165,9 @@ impl Editor {
         ordered
     }
     fn toolbar_selected(&self, id: &str) -> bool {
+        if let Some(mode) = selection_mode(id) {
+            return self.area_mode == mode;
+        }
         match id {
             FILL => self.area_mode == 1,
             GRADIENT => self.area_mode == 2,
@@ -98,6 +175,10 @@ impl Editor {
         }
     }
     fn toolbar_activate(&mut self, id: &str) {
+        if selection_mode(id).is_some() {
+            self.core(&format!("toolbox.mode.{id}"), serde_json::json!({}));
+            return;
+        }
         match id {
             FILL => {
                 self.core("toolbox.mode.fill", serde_json::json!({}));
@@ -121,17 +202,29 @@ impl Editor {
             ui.spacing_mut().item_spacing = Vec2::splat(a.item_spacing);
             for item in &items {
                 let selected = editor.toolbar_selected(&item.id);
-                if ui
+                let selection = selection_mode(&item.id);
+                let response = ui
                     .add_sized(
                         [size, size],
-                        Button::new(tr(theme::icon(item.icon, a.icon_size)))
-                            .frame_when_inactive(selected)
-                            .corner_radius(a.corner_radius)
-                            .selected(selected),
+                        Button::new(if selection.is_some() {
+                            RichText::new("")
+                        } else {
+                            tr(theme::icon(item.icon, a.icon_size))
+                        })
+                        .frame_when_inactive(selected)
+                        .corner_radius(a.corner_radius)
+                        .selected(selected),
                     )
-                    .on_hover_text(tr_for(item.owner.as_deref(), &item.title))
-                    .clicked()
-                {
+                    .on_hover_text(tr_for(item.owner.as_deref(), &item.title));
+                if let Some(mode) = selection {
+                    let inset = (a.item_spacing * 0.5).clamp(2., 6.);
+                    let r = Rect::from_center_size(
+                        response.rect.center(),
+                        Vec2::splat(a.icon_size.min((size - inset * 2.).max(1.))),
+                    );
+                    selection_icon(ui.painter(), r, mode, ui.visuals().text_color());
+                }
+                if response.clicked() {
                     editor.toolbar_activate(&item.id);
                 }
             }
@@ -161,12 +254,40 @@ impl Editor {
         let body = |ui: &mut Ui, editor: &mut Editor| {
             ui.spacing_mut().item_spacing.x = a.item_spacing * 1.5;
             if let Some(item) = &active {
-                ui.label(tr(theme::icon(item.icon, a.icon_size).color(c.accent_text)));
+                if let Some(mode) = selection_mode(&item.id) {
+                    let (r, _) = ui.allocate_exact_size(Vec2::splat(a.icon_size), Sense::hover());
+                    selection_icon(ui.painter(), r, mode, c.accent_text);
+                } else {
+                    ui.label(tr(theme::icon(item.icon, a.icon_size).color(c.accent_text)));
+                }
                 ui.label(
                     tr_for(item.owner.as_deref(), item.title.as_str())
                         .font(theme::strong(ui.ctx(), a.font_size)),
                 );
                 ui.separator();
+            }
+            if editor.area_mode >= 3 {
+                for (mode, short, title) in [
+                    ("replace", "New", "New Selection"),
+                    ("add", "Add", "Add to Selection"),
+                    ("subtract", "Subtract", "Subtract from Selection"),
+                    ("intersect", "Intersect", "Intersect Selection"),
+                ] {
+                    if ui
+                        .add(Button::new(tr(short)).selected(editor.selection_combine == mode))
+                        .on_hover_text(tr(title))
+                        .clicked()
+                    {
+                        editor.core(&format!("toolbox.selection.{mode}"), serde_json::json!({}));
+                    }
+                }
+                ui.label(tr(theme::icon('\u{e312}', a.icon_size).color(c.muted)))
+                    .on_hover_text(tr(if editor.area_mode == 6 {
+                        "Click vertices; Enter or double-click to finish. Esc cancels."
+                    } else {
+                        "Drag to select. Shift adds, Alt subtracts, Shift+Alt intersects."
+                    }));
+                return;
             }
             let mut size = editor.radius * 2.;
             ui.weak(tr("Size"));

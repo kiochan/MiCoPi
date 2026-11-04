@@ -69,6 +69,142 @@
         "type": "object",
         "additionalProperties": false
       }
+    },
+    {
+      "id": "toolbox.mode.selection_rectangle",
+      "title": "Rectangular Marquee",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "painting.mode",
+            "value": "selection_rectangle"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "toolbox.mode.selection_ellipse",
+      "title": "Elliptical Marquee",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "painting.mode",
+            "value": "selection_ellipse"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "toolbox.mode.selection_lasso",
+      "title": "Lasso",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "painting.mode",
+            "value": "selection_lasso"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "toolbox.mode.selection_polygon",
+      "title": "Polygonal Lasso",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "painting.mode",
+            "value": "selection_polygon"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "toolbox.selection.replace",
+      "title": "New Selection",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "selection.combine",
+            "value": "replace"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "toolbox.selection.add",
+      "title": "Add to Selection",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "selection.combine",
+            "value": "add"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "toolbox.selection.subtract",
+      "title": "Subtract from Selection",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "selection.combine",
+            "value": "subtract"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "toolbox.selection.intersect",
+      "title": "Intersect Selection",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "selection.combine",
+            "value": "intersect"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
     }
   ]
 }

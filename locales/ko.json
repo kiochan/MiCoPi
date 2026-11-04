@@ -881,5 +881,19 @@
   "Reselect": "다시 선택",
   "Invert Selection": "선택 영역 반전",
   "Inspect Selection": "선택 영역 확인",
-  "Selection": "선택 영역"
+  "Selection": "선택 영역",
+  "Rectangular Marquee": "사각형 선택 윤곽",
+  "Elliptical Marquee": "타원형 선택 윤곽",
+  "Lasso": "올가미",
+  "Polygonal Lasso": "다각형 올가미",
+  "New Selection": "새 선택 영역",
+  "Add to Selection": "선택 영역에 추가",
+  "Subtract from Selection": "선택 영역에서 빼기",
+  "Intersect Selection": "선택 영역과 교차",
+  "Click vertices; Enter or double-click to finish. Esc cancels.": "클릭하여 꼭짓점을 추가합니다. Enter 또는 두 번 클릭으로 완료, Esc로 취소합니다.",
+  "Drag to select. Shift adds, Alt subtracts, Shift+Alt intersects.": "드래그하여 선택합니다. Shift는 추가, Alt는 빼기, Shift+Alt는 교차입니다.",
+  "Polygon selection is limited to 4096 points": "다각형 선택은 최대 4096개의 꼭짓점을 지원합니다",
+  "Add": "추가",
+  "Subtract": "빼기",
+  "Intersect": "교차"
 }

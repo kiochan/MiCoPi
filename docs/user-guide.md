@@ -38,6 +38,8 @@ Open Keyboard Shortcuts to edit, record or clear a binding. Multiple alternative
 
 ## Panels and workspace
 
+The Tools strip includes rectangular/elliptical marquees (**M**, **Shift+M**) and freehand/polygonal lassos (**L**, **Shift+L**). Their independent Tool Options bar selects New/Add/Subtract/Intersect; modifier hints are available on the keyboard icon. Escape cancels a preview, and Enter completes a polygon. Completion publishes one shared selection action, with undo and verified replay. See [Selections](selections.md) for constraints, combination modifiers and automation.
+
 Drag tabs to reorder, split, group or float panels. Drag a group header to move the group. Dock on any side, resize splitters or floating borders, and use tab menus to reopen panels. Floating panels are constrained to the visible work area. Esc cancels an active drag.
 
 Workspace commands reset layout or group Color with Brush and Navigator with Layers. Closing a panel does not delete its underlying document data. Layout is persisted independently of appearance settings; layout reset is not reverted by canceling a settings preview.
@@ -54,9 +56,9 @@ The independent **Plugin Workflow** window searches action/state nodes, exposes 
 
 Install each plugin directory beside the executable, with its manifest and DLL when required, then restart. Plugin enable/disable preferences take effect on restart and preserve the manifests. The settings page shows diagnostics and loaded contributions.
 
-[JSONL, MCP and GUI attachment](plugins-and-actions.md) use the same Session as the desktop. For file automation, supply explicit paths to document and export actions. Headless UI actions return effects without opening windows.
+[JSONL, MCP and GUI attachment](plugins-and-actions.md) use the same Session as the desktop. For file automation, supply explicit paths to document and export actions. Generic UI intent actions can return stored effects without opening windows. Desktop selection gesture/window commands explicitly report headless unavailability; use document actions such as `selection.shape` for headless editing.
 
-Current omissions include selection gestures/clipboard, free transforms, layer groups, Wintab, multi-document tabs and watercolor blending. The UI does not present placeholders for these features.
+Current omissions include clipboard, free transforms, layer groups, Wintab, multi-document tabs and watercolor blending. The UI does not present placeholders for these features.
 
 ## Organize and transform layers
 

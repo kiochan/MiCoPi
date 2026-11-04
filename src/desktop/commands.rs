@@ -549,6 +549,15 @@ impl Studio {
                     }
                     match id {
                         10144 | 10145 => self.editor.open_canvas_geometry(id == 10145),
+                        10154..=10157 => {
+                            let action = match id {
+                                10154 => "toolbox.mode.selection_rectangle",
+                                10155 => "toolbox.mode.selection_ellipse",
+                                10156 => "toolbox.mode.selection_lasso",
+                                _ => "toolbox.mode.selection_polygon",
+                            };
+                            self.editor.core(action, serde_json::json!({}));
+                        }
                         10150..=10153 => {
                             self.editor.finish_stroke();
                             let action = match id {

@@ -881,5 +881,19 @@
   "Reselect": "重新选择",
   "Invert Selection": "反向选择",
   "Inspect Selection": "检查选区",
-  "Selection": "选区"
+  "Selection": "选区",
+  "Rectangular Marquee": "矩形选框",
+  "Elliptical Marquee": "椭圆选框",
+  "Lasso": "套索",
+  "Polygonal Lasso": "多边形套索",
+  "New Selection": "新建选区",
+  "Add to Selection": "添加到选区",
+  "Subtract from Selection": "从选区减去",
+  "Intersect Selection": "与选区相交",
+  "Click vertices; Enter or double-click to finish. Esc cancels.": "单击添加顶点；Enter 或双击完成，Esc 取消。",
+  "Drag to select. Shift adds, Alt subtracts, Shift+Alt intersects.": "拖动建立选区。Shift 添加，Alt 减去，Shift+Alt 相交。",
+  "Polygon selection is limited to 4096 points": "多边形选区最多支持 4096 个顶点",
+  "Add": "添加",
+  "Subtract": "减去",
+  "Intersect": "相交"
 }

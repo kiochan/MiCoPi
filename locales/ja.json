@@ -881,5 +881,19 @@
   "Reselect": "再選択",
   "Invert Selection": "選択範囲を反転",
   "Inspect Selection": "選択範囲を確認",
-  "Selection": "選択範囲"
+  "Selection": "選択範囲",
+  "Rectangular Marquee": "長方形選択",
+  "Elliptical Marquee": "楕円形選択",
+  "Lasso": "投げ縄",
+  "Polygonal Lasso": "多角形投げ縄",
+  "New Selection": "新規選択",
+  "Add to Selection": "選択範囲に追加",
+  "Subtract from Selection": "選択範囲から削除",
+  "Intersect Selection": "選択範囲との共通部分",
+  "Click vertices; Enter or double-click to finish. Esc cancels.": "クリックで頂点を追加。Enter またはダブルクリックで確定、Esc で取消。",
+  "Drag to select. Shift adds, Alt subtracts, Shift+Alt intersects.": "ドラッグで選択。Shift で追加、Alt で削除、Shift+Alt で共通部分。",
+  "Polygon selection is limited to 4096 points": "多角形選択は最大 4096 頂点です",
+  "Add": "追加",
+  "Subtract": "削除",
+  "Intersect": "共通部分"
 }

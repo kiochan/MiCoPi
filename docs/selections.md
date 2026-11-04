@@ -1,10 +1,29 @@
 # Selections
 
-Selections belong to the document, not the desktop tool. The current increment provides schema-described rectangle, ellipse and polygon geometry, combination modes, Select All/Deselect/Reselect/Invert, native painting/action clipping, persistence, undo and verified replay. Mouse/pen marquee and lasso gestures, feathering, Magic Wand and clipboard operations remain planned in [the editing checklist](photoshop-essentials.md).
+Selections belong to the document, not the desktop tool. The current increment provides schema-described rectangle, ellipse and polygon geometry, combination modes, Select All/Deselect/Reselect/Invert, native painting/action clipping, persistence, undo and verified replay. Mouse/pen marquee and lasso gestures are available. Selection feathering, Magic Wand and clipboard operations remain planned in [the editing checklist](photoshop-essentials.md).
 
 ![Actual workbench with a command-generated ellipse selection](screenshots/selection.png)
 
 *A development build captured by the localization smoke check. The outline is a presentation overlay; the generated checkerboard and pressure strokes remain unchanged.*
+
+## Desktop gestures
+
+| Tool | Default shortcut | Completion |
+| --- | --- | --- |
+| Rectangular Marquee | M | Release the mouse/pen contact |
+| Elliptical Marquee | Shift+M | Release the contact |
+| Freehand Lasso | L | Release the contact; closes the traced polygon |
+| Polygonal Lasso | Shift+L | Click vertices, then Enter, double-click the last vertex, or click near the first vertex |
+
+The Tools strip exposes all four tools; their order, visibility and spacing use the existing workspace settings. Tool Options offers New/Add/Subtract/Intersect controls instead of brush size/opacity controls. The selected combination is frozen when a gesture starts. Shift at the initial press adds, Alt subtracts and Shift+Alt intersects; Alt is a selection modifier here rather than a temporary eyedropper. Press Shift after starting a rectangle/ellipse drag to constrain a square/circle. A Shift already held at the initial press selects Add; release/repress it to constrain afterward.
+
+Only the preview changes during dragging or polygon clicks. Completion dispatches one `selection.shape` action with the captured expected revision; it uses the same DLL geometry, history and verified outcomes as automation. Escape, right-click, focus loss, changing tools/options or starting temporary navigation cancels an unfinished gesture. A document/revision change from another action discards stale previews. An empty New marquee click deselects; an insufficient Add/Subtract/Intersect trace leaves the current mask unchanged. Geometry outside the canvas is clipped by the native kernel; UI coordinates are bounded to -4096..8192 to keep previews finite.
+
+Lasso traces sample at one display point initially. At the vertex limit they progressively decimate older samples, with the same retained geometry shown in the preview and submitted on release; at most 4096 points enter the action. Polygonal lassos accept at most 4096 explicitly clicked vertices and report the limit. Mouse and synthetic pen packet tests exercise the adapters; this does not establish compatibility with a physical tablet/driver.
+
+`toolbox.mode.selection_rectangle`, `toolbox.mode.selection_ellipse`, `toolbox.mode.selection_lasso` and `toolbox.mode.selection_polygon` activate the desktop modes. `toolbox.selection.replace`, `.add`, `.subtract` and `.intersect` change the Tool Options combination. These commands are searchable/bindable and available to GUI-attached clients. They explicitly report `ui_unavailable` in headless sessions; use `selection.shape` for headless document editing. The underlying typed painting tool remains cached, and the desktop mode is exposed through `canvas.state.ui["painting.mode"]`.
+
+When loading older shortcut profiles, implicit defaults for these new selection tools yield to explicitly configured built-in or plugin bindings. For example, an existing custom M binding remains assigned and the unconfigured rectangular-marquee default becomes unbound. Explicitly configured conflicting bindings are still rejected. Portable builds append missing Toolbox contributions and core public-state schema properties without replacing existing customized definitions.
 
 ## Commands and automation
 

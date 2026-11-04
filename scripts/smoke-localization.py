@@ -88,6 +88,7 @@ def main():
             stored=json.loads(settings.read_text(encoding='utf-8-sig'))
             assert stored['ui']['language']==language and stored['custom']['keep']==42
             assert stored['keybindings']['file.save']==['Ctrl+F12']
+            call('toolbox.mode.selection_ellipse',{})
             call('workflow.open',{})
             time.sleep(.25)
             screenshot(f'{language}-workbench.png')

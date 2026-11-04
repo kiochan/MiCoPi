@@ -127,12 +127,23 @@ try {
     foreach ($action in $currentCore.actions | Where-Object { $_.output_schema }) {
         $existing = $coreConfig.actions | Where-Object { $_.id -eq $action.id }
         if ($existing -and !$existing.output_schema) { $existing | Add-Member -NotePropertyName output_schema -NotePropertyValue $action.output_schema }
+        elseif ($existing -and $existing.output_schema.type -eq 'object' -and $action.output_schema.type -eq 'object') {
+            # Add new public state ports without replacing customized schemas.
+            if (!$existing.output_schema.PSObject.Properties['properties']) {
+                $existing.output_schema | Add-Member -NotePropertyName properties -NotePropertyValue ([pscustomobject]@{})
+            }
+            foreach ($property in $action.output_schema.properties.PSObject.Properties) {
+                if (!$existing.output_schema.properties.PSObject.Properties[$property.Name]) {
+                    $existing.output_schema.properties | Add-Member -NotePropertyName $property.Name -NotePropertyValue $property.Value
+                }
+            }
+        }
     }
     foreach ($action in $currentCore.actions) {
         if (!($coreConfig.actions | Where-Object { $_.id -eq $action.id })) { $coreConfig.actions = @($coreConfig.actions) + @($action) }
     }
     $coreConfig | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $corePath -Encoding utf8
-    foreach ($systemPackage in @('workbench','workflows')) {
+    foreach ($systemPackage in @('workbench','workflows','toolbox')) {
         $installedManifest = Join-Path (Join-Path 'dist/plugins' $systemPackage) 'manifest.json'
         $systemConfig = Get-Content -LiteralPath $installedManifest -Raw | ConvertFrom-Json
         $currentSystem = Get-Content -LiteralPath (Join-Path (Join-Path 'plugins' $systemPackage) 'manifest.json') -Raw | ConvertFrom-Json

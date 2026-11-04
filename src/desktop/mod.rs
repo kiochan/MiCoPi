@@ -29,6 +29,8 @@ mod preferences;
 #[path = "../../plugins/replay/panel.rs"]
 mod replay;
 mod schema;
+#[path = "../../plugins/canvas/selection_gesture.rs"]
+mod selection_gesture;
 pub mod settings;
 mod shell;
 #[cfg(test)]
@@ -122,6 +124,8 @@ pub(super) struct Editor {
     headers: std::collections::HashMap<Panel, group_bar::HeaderLayout>,
     command_form: Option<plugin_commands::CommandForm>,
     area_mode: u8,
+    selection_gesture: Option<selection_gesture::Gesture>,
+    selection_combine: &'static str,
     area_tolerance: u32,
     area_radial: bool,
     area_contiguous: bool,
@@ -272,6 +276,8 @@ impl Editor {
             drawing: false,
             input_owned: false,
             area_mode: 0,
+            selection_gesture: None,
+            selection_combine: "replace",
             area_tolerance: 0,
             area_radial: false,
             area_contiguous: true,
@@ -354,6 +360,7 @@ impl Editor {
         self.settings.keys.ui_hint(id).unwrap_or_default()
     }
     fn finish_stroke(&mut self) {
+        self.selection_gesture = None;
         self.area_drag = None;
         self.area_target = None;
         self.session.finish_stroke();
@@ -385,6 +392,7 @@ impl Editor {
             .map_err(|e| e.to_string())
     }
     fn select_tool(&mut self, id: &str) {
+        self.selection_gesture = None;
         self.area_mode = 0;
         self.area_drag = None;
         self.push_gui_parameters();
@@ -743,11 +751,27 @@ impl Studio {
                         Some("brush") => Some(0),
                         Some("fill") => Some(1),
                         Some("gradient") => Some(2),
+                        Some("selection_rectangle") => Some(3),
+                        Some("selection_ellipse") => Some(4),
+                        Some("selection_lasso") => Some(5),
+                        Some("selection_polygon") => Some(6),
                         _ => None,
                     } {
                         self.editor.finish_stroke();
                         self.editor.select_tool("brush");
                         self.editor.area_mode = mode;
+                    }
+                }
+                Some("selection.combine") => {
+                    if let Some(mode) = match effect["value"].as_str() {
+                        Some("replace") => Some("replace"),
+                        Some("add") => Some("add"),
+                        Some("subtract") => Some("subtract"),
+                        Some("intersect") => Some("intersect"),
+                        _ => None,
+                    } {
+                        self.editor.finish_stroke();
+                        self.editor.selection_combine = mode;
                     }
                 }
                 Some("settings.search") => {

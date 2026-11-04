@@ -190,12 +190,13 @@ impl Editor {
         pen: bool,
         held: crate::ui::keymap::InputState,
         middle: bool,
+        mods: Modifiers,
     ) {
         self.push_gui_parameters();
         self.push_gui_view();
         let tool_override = if middle || held.pan {
             Some(Tool::Hand)
-        } else if held.pick {
+        } else if held.pick && self.area_mode < 3 {
             Some(Tool::Picker)
         } else if held.zoom || held.zoom_out {
             Some(Tool::Zoom)
@@ -203,6 +204,15 @@ impl Editor {
             None
         };
         let q = self.document_position(p);
+        if tool_override.is_some() && self.selection_gesture.is_some() {
+            self.finish_stroke();
+        }
+        if self.area_mode >= 3 {
+            self.pressure = pressure;
+        }
+        if tool_override.is_none() && self.selection_down(q, mods, time) {
+            return;
+        }
         if tool_override.is_none() && self.area_down(q) {
             return;
         }
@@ -233,6 +243,11 @@ impl Editor {
         }
     }
     fn move_pointer(&mut self, p: Pos2, pressure: f32, time: u32, pen: bool, constrain: bool) {
+        if self.selection_gesture.is_some() {
+            self.pressure = pressure;
+            self.selection_move(self.document_position(p), constrain);
+            return;
+        }
         if self.area_drag.is_some() {
             let q = self.document_position(p);
             let (start, end) = self.area_drag.as_mut().unwrap();
@@ -311,8 +326,16 @@ impl Editor {
         );
         let (events, mods, time) =
             ui.input(|i| (i.events.clone(), i.modifiers, (i.time * 1000.) as u32));
-        if self.area_drag.is_some() && ui.input(|i| i.key_pressed(Key::Escape)) {
+        if !self.selection_preview_valid() || (self.blocked && self.selection_gesture.is_some()) {
             self.finish_stroke();
+        }
+        if (self.area_drag.is_some() || self.selection_gesture.is_some())
+            && ui.input(|i| i.key_pressed(Key::Escape))
+        {
+            self.finish_stroke();
+        }
+        if self.polygon_pending() && ui.input(|i| i.key_pressed(Key::Enter)) {
+            self.selection_commit();
         }
         let held = self.settings.keys.held(commands::mod_bits(mods), |key| {
             ui.input(|i| commands::vk_to_key(key).is_some_and(|key| i.key_down(key)))
@@ -333,22 +356,30 @@ impl Editor {
             }
             match packet.phase {
                 PenPhase::Down if !self.blocked && on_canvas(p) => {
-                    self.finish_stroke();
+                    if !self.polygon_pending() {
+                        self.finish_stroke();
+                    }
                     self.pen_active = true;
-                    self.pointer_down(p, packet.pressure, packet.time, true, held, false);
+                    self.pointer_down(p, packet.pressure, packet.time, true, held, false, mods);
                 }
                 PenPhase::Move if self.pen_active => {
                     self.move_pointer(p, packet.pressure, packet.time, true, mods.shift)
                 }
+                PenPhase::Hover if self.polygon_pending() => {
+                    self.selection_move(self.document_position(p), mods.shift);
+                }
                 PenPhase::Up if self.pen_active => {
                     self.move_pointer(p, self.pressure, packet.time, true, mods.shift);
                     self.area_up();
-                    self.finish_stroke();
+                    self.selection_release();
+                    if !self.polygon_pending() {
+                        self.finish_stroke();
+                    }
                     self.pen_active = false;
                     self.pressure = 1.;
                 }
                 PenPhase::Cancel => {
-                    if self.input_owned {
+                    if self.input_owned || self.selection_gesture.is_some() {
                         self.finish_stroke();
                     }
                     self.pen_active = false;
@@ -378,13 +409,20 @@ impl Editor {
                                 false,
                                 held,
                                 button == PointerButton::Middle,
+                                mods,
                             );
                         } else if !pressed {
+                            if self.selection_gesture.is_some() {
+                                self.move_pointer(pos, 1., time, false, mods.shift);
+                                self.selection_release();
+                            }
                             if self.area_drag.is_some() {
                                 self.move_pointer(pos, 1., time, false, mods.shift);
                                 self.area_up();
                             }
-                            self.finish_stroke();
+                            if !self.polygon_pending() {
+                                self.finish_stroke();
+                            }
                         }
                     }
                     Event::PointerMoved(pos) => {
@@ -393,6 +431,16 @@ impl Editor {
                         self.move_pointer(pos, 1., time, false, mods.shift);
                     }
                     Event::WindowFocused(false) => self.finish_stroke(),
+                    Event::PointerGone
+                        if self.selection_gesture.is_some() && !self.polygon_pending() =>
+                    {
+                        self.finish_stroke()
+                    }
+                    Event::PointerButton {
+                        button: PointerButton::Secondary,
+                        pressed: true,
+                        ..
+                    } if self.selection_gesture.is_some() => self.finish_stroke(),
                     Event::MouseWheel {
                         delta, modifiers, ..
                     } if !self.blocked && response.hovered() => {
@@ -452,6 +500,7 @@ impl Editor {
             );
         }
         self.crop_outline(&painter, c.accent);
+        self.selection_preview(&painter);
         if let Some((_, texture)) = &self.selection_texture {
             painter.image(
                 texture.id(),

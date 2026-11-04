@@ -59,6 +59,15 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             Ok(json!({"path":path}))
         }
         Ui => {
+            let id = args["id"].as_str().unwrap();
+            let selection_tool = id == "selection.combine"
+                || (id == "painting.mode"
+                    && args["value"]
+                        .as_str()
+                        .is_some_and(|v| v.starts_with("selection_")));
+            if selection_tool && s.runtime != "desktop" {
+                return Err(ActionError::new("ui_unavailable","Selection gesture tools require the desktop; use selection.shape for headless editing"));
+            }
             if s.runtime == "desktop" && s.ui_effects.len() >= 128 {
                 return Err(ActionError::new(
                     "presentation_queue_full",
