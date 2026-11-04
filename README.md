@@ -2,13 +2,15 @@
 
 [English](README.md) · [简体中文](README.zh.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
-A small Rust painting application focused on responsive pen input and an extensible, AI-ready execution core.
+A small Rust painting studio for anime and manga illustrators, focused on responsive pen input and an extensible, AI-ready execution core.
 
 MiCoPi runs on **Windows 10/11 x64**. The desktop workbench uses **egui + egui_dock** with OpenGL; pen input uses Windows Ink. The project is in early development.
 
 **0.21.0:** [Atomic document groups](docs/atomic-operations.md) roll back failed batches and publish one compact event. MCRPLY02 adds metadata/XOR deltas and tile references while retaining v1 reading. [Verified event replay](docs/replay.md) records document operations, pressure input and plugin outcomes. Preview the drawing process, verify its SHA-256 chain, save history inside projects, or export a replay archive and PNG time-lapse frames. English is the default language, with Chinese, Japanese and Korean available.
 
 ![Painting workbench](docs/screenshots/workbench.png)
+
+The independent Tools bar and Canvas can float as native OS windows across monitors, dock on any side or form tab groups. Feature packages own their window contributions and UI source; every registered action is searchable and bindable. See [Plugin Windows](docs/plugin-windows.md).
 
 Connected or whole-layer color fill with tolerance and edge controls, linear/radial gradients with repeat and reflection and inline pressure dynamics are available in the Brush panel. See [Painting tools](docs/painting-tools.md).
 
@@ -29,7 +31,7 @@ Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadma
 - Dockable, floating and tabbed panels; configurable spacing, sizing, themes and shortcuts.
 - Searchable settings, JSON editing, command palette and shortcut recording.
 - Transparent PNG export, PNG/JPEG/BMP import and `.mcp` projects.
-- Non-destructive [image graphs](docs/node-editor.md) for filters and blending.
+- Non-destructive [image graphs](docs/node-editor.md) with linked layer stacks, per-layer filters and explicit free compositing.
 - [Plugin workflow graphs](docs/workflow-nodes.md) generated from action and state schemas.
 - Independent native DLL plugins, headless JSONL, MCP stdio and attachment to a running GUI.
 - [Atomic document groups](docs/atomic-operations.md), shared-tile rollback and compact verified events.

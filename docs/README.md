@@ -7,6 +7,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Philosophy](philosophy.md) | Why MiCoPi prioritizes painting, small native components and one execution core |
 | [Roadmap](../ROADMAP.md) | Priorities, milestone dependencies and acceptance criteria |
 | [User Guide](user-guide.md) | Drawing, pen input, settings, shortcuts and panels |
+| [Interface Design](interface-design.md) | Visual hierarchy, configurable spacing and layout behavior |
 | [Layer Editing](layer-editing.md) | Stable identities, structural edits, exact transforms and reference behavior |
 | [Painting Tools](painting-tools.md) | Pressure controls, connected fill, gradient gestures and performance limits |
 | [Atomic Operations](atomic-operations.md) | Rollback, plugin capabilities, contact commits and compact event storage |
@@ -20,6 +21,7 @@ The technical documentation is maintained in English. The project overview is al
 | Guide | Scope |
 | --- | --- |
 | [Plugins and Actions](plugins-and-actions.md) | Packages, manifests, JSONL, MCP and GUI attachment |
+| [Plugin Windows](plugin-windows.md) | Independent control bar, canvas, feature adapters and registered layout commands |
 | [Native Plugins](native-plugins.md) | DLL lifecycle, C ABI, borrowed pixels and independent builds |
 | [AI Pipeline](ai-pipeline.md) | Discovery, public state, validated execution and partial failures |
 | [Image Nodes](node-editor.md) | Non-destructive filters and layer blending |

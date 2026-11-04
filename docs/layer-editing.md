@@ -34,7 +34,9 @@ Example JSONL (IDs here belong to a freshly created document):
 {"action":"layer.translate","args":{"dx":12,"dy":-8}}
 ```
 
-Image-node sources keep referring to the same layer when another layer is inserted, moved or removed. Deleting a referenced layer is rejected; remove or retarget its source node first. The final layer cannot be deleted. Existing limits remain 16 layers, 4096 pixels per side, 64 Mi pixels across a document and a 64 MiB undo budget. Names must be nonblank, single-line and at most 512 UTF-8 bytes.
+New documents use a linked image stack: inserting, duplicating, moving and deleting layers updates the applied composition chain. Filters follow stable identities and duplication copies the source layer's filters. Graph and layer blend modes stay synchronized. In legacy/free graphs, image sources keep referring to the same layer after structural edits, but explicit wiring retains its own order and new layers must be connected manually. Deleting a free-graph referenced layer is rejected; remove or retarget its source node first. See [Image Node Editor](node-editor.md).
+
+The final layer cannot be deleted. Existing limits remain 16 layers, 4096 pixels per side, 64 Mi pixels across a document and a 64 MiB undo budget. Linked structural edits also respect the 64-node graph limit. Names must be nonblank, single-line and at most 512 UTF-8 bytes.
 
 ## Scope and verification
 

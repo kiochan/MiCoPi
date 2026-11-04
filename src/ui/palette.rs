@@ -1,5 +1,7 @@
 //! Search and selection state shared by the command palette and shortcut editor.
-use super::keymap::{Keymap, Kind, COMMANDS};
+#[cfg(test)]
+use super::keymap::COMMANDS;
+use super::keymap::{Keymap, Kind};
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Commands,
@@ -92,7 +94,7 @@ impl Palette {
             .to_lowercase();
         let tokens: Vec<_> = q.split_whitespace().collect();
         let mut scored = vec![];
-        for (i, c) in COMMANDS.iter().enumerate() {
+        for (i, c) in map.commands().enumerate() {
             if self.mode == Mode::Commands && !matches!(c.kind, Kind::Press(_)) {
                 continue;
             }

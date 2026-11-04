@@ -4,7 +4,11 @@ impl Studio {
     pub(super) fn draw_shell(&mut self, ctx: &Context) {
         let a = self.editor.settings.ui.clone();
         let c = theme::Colors::new(&a);
+        let edge = ctx
+            .data(|d| d.get_temp::<f32>(Id::new("workspace-card-left")))
+            .unwrap_or(a.outer_padding);
         TopBottomPanel::top("title")
+            .show_separator_line(false)
             .exact_height(a.title_height + a.outer_padding)
             .frame(Frame::new().fill(c.background).inner_margin(Margin {
                 left: a.outer_padding as i8,
@@ -19,23 +23,22 @@ impl Studio {
                     ctx.send_viewport_cmd(ViewportCommand::StartDrag);
                 }
                 if drag.double_clicked() {
-                    ctx.send_viewport_cmd(ViewportCommand::Maximized(
-                        !ctx.input(|i| i.viewport().maximized.unwrap_or(false)),
-                    ));
+                    self.editor.core(if ctx.input(|i|i.viewport().maximized.unwrap_or(false)) {"application.restore"} else {"application.maximize"},serde_json::json!({}));
                 }
                 let center_y = r.center().y;
-                ui.painter()
-                    .circle_filled(pos2(r.left() + 18., center_y), 12., c.accent);
+                // Brand mark: lavender to peach, like ink catching warm light.
+                let mark = Rect::from_min_size(pos2(edge, center_y - 13.), Vec2::splat(26.));
+                theme::gradient_rect(ui.painter(), mark, 8., c.accent, c.blush);
                 ui.painter().text(
-                    pos2(r.left() + 18., center_y),
+                    mark.center() + vec2(0., -0.5),
                     Align2::CENTER_CENTER,
                     localize("M"),
-                    FontId::proportional(15.),
-                    c.background,
+                    theme::strong(ctx, 14.),
+                    Color32::WHITE,
                 );
                 let menu = Rect::from_min_max(
-                    pos2(r.left() + 46., r.top()),
-                    pos2(r.left() + 340., r.bottom()),
+                    pos2(edge + 38., r.top()),
+                    pos2(edge + 382., r.bottom()),
                 );
                 ui.scope_builder(
                     UiBuilder::new()
@@ -129,6 +132,18 @@ impl Studio {
                                     }
                                 });
                             }
+                            ui.menu_button(tr("Windows"), |ui| {
+                                let panels:Vec<_>=self.editor.session.registry.panels.values().cloned().collect();
+                                for panel in panels {
+                                    ui.menu_button(tr(&panel.title), |ui| {
+                                        for (operation,label) in [("show","Show Window"),("float","Float Window"),("hide","Hide Window")] {
+                                            if ui.button(tr(label)).clicked() {
+                                                self.editor.core("window.command",serde_json::json!({"panel":panel.id,"operation":operation})); ui.close();
+                                            }
+                                        }
+                                    });
+                                }
+                            });
                         });
                     },
                 );
@@ -159,13 +174,12 @@ impl Studio {
                         )
                         .on_hover_text(tr(hint));
                     if response.clicked() {
-                        ctx.send_viewport_cmd(match index {
-                            0 => ViewportCommand::Minimized(true),
-                            1 => ViewportCommand::Maximized(
-                                !ctx.input(|i| i.viewport().maximized.unwrap_or(false)),
-                            ),
-                            _ => ViewportCommand::Close,
-                        });
+                        let command=match index {
+                            0=>"application.minimize",
+                            1=>if ctx.input(|i|i.viewport().maximized.unwrap_or(false)) {"application.restore"} else {"application.maximize"},
+                            _=>"application.close",
+                        };
+                        self.editor.core(command,serde_json::json!({}));
                     }
                 }
                 let width = (r.width() - 580.).clamp(180., 400.);
@@ -177,19 +191,12 @@ impl Studio {
                 let response = ui
                     .interact(search, ui.id().with("command-center"), Sense::click())
                     .on_hover_text(tr("Search Commands, Tools and Settings"));
-                ui.painter().rect_filled(
+                let pill = search.height() * 0.5;
+                ui.painter().rect(
                     search,
-                    a.corner_radius,
-                    if response.hovered() {
-                        c.raised
-                    } else {
-                        c.panel
-                    },
-                );
-                ui.painter().rect_stroke(
-                    search,
-                    a.corner_radius,
-                    Stroke::new(1., c.border),
+                    pill,
+                    if response.hovered() { c.raised } else { c.panel },
+                    Stroke::new(1., if response.hovered() { c.tint(0.45) } else { c.border.gamma_multiply(if c.dark { 0.7 } else { 1. }) }),
                     StrokeKind::Inside,
                 );
                 ui.painter().text(
@@ -202,7 +209,7 @@ impl Studio {
                 ui.painter().text(
                     pos2(search.left() + 34., center_y),
                     Align2::LEFT_CENTER,
-                    localize("Search Commands…"),
+                    localize("Find Tools and Commands…"),
                     FontId::proportional(a.small_font_size),
                     c.muted,
                 );
@@ -214,218 +221,16 @@ impl Studio {
                                 search.max,
                             ))
                             .layout(Layout::left_to_right(Align::Center)),
-                        |ui| theme::keycaps(ui, &self.editor.label(95)),
+                        |ui| {
+                            ui.visuals_mut().faint_bg_color = Color32::TRANSPARENT;
+                            ui.visuals_mut().widgets.noninteractive.bg_stroke = Stroke::NONE;
+                            theme::keycaps(ui, &self.editor.label(95));
+                        },
                     );
                 }
                 if response.clicked() {
                     self.editor.open_palette(Mode::Commands);
                 }
-            });
-        TopBottomPanel::top("toolbar")
-            .exact_height(a.toolbar_height + a.outer_padding)
-            .frame(
-                Frame::new()
-                    .fill(c.background)
-                    .inner_margin(Margin::symmetric(a.outer_padding as i8, 0)),
-            )
-            .show(ctx, |ui| {
-                Frame::new()
-                    .fill(c.panel)
-                    .corner_radius(a.corner_radius)
-                    .inner_margin(Margin::symmetric(
-                        a.panel_padding as i8,
-                        ((a.toolbar_height - a.control_height) / 2.) as i8,
-                    ))
-                    .show(ui, |ui| {
-                        ui.set_min_width(ui.available_width());
-                        ui.horizontal(|ui| {
-                            for (id, tool) in [
-                                (10, Tool::Brush),
-                                (11, Tool::Eraser),
-                                (12, Tool::Picker),
-                                (13, Tool::Hand),
-                                (14, Tool::Zoom),
-                            ] {
-                                if panels::icon_button(
-                                    ui,
-                                    &self.editor,
-                                    id,
-                                    self.editor.tool == tool,
-                                )
-                                .clicked()
-                                {
-                                    self.editor.finish_stroke();
-                                    self.editor.select_tool(match tool {
-                                        Tool::Brush => "brush",
-                                        Tool::Eraser => "eraser",
-                                        Tool::Picker => "picker",
-                                        Tool::Hand => "hand",
-                                        Tool::Zoom => "zoom",
-                                    });
-                                }
-                            }
-                            ui.separator();
-                            if ui.available_width() > 540. {
-                                ui.weak(tr("Size"));
-                                let mut diameter = self.editor.radius * 2.;
-                                if ui
-                                    .add(
-                                        DragValue::new(&mut diameter)
-                                            .range(1.0..=400.)
-                                            .speed(0.5)
-                                            .suffix(" px"),
-                                    )
-                                    .changed()
-                                {
-                                    self.editor.radius = diameter / 2.;
-                                }
-                                ui.add_space(a.item_spacing);
-                                ui.weak(tr(format!(
-                                    "Stabilizer {:.0}%",
-                                    self.editor.workspace.stabilizer * 100.
-                                )));
-                            }
-                            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                if ui
-                                    .add(
-                                        Button::new(tr(RichText::new(localize("Export PNG"))
-                                            .color(if a.theme == "graphite" {
-                                                Color32::from_rgb(20, 30, 35)
-                                            } else {
-                                                Color32::WHITE
-                                            })))
-                                        .fill(c.accent)
-                                        .min_size(vec2(94., a.control_height)),
-                                    )
-                                    .clicked()
-                                {
-                                    self.editor.actions.push(Action::Export);
-                                }
-                                ui.separator();
-                                if ui
-                                    .add_sized([42., a.control_height], Button::new(tr("1:1")))
-                                    .on_hover_text(tr(self.editor.hint(41)))
-                                    .clicked()
-                                {
-                                    self.editor.actions.push(Action::ActualPixels);
-                                }
-                                if panels::icon_button(ui, &self.editor, 40, false).clicked() {
-                                    self.editor.actions.push(Action::Fit);
-                                }
-                                ui.label(tr(RichText::new(localize(format!(
-                                    "{:.0}%",
-                                    self.editor.zoom * 100.
-                                )))
-                                .small()));
-                                if panels::icon_button(ui, &self.editor, 85, false).clicked() {
-                                    self.editor.actions.push(Action::ZoomIn);
-                                }
-                                if panels::icon_button(ui, &self.editor, 86, false).clicked() {
-                                    self.editor.actions.push(Action::ZoomOut);
-                                }
-                            });
-                        });
-                    });
-            });
-        TopBottomPanel::bottom("status")
-            .exact_height(24. + a.outer_padding)
-            .frame(Frame::new().fill(c.background).inner_margin(Margin {
-                left: 16,
-                right: 16,
-                top: 0,
-                bottom: a.outer_padding as i8,
-            }))
-            .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    let status = if self.editor.pen_active {
-                        format!("Windows Ink · Pressure {:.0}%", self.editor.pressure * 100.)
-                    } else {
-                        self.editor.status.clone()
-                    };
-                    ui.allocate_ui_with_layout(
-                        vec2(ui.available_width() - 330., 24.),
-                        Layout::left_to_right(Align::Center),
-                        |ui| {
-                            ui.add(
-                                Label::new(tr(RichText::new(localize(status))
-                                    .small()
-                                    .color(c.muted)))
-                                .truncate(),
-                            );
-                        },
-                    );
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        ui.label(tr(RichText::new(localize(format!(
-                            "{} × {} px   ·   {:.1}%   ·   History {:.1} MB",
-                            self.editor.session.doc.width,
-                            self.editor.session.doc.height,
-                            self.editor.zoom * 100.,
-                            self.editor.session.doc.history_bytes() as f64 / 1048576.
-                        )))
-                        .small()
-                        .color(c.muted)));
-                    });
-                });
-            });
-        SidePanel::left("activity")
-            .exact_width(48. + a.outer_padding)
-            .resizable(false)
-            .frame(Frame::new().fill(c.background).inner_margin(Margin {
-                left: a.outer_padding as i8,
-                right: 0,
-                top: a.outer_padding as i8,
-                bottom: a.outer_padding as i8,
-            }))
-            .show(ctx, |ui| {
-                ui.vertical_centered(|ui| {
-                    for panel in [Panel::Color, Panel::Brush, Panel::Layers, Panel::Nodes] {
-                        if !self.panel_available(panel) {
-                            continue;
-                        }
-                        if ui
-                            .add_sized(
-                                [40., 40.],
-                                Button::new(tr(theme::icon(panel.icon(), 24.))).frame(false),
-                            )
-                            .on_hover_text(tr(panel.title()))
-                            .clicked()
-                        {
-                            self.focus_panel(panel);
-                        }
-                    }
-                    if ui
-                        .add_sized(
-                            [40., 40.],
-                            Button::new(tr(theme::icon('\u{ef7a}', 24.))).frame(false),
-                        )
-                        .on_hover_text(tr("Command Palette"))
-                        .clicked()
-                    {
-                        self.editor.open_palette(Mode::Commands);
-                    }
-                    ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
-                        if ui
-                            .add_sized(
-                                [40., 40.],
-                                Button::new(tr(theme::icon('\u{e8b8}', 24.))).frame(false),
-                            )
-                            .on_hover_text(tr("Settings · Ctrl+Comma"))
-                            .clicked()
-                        {
-                            self.editor.actions.push(Action::Preferences);
-                        }
-                        if ui
-                            .add_sized(
-                                [40., 40.],
-                                Button::new(tr(theme::icon('\u{e312}', 24.))).frame(false),
-                            )
-                            .on_hover_text(tr("Keyboard Shortcuts"))
-                            .clicked()
-                        {
-                            self.editor.actions.push(Action::ShowShortcuts);
-                        }
-                    });
-                });
             });
     }
     pub(super) fn new_document_window(&mut self, ctx: &Context) {

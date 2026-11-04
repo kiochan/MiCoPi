@@ -1,0 +1,15 @@
+{
+  "api_version": 1,
+  "id": "canvas",
+  "name": "Canvas window",
+  "requires": [
+    "workbench"
+  ],
+  "panels": [
+    {
+      "id": "canvas",
+      "title": "Canvas",
+      "builtin": "canvas"
+    }
+  ]
+}

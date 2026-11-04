@@ -1,0 +1,15 @@
+{
+  "api_version": 1,
+  "id": "navigator",
+  "name": "Navigator window",
+  "requires": [
+    "workbench"
+  ],
+  "panels": [
+    {
+      "id": "navigator",
+      "title": "Navigator",
+      "builtin": "navigator"
+    }
+  ]
+}

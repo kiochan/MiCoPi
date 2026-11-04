@@ -7,6 +7,10 @@ pub(super) fn studio() -> Studio {
     editor.workspace = Workspace::default();
     let applied = editor.settings.ui.clone();
     Studio {
+        pending_group_drag: None,
+        window_capture_results: Default::default(),
+        pending_window_captures: Default::default(),
+        native_windows: Default::default(),
         replay: replay::ReplayWindow::default(),
         action_server: None,
         from_core_ui: false,
@@ -178,7 +182,12 @@ fn workbench_keeps_a_visible_canvas_across_sizes_themes_and_density() {
             size,
             app.editor.canvas
         );
-        assert!(app.editor.canvas.height() > 350.);
+        assert!(
+            app.editor.canvas.height() > 350.,
+            "{size:?}: {:?}, dock={}",
+            app.editor.canvas,
+            encode_dock(&app.dock).unwrap()
+        );
         assert!(Rect::from_min_size(Pos2::ZERO, size).contains_rect(app.editor.canvas));
         app.settings_open = true;
         let _ = frame(&mut app, &ctx, size, vec![], 10. + index as f64);
@@ -797,4 +806,52 @@ fn settings_center_search_json_preview_cancel_and_shortcut_entry_share_one_windo
             }
         }
     }
+}
+#[test]
+fn zoom_strip_sits_below_the_stage_and_zooms_the_view() {
+    let mut app = studio();
+    let ctx = Context::default();
+    let size = vec2(1360., 920.);
+    for t in 0..3 {
+        frame(&mut app, &ctx, size, vec![], t as f64);
+    }
+    let a = app.editor.settings.ui.clone();
+    let canvas = app.editor.canvas;
+    let strip_height = (a.control_height + 2.).round();
+    let inner = Rect::from_min_size(
+        pos2(canvas.left(), canvas.bottom()),
+        vec2(canvas.width(), strip_height),
+    )
+    .shrink2(vec2(a.panel_padding * 0.5, 3.));
+    // The zoom-in button sits just left of the percentage field.
+    let p = pos2(
+        inner.right() - 58. - 2. - (inner.height() + 2.) * 0.5,
+        inner.center().y,
+    );
+    let before = app.editor.zoom;
+    for (i, pressed) in [true, false].into_iter().enumerate() {
+        frame(
+            &mut app,
+            &ctx,
+            size,
+            vec![
+                Event::PointerMoved(p),
+                Event::PointerButton {
+                    pos: p,
+                    button: PointerButton::Primary,
+                    pressed,
+                    modifiers: Modifiers::NONE,
+                },
+            ],
+            4. + i as f64 * 0.1,
+        );
+    }
+    frame(&mut app, &ctx, size, vec![], 5.);
+    assert!(!app.editor.fit);
+    assert!(
+        (app.editor.zoom / before - 1.25).abs() < 0.01,
+        "{before} -> {}",
+        app.editor.zoom
+    );
+    assert_eq!(app.editor.canvas.bottom(), canvas.bottom());
 }

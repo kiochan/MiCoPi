@@ -19,6 +19,8 @@ mod editing_tests;
 #[cfg(test)]
 mod graph_tests;
 #[cfg(test)]
+mod linked_graph_tests;
+#[cfg(test)]
 mod pipeline_tests;
 #[cfg(test)]
 mod replay_tests;

@@ -12,6 +12,40 @@
 
 - Add whole-layer seed-color matching alongside connected fill, with no visited bitmap in the whole-layer path.
 - Add repeated/reflected gradients, endpoint reversal, a transparent endpoint control and Shift-constrained gradient gestures; retain existing action defaults, atomic rollback and outcome replay.
+- Tighten default spacing for a denser workbench: 4 pt item gaps, 8 pt panel padding, 6 pt workspace edges, 26 pt controls and 30 pt tab rows; the Compact preset goes further.
+- Move canvas zoom from the top toolbar into a thin strip beneath the stage with a logarithmic slider and an editable percentage field; remove the workspace status bar and show status, pen pressure, document size and history memory in that strip.
+- Replace rounded tab capsules with browser-style tabs: the active tab shares the panel surface and flares into it, while resting tabs are labels separated by thin dividers.
+- Set group tab rows apart from panel content with a tinted band and hairline divider; show rounded grab handles on splitters that highlight while hovered or dragged.
+- Present panels as rounded floating cards with hairline outlines and soft shadows; the canvas sits on a recessed stage with a layered paper shadow.
+- Deepen theme palettes, add a lavender-to-peach brand mark, Segoe UI text with semibold titles and active tabs, hover-revealed group chrome, a pill command search and an accent marker on the active layer.
+
+- Shape the workbench for anime and manga illustrators with muted plum/paper/ivory themes, lavender accents, rounded tab capsules and a compact tool tray.
+- Give brush presets lightweight tapered vector previews and selection feedback; soften title-row command search and move history memory details into the status tooltip.
+
+- Refine the workbench with neutral themes, quiet icon controls, padded underline tabs, lighter panel boundaries and compact default metrics.
+- Align property labels and numeric fields, consolidate layer actions, reduce canvas toolbar weight and bound swatch sizes without leaking local spacing.
+
+- Unify docked and native panel headers into one row with a group grip, scrollable/reorderable tabs, maximize/restore and close-group controls; remove duplicate floating title bars.
+- Add leaf-scoped group commands and observable header geometry, preserving sibling groups when detaching or closing tabs.
+
+- Dock complete native panel groups by dragging their title bars back onto workspace guides, with split/tab previews, destination hints and Escape cancellation.
+- Route native releases and desktop-point automation through shared group hit testing; preserve nested layouts, pen input, replay verification and resize stability.
+
+- Keep native palettes above the application with a main-window/canvas/palette ownership chain instead of system-wide topmost flags.
+- Add whole-group float, hide, dock and tab-merge commands; preserve active tabs, order and nested split topology, with tab double-click and a visible group drag title.
+- Separate explicit viewport placement from observed OS geometry to prevent resize/DPI feedback; defer layout commits until native sizing ends.
+
+- Render floating plugin surfaces as independent native OS viewports with shared themes/textures, monitor placement, stable panel commands and persisted normal geometry.
+- Route Windows Ink through per-HWND bounded queues with viewport-specific DPI conversion; preserve pressure, stabilization, focus cancellation and verified outcomes.
+- Expose native window observations and registered minimize/maximize/restore commands; verify top-level HWNDs, independent movement, native mouse drawing and restart persistence.
+
+- Replace the left control area with an independent Tools bar and movable Canvas window; share dock/float/tab/hide/show commands across registered feature windows.
+- Move feature UI adapters into plugin packages, separate workflow and compositing windows, and expose every action in command search and configurable shortcuts.
+- Coalesce workspace gestures into registered layout commands, preserve legacy layouts with a backup, and verify fractional window metadata without JSON precision drift.
+
+- Make new documents use linked layer compositing: graph branches follow layer insertion, duplication, reorder and deletion; per-layer filters retain identity and copy with their layer.
+- Synchronize linked blend-node modes with layer properties, apply opacity once, protect stack wiring and provide connected plugin filter insertion/removal, source controls and automatic clean-view refresh.
+- Preserve legacy/free graph semantics with an explicit advanced mode; validate linked topology, retain atomic undo/replay contracts and keep unfiltered stacks on the existing fast path.
 
 - Add dab spacing and minimum pressure opacity in the Brush panel and persistent Painting settings. Freeze typed options at DOWN through an optional extension while preserving default pixels and legacy recording hashes.
 - Reject custom options explicitly for DLLs without the extension, retaining existing tool tables and default compatibility.

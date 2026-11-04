@@ -1,8 +1,5 @@
 use super::*;
-use crate::{
-    configuration::PaintingPreferences,
-    ui::keymap::{Chord, COMMANDS},
-};
+use crate::{configuration::PaintingPreferences, ui::keymap::Chord};
 
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 pub(super) enum Category {
@@ -183,12 +180,20 @@ const SETTINGS: &[Setting] = &[
         28.
     ),
     metric!(
-        "ui.left_panel_width",
-        "Default Left Panel Width",
-        "Used for the default layout; custom layouts are saved separately.",
+        "ui.toolbox_width",
+        "Floating Toolbox Width",
+        "Default width when floating the independent control bar.",
         Layout,
         200.,
-        440.
+        1200.
+    ),
+    metric!(
+        "ui.toolbox_height",
+        "Toolbox Height",
+        "Default height of the independent control bar.",
+        Layout,
+        80.,
+        200.
     ),
     metric!(
         "ui.right_panel_width",
@@ -803,7 +808,8 @@ fn category_buttons(ui: &mut Ui, prefs: &mut Preferences) {
 fn keybindings(ui: &mut Ui, ctx: &Context, prefs: &mut Preferences, draft: &mut Settings) -> usize {
     let defaults = Keymap::default();
     let mut count = 0;
-    for (index, command) in COMMANDS.iter().enumerate() {
+    let commands = draft.keys.clone();
+    for (index, command) in commands.commands().enumerate() {
         let current = draft.keys.label(index);
         let modified = current != defaults.label(index);
         if !matches(

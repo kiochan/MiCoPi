@@ -22,6 +22,8 @@ pub struct Appearance {
     pub corner_radius: f32,
     pub icon_size: f32,
     pub left_panel_width: f32,
+    pub toolbox_width: f32,
+    pub toolbox_height: f32,
     pub right_panel_width: f32,
     pub canvas_margin: f32,
     pub accent: String,
@@ -31,33 +33,36 @@ impl Default for Appearance {
         Self {
             language: crate::i18n::Language::English,
             theme: "graphite".into(),
-            font_size: 14.,
+            font_size: 13.,
             small_font_size: 12.,
-            item_spacing: 8.,
-            section_spacing: 16.,
-            panel_padding: 12.,
-            outer_padding: 8.,
-            control_height: 30.,
-            title_height: 40.,
-            toolbar_height: 40.,
-            tab_height: 34.,
-            corner_radius: 5.,
-            icon_size: 20.,
+            item_spacing: 4.,
+            section_spacing: 12.,
+            panel_padding: 8.,
+            outer_padding: 6.,
+            control_height: 26.,
+            title_height: 36.,
+            toolbar_height: 34.,
+            tab_height: 30.,
+            corner_radius: 8.,
+            icon_size: 18.,
             left_panel_width: 244.,
-            right_panel_width: 252.,
-            canvas_margin: 32.,
-            accent: "#76C7BA".into(),
+            toolbox_width: 720.,
+            toolbox_height: 80.,
+            right_panel_width: 272.,
+            canvas_margin: 24.,
+            accent: "#B8A2E4".into(),
         }
     }
 }
 impl Appearance {
     pub fn compact(&mut self) {
-        self.item_spacing = 6.;
-        self.section_spacing = 12.;
-        self.panel_padding = 10.;
-        self.control_height = 26.;
-        self.toolbar_height = 36.;
-        self.tab_height = 30.;
+        self.item_spacing = 4.;
+        self.section_spacing = 8.;
+        self.panel_padding = 6.;
+        self.outer_padding = 4.;
+        self.control_height = 24.;
+        self.toolbar_height = 32.;
+        self.tab_height = 28.;
     }
     pub fn validate(&self) -> Result<(), String> {
         for (name, value, low, high) in [
@@ -74,6 +79,8 @@ impl Appearance {
             ("corner_radius", self.corner_radius, 0., 12.),
             ("icon_size", self.icon_size, 16., 28.),
             ("left_panel_width", self.left_panel_width, 200., 440.),
+            ("toolbox_width", self.toolbox_width, 200., 1200.),
+            ("toolbox_height", self.toolbox_height, 80., 200.),
             ("right_panel_width", self.right_panel_width, 200., 440.),
             ("canvas_margin", self.canvas_margin, 8., 96.),
         ] {

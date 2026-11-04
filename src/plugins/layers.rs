@@ -38,7 +38,9 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             }
             s.finish_stroke();
             let count = s.doc.layers.len();
-            s.doc.add_layer();
+            s.doc
+                .try_add_layer()
+                .map_err(|e| ActionError::new("layer_limit", e))?;
             if s.doc.layers.len() == count {
                 return Err(ActionError::new(
                     "layer_limit",

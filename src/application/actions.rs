@@ -104,6 +104,11 @@ pub enum Operation {
     Pick,
     View,
     Ui,
+    WindowCommand,
+    WindowState,
+    WindowLayout,
+    WindowCapture,
+    WindowDrop,
     Plugins,
     Events,
 }
@@ -221,6 +226,19 @@ impl Operation {
                 vec![],
             ),
             Self::Ui => (json!({"id":{"type":"string"},"value":{}}), vec!["id"]),
+            Self::WindowDrop => (
+                json!({"panel":{"type":"string"},"target":{"type":"string"},"x":{"type":"integer","minimum":-100000,"maximum":100000},"y":{"type":"integer","minimum":-100000,"maximum":100000}}),
+                vec!["panel", "x", "y"],
+            ),
+            Self::WindowCapture => (
+                json!({"panel":{"type":"string"},"path":{"type":"string"}}),
+                vec!["panel", "path"],
+            ),
+            Self::WindowLayout => (json!({"layout":{"type":"object"}}), vec!["layout"]),
+            Self::WindowCommand => (
+                json!({"panel":{"type":"string"},"scope":{"type":"string","enum":["panel","group","tabs"]},"drag":{"type":"boolean"},"index":{"type":"integer","minimum":0,"maximum":127},"operation":{"type":"string","enum":["show","hide","focus","float","dock_left","dock_right","dock_top","dock_bottom","tab","minimize","maximize","restore"]},"target":{"type":"string"},"fraction":{"type":"number","minimum":0.05,"maximum":0.95},"x":{"type":"number","minimum":-100000,"maximum":100000},"y":{"type":"number","minimum":-100000,"maximum":100000},"width":{"type":"number","minimum":48,"maximum":10000},"height":{"type":"number","minimum":48,"maximum":10000}}),
+                vec!["panel", "operation"],
+            ),
             Self::Events => (json!({"after":{"type":"integer","minimum":0}}), vec![]),
             _ => (json!({}), vec![]),
         };
@@ -249,6 +267,7 @@ impl Operation {
                 | Self::Events
                 | Self::Render
                 | Self::SettingsRead
+                | Self::WindowState
         )
     }
 }

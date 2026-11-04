@@ -2,6 +2,160 @@ use super::*;
 use crate::{platform::windows::desktop_bridge::PenPhase, ui::keymap::Wheel};
 
 impl Editor {
+    /// Zoom out, a logarithmic slider, zoom in and an editable percentage, with
+    /// fit and actual-pixels shortcuts; export and document size sit on the left.
+    fn zoom_strip(&mut self, ui: &mut Ui, strip: Rect, c: &theme::Colors) {
+        if strip.height() < 8. {
+            return;
+        }
+        let a = self.settings.ui.clone();
+        let card = theme::card_radius(&a);
+        ui.painter().rect_filled(
+            strip,
+            CornerRadius {
+                nw: 0,
+                ne: 0,
+                sw: card,
+                se: card,
+            },
+            c.panel,
+        );
+        ui.painter().hline(
+            strip.x_range(),
+            strip.top() + 0.5,
+            Stroke::new(1., c.border.gamma_multiply(if c.dark { 0.8 } else { 1. })),
+        );
+        let inner = strip.shrink2(vec2(a.panel_padding * 0.5, 3.));
+        let mut zoom = self.zoom;
+        let mut fit = false;
+        let mut actual = false;
+        let mut export = false;
+        ui.scope_builder(
+            UiBuilder::new()
+                .max_rect(inner)
+                .layout(Layout::left_to_right(Align::Center)),
+            |ui| {
+                ui.spacing_mut().item_spacing.x = 2.;
+                ui.spacing_mut().interact_size.y = inner.height();
+                ui.spacing_mut().button_padding = vec2(6., 0.);
+                let small = |ui: &mut Ui, editor: &Editor, id: u32| {
+                    let hint = editor.hint(id);
+                    let keys = editor.label(id);
+                    ui.add_sized(
+                        [inner.height() + 2., inner.height()],
+                        Button::new(tr(theme::icon(theme::action_icon(id), 16.)))
+                            .frame_when_inactive(false),
+                    )
+                    .on_hover_ui(|ui| {
+                        ui.label(tr(hint.split("  ").next().unwrap_or(&hint)));
+                        theme::keycaps(ui, &keys);
+                    })
+                };
+                export = small(ui, self, 4).clicked();
+                ui.add_space(6.);
+                // The workspace has no separate status bar; status, pen pressure,
+                // document size and history memory live here beside export.
+                let slider = if inner.width() > 300. {
+                    (inner.width() * 0.22).clamp(80., 180.)
+                } else {
+                    0.
+                };
+                let controls = 58. + (inner.height() + 2.) * 4. + 32. + 13. + slider + 32.;
+                let room = (ui.available_width() - controls).max(0.);
+                if room > 24. {
+                    let status = if self.pen_active {
+                        format!("Windows Ink · Pressure {:.0}%", self.pressure * 100.)
+                    } else {
+                        self.status.clone()
+                    };
+                    let details = format!(
+                        "{} × {} px · History {:.1} MB",
+                        self.session.doc.width,
+                        self.session.doc.height,
+                        self.session.doc.history_bytes() as f64 / 1048576.
+                    );
+                    ui.allocate_ui_with_layout(
+                        vec2(room, inner.height()),
+                        Layout::left_to_right(Align::Center),
+                        |ui| {
+                            let (dot, _) = ui.allocate_exact_size(vec2(10., 8.), Sense::hover());
+                            ui.painter().circle_filled(
+                                pos2(dot.left() + 3., dot.center().y),
+                                3.,
+                                if self.pen_active { c.blush } else { c.accent },
+                            );
+                            ui.add(
+                                Label::new(tr(RichText::new(localize(status))
+                                    .small()
+                                    .color(c.muted)))
+                                .truncate(),
+                            )
+                            .on_hover_text(tr(details));
+                        },
+                    );
+                }
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    let mut percent = zoom * 100.;
+                    let field = ui
+                        .add_sized(
+                            [58., inner.height()],
+                            DragValue::new(&mut percent)
+                                .range(2. ..=3200.)
+                                .speed(1.)
+                                .fixed_decimals(0)
+                                .suffix("%"),
+                        )
+                        .on_hover_text(tr("Zoom"));
+                    if field.changed() {
+                        zoom = percent / 100.;
+                    }
+                    if small(ui, self, 85).clicked() {
+                        zoom *= 1.25;
+                    }
+                    if inner.width() > 300. {
+                        ui.spacing_mut().slider_width = (inner.width() * 0.22).clamp(80., 180.);
+                        // The knob scales with the row height; keep it small in the thin strip.
+                        ui.spacing_mut().interact_size.y = 14.;
+                        ui.add(
+                            Slider::new(&mut zoom, 0.02..=32.)
+                                .logarithmic(true)
+                                .show_value(false),
+                        )
+                        .on_hover_text(tr("Zoom"));
+                    }
+                    ui.spacing_mut().interact_size.y = inner.height();
+                    if small(ui, self, 86).clicked() {
+                        zoom /= 1.25;
+                    }
+                    ui.add_space(6.);
+                    let (line, _) =
+                        ui.allocate_exact_size(vec2(1., inner.height() * 0.6), Sense::hover());
+                    ui.painter()
+                        .vline(line.center().x, line.y_range(), Stroke::new(1., c.border));
+                    ui.add_space(6.);
+                    actual = ui
+                        .add_sized(
+                            [32., inner.height()],
+                            Button::new(tr(RichText::new(localize("1:1")).small()))
+                                .frame_when_inactive(false),
+                        )
+                        .on_hover_text(tr(self.hint(41)))
+                        .clicked();
+                    fit = small(ui, self, 40).clicked();
+                });
+            },
+        );
+        if export {
+            self.actions.push(Action::Export);
+        }
+        if fit {
+            self.actions.push(Action::Fit);
+        } else if actual {
+            self.actions.push(Action::ActualPixels);
+        } else if (zoom - self.zoom).abs() > f32::EPSILON * self.zoom.max(1.) {
+            self.zoom_at(self.canvas.center(), zoom.clamp(0.02, 32.) / self.zoom);
+        }
+    }
     pub(super) fn document_position(&self, p: Pos2) -> Pos2 {
         pos2(
             (p.x - self.image_rect.left()) / self.zoom,
@@ -9,6 +163,9 @@ impl Editor {
         )
     }
     pub(super) fn zoom_at(&mut self, p: Pos2, factor: f32) {
+        if !self.canvas.is_positive() {
+            return;
+        }
         let before = self.document_position(p);
         self.fit = false;
         self.zoom = (self.zoom * factor).clamp(0.02, 32.);
@@ -118,12 +275,21 @@ impl Editor {
         );
     }
     pub(super) fn canvas_ui(&mut self, ui: &mut Ui) {
+        let appearance = self.settings.ui.clone();
         let c = theme::Colors::new(&self.settings.ui);
+        // A thin zoom strip sits beneath the stage, like a status bar for the view.
+        let strip_height = (appearance.control_height + 2.).round();
+        let full = ui.available_rect_before_wrap();
+        let strip = Rect::from_min_max(
+            pos2(full.left(), (full.bottom() - strip_height).max(full.top())),
+            full.max,
+        );
         let (bounds, response) = ui.allocate_exact_size(
-            ui.available_size().max(vec2(1., 1.)),
+            vec2(full.width(), (full.height() - strip_height).max(1.)),
             Sense::click_and_drag(),
         );
         self.canvas = bounds;
+        self.zoom_strip(ui, strip, &c);
         if self.fit {
             let margin = self.settings.ui.canvas_margin * 2.;
             self.zoom = ((bounds.width() - margin).max(32.) / self.session.doc.width as f32)
@@ -258,13 +424,20 @@ impl Editor {
         );
         self.refresh_texture(ui.ctx());
         let painter = ui.painter().with_clip_rect(bounds);
-        painter.rect_filled(bounds, 0, c.background);
+        // A recessed stage sits inside the card between the tab row and the zoom strip.
+        painter.rect_filled(bounds, 0, c.stage);
         if let Some(texture) = &self.texture {
-            painter.rect_filled(
-                self.image_rect.translate(vec2(0., 3.)).expand(2.),
-                2.,
-                Color32::from_black_alpha(65),
-            );
+            for (offset, blur, alpha) in [([0, 2], 6, 0.6), ([0, 14], 40, 1.)] {
+                painter.add(
+                    Shadow {
+                        offset,
+                        blur,
+                        spread: 0,
+                        color: c.shadow.gamma_multiply(alpha),
+                    }
+                    .as_shape(self.image_rect, 1),
+                );
+            }
             painter.image(
                 texture.id(),
                 self.image_rect,
@@ -309,36 +482,6 @@ impl Editor {
                         );
                     }
                 }
-            }
-        }
-    }
-    pub(super) fn refresh_texture(&mut self, ctx: &Context) {
-        if let Some([x0, y0, x1, y1]) = self.session.doc.update_display(&mut self.display) {
-            if let Some(texture) = &mut self.texture {
-                let pixels = (y0..y1)
-                    .flat_map(|y| {
-                        self.display
-                            [y * self.session.doc.width + x0..y * self.session.doc.width + x1]
-                            .iter()
-                            .map(|p| Color32::from_rgb((p >> 16) as u8, (p >> 8) as u8, *p as u8))
-                    })
-                    .collect();
-                texture.set_partial(
-                    [x0, y0],
-                    ColorImage::new([x1 - x0, y1 - y0], pixels),
-                    TextureOptions::LINEAR,
-                );
-            } else {
-                let pixels = self
-                    .display
-                    .iter()
-                    .map(|p| Color32::from_rgb((p >> 16) as u8, (p >> 8) as u8, *p as u8))
-                    .collect();
-                self.texture = Some(ctx.load_texture(
-                    "document",
-                    ColorImage::new([self.session.doc.width, self.session.doc.height], pixels),
-                    TextureOptions::LINEAR,
-                ));
             }
         }
     }

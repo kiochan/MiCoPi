@@ -1,0 +1,10 @@
+{"action":"canvas.new","args":{"width":256,"height":192}}
+{"action":"layer.fill","args":{"x":0,"y":0,"color":"#804020"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.fill","args":{"x":0,"y":0,"color":"#4080c0"}}
+{"action":"graph.set","args":{"graph":{"enabled":true,"linked":true,"nodes":[{"id":0,"kind":"layer","index":0,"position":[0,0]},{"id":1,"kind":"layer","index":1,"position":[0,280]},{"id":2,"kind":"filter","filter":"invert","amount":1,"position":[260,280]},{"id":3,"kind":"blend","mode":"multiply","opacity":1,"position":[520,280]},{"id":4,"kind":"output","position":[780,280]}],"edges":[{"from":0,"to":3,"input":0},{"from":1,"to":2,"input":0},{"from":2,"to":3,"input":1},{"from":3,"to":4,"input":0}]}}}
+{"action":"layer.duplicate","args":{"layer_id":2}}
+{"action":"layer.move","args":{"layer_id":2,"to":0}}
+{"action":"graph.read","args":{}}
+{"action":"canvas.export","args":{"path":"target/example-output/linked-layers.png"}}
+{"action":"replay.verify","args":{}}

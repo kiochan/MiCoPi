@@ -21,6 +21,12 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             )?)
         }
         SettingsWrite => {
+            if s.runtime == "desktop" && s.ui_effects.len() >= 128 {
+                return Err(ActionError::new(
+                    "presentation_queue_full",
+                    "Wait for queued presentation commands before retrying",
+                ));
+            }
             let path = path()?;
             let mut value: Value = if let Some(document) = args.get("document") {
                 document.clone()
@@ -53,6 +59,12 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             Ok(json!({"path":path}))
         }
         Ui => {
+            if s.runtime == "desktop" && s.ui_effects.len() >= 128 {
+                return Err(ActionError::new(
+                    "presentation_queue_full",
+                    "Wait for queued presentation commands before retrying",
+                ));
+            }
             let id = args["id"].as_str().unwrap();
             s.ui[id] = args.get("value").cloned().unwrap_or(Value::Null);
             s.ui_effects.push_back(args.clone());

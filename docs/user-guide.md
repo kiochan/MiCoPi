@@ -44,9 +44,9 @@ Workspace commands reset layout or group Color with Brush and Navigator with Lay
 
 Layers provide visibility, opacity, blend mode and thumbnails. A hidden layer cannot receive a painting stroke. Undo and redo are recorded by touched pixel tiles, rather than full-document snapshots.
 
-Open View > Node Editor. The **Image Compositing** tab provides layer, filter, blend and output nodes. Applying a graph is non-destructive. Optional live preview waits for parameter/connection changes to settle; moving a node alone does not force full-image processing. See [Image Graphs](node-editor.md).
+Open View > Node Editor. The **Image Compositing** window provides layer, filter, blend and output nodes. Applying a graph is non-destructive. Optional live preview waits for parameter/connection changes to settle; moving a node alone does not force full-image processing. See [Image Graphs](node-editor.md).
 
-The **Plugin Workflow** tab searches action/state nodes, exposes schema-driven parameters and connects typed values or execution-order ports. Editing does not execute actions. Save Workflow retains the graph; Run All Nodes executes every node in topological order. See [Workflow Nodes](workflow-nodes.md).
+The independent **Plugin Workflow** window searches action/state nodes, exposes schema-driven parameters and connects typed values or execution-order ports. Editing does not execute actions. Save Workflow retains the graph; Run All Nodes executes every node in topological order. See [Workflow Nodes](workflow-nodes.md).
 
 ## Plugins and automation
 
@@ -69,3 +69,4 @@ Clear **Contiguous Fill** to recolor matching pixels across the current layer. G
 **Fill Expansion** grows a region with positive values and contracts it with negative values (up to 32 pixels). **Fill Feather** softens the final boundary. Values default to zero. Expansion can paint onto adjacent colors on the current layer; use undo to restore the previous pixels.
 
 Enable **Lock Layer Transparency** in Layers to recolor painted pixels while retaining their alpha. Use the layer menu or **Alt+Backspace** / **Ctrl+Backspace** for foreground/background fills. These fills respect brush opacity and the layer transparency lock.
+See [Plugin Windows](plugin-windows.md) for the independent control bar, floating canvas, window commands and workspace migration.

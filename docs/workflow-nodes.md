@@ -1,6 +1,6 @@
 # Plugin Nodes and AI Workflows
 
-MiCoPi 0.18+ unifies plugin actions, public state and image definitions in node.catalog. The Plugin Workflow editor generates ports and controls from schemas. Graphs are saved in .mcp projects with undoable edits. Version 0.19 localizes presentation while keeping all IDs and schemas stable.
+MiCoPi 0.18+ unifies plugin actions, public state and image definitions in node.catalog. The independent Plugin Workflow window (`workflow.open`) is separate from Image Compositing and generates ports and controls from schemas. Graphs are saved in .mcp projects with undoable edits. Version 0.19 localizes presentation while keeping all IDs and schemas stable.
 
 ![Plugin workflow editor](screenshots/workflow-nodes.png)
 

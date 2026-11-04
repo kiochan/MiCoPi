@@ -114,15 +114,15 @@ impl Editor {
             if icon_button(ui, self, 43, false).clicked() {
                 self.actions.push(Action::UiCommand(43));
             }
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                ui.weak(tr(format!("{} / 16", self.session.doc.layers.len())));
-            });
-        });
-        ui.horizontal(|ui| {
-            ui.menu_button(tr("Layer Actions"), |ui| {
+            ui.menu_button(tr("···"), |ui| {
                 if let Some(action) = self.layer_menu(ui, self.session.doc.active) {
                     pending.push(action);
                 }
+            })
+            .response
+            .on_hover_text(tr("Layer Actions"));
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.weak(tr(format!("{} / 16", self.session.doc.layers.len())));
             });
         });
         let index = self.session.doc.active;
@@ -178,16 +178,19 @@ impl Editor {
             ui.weak(tr("Blend Mode"));
             let mut mode = self.session.doc.layers[self.session.doc.active].mode;
             let before = mode;
-            ui.add_enabled_ui(!self.session.doc.graph.enabled, |ui| {
-                ComboBox::from_id_salt("layer-blend")
-                    .selected_text(tr(mode.title()))
-                    .width(110.)
-                    .show_ui(ui, |ui| {
-                        for item in crate::engine::graph::BlendMode::ALL {
-                            ui.selectable_value(&mut mode, item, tr(item.title()));
-                        }
-                    });
-            });
+            ui.add_enabled_ui(
+                self.session.doc.graph.linked || !self.session.doc.graph.enabled,
+                |ui| {
+                    ComboBox::from_id_salt("layer-blend")
+                        .selected_text(tr(mode.title()))
+                        .width(110.)
+                        .show_ui(ui, |ui| {
+                            for item in crate::engine::graph::BlendMode::ALL {
+                                ui.selectable_value(&mut mode, item, tr(item.title()));
+                            }
+                        });
+                },
+            );
             if mode != before {
                 self.core(
                     "layer.set",
@@ -195,10 +198,17 @@ impl Editor {
                 );
             }
         });
-        if ui.button(tr("Node Editor…")).clicked() {
+        if ui
+            .add(
+                Button::new(tr(RichText::new(localize("Node Editor…"))
+                    .color(theme::Colors::new(&self.settings.ui).accent_text)))
+                .frame(false),
+            )
+            .clicked()
+        {
             self.core("graph.open", serde_json::json!({}));
         }
-        if self.session.doc.graph.enabled {
+        if self.session.doc.graph.enabled && !self.session.doc.graph.linked {
             ui.weak(tr(
                 "Node Graph Controls Compositing; Set Modes on Blend Nodes",
             ));
@@ -220,7 +230,7 @@ impl Editor {
         }
         ui.add_space(self.settings.ui.item_spacing);
         let colors = theme::Colors::new(&self.settings.ui);
-        let row_height = self.settings.ui.control_height + 24.;
+        let row_height = self.settings.ui.control_height + self.settings.ui.panel_padding * 2.;
         for index in (0..self.session.doc.layers.len()).rev() {
             let (r, response) =
                 ui.allocate_exact_size(vec2(ui.available_width(), row_height), Sense::click());
@@ -228,11 +238,23 @@ impl Editor {
                 r,
                 self.settings.ui.corner_radius,
                 if index == self.session.doc.active {
+                    colors.tint(if colors.dark { 0.16 } else { 0.13 })
+                } else if response.hovered() {
                     colors.raised
                 } else {
                     colors.panel
                 },
             );
+            if index == self.session.doc.active {
+                ui.painter().rect_filled(
+                    Rect::from_center_size(
+                        pos2(r.left() + 1.5, r.center().y),
+                        vec2(3., row_height * 0.5),
+                    ),
+                    1.5,
+                    colors.accent,
+                );
+            }
             let eye =
                 Rect::from_min_size(r.min + vec2(4., (row_height - 24.) / 2.), Vec2::splat(24.));
             let toggle = ui.interact(
@@ -256,7 +278,9 @@ impl Editor {
                 );
             }
             let thumb = Rect::from_center_size(pos2(r.left() + 49., r.center().y), vec2(32., 32.));
-            ui.painter().rect_filled(thumb, 2., Color32::from_gray(245));
+            ui.painter()
+                .rect_filled(thumb.expand(1.), 5., colors.border);
+            ui.painter().rect_filled(thumb, 4., Color32::from_gray(248));
             // A 16×16 sampled mesh keeps thumbnails cheap even on 4096px documents.
             let mut mesh = egui::Mesh::default();
             for y in 0..16 {
@@ -290,7 +314,11 @@ impl Editor {
                 } else {
                     self.session.doc.layer_name(index)
                 },
-                FontId::proportional(self.settings.ui.font_size),
+                if index == self.session.doc.active {
+                    theme::strong(ui.ctx(), self.settings.ui.font_size)
+                } else {
+                    FontId::proportional(self.settings.ui.font_size)
+                },
                 colors.text,
             );
             ui.painter().text(
