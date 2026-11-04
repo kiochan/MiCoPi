@@ -292,6 +292,13 @@ impl Studio {
                                     focused: false,
                                 },
                             );
+                        // Splitters inside a floating group get the same grab handles.
+                        let cards: Vec<Rect> = panels
+                            .iter()
+                            .filter_map(|p| self.editor.headers.get(p))
+                            .map(|h| h.card)
+                            .collect();
+                        group_bar::splitter_handles(ui, &cards, &a);
                     });
                 window.image_rect = if contains_canvas && self.editor.image_rect.is_finite() {
                     Some(self.editor.image_rect)

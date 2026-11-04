@@ -239,7 +239,8 @@ impl panels::Viewer<'_> {
                 for (index, mut tab) in tabs.iter().copied().enumerate() {
                     let title = self.tab_title(&mut tab);
                     let active = tab == panel;
-                    let title = RichText::new(title.text())
+                    let label = title.text().to_owned();
+                    let title = RichText::new(label.as_str())
                         .font(if active { theme::strong(ui.ctx(), a.font_size) } else { FontId::proportional(a.font_size) })
                         .color(if active { colors.text } else { colors.muted });
                     // A transparent frame keeps button padding; surfaces are painted separately.
@@ -249,6 +250,18 @@ impl panels::Viewer<'_> {
                         .sense(Sense::click_and_drag())
                         .min_size(vec2(0., strip.height())));
                     tab_rects.push((response.rect, active, response.hovered()));
+                    // Bring a newly active or relabelled (e.g. language change) tab into
+                    // view; later manual scrolling is left alone.
+                    if active {
+                        let key = Id::new(("group-active-tab", group));
+                        let seen = (tab, label.clone());
+                        if ui.ctx().data(|d| d.get_temp::<(Panel, String)>(key)).as_ref() != Some(&seen) {
+                            ui.ctx().data_mut(|d| d.insert_temp(key, seen));
+                            if !ui.clip_rect().contains_rect(response.rect) {
+                                response.scroll_to_me(Some(Align::Center));
+                            }
+                        }
+                    }
                     if let Some(id) = self.editor.panel_id(tab) {
                         if response.clicked() {
                             self.editor.core("window.command", json!({"panel":id,"operation":"focus"}));
