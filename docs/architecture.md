@@ -48,6 +48,8 @@ The host snapshots a touched 64×64 tile once per stroke; history has a 64 MiB b
 
 Document display updates return dirty rectangles. Desktop uploads partial textures, shares document textures with the navigator, reuses color-wheel/thumbnail/input buffers and repaints on demand. CPU performs painting/compositing; GPU presents the UI and textures.
 
+The internal selection container stores full-canvas 8-bit coverage in immutable shared buffers. No active mask means unrestricted editing; an active all-zero mask selects nothing. Composition/history clones share coverage and its cached encoding. Compression runs only when constructing a changed mask, not while cloning a pointer-event snapshot. Current and previous masks follow canvas crop/resize and undo. Each mask is bounded to 4096 pixels per side and 128 KiB of compressed data; metadata uses cached lowercase hexadecimal Deflate bytes. Decoding checks the exact output length, complete stream termination, absence of trailing data and document dimensions. Project saves reject metadata above the reader's 1 MiB limit before replacing a file. This is persistence groundwork; desktop selection tools and native clipping are still planned in the [editing checklist](photoshop-essentials.md).
+
 ## Persistence and presentation
 
 MICOPI03 projects save layer pixels, blend properties, image/workflow metadata and a sealed verified event journal; MICOPI01/02 remain readable. The undo stack is not persisted; the replay journal is independent. See [Verified Replay](replay.md). Image decoding checks dimensions before allocation; PNG export preserves alpha.

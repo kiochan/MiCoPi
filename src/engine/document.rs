@@ -17,6 +17,11 @@ pub struct Composition {
     pub layer_metadata: Vec<LayerMetadata>,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub next_layer_id: u64,
+    #[serde(
+        default,
+        skip_serializing_if = "super::selection::SelectionState::is_default"
+    )]
+    pub selection: super::selection::SelectionState,
 }
 fn is_false(value: &bool) -> bool {
     !*value
@@ -156,6 +161,7 @@ pub struct Brush {
     pub erase: bool,
 }
 pub struct Document {
+    selection: super::selection::SelectionState,
     layer_metadata: Vec<LayerMetadata>,
     next_layer_id: u64,
     pub(crate) replay_tiles: std::collections::BTreeSet<(usize, usize)>,
@@ -244,6 +250,7 @@ impl Document {
                 alpha_locked: false,
             }],
             next_layer_id: 2,
+            selection: Default::default(),
             workflow: Default::default(),
             identity: {
                 static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
@@ -291,6 +298,7 @@ impl Document {
     }
     pub fn composition(&self) -> Composition {
         Composition {
+            selection: self.selection.clone(),
             layer_metadata: self.layer_metadata.clone(),
             next_layer_id: self.next_layer_id,
             workflow: self.workflow.clone(),
@@ -302,7 +310,26 @@ impl Document {
                 .collect(),
         }
     }
+    pub fn selection(&self) -> &super::selection::SelectionState {
+        &self.selection
+    }
+    /// Internal document primitive; public clients must use Session actions.
+    pub fn set_selection(
+        &mut self,
+        selection: super::selection::SelectionState,
+    ) -> Result<(), String> {
+        selection.validate(self.width, self.height)?;
+        if self.selection == selection {
+            return Ok(());
+        }
+        self.finish();
+        let before = self.composition();
+        self.selection = selection;
+        self.commit_composition(before, None);
+        Ok(())
+    }
     pub(crate) fn restore_composition(&mut self, state: Composition) {
+        self.selection = state.selection;
         self.layer_metadata = if state.layer_metadata.is_empty() {
             (0..self.layers.len())
                 .map(|i| LayerMetadata {
@@ -335,6 +362,7 @@ impl Document {
             layer: self.active,
             tiles: BTreeMap::new(),
             metadata_bytes: before.graph.nodes.len() * 160
+                + before.selection.memory_bytes()
                 + before.graph.edges.len() * 16
                 + before.workflow.bytes()
                 + before.layers.len() * 8
@@ -858,6 +886,7 @@ impl Document {
             self.restore_composition(state.clone());
             *state = before;
             e.metadata_bytes = state.graph.nodes.len() * 160
+                + state.selection.memory_bytes()
                 + state.graph.edges.len() * 16
                 + state.workflow.bytes()
                 + state.layers.len() * 8
@@ -1041,6 +1070,13 @@ impl Document {
         replay: Option<&[u8]>,
     ) -> io::Result<()> {
         self.finish();
+        let metadata = serde_json::to_vec(&self.composition()).map_err(io::Error::other)?;
+        if metadata.len() > 1024 * 1024 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Project metadata exceeds the supported limit",
+            ));
+        }
         // Same-directory temp + rename keeps an existing project intact on write failure.
         let tmp = path.with_extension("mcp.tmp");
         let mut f = std::fs::File::create(&tmp)?;
@@ -1060,7 +1096,6 @@ impl Document {
             }
             f.write_all(&bytes)?;
         }
-        let metadata = serde_json::to_vec(&self.composition()).map_err(io::Error::other)?;
         f.write_all(&(metadata.len() as u32).to_le_bytes())?;
         f.write_all(&metadata)?;
         if let Some(bytes) = replay {
@@ -1161,6 +1196,7 @@ impl Document {
                 return Err(bad());
             }
             state.validate_layer_metadata().map_err(|_| bad())?;
+            state.selection.validate(w, h).map_err(|_| bad())?;
             state.graph.compile(n).map_err(|_| bad())?;
             state.workflow.validate_structure().map_err(|_| bad())?;
             doc.restore_composition(state);

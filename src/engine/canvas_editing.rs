@@ -20,6 +20,7 @@ impl Document {
         let ty = i64::from(dy).max(0).min(height as i64) as usize;
         let copy_width = (self.width - sx).min(width - tx);
         let copy_height = (self.height - sy).min(height - ty);
+        let selection = self.selection.reframe(width, height, dx, dy)?;
         let mut layers = Vec::with_capacity(self.layers.len());
         for layer in &self.layers {
             let mut pixels = vec![0; width * height];
@@ -39,6 +40,7 @@ impl Document {
         }
         self.finish();
         let before = self.composition();
+        self.selection = selection;
         let saved = CanvasState {
             width: self.width,
             height: self.height,

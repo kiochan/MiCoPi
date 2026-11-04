@@ -39,6 +39,8 @@ Acceptance: source buffers and metadata return on undo; redo restores the merged
 
 ### P2 — Selection and clipboard foundation
 
+In progress: internal selection storage now preserves current/previous 8-bit coverage through project metadata, history and verified outcomes, and reframes it with canvas geometry. User-facing actions/tools remain pending until native clipping is integrated; the storage work alone is not selection-tool availability.
+
 - [ ] Add bounded document selection data, persistence, undo, atomic rollback and outcome replay.
 - [ ] Add rectangular/elliptical marquees, freehand/polygonal lassos and replace/add/subtract/intersect modes.
 - [ ] Add Select All, Deselect, Reselect and Invert with PS-style configurable bindings.

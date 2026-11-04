@@ -101,6 +101,10 @@ impl Metadata {
         }
         self.composition.graph.compile(n).map_err(bad)?;
         self.composition.validate_layer_metadata().map_err(bad)?;
+        self.composition
+            .selection
+            .validate(self.width, self.height)
+            .map_err(bad)?;
         self.composition.workflow.validate_structure()?;
         Parameters::default().patched(&serde_json::to_value(&self.parameters)?)?;
         Ok(())
