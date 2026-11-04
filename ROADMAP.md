@@ -43,9 +43,10 @@ M2, M3 and M4 can progress independently after their foundation requirements are
 - [x] Introduce stable layer IDs, persist names/identities and remap image-node references for reorder, rename, duplication and deletion.
 - [x] Add exact layer flips, 180° rotation and clipped integer offsets through native plugin actions.
 - [x] Add connected fill with tolerance, linear/radial gradient gestures and inline pressure controls through shared native actions.
+- [x] Add anchored canvas resizing and exact all-layer crop with dimension-aware history, atomic rollback and outcome replay.
 - [ ] Add groups and merge with explicit reference and history behavior.
 - [ ] Make structural and multi-layer edits reliably undoable; define optional undo grouping separately from transaction rollback.
-- [ ] Add rectangle/lasso selections and selection masks, followed by move, scale, rotate, crop and canvas resize.
+- [ ] Add rectangle/lasso selections and selection masks, followed by selection-aware move, scale, rotate and crop.
 - [ ] Add useful document controls: new-canvas presets, resolution/background choices, clearer dirty state and save/recovery feedback.
 
 **Acceptance:** an artist can create, select, transform and organize a small illustration, save/reopen it, undo/redo its structural edits and replay the same visible results. GUI, MCP and headless actions produce matching pixels for shared fixtures. Graph references remain valid after layer changes.

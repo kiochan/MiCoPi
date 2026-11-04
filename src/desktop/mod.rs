@@ -4,6 +4,8 @@ mod area;
 mod brush;
 #[path = "../../plugins/canvas/panel.rs"]
 mod canvas;
+#[path = "../../plugins/canvas/geometry.rs"]
+mod canvas_geometry;
 #[path = "../../plugins/color/panel.rs"]
 mod color;
 mod commands;
@@ -161,6 +163,7 @@ pub(super) struct Editor {
     new_width: usize,
     new_height: usize,
     new_open: bool,
+    geometry: Option<canvas_geometry::CanvasDialog>,
 }
 impl Editor {
     fn new(path: PathBuf, native: Option<Native>) -> Self {
@@ -262,6 +265,7 @@ impl Editor {
             new_width: 1200,
             new_height: 900,
             new_open: false,
+            geometry: None,
         };
         editor.register_commands();
         editor.session.parameters.stabilizer = editor.workspace.stabilizer;
@@ -849,6 +853,7 @@ impl Studio {
         self.editor.blocked = self.settings_open
             || self.editor.palette.is_some()
             || self.editor.new_open
+            || self.editor.geometry.is_some()
             || self.editor.command_form.is_some()
             || self.replay.open;
         self.editor.headers.clear();
@@ -954,6 +959,7 @@ impl Studio {
         self.replay_window(ctx);
         self.editor.palette_ui(ctx);
         self.new_document_window(ctx);
+        self.editor.canvas_geometry_window(ctx);
         self.run_actions(ctx);
         if !ctx.input(|i| i.focused)
             && self.editor.input_owned

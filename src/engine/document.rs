@@ -96,6 +96,7 @@ struct Edit {
 }
 #[derive(Clone)]
 enum LayerChange {
+    Canvas(Arc<CanvasState>),
     Toggle {
         index: usize,
         active: usize,
@@ -106,6 +107,12 @@ enum LayerChange {
         to: usize,
         active: usize,
     },
+}
+#[derive(Clone)]
+struct CanvasState {
+    width: usize,
+    height: usize,
+    layers: Vec<Layer>,
 }
 #[derive(Clone)]
 pub(crate) struct HistoryCheckpoint {
@@ -123,14 +130,13 @@ impl Edit {
     fn bytes(&self) -> usize {
         self.tiles.values().map(|v| v.len() * 4).sum::<usize>()
             + self.metadata_bytes
-            + self
-                .layer_change
-                .as_ref()
-                .and_then(|c| match c {
-                    LayerChange::Toggle { removed, .. } => removed.as_ref(),
-                    _ => None,
-                })
-                .map_or(0, |layer| layer.pixels.len() * 4)
+            + self.layer_change.as_ref().map_or(0, |c| match c {
+                LayerChange::Toggle { removed, .. } => {
+                    removed.as_ref().map_or(0, |l| l.pixels.len() * 4)
+                }
+                LayerChange::Canvas(state) => state.layers.iter().map(|l| l.pixels.len() * 4).sum(),
+                _ => 0,
+            })
     }
 }
 #[derive(Clone, Copy)]
@@ -788,6 +794,22 @@ impl Document {
             let before = self.composition();
             if let Some(change) = &mut e.layer_change {
                 match change {
+                    LayerChange::Canvas(saved) => {
+                        let old = std::mem::replace(
+                            saved,
+                            Arc::new(CanvasState {
+                                width: self.width,
+                                height: self.height,
+                                layers: std::mem::take(&mut self.layers),
+                            }),
+                        );
+                        let old = Arc::unwrap_or_clone(old);
+                        self.width = old.width;
+                        self.height = old.height;
+                        self.layers = old.layers;
+                        self.composite = vec![0; self.width * self.height];
+                        self.replay_tiles.clear();
+                    }
                     LayerChange::Toggle {
                         index,
                         active,
@@ -1135,6 +1157,8 @@ impl Document {
         Ok(doc)
     }
 }
+#[path = "canvas_editing.rs"]
+mod canvas_editing;
 #[path = "layer_editing.rs"]
 mod layer_editing;
 #[cfg(test)]

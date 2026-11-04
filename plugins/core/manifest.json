@@ -51,6 +51,16 @@
       "operation": "new"
     },
     {
+      "id": "canvas.resize",
+      "title": "Resize canvas without scaling",
+      "operation": "canvas_size"
+    },
+    {
+      "id": "canvas.crop",
+      "title": "Crop all layers to a rectangle",
+      "operation": "crop"
+    },
+    {
       "id": "document.open",
       "title": "Open project or image",
       "operation": "open"

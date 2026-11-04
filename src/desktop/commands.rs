@@ -545,6 +545,7 @@ impl Studio {
                         continue;
                     }
                     match id {
+                        10144 | 10145 => self.editor.open_canvas_geometry(id == 10145),
                         10142 | 10143 => {
                             self.editor.finish_stroke();
                             self.editor.push_gui_parameters();
@@ -758,6 +759,7 @@ impl Studio {
                 Action::Cancel => {
                     self.editor.palette = None;
                     self.editor.new_open = false;
+                    self.editor.geometry = None;
                     self.editor.session.finish_stroke();
                 }
             }

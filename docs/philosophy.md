@@ -73,7 +73,7 @@ Appearance and input preferences belong in `settings.json`. Dock layout is store
 
 ## Current boundaries
 
-MiCoPi currently targets Windows 10/11 x64 and one document per Session. It does not yet provide Wintab, selections, transforms, layer reordering/merging or a watercolor engine. Native DLLs execute in process: their lifecycle and protocol are validated, but they are not sandboxed against crashes or memory errors. Actual pen-driver compatibility still requires hardware testing.
+MiCoPi currently targets Windows 10/11 x64 and one document per Session. It does not yet provide Wintab, selections, free transforms, layer groups/merging or a watercolor engine. Native DLLs execute in process: their lifecycle and protocol are validated, but they are not sandboxed against crashes or memory errors. Actual pen-driver compatibility still requires hardware testing.
 
 These are present capabilities and constraints. The [roadmap](../ROADMAP.md) separates intended work from implemented behavior; the [architecture](architecture.md), [SDK contract](native-plugins.md) and [workflow contract](workflow-nodes.md) describe the implementation in detail.
 

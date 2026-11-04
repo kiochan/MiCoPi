@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add anchored canvas resizing and exact all-layer crop through shared actions, workflow nodes and Edit dialogs, with transparent expansion and an on-canvas crop guide.
+- Preserve graph/layer identities, hidden/locked pixels and prior history across framing, undo/redo, atomic rollback, projects and verified replay; retain legacy formats and the typed painting path.
+
 - Add undoable, persistent layer transparency locking with native source-atop brush, fill and gradient behavior, host alpha validation and atomic rollback.
 - Add foreground/background layer fills and Alt+Backspace / Ctrl+Backspace shortcuts through the same native action; keep pending layer renames when toggling lock.
 - Add size-checked optional alpha-lock capability tails to stroke options while retaining old v1 prefixes and unlocked legacy DLL compatibility.

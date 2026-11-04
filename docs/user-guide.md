@@ -54,11 +54,15 @@ Install each plugin directory beside the executable, with its manifest and DLL w
 
 [JSONL, MCP and GUI attachment](plugins-and-actions.md) use the same Session as the desktop. For file automation, supply explicit paths to document and export actions. Headless UI actions return effects without opening windows.
 
-Current omissions include selections, transforms, layer reordering/merging, Wintab, multi-document tabs and watercolor blending. The UI does not present placeholders for these features.
+Current omissions include selections, free transforms, layer groups/merging, Wintab, multi-document tabs and watercolor blending. The UI does not present placeholders for these features.
 
 ## Organize and transform layers
 
 Use **Layer Actions** or right-click a layer to duplicate, move up/down, delete, flip or rotate it. **Ctrl+J** duplicates the current layer. Edit **Layer Name** and press Enter or leave the field to commit; Escape cancels. **Offset Layer** accepts signed integer X/Y offsets; positive X moves right and positive Y moves down. Exposed pixels become transparent and pixels outside the canvas are discarded. Undo restores them. See [Layer editing](layer-editing.md) for action schemas, reference rules and limits.
+
+## Canvas size and crop
+
+Use **Edit > Canvas Size…** (**Ctrl+Alt+C**) to reframe all layers around an anchor, or **Edit > Crop Canvas…** to enter an exact pixel rectangle. Added space is transparent. Both support undo, retain layer/node identities and share the public actions described in [Canvas editing](canvas-editing.md).
 
 ## Fill, gradients and pressure
 

@@ -46,6 +46,10 @@ def main():
         dict(action='layer.delete', args=dict(layer_id=3)),
         dict(action='history.undo', args={}),
         dict(action='history.redo', args={}),
+        dict(action='canvas.resize', args=dict(width=280, height=210, anchor='center')),
+        dict(action='canvas.crop', args=dict(x=8, y=6, width=260, height=196)),
+        dict(action='history.undo', args={}),
+        dict(action='history.redo', args={}),
         dict(action='graph.read', args={}),
         dict(action='replay.verify', args={}),
     ]

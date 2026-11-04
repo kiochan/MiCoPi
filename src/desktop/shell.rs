@@ -62,6 +62,8 @@ impl Studio {
                                     vec![
                                         (5, "Undo"),
                                         (6, "Redo"),
+                                        (10144, "Canvas Size…"),
+                                        (10145, "Crop Canvas…"),
                                         (42, "New Layer"),
                                         (43, "Clear Current Layer…"),
                                     ],

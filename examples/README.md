@@ -1,5 +1,7 @@
 # Examples
 
+[Canvas framing](automation/canvas-framing.jsonl) demonstrates transparent canvas expansion, exact crop, undo/redo and verified replay. Run it from the repository root with the CLI and loaded native plugins; it exports `target/canvas-framing.png`.
+
 Run commands from the repository root. Build the host and default plugin DLLs first; the portable distribution already includes them. JSONL files use stable action IDs and document-pixel coordinates.
 
 ```powershell

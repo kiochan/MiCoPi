@@ -12,6 +12,47 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             .ok_or_else(|| ActionError::new("invalid_arguments", "Missing path"))
     };
     match op {
+        CanvasSize | Crop => {
+            let width = args["width"].as_f64().unwrap() as usize;
+            let height = args["height"].as_f64().unwrap() as usize;
+            let (dx, dy) = if op == Crop {
+                let x = args["x"].as_f64().unwrap() as usize;
+                let y = args["y"].as_f64().unwrap() as usize;
+                if x + width > s.doc.width || y + height > s.doc.height {
+                    return Err(ActionError::new(
+                        "invalid_crop",
+                        "Crop rectangle must be inside the canvas",
+                    ));
+                }
+                (-(x as i32), -(y as i32))
+            } else {
+                let anchor = args["anchor"].as_str().unwrap_or("center");
+                let offset = |delta: i32, start: &str, end: &str| {
+                    if anchor == start
+                        || anchor.starts_with(&format!("{start}_"))
+                        || anchor.ends_with(&format!("_{start}"))
+                    {
+                        0
+                    } else if anchor == end
+                        || anchor.starts_with(&format!("{end}_"))
+                        || anchor.ends_with(&format!("_{end}"))
+                    {
+                        delta
+                    } else {
+                        delta.div_euclid(2)
+                    }
+                };
+                (
+                    offset(width as i32 - s.doc.width as i32, "left", "right"),
+                    offset(height as i32 - s.doc.height as i32, "top", "bottom"),
+                )
+            };
+            s.finish_stroke();
+            s.doc
+                .reframe(width, height, dx, dy)
+                .map_err(|e| ActionError::new("canvas_size", e))?;
+            Ok(s.state())
+        }
         New => {
             s.finish_stroke();
             s.doc = Document::new(

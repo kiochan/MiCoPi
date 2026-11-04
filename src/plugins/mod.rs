@@ -32,7 +32,9 @@ pub(crate) fn execute(
         NodeCatalog | WorkflowRead | WorkflowSet | WorkflowPatch | WorkflowValidate
         | WorkflowRun | WorkflowState => crate::application::workflow::execute(session, op, args),
         GraphRead | GraphSet | GraphCatalog => compositing::execute(session, op, args),
-        New | Open | Save | Export | Render | Undo | Redo => document::execute(session, op, args),
+        New | CanvasSize | Crop | Open | Save | Export | Render | Undo | Redo => {
+            document::execute(session, op, args)
+        }
         AddLayer | RenameLayer | DuplicateLayer | MoveLayer | DeleteLayer | SelectLayer
         | LayerProperties | ClearLayer => layers::execute(session, op, args),
         SelectTool | Parameters | Pointer | Stroke | Pick | View => {

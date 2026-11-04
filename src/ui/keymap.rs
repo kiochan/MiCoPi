@@ -286,6 +286,24 @@ pub static COMMANDS: &[Command] = &[
         2
     ),
     c!(
+        "canvas.size_dialog",
+        "Canvas Size…",
+        "Canvas",
+        "resize canvas size kuobu huabu",
+        UiCommand(10144),
+        "Ctrl+Alt+C",
+        10144
+    ),
+    c!(
+        "canvas.crop_dialog",
+        "Crop Canvas…",
+        "Canvas",
+        "crop canvas caijian huabu",
+        UiCommand(10145),
+        "",
+        10145
+    ),
+    c!(
         "file.save",
         "Save Project",
         "File",

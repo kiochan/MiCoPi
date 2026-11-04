@@ -80,6 +80,12 @@ def main():
             call('workflow.open',{})
             time.sleep(.25)
             screenshot(f'{language}-workbench.png')
+            for command, name in [(10144, 'canvas-size'), (10145, 'canvas-crop')]:
+                call('ui.dispatch', dict(id='command', value=dict(UiCommand=command)))
+                time.sleep(.15)
+                screenshot(f'{language}-{name}.png')
+                # Close the preview without applying any document operation.
+                call('ui.dispatch', dict(id='command', value='Cancel'))
             call('ui.dispatch',dict(id='painting.mode',value='fill'))
             time.sleep(.15)
             screenshot(f'{language}-fill-controls.png')

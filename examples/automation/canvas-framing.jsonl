@@ -1,0 +1,8 @@
+{"action":"canvas.new","args":{"width":64,"height":48}}
+{"action":"layer.gradient","args":{"x0":0,"y0":0,"x1":64,"y1":48,"start_color":"#ee8844","end_color":"#3355aa"}}
+{"action":"canvas.resize","args":{"width":96,"height":64,"anchor":"bottom_right"}}
+{"action":"canvas.crop","args":{"x":8,"y":4,"width":80,"height":56}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}
+{"action":"replay.verify","args":{}}
+{"action":"canvas.export","args":{"path":"target/canvas-framing.png"}}

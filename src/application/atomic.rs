@@ -81,6 +81,8 @@ impl Operation {
         matches!(
             self,
             Self::Stroke
+                | Self::CanvasSize
+                | Self::Crop
                 | Self::Undo
                 | Self::Redo
                 | Self::AddLayer

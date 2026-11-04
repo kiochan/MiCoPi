@@ -83,6 +83,8 @@ pub enum Operation {
     SettingsWrite,
     State,
     New,
+    CanvasSize,
+    Crop,
     Open,
     Save,
     Export,
@@ -181,6 +183,14 @@ impl Operation {
             Self::New => (
                 json!({"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096}}),
                 vec!["width", "height"],
+            ),
+            Self::CanvasSize => (
+                json!({"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096},"anchor":{"type":"string","enum":["top_left","top","top_right","left","center","right","bottom_left","bottom","bottom_right"]}}),
+                vec!["width", "height"],
+            ),
+            Self::Crop => (
+                json!({"x":{"type":"integer","minimum":0,"maximum":4095},"y":{"type":"integer","minimum":0,"maximum":4095},"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096}}),
+                vec!["x", "y", "width", "height"],
             ),
             Self::Open | Self::Save | Self::Export | Self::SettingsRead => (
                 json!({"path":{"type":"string","minLength":1}}),

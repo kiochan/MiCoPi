@@ -102,6 +102,12 @@ def main():
         dict(action="history.undo",args={}),dict(action="history.redo",args={}),
     ]
     batch_png = output / "batch.png"
+    commands += [
+        dict(action="canvas.resize", args=dict(width=280, height=210, anchor="bottom_right")),
+        dict(action="canvas.crop", args=dict(x=7, y=5, width=260, height=195)),
+        dict(action="history.undo", args={}),
+        dict(action="history.redo", args={}),
+    ]
     script = output / "draw.jsonl"
     script.write_text("\n".join(json.dumps(c) for c in commands + [dict(action="canvas.export", args=dict(path=str(batch_png)))]) + "\n", encoding="utf-8")
     run = subprocess.run([str(cli), "run", str(script), "--plugins", str(plugins), "--config-dir", str(profile)], capture_output=True, text=True, encoding="utf-8", timeout=30)
@@ -154,7 +160,7 @@ def main():
                 assert result["result"].get("ok",True), result
         assert call("app.describe",{})["result"]["runtime"]=="desktop"
         state = call("canvas.state", {})["result"]
-        assert state["width"] == 256 and state["height"] == 192 and state["dirty"]
+        assert state["width"] == 260 and state["height"] == 195 and state["dirty"]
         shot = call("canvas.snapshot", {})["result"]
         assert base64.b64decode(shot["data"]) == batch_png.read_bytes()
         (output / "gui-canvas.png").write_bytes(base64.b64decode(shot["data"]))

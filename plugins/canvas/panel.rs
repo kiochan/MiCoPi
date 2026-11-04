@@ -445,6 +445,7 @@ impl Editor {
                 Color32::WHITE,
             );
         }
+        self.crop_outline(&painter, c.accent);
         if !self.blocked {
             if let Some((a, b)) = self.area_drag {
                 let screen = |q: Pos2| self.image_rect.min + q.to_vec2() * self.zoom;

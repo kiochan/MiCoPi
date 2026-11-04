@@ -14,6 +14,8 @@ The independent Tools bar and Canvas can float as native OS windows across monit
 
 Connected or whole-layer color fill with tolerance and edge controls, linear/radial gradients with repeat and reflection and inline pressure dynamics are available in the Brush panel. See [Painting tools](docs/painting-tools.md).
 
+Canvas size and exact all-layer crop preserve layer/node identities, undo and verified replay. See [Canvas editing](docs/canvas-editing.md).
+
 ## Why MiCoPi
 
 **Painting first. Plugins carry behavior. One execution core serves artists and automation.**
