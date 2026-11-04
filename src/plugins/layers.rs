@@ -125,7 +125,15 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 ));
             }
             s.finish_stroke();
-            s.doc.clear_layer();
+            if s.doc.selection().current.is_some() {
+                let (w, h) = (s.doc.width, s.doc.height);
+                let mut pixels = vec![0; w * h];
+                super::native::clip_region(s, 0, 0, w, h, &mut pixels)
+                    .map_err(|e| ActionError::new("selection_clip", e))?;
+                s.doc.replace_region(0, 0, w, h, &pixels);
+            } else {
+                s.doc.clear_layer();
+            }
             Ok(s.state())
         }
 

@@ -70,6 +70,10 @@ impl Studio {
                                         (10147, "Merge Visible"),
                                         (10148, "Flatten Image"),
                                         (10149, "Stamp Visible"),
+                                        (10150, "Select All"),
+                                        (10151, "Deselect"),
+                                        (10152, "Reselect"),
+                                        (10153, "Invert Selection"),
                                     ],
                                 ),
                                 (

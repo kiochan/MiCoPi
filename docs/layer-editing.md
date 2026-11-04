@@ -40,7 +40,7 @@ The final layer cannot be deleted. Existing limits remain 16 layers, 4096 pixels
 
 ## Scope and verification
 
-Implemented layer editing covers stable identities, rename/duplicate/reorder/delete, consolidation and exact pixel transforms. Canvas resize/crop has a separate [geometry contract](canvas-editing.md). Selections, masks, arbitrary rotation/scaling, groups and PSD interchange remain future work in the [roadmap](../ROADMAP.md). PhotoCraft's GPU/web frontend and wider module architecture are not adopted.
+Implemented layer editing covers stable identities, rename/duplicate/reorder/delete, consolidation and exact pixel transforms. Canvas resize/crop has a separate [geometry contract](canvas-editing.md). Selection gestures/clipboard, masks, arbitrary rotation/scaling, groups and PSD interchange remain future work in the [roadmap](../ROADMAP.md). PhotoCraft's GPU/web frontend and wider module architecture are not adopted.
 
 Regression coverage checks graph remapping, undo/redo pixels, stable ID allocation, failed atomic groups, saved projects, old verified journals and new replay frame parity. Native transform tests compare asymmetric images and overlapping translations with an independent out-of-place oracle. Buffer pointer checks verify reorder and ordinary delete/undo reuse pixel allocations; atomic checkpoints may share removed undo buffers and can require a copy on restoration.
 

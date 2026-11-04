@@ -3,6 +3,8 @@
 //! All calls are synchronous on the session's thread. Borrowed strings, host APIs,
 //! reply contexts and pixel buffers must not be retained, freed or used on another
 //! thread. Plugins own their instance allocation and release it in `destroy`.
+//! An extension may explicitly grant a longer immutable contact-scoped borrow,
+//! as with Coverage in ToolOptionsSelection; that lifetime is documented there.
 //! Every exported callback must catch its own unwinding panics. Native plugins are
 //! trusted code in the host process, not a sandbox.
 use std::ffi::c_void;
@@ -222,12 +224,71 @@ pub struct ToolOptionsApi {
 }
 pub type ToolOptionsEntry = unsafe extern "C" fn() -> *const ToolOptionsApi;
 pub const TOOL_OPTION_ALPHA_LOCK: u32 = 1;
+pub const TOOL_OPTION_SELECTION: u32 = 2;
+/// Borrowed full-canvas 8-bit coverage, frozen until the contact ends.
+/// A null pointer with all other fields zero means unrestricted painting.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Coverage {
+    pub data: *const u8,
+    pub len: usize,
+    pub width: u32,
+    pub height: u32,
+    pub stride: u32,
+}
+impl Default for Coverage {
+    fn default() -> Self {
+        Self {
+            data: std::ptr::null(),
+            len: 0,
+            width: 0,
+            height: 0,
+            stride: 0,
+        }
+    }
+}
 /// Additive tails; read only when the prefix struct_size covers the whole tail.
 #[repr(C)]
 pub struct ToolOptionsExt {
     pub base: ToolOptions,
     pub flags: u32,
 }
+#[repr(C)]
+pub struct ToolOptionsSelection {
+    pub base: ToolOptionsExt,
+    pub selection: Coverage,
+}
+/// Optional cold-path selection blending. Both pixel regions share coordinates;
+/// `before` is immutable and must not alias mutable `after` storage.
+pub const SELECTION_SYMBOL: &[u8] = b"micopi_selection_v1\0";
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct SelectionApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub mix: Option<unsafe extern "C" fn(*const Coverage, *const Pixels, *mut Pixels) -> i32>,
+    pub rasterize: Option<
+        unsafe extern "C" fn(
+            *const SelectionShape,
+            *const Coverage,
+            *mut u8,
+            usize,
+            u32,
+            u32,
+        ) -> i32,
+    >,
+}
+/// Kinds: 0 rectangle, 1 ellipse, 2 polygon, 3 all, 4 invert previous coverage.
+/// Modes: 0 replace, 1 maximum/add, 2 saturating subtract, 3 minimum/intersect.
+#[repr(C)]
+pub struct SelectionShape {
+    pub kind: u32,
+    pub mode: u32,
+    pub bounds: [f32; 4],
+    pub points: *const [f32; 2],
+    pub count: usize,
+}
+pub type SelectionEntry = unsafe extern "C" fn() -> *const SelectionApi;
 #[repr(C)]
 pub struct ToolOptionsApiExt {
     pub base: ToolOptionsApi,

@@ -874,5 +874,12 @@
   "Merge Down": "向下合并",
   "Merge Visible": "合并可见图层",
   "Flatten Image": "拼合图像",
-  "Stamp Visible": "盖印可见图层"
+  "Stamp Visible": "盖印可见图层",
+  "Select Shape": "形状选区",
+  "Select All": "全选",
+  "Deselect": "取消选择",
+  "Reselect": "重新选择",
+  "Invert Selection": "反向选择",
+  "Inspect Selection": "检查选区",
+  "Selection": "选区"
 }

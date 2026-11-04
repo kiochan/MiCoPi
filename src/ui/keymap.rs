@@ -502,6 +502,42 @@ pub static COMMANDS: &[Command] = &[
         10142
     ),
     c!(
+        "selection.all",
+        "Select All",
+        "Selection",
+        "select all xuanqu",
+        UiCommand(10150),
+        "Ctrl+A",
+        10150
+    ),
+    c!(
+        "selection.deselect",
+        "Deselect",
+        "Selection",
+        "deselect clear selection",
+        UiCommand(10151),
+        "Ctrl+D",
+        10151
+    ),
+    c!(
+        "selection.reselect",
+        "Reselect",
+        "Selection",
+        "restore selection",
+        UiCommand(10152),
+        "Ctrl+Shift+D",
+        10152
+    ),
+    c!(
+        "selection.invert",
+        "Invert Selection",
+        "Selection",
+        "invert selection reverse",
+        UiCommand(10153),
+        "Ctrl+Shift+I",
+        10153
+    ),
+    c!(
         "layer.fill_background",
         "Fill with Background",
         "Layers",

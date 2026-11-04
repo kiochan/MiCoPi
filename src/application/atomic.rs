@@ -97,6 +97,11 @@ impl Operation {
                 | Self::SelectLayer
                 | Self::LayerProperties
                 | Self::ClearLayer
+                | Self::SelectionShape
+                | Self::SelectAll
+                | Self::Deselect
+                | Self::Reselect
+                | Self::InvertSelection
                 | Self::GraphSet
                 | Self::WorkflowSet
                 | Self::WorkflowPatch

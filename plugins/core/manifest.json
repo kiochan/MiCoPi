@@ -33,6 +33,17 @@
           },
           "layers": {
             "type": "array"
+          },
+          "selection": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "can_reselect": {
+                "type": "boolean"
+              }
+            }
           }
         },
         "required": [
@@ -189,6 +200,69 @@
       "id": "pipeline.run",
       "title": "Validate and execute a sequence with result references",
       "operation": "pipeline_run"
+    },
+    {
+      "id": "selection.shape",
+      "title": "Select Shape",
+      "operation": "selection_shape"
+    },
+    {
+      "id": "selection.all",
+      "title": "Select All",
+      "operation": "select_all"
+    },
+    {
+      "id": "selection.deselect",
+      "title": "Deselect",
+      "operation": "deselect"
+    },
+    {
+      "id": "selection.reselect",
+      "title": "Reselect",
+      "operation": "reselect"
+    },
+    {
+      "id": "selection.invert",
+      "title": "Invert Selection",
+      "operation": "invert_selection"
+    },
+    {
+      "id": "selection.read",
+      "title": "Inspect Selection",
+      "operation": "read_selection",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "current": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer"
+              },
+              "height": {
+                "type": "integer"
+              },
+              "deflate_hex": {
+                "type": "string"
+              }
+            }
+          },
+          "previous": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer"
+              },
+              "height": {
+                "type": "integer"
+              },
+              "deflate_hex": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

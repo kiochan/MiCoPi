@@ -86,8 +86,24 @@ typedef struct {
 } MicopiToolOptionsApi;
 const MicopiToolOptionsApi *micopi_tool_options_v1(void);
 #define MICOPI_TOOL_OPTION_ALPHA_LOCK 1u
+#define MICOPI_TOOL_OPTION_SELECTION 2u
+typedef struct {
+    const uint8_t *data; size_t len;
+    uint32_t width, height, stride;
+} MicopiCoverage;
 /* Additive tails, available only if the prefix struct_size includes the tail. */
 typedef struct { MicopiToolOptions base; uint32_t flags; } MicopiToolOptionsExt;
+typedef struct { MicopiToolOptionsExt base; MicopiCoverage selection; } MicopiToolOptionsSelection;
+typedef struct {
+    uint32_t kind, mode; float bounds[4];
+    const float (*points)[2]; size_t count;
+} MicopiSelectionShape;
+typedef struct {
+    uint32_t abi_version, struct_size;
+    int32_t (*mix)(const MicopiCoverage *, const MicopiPixels *, MicopiPixels *);
+    int32_t (*rasterize)(const MicopiSelectionShape *, const MicopiCoverage *, uint8_t *, size_t, uint32_t, uint32_t);
+} MicopiSelectionApi;
+const MicopiSelectionApi *micopi_selection_v1(void);
 typedef struct { MicopiToolOptionsApi base; uint32_t features; } MicopiToolOptionsApiExt;
 /* SDK 1.2 additive compositor extension; no existing tables change. */
 typedef struct {

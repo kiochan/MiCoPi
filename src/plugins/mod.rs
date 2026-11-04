@@ -17,6 +17,7 @@ mod compositing;
 mod document;
 mod layers;
 mod painting;
+mod selection;
 mod system;
 pub(crate) mod windows;
 mod workbench;
@@ -27,6 +28,9 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        SelectionShape | SelectAll | Deselect | Reselect | InvertSelection | ReadSelection => {
+            selection::execute(session, op, args)
+        }
         ReplayStatus | ReplayOpen | ReplayEvents | ReplayVerify | ReplayExport | ReplayLoad
         | ReplaySeek | ReplaySnapshot | ReplayFrames | ReplayRecover => {
             crate::application::replay::execute(session, op, args)

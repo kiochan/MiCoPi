@@ -874,5 +874,12 @@
   "Merge Down": "下のレイヤーと結合",
   "Merge Visible": "表示レイヤーを結合",
   "Flatten Image": "画像を統合",
-  "Stamp Visible": "表示内容を新規レイヤーに統合"
+  "Stamp Visible": "表示内容を新規レイヤーに統合",
+  "Select Shape": "シェイプ選択",
+  "Select All": "すべてを選択",
+  "Deselect": "選択を解除",
+  "Reselect": "再選択",
+  "Invert Selection": "選択範囲を反転",
+  "Inspect Selection": "選択範囲を確認",
+  "Selection": "選択範囲"
 }

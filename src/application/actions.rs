@@ -107,6 +107,12 @@ pub enum Operation {
     SelectLayer,
     LayerProperties,
     ClearLayer,
+    SelectionShape,
+    SelectAll,
+    Deselect,
+    Reselect,
+    InvertSelection,
+    ReadSelection,
     Pick,
     View,
     Ui,
@@ -139,6 +145,10 @@ impl Operation {
         let number = json!({"type":"number"});
         let point = json!({"type":"object","properties":{"x":number,"y":number,"pressure":{"type":"number","minimum":0,"maximum":1},"time":{"type":"integer","minimum":0},"pen":{"type":"boolean"},"eraser":{"type":"boolean"},"tool_override":{"type":"string","enum":["brush","eraser","picker","hand","zoom"]},"view_x":number,"view_y":number},"required":["x","y"],"additionalProperties":false});
         let (props, required) = match self {
+            Self::SelectionShape => (
+                json!({"kind":{"type":"string","enum":["rectangle","ellipse","polygon"]},"mode":{"type":"string","enum":["replace","add","subtract","intersect"]},"x":{"type":"number","minimum":-16384,"maximum":16384},"y":{"type":"number","minimum":-16384,"maximum":16384},"width":{"type":"number","minimum":0,"maximum":16384},"height":{"type":"number","minimum":0,"maximum":16384},"points":{"type":"array","minItems":3,"maxItems":4096,"items":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-16384,"maximum":16384}}}}),
+                vec!["kind"],
+            ),
             Self::ReplayStatus | Self::ReplayOpen => (json!({}), vec![]),
             Self::ReplayEvents => (
                 json!({"source":{"type":"string","enum":["current","loaded"]},"start":{"type":"integer","minimum":0},"limit":{"type":"integer","minimum":1,"maximum":256}}),
@@ -282,6 +292,7 @@ impl Operation {
                 | Self::Describe
                 | Self::ContextRead
                 | Self::State
+                | Self::ReadSelection
                 | Self::Plugins
                 | Self::PluginPlan
                 | Self::Events

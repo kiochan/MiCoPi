@@ -11,6 +11,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Interface Design](interface-design.md) | Visual hierarchy, configurable spacing and layout behavior |
 | [Canvas Editing](canvas-editing.md) | Anchored framing, exact crop, all-layer history and public actions |
 | [Layer Editing](layer-editing.md) | Stable identities, structural edits, exact transforms and reference behavior |
+| [Selections](selections.md) | Geometry commands, native clipping, combinations, persistence and current limits |
 | [Painting Tools](painting-tools.md) | Pressure controls, connected fill, gradient gestures and performance limits |
 | [Atomic Operations](atomic-operations.md) | Rollback, plugin capabilities, contact commits and compact event storage |
 | [Verified Replay](replay.md) | Event journal, integrity checks, time-lapse preview and frame export |

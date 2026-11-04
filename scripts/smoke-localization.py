@@ -78,6 +78,7 @@ def main():
         # rather than the sample plugin tab that is selected on first discovery.
         call('ui.dispatch',dict(id='command',value='ToggleLayers'))
         call('ui.dispatch',dict(id='command',value='ToggleLayers'))
+        call('selection.shape',dict(kind='ellipse',x=30,y=30,width=180,height=120))
         expected = base64.b64decode(call('canvas.snapshot',{})['data'])
         graph=dict(version=1,nodes=[dict(id=1,type='native_paint.statistics',position=[0,0],parameters={}),dict(id=2,type='action.native.checkerboard',position=[460,0],parameters={})],edges=[dict(**{'from':1},output='calls',to=2,input='cell')])
         call('workflow.set',dict(graph=graph))

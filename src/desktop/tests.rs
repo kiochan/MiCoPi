@@ -1065,3 +1065,43 @@ fn tools_strip_follows_configured_order_and_visibility() {
     );
     assert_ne!((tools.0, tools.1), (options.0, options.1));
 }
+
+#[test]
+fn selection_commands_update_cached_overlay_without_mutating_artwork() {
+    let mut app = studio();
+    app.editor.session = crate::application::Session::new(
+        crate::plugins::Registry::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"))
+            .unwrap(),
+    )
+    .unwrap();
+    let ctx = Context::default();
+    let pixels = app.editor.session.doc.layers[0].pixels.clone();
+    app.editor.actions.push(Action::UiCommand(10150));
+    app.run_actions(&ctx);
+    app.editor.refresh_selection(&ctx);
+    let id = app.editor.selection_texture.as_ref().unwrap().1.id();
+    app.editor.refresh_selection(&ctx);
+    assert_eq!(app.editor.selection_texture.as_ref().unwrap().1.id(), id);
+    app.editor.actions.push(Action::UiCommand(10151));
+    app.run_actions(&ctx);
+    app.editor.refresh_selection(&ctx);
+    assert!(app.editor.selection_texture.is_none());
+    app.editor.actions.push(Action::UiCommand(10152));
+    app.run_actions(&ctx);
+    app.editor.refresh_selection(&ctx);
+    assert!(app.editor.selection_texture.is_some());
+    app.editor.actions.push(Action::UiCommand(10153));
+    app.run_actions(&ctx);
+    assert!(app
+        .editor
+        .session
+        .doc
+        .selection()
+        .current
+        .as_ref()
+        .unwrap()
+        .coverage()
+        .iter()
+        .all(|v| *v == 0));
+    assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+}

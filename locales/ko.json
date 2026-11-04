@@ -874,5 +874,12 @@
   "Merge Down": "아래 레이어와 병합",
   "Merge Visible": "보이는 레이어 병합",
   "Flatten Image": "이미지 병합",
-  "Stamp Visible": "보이는 내용을 새 레이어로"
+  "Stamp Visible": "보이는 내용을 새 레이어로",
+  "Select Shape": "도형 선택",
+  "Select All": "모두 선택",
+  "Deselect": "선택 해제",
+  "Reselect": "다시 선택",
+  "Invert Selection": "선택 영역 반전",
+  "Inspect Selection": "선택 영역 확인",
+  "Selection": "선택 영역"
 }

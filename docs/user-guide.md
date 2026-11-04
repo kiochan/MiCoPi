@@ -56,7 +56,7 @@ Install each plugin directory beside the executable, with its manifest and DLL w
 
 [JSONL, MCP and GUI attachment](plugins-and-actions.md) use the same Session as the desktop. For file automation, supply explicit paths to document and export actions. Headless UI actions return effects without opening windows.
 
-Current omissions include selections, free transforms, layer groups, Wintab, multi-document tabs and watercolor blending. The UI does not present placeholders for these features.
+Current omissions include selection gestures/clipboard, free transforms, layer groups, Wintab, multi-document tabs and watercolor blending. The UI does not present placeholders for these features.
 
 ## Organize and transform layers
 

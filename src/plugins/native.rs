@@ -29,6 +29,36 @@ impl Drop for Module {
     }
 }
 impl Module {
+    unsafe fn selection_api(&self) -> Result<Option<abi::SelectionApi>, String> {
+        #[cfg(windows)]
+        {
+            let address =
+                GetProcAddress(self.handle as *mut c_void, abi::SELECTION_SYMBOL.as_ptr());
+            if address.is_null() {
+                return Ok(None);
+            }
+            let entry = std::mem::transmute::<*mut c_void, abi::SelectionEntry>(address);
+            let pointer = entry();
+            if pointer.is_null() {
+                return Err("Null selection table".into());
+            }
+            let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+            if header.abi_version != 1
+                || header.struct_size < std::mem::size_of::<abi::SelectionApi>() as u32
+            {
+                return Err("Incompatible selection ABI".into());
+            }
+            let api = std::ptr::read_unaligned(pointer);
+            if api.mix.is_none() {
+                return Err("Missing selection mixing callback".into());
+            }
+            Ok(Some(api))
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(None)
+        }
+    }
     unsafe fn tool_options_api(&self) -> Result<Option<(abi::ToolOptionsApi, u32)>, String> {
         #[cfg(windows)]
         {
@@ -185,6 +215,7 @@ pub struct NativePlugin {
     api: abi::PluginApi,
     tools: Option<abi::ToolApi>,
     tool_options: Option<(abi::ToolOptionsApi, u32)>,
+    selection_mix: Option<abi::SelectionApi>,
     compositor: Option<abi::CompositorApi>,
     _module: Module,
 }
@@ -250,6 +281,7 @@ impl NativePlugin {
         };
         let tools = unsafe { module.tool_api()? };
         let tool_options = unsafe { module.tool_options_api()? };
+        let selection_mix = unsafe { module.selection_api()? };
         if tool_options.is_some() && tools.is_none() {
             return Err("Tool options require a tool API".into());
         }
@@ -275,6 +307,7 @@ impl NativePlugin {
                 api,
                 tools,
                 tool_options,
+                selection_mix,
                 compositor,
                 _module: module,
             }),
@@ -446,6 +479,108 @@ struct HostContext {
     session: *mut Session,
     busy: bool,
 }
+fn coverage(mask: &crate::engine::selection::Mask) -> abi::Coverage {
+    let (width, height) = mask.dimensions();
+    abi::Coverage {
+        data: mask.coverage().as_ptr(),
+        len: mask.coverage().len(),
+        width: width as u32,
+        height: height as u32,
+        stride: width as u32,
+    }
+}
+pub(crate) fn selection_shape(
+    s: &Session,
+    shape: &abi::SelectionShape,
+) -> Result<crate::engine::selection::Mask, String> {
+    let api = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.selection_mix)
+        .ok_or("Painting DLL does not support selection geometry")?;
+    let rasterize = api
+        .rasterize
+        .ok_or("Painting DLL does not support selection geometry")?;
+    let mut output = vec![0; s.doc.width * s.doc.height];
+    let previous = s
+        .doc
+        .selection()
+        .current
+        .as_ref()
+        .map(coverage)
+        .unwrap_or_default();
+    if unsafe {
+        rasterize(
+            shape,
+            &previous,
+            output.as_mut_ptr(),
+            output.len(),
+            s.doc.width as u32,
+            s.doc.height as u32,
+        )
+    } != abi::OK
+    {
+        return Err("Selection geometry failed".into());
+    }
+    crate::engine::selection::Mask::new(s.doc.width, s.doc.height, output)
+}
+/// Cold action boundary: blend scratch output using the independent painting DLL.
+/// Typed tool MOVE uses its frozen mask directly and never enters this function.
+pub(crate) fn clip_region(
+    s: &Session,
+    x: usize,
+    y: usize,
+    w: usize,
+    h: usize,
+    pixels: &mut [u32],
+) -> Result<(), String> {
+    let Some(mask) = &s.doc.selection().current else {
+        return Ok(());
+    };
+    if w == 0
+        || h == 0
+        || x.checked_add(w).is_none_or(|v| v > s.doc.width)
+        || y.checked_add(h).is_none_or(|v| v > s.doc.height)
+        || w.checked_mul(h) != Some(pixels.len())
+    {
+        return Err("Invalid selection clipping region".into());
+    }
+    let api = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.selection_mix)
+        .ok_or("Painting DLL does not support selection blending")?;
+    let mask = coverage(mask);
+    let before = abi::Pixels {
+        data: unsafe {
+            s.doc.layers[s.doc.active]
+                .pixels
+                .as_ptr()
+                .add(y * s.doc.width + x)
+        } as *mut u32,
+        len: (h - 1) * s.doc.width + w,
+        width: w as u32,
+        height: h as u32,
+        stride: s.doc.width as u32,
+        origin_x: x as u32,
+        origin_y: y as u32,
+    };
+    let mut after = abi::Pixels {
+        data: pixels.as_mut_ptr(),
+        len: pixels.len(),
+        width: w as u32,
+        height: h as u32,
+        stride: w as u32,
+        origin_x: x as u32,
+        origin_y: y as u32,
+    };
+    if unsafe { (api.mix.unwrap())(&mask, &before, &mut after) } != abi::OK {
+        return Err("Selection blending failed".into());
+    }
+    Ok(())
+}
 unsafe extern "C" fn dispatch(
     context: *mut c_void,
     id: abi::Bytes,
@@ -551,6 +686,10 @@ unsafe extern "C" fn edit_region(
             (*host).busy = false;
             return abi::ERROR;
         }
+    }
+    if status == abi::OK && clip_region(session, x, y, w, h, &mut pixels).is_err() {
+        (*host).busy = false;
+        return abi::ERROR;
     }
     if status == abi::OK && session.doc.replace_region(x, y, w, h, &pixels) {
         session.revision += 1;
@@ -678,6 +817,38 @@ mod tests {
             .unwrap_err();
         assert_eq!(error.code, "tool_options_unsupported");
         assert_eq!(session.state(), before);
+        session
+            .apply(Action::new("layer.set", json!({"alpha_locked":false})))
+            .unwrap();
+        session
+            .apply(Action::new("selection.all", json!({})))
+            .unwrap();
+        let before = session.state();
+        assert_eq!(
+            session
+                .apply(Action::new(
+                    "canvas.stroke",
+                    json!({"points":[{"x":10,"y":10}]})
+                ))
+                .unwrap_err()
+                .code,
+            "tool_options_unsupported"
+        );
+        assert_eq!(session.state(), before);
+        session.tool_instances.clear();
+        Arc::get_mut(session.registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .selection_mix = None;
+        let before = session.state();
+        let pixels = session.doc.layers[0].pixels.clone();
+        assert!(session
+            .apply(Action::new("native.invert", json!({})))
+            .is_err());
+        assert!(session
+            .apply(Action::new("layer.clear", json!({})))
+            .is_err());
+        assert_eq!(session.state(), before);
+        assert_eq!(session.doc.layers[0].pixels, pixels);
     }
     unsafe extern "C" fn fail(_: *mut c_void, pixels: *mut abi::Pixels) -> i32 {
         *(*pixels).data = 0xff123456;
@@ -813,6 +984,7 @@ mod tests {
 
 /// Cached for the document session; moved into a contact for allocation-free moves.
 pub(crate) struct ToolInstance {
+    selection: Option<crate::engine::selection::Mask>,
     plugin: Arc<NativePlugin>,
     state: *mut c_void,
     api: abi::ToolApi,
@@ -834,7 +1006,12 @@ impl ToolInstance {
                 "Tool instance initialization failed",
             ));
         }
-        Ok(Self { plugin, state, api })
+        Ok(Self {
+            plugin,
+            state,
+            api,
+            selection: None,
+        })
     }
     pub(crate) fn pointer(
         &mut self,
@@ -845,6 +1022,19 @@ impl ToolInstance {
         painting: bool,
     ) -> Result<abi::ToolOutput, ActionError> {
         if parameters.is_some() && painting {
+            let selection = session.doc.selection().current.clone();
+            if selection.is_some()
+                && self
+                    .plugin
+                    .tool_options
+                    .is_none_or(|(_, features)| features & abi::TOOL_OPTION_SELECTION == 0)
+            {
+                return Err(ActionError::new(
+                    "tool_options_unsupported",
+                    "Tool DLL does not support selection-clipped painting",
+                ));
+            }
+            self.selection = selection;
             let p = &session.parameters;
             let locked = session.doc.alpha_locked(session.doc.active);
             if let Some((api, features)) = self.plugin.tool_options {
@@ -860,7 +1050,30 @@ impl ToolInstance {
                     spacing: p.spacing,
                     minimum_opacity: p.minimum_opacity,
                 };
-                let status = if features & abi::TOOL_OPTION_ALPHA_LOCK != 0 {
+                let flags = if locked {
+                    abi::TOOL_OPTION_ALPHA_LOCK
+                } else {
+                    0
+                };
+                let status = if features & abi::TOOL_OPTION_SELECTION != 0 {
+                    let extended = abi::ToolOptionsSelection {
+                        base: abi::ToolOptionsExt {
+                            base: abi::ToolOptions {
+                                struct_size: std::mem::size_of::<abi::ToolOptionsSelection>()
+                                    as u32,
+                                ..options
+                            },
+                            flags: flags
+                                | if self.selection.is_some() {
+                                    abi::TOOL_OPTION_SELECTION
+                                } else {
+                                    0
+                                },
+                        },
+                        selection: self.selection.as_ref().map(coverage).unwrap_or_default(),
+                    };
+                    unsafe { (api.configure.unwrap())(self.state, &extended.base.base) }
+                } else if features & abi::TOOL_OPTION_ALPHA_LOCK != 0 {
                     let extended = abi::ToolOptionsExt {
                         base: abi::ToolOptions {
                             struct_size: std::mem::size_of::<abi::ToolOptionsExt>() as u32,

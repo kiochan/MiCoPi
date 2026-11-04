@@ -83,6 +83,16 @@ def main():
     ]
     commands += [
         dict(action="layer.add", args={}),
+        dict(action="selection.shape", args=dict(kind="rectangle", x=30, y=30, width=110, height=75)),
+        dict(action="layer.fill_color", args=dict(color="#5522cc80")),
+        dict(action="canvas.stroke", args=dict(points=[dict(x=0,y=50,pen=True,pressure=.3),dict(x=190,y=60,pen=True,pressure=1.)])),
+        dict(action="selection.invert", args={}),
+        dict(action="native.invert", args={}),
+        dict(action="selection.deselect", args={}),
+        dict(action="selection.reselect", args={}),
+        dict(action="selection.all", args={}),
+        dict(action="selection.read", args={}),
+        dict(action="selection.deselect", args={}),
         dict(action="layer.fill_color", args=dict(color="#dd884480")),
         dict(action="layer.stamp_visible", args={}),
         dict(action="history.undo", args={}),

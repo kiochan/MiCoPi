@@ -2,6 +2,7 @@
 //! in this DLL. The host supplies only scoped pixels, history and color sampling.
 mod input;
 mod raster;
+mod selection;
 use input::{Dynamics, Sample, Stabilizer};
 use micopi_plugin_api as abi;
 use raster::Raster;
@@ -15,6 +16,7 @@ pub struct Brush {
     pub erase: bool,
 }
 struct State {
+    selection: abi::Coverage,
     alpha_locked: bool,
     filter: Stabilizer,
     contact: Option<Contact>,
@@ -24,6 +26,7 @@ struct State {
 impl Default for State {
     fn default() -> Self {
         Self {
+            selection: Default::default(),
             alpha_locked: false,
             filter: Default::default(),
             contact: None,
@@ -86,6 +89,12 @@ impl State {
                 if self.contact.is_some() || !(1..=5).contains(&handler) {
                     return abi::ERROR;
                 }
+                if (handler == 1 || handler == 2)
+                    && !self.selection.data.is_null()
+                    && (p.width, p.height) != (self.selection.width, self.selection.height)
+                {
+                    return abi::ERROR;
+                }
                 let Some(parameters) = parameters else {
                     return abi::ERROR;
                 };
@@ -123,6 +132,7 @@ impl State {
                     last: p,
                     minimum_opacity: self.minimum_opacity,
                     raster: Raster {
+                        selection: self.selection,
                         alpha_locked: self.alpha_locked,
                         spacing: self.spacing,
                         width: p.width,
@@ -301,10 +311,22 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
     };
     if (header.struct_size > std::mem::size_of::<abi::ToolOptions>() as u32
         && header.struct_size < std::mem::size_of::<abi::ToolOptionsExt>() as u32)
-        || flags & !abi::TOOL_OPTION_ALPHA_LOCK != 0
+        || flags & !(abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_SELECTION) != 0
     {
         return abi::ERROR;
     }
+    let mask = if flags & abi::TOOL_OPTION_SELECTION != 0 {
+        if header.struct_size < std::mem::size_of::<abi::ToolOptionsSelection>() as u32 {
+            return abi::ERROR;
+        }
+        let mask = std::ptr::read_unaligned(options.cast::<abi::ToolOptionsSelection>()).selection;
+        if !selection::valid(&mask) || mask.data.is_null() {
+            return abi::ERROR;
+        }
+        mask
+    } else {
+        abi::Coverage::default()
+    };
     let options = std::ptr::read_unaligned(options);
     if !options.spacing.is_finite()
         || !(0.01..=2.).contains(&options.spacing)
@@ -320,6 +342,7 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
     state.spacing = options.spacing;
     state.minimum_opacity = options.minimum_opacity;
     state.alpha_locked = flags & abi::TOOL_OPTION_ALPHA_LOCK != 0;
+    state.selection = mask;
     abi::OK
 }
 static OPTIONS: abi::ToolOptionsApiExt = abi::ToolOptionsApiExt {
@@ -328,7 +351,7 @@ static OPTIONS: abi::ToolOptionsApiExt = abi::ToolOptionsApiExt {
         struct_size: std::mem::size_of::<abi::ToolOptionsApiExt>() as u32,
         configure: Some(configure),
     },
-    features: abi::TOOL_OPTION_ALPHA_LOCK,
+    features: abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_SELECTION,
 };
 #[no_mangle]
 pub extern "C" fn micopi_tool_options_v1() -> *const abi::ToolOptionsApi {
@@ -411,12 +434,43 @@ mod option_tests {
         };
         assert_eq!(unsafe { configure(ptr, &extended.base) }, abi::OK);
         assert!(state.alpha_locked);
-        extended.flags = 2;
+        extended.flags = 4;
         assert_eq!(unsafe { configure(ptr, &extended.base) }, abi::ERROR);
         assert!(state.alpha_locked);
+        extended.flags = abi::TOOL_OPTION_SELECTION;
+        assert_eq!(unsafe { configure(ptr, &extended.base) }, abi::ERROR);
         assert_eq!(unsafe { configure(ptr, &options()) }, abi::OK);
         assert!(!state.alpha_locked);
         extended.base.struct_size = 17;
         assert_eq!(unsafe { configure(ptr, &extended.base) }, abi::ERROR);
+    }
+    #[test]
+    fn selection_options_validate_complete_tail_and_reset_legacy_calls() {
+        let mut state = State::default();
+        let ptr = (&mut state as *mut State).cast();
+        let coverage = [255u8, 128, 0, 255];
+        let mut options = abi::ToolOptionsSelection {
+            base: abi::ToolOptionsExt {
+                base: abi::ToolOptions {
+                    struct_size: std::mem::size_of::<abi::ToolOptionsSelection>() as u32,
+                    ..options()
+                },
+                flags: abi::TOOL_OPTION_SELECTION,
+            },
+            selection: abi::Coverage {
+                data: coverage.as_ptr(),
+                len: 4,
+                width: 2,
+                height: 2,
+                stride: 2,
+            },
+        };
+        assert_eq!(unsafe { configure(ptr, &options.base.base) }, abi::OK);
+        assert_eq!(state.selection.data, coverage.as_ptr());
+        options.selection.len = 3;
+        assert_eq!(unsafe { configure(ptr, &options.base.base) }, abi::ERROR);
+        assert_eq!(state.selection.len, 4);
+        assert_eq!(unsafe { configure(ptr, &self::options()) }, abi::OK);
+        assert!(state.selection.data.is_null());
     }
 }

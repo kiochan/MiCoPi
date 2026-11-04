@@ -874,5 +874,12 @@
   "Merge Down": "Merge Down",
   "Merge Visible": "Merge Visible",
   "Flatten Image": "Flatten Image",
-  "Stamp Visible": "Stamp Visible"
+  "Stamp Visible": "Stamp Visible",
+  "Select Shape": "Select Shape",
+  "Select All": "Select All",
+  "Deselect": "Deselect",
+  "Reselect": "Reselect",
+  "Invert Selection": "Invert Selection",
+  "Inspect Selection": "Inspect Selection",
+  "Selection": "Selection"
 }

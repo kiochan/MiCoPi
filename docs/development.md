@@ -58,6 +58,8 @@ Keep typed pen input separate from JSON orchestration. Preserve dirty-region tex
 
 The DLL/reference benchmark interleaves five runs of 80 strokes and 5,120 varying-pressure samples, compares full pixels/history and reports medians. It includes Session/input/raster/history work but excludes GUI presentation. Timing is a local observation, not a cross-machine performance guarantee.
 
+The selection increment adds a third interleaved run using a full-canvas frozen mask and verifies exact pixel parity with unrestricted drawing. On this development environment, the 2026-11-04 release run measured 371 ms unrestricted DLL, 349 ms full-selection DLL and 94 ms raster-only reference per 5,120 samples/80 strokes (five-run medians, 512×384). The selection/unrestricted ratio was 0.939; scheduling/cache variation and commit/recording work are included, so this is not evidence that selection makes painting faster or a measurement of physical pen latency. No mask bytes are copied or compressed on MOVE; the new per-dab work is a coverage read and opacity multiplication.
+
 ## Repository and release packaging
 
 Documentation is indexed in [docs/README.md](README.md); runnable scripts and configuration examples are indexed in [Examples](../examples/README.md). Run `python scripts/check-repository.py` after reorganizing either. Build artifacts remain ignored.

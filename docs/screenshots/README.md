@@ -6,6 +6,7 @@ These are actual application captures, not interface mockups. Current images com
 | --- | --- |
 | [Atomic workflow](atomic-workflow.png) | Default atomic execution control in the plugin node editor |
 | [Verified replay](replay.png) | Event timeline and read-only recorded outcome preview |
+| [Selection outline](selection.png) | Command-generated ellipse overlay and active-selection status, independent of exported pixels |
 | [Workbench](workbench.png) | Default independent control bar, canvas and property windows |
 | [Light workbench](workbench-light.png) | Shared layout and controls in the light theme |
 | [Warm workbench](workbench-warm.png) | Shared layout and controls in the warm theme |

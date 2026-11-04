@@ -1,0 +1,10 @@
+{"action":"canvas.new","args":{"width":320,"height":240}}
+{"action":"selection.shape","args":{"kind":"rectangle","x":30,"y":40,"width":180,"height":120}}
+{"action":"layer.fill_color","args":{"color":"#8066dd"}}
+{"action":"selection.shape","args":{"kind":"ellipse","x":100,"y":70,"width":150,"height":100,"mode":"add"}}
+{"action":"brush.set","args":{"radius":20,"color":"#dd6688","pressure_size":true,"pressure_opacity":true,"stabilizer":0.35}}
+{"action":"canvas.stroke","args":{"points":[{"x":5,"y":110,"pen":true,"pressure":0.2,"time":1},{"x":150,"y":110,"pen":true,"pressure":1,"time":17},{"x":310,"y":130,"pen":true,"pressure":0.4,"time":33}]}}
+{"action":"selection.invert"}
+{"action":"native.invert"}
+{"action":"selection.deselect"}
+{"action":"replay.verify"}

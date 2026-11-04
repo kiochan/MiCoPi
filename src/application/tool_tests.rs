@@ -4,6 +4,7 @@ use crate::{
     engine::Document,
     plugins::{tool_reference, Registry},
 };
+use serde_json::json;
 fn fresh() -> Session {
     let registry = Registry::bundled();
     assert!(
@@ -159,6 +160,11 @@ fn dll_brush_benchmark() {
     let mut backend = tool_reference::StrokeEngine::default();
     native.parameters.radius = 6.;
     reference.parameters.radius = 6.;
+    let mut selected = fresh();
+    selected.parameters.radius = 6.;
+    selected
+        .apply(Action::new("selection.all", json!({})))
+        .unwrap();
     let samples: Vec<_> = (0..80u32)
         .flat_map(|stroke| {
             (0..64u32).map(move |i| {
@@ -183,6 +189,7 @@ fn dll_brush_benchmark() {
     // Interleave repeats to reduce warm-cache and scheduling bias.
     let mut native_times = vec![];
     let mut reference_times = vec![];
+    let mut selection_times = vec![];
     for _ in 0..5 {
         let start = Instant::now();
         for p in &samples {
@@ -194,15 +201,27 @@ fn dll_brush_benchmark() {
             native.pointer(*p).unwrap();
         }
         native_times.push(start.elapsed().as_secs_f64());
+        let start = Instant::now();
+        for p in &samples {
+            selected.pointer(*p).unwrap();
+        }
+        selection_times.push(start.elapsed().as_secs_f64());
     }
     assert_eq!(native.doc.layers[0].pixels, reference.doc.layers[0].pixels);
+    assert_eq!(selected.doc.layers[0].pixels, native.doc.layers[0].pixels);
     native_times.sort_by(f64::total_cmp);
     reference_times.sort_by(f64::total_cmp);
+    selection_times.sort_by(f64::total_cmp);
     println!(
         "DLL {:.3} ms; reference {:.3} ms; ratio {:.3}; samples per run {}",
         native_times[2] * 1000.,
         reference_times[2] * 1000.,
         native_times[2] / reference_times[2],
         samples.len()
+    );
+    println!(
+        "Full selection DLL {:.3} ms; selected/unrestricted ratio {:.3}",
+        selection_times[2] * 1000.,
+        selection_times[2] / native_times[2]
     );
 }

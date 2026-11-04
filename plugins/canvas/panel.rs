@@ -68,6 +68,11 @@ impl Editor {
                     } else {
                         self.status.clone()
                     };
+                    let status = if self.session.doc.selection().current.is_some() {
+                        format!("{} · {}", localize(status), localize("Selection"))
+                    } else {
+                        status
+                    };
                     let details = format!(
                         "{} × {} px · History {:.1} MB",
                         self.session.doc.width,
@@ -423,6 +428,7 @@ impl Editor {
             ) * self.zoom,
         );
         self.refresh_texture(ui.ctx());
+        self.refresh_selection(ui.ctx());
         let painter = ui.painter().with_clip_rect(bounds);
         // A recessed stage sits inside the card between the tab row and the zoom strip.
         painter.rect_filled(bounds, 0, c.stage);
@@ -446,6 +452,14 @@ impl Editor {
             );
         }
         self.crop_outline(&painter, c.accent);
+        if let Some((_, texture)) = &self.selection_texture {
+            painter.image(
+                texture.id(),
+                self.image_rect,
+                Rect::from_min_max(Pos2::ZERO, pos2(1., 1.)),
+                Color32::WHITE,
+            );
+        }
         if !self.blocked {
             if let Some((a, b)) = self.area_drag {
                 let screen = |q: Pos2| self.image_rect.min + q.to_vec2() * self.zoom;

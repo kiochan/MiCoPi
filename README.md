@@ -44,7 +44,9 @@ Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadma
 
 Layers support renaming, duplication (**Ctrl+J**), reordering and deletion, plus Merge Down (**Ctrl+E**), Merge Visible (**Ctrl+Shift+E**), Stamp Visible (**Ctrl+Alt+Shift+E**) and transparent-canvas flattening. Exact flips, 180° rotation and integer offsets are also available. See [Layer editing](docs/layer-editing.md).
 
-Current limits: one document per session; no Wintab, selections, free transforms, layer groups or watercolor engine. Native plugin DLLs execute inside the host process.
+Current limits: one document per session; no Wintab, selection gestures/clipboard, free transforms, layer groups or watercolor engine. Native plugin DLLs execute inside the host process.
+
+Schema-described rectangle, ellipse and polygon [selections](docs/selections.md) support combinations, native drawing/action clipping, undo and replay. Select All/Deselect/Reselect/Invert have configurable PS shortcuts; direct marquee/lasso gestures and clipboard tools remain planned.
 
 ## Build and run
 

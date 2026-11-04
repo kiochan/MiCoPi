@@ -39,14 +39,15 @@ Acceptance: source buffers and metadata return on undo; redo restores the merged
 
 ### P2 — Selection and clipboard foundation
 
-In progress: internal selection storage now preserves current/previous 8-bit coverage through project metadata, history and verified outcomes, and reframes it with canvas geometry. User-facing actions/tools remain pending until native clipping is integrated; the storage work alone is not selection-tool availability.
+In progress: bounded storage, geometry/combine commands, Select All/Deselect/Reselect/Invert, native drawing/action clipping and a cached static outline are implemented. Direct marquee/lasso gestures, Magic Wand, edge processing and clipboard remain pending. See [Selections](selections.md).
 
-- [ ] Add bounded document selection data, persistence, undo, atomic rollback and outcome replay.
+- [x] Add bounded document selection data, persistence, undo, atomic rollback and outcome replay.
 - [ ] Add rectangular/elliptical marquees, freehand/polygonal lassos and replace/add/subtract/intersect modes.
-- [ ] Add Select All, Deselect, Reselect and Invert with PS-style configurable bindings.
+- [x] Add Select All, Deselect, Reselect and Invert with PS-style configurable bindings.
 - [ ] Add tolerance-based Magic Wand, connected/global color matching and Grow/Similar.
 - [ ] Add selection feather, expansion/contraction and smoothing.
-- [ ] Clip brush, eraser, clear, fill, gradient and applicable filters to the selection through a cached typed path.
+- [x] Clip brush, eraser, clear, fill, gradient and applicable direct filters to the selection through a cached typed path (output clipping; connected-fill traversal remains below).
+- [ ] Restrict connected fill traversal to selected coverage so excluded pixels cannot bridge separate selected islands (output clipping is already implemented).
 - [ ] Add copy, copy merged, cut, paste, paste in place, duplicate selection to layer and selection-to-layer cut.
 - [ ] Add internal clipboard state for headless execution and an explicit desktop system-clipboard adapter.
 

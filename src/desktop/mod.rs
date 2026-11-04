@@ -6,6 +6,8 @@ mod brush;
 mod canvas;
 #[path = "../../plugins/canvas/geometry.rs"]
 mod canvas_geometry;
+#[path = "../../plugins/canvas/selection.rs"]
+mod canvas_selection;
 #[path = "../../plugins/color/panel.rs"]
 mod color;
 mod commands;
@@ -148,6 +150,7 @@ pub(super) struct Editor {
     canvas: Rect,
     image_rect: Rect,
     texture: Option<TextureHandle>,
+    selection_texture: Option<(crate::engine::selection::Mask, TextureHandle)>,
     wheel_texture: Option<TextureHandle>,
     wheel_key: Option<(usize, u32, u32)>,
     color_hue: f32,
@@ -259,6 +262,7 @@ impl Editor {
             canvas: Rect::NOTHING,
             image_rect: Rect::NOTHING,
             texture: None,
+            selection_texture: None,
             wheel_texture: None,
             wheel_key: None,
             color_hue: 0.,

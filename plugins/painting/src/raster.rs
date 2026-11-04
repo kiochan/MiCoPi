@@ -3,6 +3,7 @@ use micopi_plugin_api as abi;
 use std::ffi::c_void;
 #[derive(Default)]
 pub struct Raster {
+    pub selection: abi::Coverage,
     pub alpha_locked: bool,
     pub last: Option<(f32, f32)>,
     pub last_brush: Option<Brush>,
@@ -70,6 +71,7 @@ impl Raster {
             return;
         }
         let mut dab = Dab {
+            selection: self.selection,
             x,
             y,
             brush: b,
@@ -91,6 +93,7 @@ impl Raster {
     }
 }
 struct Dab {
+    selection: abi::Coverage,
     alpha_locked: bool,
     x: f32,
     y: f32,
@@ -142,7 +145,17 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
             } else {
                 ((r - d) / (r * (1. - b.hardness))).max(0.).min(1.)
             };
-            let a = (255. * b.opacity * edge * soft).round() as u32;
+            let mut a = (255. * b.opacity * edge * soft).round() as u32;
+            if !dab.selection.data.is_null() {
+                if px >= dab.selection.width as usize || py >= dab.selection.height as usize {
+                    return abi::ERROR;
+                }
+                let coverage =
+                    *dab.selection
+                        .data
+                        .add(py * dab.selection.stride as usize + px) as u32;
+                a = (a * coverage + 127) / 255;
+            }
             if a == 0 {
                 continue;
             }
@@ -198,6 +211,44 @@ pub fn over(dst: u32, src: u32) -> u32 {
 mod spacing_tests {
     use super::*;
     #[test]
+    fn fractional_mask_scales_dab_opacity_without_touching_unselected_pixels() {
+        let coverage = [0u8, 64, 128, 255];
+        let mut pixels = [0x00123456; 4];
+        let mut buffer = abi::Pixels {
+            data: pixels.as_mut_ptr(),
+            len: 4,
+            width: 4,
+            height: 1,
+            stride: 4,
+            origin_x: 0,
+            origin_y: 0,
+        };
+        let mut dab = Dab {
+            selection: abi::Coverage {
+                data: coverage.as_ptr(),
+                len: 4,
+                width: 4,
+                height: 1,
+                stride: 4,
+            },
+            alpha_locked: false,
+            x: 2.,
+            y: 0.5,
+            brush: Brush {
+                radius: 20.,
+                opacity: 1.,
+                hardness: 1.,
+                color: 0xffaabbcc,
+                erase: false,
+            },
+        };
+        assert_eq!(
+            unsafe { render((&mut dab as *mut Dab).cast(), &mut buffer) },
+            abi::OK
+        );
+        assert_eq!(pixels, [0x00123456, 0x40aabbcc, 0x80aabbcc, 0xffaabbcc]);
+    }
+    #[test]
     fn locked_dabs_recolor_partial_alpha_and_preserve_transparent_storage() {
         let original = [0x00abcdef, 0x40112233, 0x80112233, 0xff112233];
         let mut p = original;
@@ -212,6 +263,7 @@ mod spacing_tests {
         };
         let mut dab = Dab {
             x: 2.,
+            selection: Default::default(),
             y: 0.5,
             alpha_locked: true,
             brush: Brush {
