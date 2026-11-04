@@ -43,6 +43,7 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Documentation and contribution workflow
 
+- Add the phased Photoshop-common editing plan and current capability/gap matrix, using PhotoCraft's public feature documentation as a functional reference while retaining MiCoPi's architecture and independent implementations.
 - Refresh all four READMEs, architecture/development guides, feature references and roadmap progress. Include repository agent instructions in portable documentation.
 - Consolidate Unreleased notes by current behavior while retaining released-version history. Expand the agent guide with product direction, directory ownership and implementation conventions; require a matching changelog summary, explanatory commit body and validation report for every authored commit.
 

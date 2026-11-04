@@ -6,6 +6,7 @@ The technical documentation is maintained in English. The project overview is al
 | --- | --- |
 | [Philosophy](philosophy.md) | Why MiCoPi prioritizes painting, small native components and one execution core |
 | [Roadmap](../ROADMAP.md) | Priorities, milestone dependencies and acceptance criteria |
+| [Photoshop-common Editing Plan](photoshop-essentials.md) | Independent functional adoption checklist, dependencies and acceptance checks |
 | [User Guide](user-guide.md) | Drawing, pen input, settings, shortcuts and panels |
 | [Interface Design](interface-design.md) | Visual hierarchy, configurable spacing and layout behavior |
 | [Canvas Editing](canvas-editing.md) | Anchored framing, exact crop, all-layer history and public actions |

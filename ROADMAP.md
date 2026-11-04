@@ -33,6 +33,8 @@ M2, M3 and M4 can progress independently after their foundation requirements are
 
 The next plugin increment should build on the existing registry: an authoring kit and conformance runner, clearer package diagnostics and upgrade guidance. Locale edits already hot-reload; package activation, contribution changes and DLL replacement still require restart. Do not present runtime DLL unloading or a plugin marketplace as available. Reliability measurement and selection contracts remain priorities alongside plugin authoring.
 
+The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essentials.md) breaks the PhotoCraft-inspired functional work into P1–P8 increments. Follow its dependency order and acceptance checks while preserving the architecture and reliability gates above; unchecked entries remain planned work.
+
 ## M1 — Reliable document foundation
 
 - [ ] Audit rollback across single actions, active-contact transitions, structural edits and project lifecycle operations. Make unsupported atomic effects explicit before execution.
