@@ -83,5 +83,13 @@
         }
       ]
     }
-  ]
+  ],
+  "version": "1.0.0",
+  "description": "Brush preset, macro and localized button panel",
+  "min_host_version": "0.21.0",
+  "locales": {
+    "zh-CN": "locales/zh-CN.json",
+    "ja": "locales/ja.json",
+    "ko": "locales/ko.json"
+  }
 }

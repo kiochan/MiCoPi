@@ -102,6 +102,17 @@ fn tr(value: impl Into<WidgetText>) -> RichText {
     RichText::new(crate::i18n::translated(value.text()))
 }
 
+fn tr_for(owner: Option<&str>, value: impl Into<WidgetText>) -> RichText {
+    let value = value.into();
+    let translated = crate::i18n::translated_for(owner, value.text());
+    if let WidgetText::RichText(ref rich) = value {
+        if translated == rich.text() {
+            return (**rich).clone();
+        }
+    }
+    RichText::new(translated.into_owned())
+}
+
 pub(super) struct Editor {
     locales: Option<crate::i18n::HotReload>,
     headers: std::collections::HashMap<Panel, group_bar::HeaderLayout>,
@@ -168,20 +179,6 @@ pub(super) struct Editor {
 }
 impl Editor {
     fn new(path: PathBuf, native: Option<Native>) -> Self {
-        #[cfg(not(test))]
-        let locales = {
-            let args: Vec<_> = std::env::args().collect();
-            let directory = args
-                .iter()
-                .position(|a| a == "--locales-dir")
-                .and_then(|i| args.get(i + 1))
-                .map(PathBuf::from)
-                .unwrap_or_else(|| std::env::current_exe().unwrap().with_file_name("locales"));
-            Some(crate::i18n::HotReload::new(vec![
-                directory,
-                path.with_file_name("locales"),
-            ]))
-        };
         #[cfg(test)]
         let locales = {
             crate::i18n::load_test_catalogs();
@@ -224,6 +221,20 @@ impl Editor {
         });
         session.runtime = "desktop";
         let plugin_nodes = session.registry.node_catalog();
+        #[cfg(not(test))]
+        let locales = {
+            let args: Vec<_> = std::env::args().collect();
+            let directory = args
+                .iter()
+                .position(|a| a == "--locales-dir")
+                .and_then(|i| args.get(i + 1))
+                .map(PathBuf::from)
+                .unwrap_or_else(|| std::env::current_exe().unwrap().with_file_name("locales"));
+            Some(crate::i18n::HotReload::with_plugins(
+                vec![directory, path.with_file_name("locales")],
+                session.registry.locale_sources(),
+            ))
+        };
         let mut editor = Self {
             locales,
             headers: Default::default(),

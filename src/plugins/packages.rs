@@ -32,6 +32,7 @@ pub struct PluginInfo {
     pub description: String,
     pub author: Option<String>,
     pub min_host_version: Option<String>,
+    pub locales: BTreeMap<String, String>,
     pub manifest: PathBuf,
     pub manifest_enabled: bool,
     pub status: PluginStatus,
@@ -56,6 +57,7 @@ impl PluginInfo {
             description: m.map(|m| m.description.clone()).unwrap_or_default(),
             author: m.and_then(|m| m.author.clone()),
             min_host_version: m.and_then(|m| m.min_host_version.clone()),
+            locales: m.map(|m| m.locales.clone()).unwrap_or_default(),
             manifest: path.into(),
             manifest_enabled: m.is_some_and(|m| m.enabled),
             status: PluginStatus::Failed,
@@ -135,6 +137,9 @@ impl PluginInfo {
             .filter(|(_, v)| **v > 0)
             .map(|(k, _)| k.clone())
             .collect();
+        if !m.locales.is_empty() {
+            self.capabilities.push("locales".into());
+        }
         if m.library.is_some() {
             self.capabilities.push("native_library".into());
         }
@@ -186,6 +191,22 @@ pub(super) fn validate_metadata(m: &Manifest) -> Result<(), String> {
             return Err(format!("Plugin requires MiCoPi {v} or newer"));
         }
     }
+    for (language, file) in &m.locales {
+        let path = Path::new(file);
+        if !["zh-CN", "ja", "ko"].contains(&language.as_str())
+            || file.len() > 256
+            || file.is_empty()
+            || file.contains([':', '\\', '\0'])
+            || !path
+                .components()
+                .all(|c| matches!(c, std::path::Component::Normal(_)))
+            || path.extension().is_none_or(|e| e != "json")
+        {
+            return Err(
+                "Plugin locale paths must be relative JSON files for zh-CN, ja or ko".into(),
+            );
+        }
+    }
     let mut seen = BTreeSet::new();
     if m.requires.len() > 128
         || m.requires
@@ -208,6 +229,71 @@ pub struct PluginPlan {
     pub restart_required: bool,
 }
 impl Registry {
+    pub fn contribution_owners(&self) -> BTreeMap<&str, BTreeMap<&str, &str>> {
+        [
+            ("actions", self.actions.keys().collect::<Vec<_>>()),
+            ("tools", self.tools.keys().collect()),
+            ("states", self.states.keys().collect()),
+            ("nodes", self.nodes.keys().collect()),
+            ("panels", self.panels.keys().collect()),
+        ]
+        .into_iter()
+        .map(|(kind, ids)| {
+            (
+                kind,
+                ids.into_iter()
+                    .filter_map(|id| {
+                        self.contribution_owner(kind, id)
+                            .map(|owner| (id.as_str(), owner))
+                    })
+                    .collect(),
+            )
+        })
+        .collect()
+    }
+    pub fn locale_sources(&self) -> Vec<crate::i18n::PluginCatalog> {
+        self.packages
+            .iter()
+            .filter(|p| p.status == PluginStatus::Loaded)
+            .flat_map(|p| {
+                self.available
+                    .iter()
+                    .find(|m| Some(&m.id) == p.id.as_ref())
+                    .into_iter()
+                    .flat_map(move |m| {
+                        m.locales.iter().filter_map(move |(code, file)| {
+                            let language = crate::i18n::Language::ALL
+                                .into_iter()
+                                .find(|l| l.code() == code)?;
+                            let root = p.manifest.parent()?.to_path_buf();
+                            Some(crate::i18n::PluginCatalog {
+                                owner: m.id.clone(),
+                                language,
+                                path: root.join(file),
+                                root,
+                            })
+                        })
+                    })
+            })
+            .collect()
+    }
+    pub fn contribution_owner(&self, kind: &str, id: &str) -> Option<&str> {
+        match kind {
+            "actions" => self.owners.get(id).map(String::as_str),
+            "nodes" => self.nodes.get(id).map(|(id, _)| id.as_str()),
+            _ => self
+                .available
+                .iter()
+                .filter(|m| self.loaded.contains(&m.id))
+                .find(|m| match kind {
+                    "tools" => m.tools.iter().any(|v| v.id == id),
+                    "panels" => m.panels.iter().any(|v| v.id == id),
+                    "states" => m.states.iter().any(|v| v.id == id),
+                    _ => false,
+                })
+                .map(|m| m.id.as_str()),
+        }
+    }
     pub fn plan_enabled(
         &self,
         disabled: &[String],
@@ -461,5 +547,55 @@ mod tests {
             .contains(&json!("color")));
         assert_eq!(s.state(), before);
         assert!(s.registry.actions["plugins.plan"].is_read_only());
+    }
+    #[test]
+    fn locale_sources_only_include_loaded_packages_and_owner_ids_are_shared() {
+        let root = fixture();
+        write(
+            &root,
+            "example",
+            json!({"locales":{"zh-CN":"locale.json"},"actions":[{"id":"example.read","title":"Read","operation":"state"}],"panels":[{"id":"example.panel","title":"Example"}]}),
+        );
+        write(
+            &root,
+            "off",
+            json!({"enabled":false,"locales":{"ja":"not-read.json"}}),
+        );
+        write(
+            &root,
+            "blocked",
+            json!({"requires":["absent"],"locales":{"ko":"not-read.json"}}),
+        );
+        for (id, path) in [
+            ("escape", "../outside.json"),
+            ("absolute", "C:/outside.json"),
+            ("extension", "locale.txt"),
+        ] {
+            write(&root, id, json!({"locales":{"ja":path}}));
+        }
+        write(&root, "english", json!({"locales":{"en":"english.json"}}));
+        let r = Registry::load(&root).unwrap();
+        let sources = r.locale_sources();
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].owner, "example");
+        assert_eq!(sources[0].path, root.join("locale.json"));
+        assert_eq!(
+            r.contribution_owner("panels", "example.panel"),
+            Some("example")
+        );
+        assert_eq!(
+            r.contribution_owner("actions", "example.read"),
+            Some("example")
+        );
+        assert!(r
+            .packages
+            .iter()
+            .find(|p| p.id.as_deref() == Some("example"))
+            .unwrap()
+            .capabilities
+            .contains(&"locales".into()));
+        for id in ["escape", "absolute", "extension", "english"] {
+            assert!(!r.loaded.contains(&id.to_owned()));
+        }
     }
 }

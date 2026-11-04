@@ -741,7 +741,7 @@ impl Studio {
                 count += 1;
                 ui.push_id(&plugin.manifest, |ui| {
                     ui.horizontal_wrapped(|ui| {
-                        ui.strong(tr(&plugin.name));
+                        ui.strong(tr_for(plugin.id.as_deref(), &plugin.name));
                         if let Some(version) = &plugin.version {
                             ui.weak(version);
                         }
@@ -751,7 +751,7 @@ impl Studio {
                         ui.weak(author);
                     }
                     if !plugin.description.is_empty() {
-                        ui.label(tr(&plugin.description));
+                        ui.label(tr_for(plugin.id.as_deref(), &plugin.description));
                     }
                     if let Some(id) = id {
                         ui.weak(id);
@@ -844,7 +844,7 @@ fn keybindings(ui: &mut Ui, ctx: &Context, prefs: &mut Preferences, draft: &mut 
             &format!(
                 "keybindings keyboard 快捷键 按键 {} {} {} {} {}",
                 command.id,
-                crate::i18n::search_text(command.title),
+                crate::i18n::search_text_for(command.owner, command.title),
                 crate::i18n::search_text(command.category),
                 command.keywords,
                 current
@@ -856,7 +856,7 @@ fn keybindings(ui: &mut Ui, ctx: &Context, prefs: &mut Preferences, draft: &mut 
         count += 1;
         ui.push_id(command.id, |ui| {
             ui.horizontal_wrapped(|ui| {
-                ui.strong(tr(command.title));
+                ui.strong(tr_for(command.owner, command.title));
                 ui.weak(tr(command.category));
                 if modified {
                     ui.weak(tr("Modified"));

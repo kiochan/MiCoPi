@@ -51,6 +51,8 @@ Windows fonts provide CJK fallback: Microsoft YaHei for Chinese, Yu Gothic/Meiry
 
 ## Add or change translations
 
+Plugins can declare their own external catalogs in the manifest's `locales` map. The same watcher loads them for active packages and retains last-good translations on invalid edits. Package messages are scoped by contribution owner, so identical English keys can have different translations in different plugins without replacing host labels. Profile files can override a package message with `@plugin/<package-id>/<English message>`. The combined size of accepted external files is limited to 16 MiB. See [Plugin system](plugin-system.md) for the manifest format and reload lifecycle.
+
 1. For a new message, write an English source key and add it to the English catalog (requires a rebuild). Add that key to the distributed translation catalogs; local override files may remain partial.
 2. Add natural translations for visible UI text. Keep technical IDs, paths and code unchanged.
 3. Preserve all format placeholders. Translate before constructing styled RichText; use the shared desktop presentation helper for labels, buttons and hints.

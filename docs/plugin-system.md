@@ -27,6 +27,22 @@ Malformed manifests also receive a path-based record with a null ID and a diagno
 
 The current package lifecycle is **discover → validate → resolve dependencies → register → run → destroy**. Contribution changes and native library changes require restart. Existing module references and instances retain their current lifetime rules. This does not add runtime DLL replacement or dynamically compiled egui controls.
 
+## Package language catalogs
+
+A manifest can declare optional external translations for its own contribution titles and UI text:
+
+```json
+{"locales":{"zh-CN":"locales/zh-CN.json","ja":"locales/ja.json","ko":"locales/ko.json"}}
+```
+
+Each file is a UTF-8 JSON object mapping canonical English messages to translations, for example `{"Quick Tools":"快捷工具"}`. Only English is embedded in the host. English package messages remain in contribution metadata; an `en` locale declaration is rejected. Paths must be relative `.json` paths with forward slashes and normal components, contained within the package directory after resolving links.
+
+Only loaded packages contribute catalogs. Missing translations fall back to host translations and then the original English message. Malformed or inaccessible files report a diagnostic and retain their last valid contents without disabling package actions. The shared background watcher checks these files every 500 ms. Editing a declared file takes effect without restart; adding declarations or enabling a package requires restart.
+
+The registry exposes contribution owners for actions, tools, states, nodes and panels through `plugins.list.contribution_owners`. Presentation and command search use these owners to isolate package translations: a plugin's `File` entry cannot replace the host File menu or another plugin's entry. Translations never change action IDs, shortcuts, workflow ports or protocol values. Compiled plugin UI must use the owner's presentation helper for its own text; runtime loading of arbitrary egui code is not provided.
+
+Profile catalogs may override one package entry using a qualified key such as `@plugin/quick/Quick Tools`. Host catalogs load first, package catalogs next and profile overrides last. Each file is limited to 2 MiB; all accepted external files together are limited to 16 MiB. See [Localization](localization.md) and the installable [Quick tools example](../examples/plugins/quick-tools/manifest.json).
+
 ## Dependency-aware enable/disable plans
 
 Settings > Plugins uses a shared planner before changing the settings draft. Enabling a package enables all required packages. Disabling it also disables enabled packages that depend on it, transitively. Core, painting and workbench cannot be disabled through the planner, including indirectly through a dependency cascade. Missing requirements, cycles, ambiguous duplicate IDs and manifest-level disabling reject an enable plan without partial preference changes.

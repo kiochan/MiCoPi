@@ -185,7 +185,7 @@ impl SnarlViewer<ViewNode> for Viewer<'_> {
             crate::i18n::text(status),
             self.catalog
                 .get(&n.node.node_type)
-                .map(|d| crate::i18n::text(d.title.as_str()))
+                .map(|d| crate::i18n::translated_for(Some(&d.owner), d.title.as_str()))
                 .unwrap_or_else(|| crate::i18n::text("Node Type Unavailable")),
             n.node.id
         )
@@ -436,7 +436,7 @@ impl Editor {
                     {
                         if !format!(
                             "{} {} {}",
-                            crate::i18n::search_text(&def.title),
+                            crate::i18n::search_text_for(Some(&def.owner), &def.title),
                             def.id,
                             def.owner
                         )
@@ -448,7 +448,7 @@ impl Editor {
                         if ui
                             .button(tr(format!(
                                 "{} · {}",
-                                crate::i18n::text(&def.title),
+                                crate::i18n::translated_for(Some(&def.owner), &def.title),
                                 def.owner
                             )))
                             .on_hover_text(tr(&def.id))

@@ -51,7 +51,10 @@ impl Editor {
                             .corner_radius(self.settings.ui.corner_radius * 1.25)
                             .selected(selected),
                         )
-                        .on_hover_text(tr(&tool.title))
+                        .on_hover_text(tr_for(
+                            self.session.registry.contribution_owner("tools", &tool.id),
+                            &tool.title,
+                        ))
                         .clicked()
                     {
                         self.select_tool(&tool.id);

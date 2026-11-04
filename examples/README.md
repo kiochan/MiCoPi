@@ -38,4 +38,6 @@ MCP configurations contain example paths; adjust executable/profile paths for yo
 
 [Quick tools](plugins/quick-tools/manifest.json) is a small installable package with a preset, macro action and button panel. Copy the package into your chosen plugin directory and restart.
 
+Its `locales/` directory demonstrates Chinese, Japanese and Korean plugin translations. Edit these JSON files while the desktop is running to update package titles, buttons and command search. English messages remain in the manifest; plugin translations are scoped to this package. See [Plugin system](../docs/plugin-system.md).
+
 The INI files under [legacy](legacy/README.md) describe earlier workspaces. The current desktop uses `settings.json` and `workspace.egui.json`; do not copy the old INI files over current JSON settings.

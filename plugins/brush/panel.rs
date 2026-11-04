@@ -81,11 +81,17 @@ impl Editor {
                     ui.painter().with_clip_rect(r.shrink(2.)).text(
                         pos2(r.center().x, r.bottom() - 13.),
                         Align2::CENTER_CENTER,
-                        localize(name),
+                        crate::i18n::translated_for(
+                            self.session.registry.contribution_owner("tools", &tool.id),
+                            name,
+                        ),
                         FontId::proportional(a.small_font_size),
                         colors.muted,
                     );
-                    let response = response.on_hover_text(tr(&tool.title));
+                    let response = response.on_hover_text(tr_for(
+                        self.session.registry.contribution_owner("tools", &tool.id),
+                        &tool.title,
+                    ));
                     if response.clicked() {
                         self.select_tool(&tool.id);
                     }

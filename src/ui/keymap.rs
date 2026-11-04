@@ -1113,6 +1113,7 @@ pub struct Keymap {
 }
 #[derive(Clone)]
 struct PluginCommand {
+    owner: Option<String>,
     id: String,
     title: String,
     action: String,
@@ -1120,6 +1121,7 @@ struct PluginCommand {
 }
 #[derive(Clone, Copy)]
 pub struct CommandView<'a> {
+    pub owner: Option<&'a str>,
     pub id: &'a str,
     pub title: &'a str,
     pub category: &'a str,
@@ -1158,6 +1160,7 @@ impl Keymap {
         if index < COMMANDS.len() {
             let c = &COMMANDS[index];
             CommandView {
+                owner: None,
                 id: c.id,
                 title: c.title,
                 category: c.category,
@@ -1168,6 +1171,7 @@ impl Keymap {
         } else {
             let c = &self.extra[index - COMMANDS.len()];
             CommandView {
+                owner: c.owner.as_deref(),
                 id: &c.id,
                 title: &c.title,
                 category: "Plugin Commands",
@@ -1185,6 +1189,11 @@ impl Keymap {
             .iter()
             .find(|c| c.ui == ui)
             .map(|c| c.action.as_str())
+    }
+    pub fn register_action_owners(&mut self, owners: &std::collections::BTreeMap<String, String>) {
+        for command in &mut self.extra {
+            command.owner = owners.get(&command.action).cloned();
+        }
     }
     pub fn register_actions(
         &mut self,
@@ -1205,6 +1214,7 @@ impl Keymap {
             }
             let keys = next.pending.remove(&id).unwrap_or_default();
             next.extra.push(PluginCommand {
+                owner: None,
                 id,
                 title,
                 action,
@@ -1292,7 +1302,7 @@ impl Keymap {
             let k = self.label(i);
             format!(
                 "{}{}{}",
-                crate::i18n::text(self.command(i).title),
+                crate::i18n::translated_for(self.command(i).owner, self.command(i).title),
                 if k.is_empty() { "" } else { "  " },
                 k
             )

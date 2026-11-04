@@ -20,6 +20,7 @@ def main():
     output.mkdir(parents=True)
     plugins, profile = output / 'plugins', output / 'profile'
     shutil.copytree(ROOT / 'plugins', plugins)
+    shutil.copytree(ROOT/'examples/plugins/quick-tools', plugins/'quick-tools')
     profile.mkdir()
     locale_dir = profile / 'locales'
     locale_dir.mkdir()
@@ -55,6 +56,11 @@ def main():
         while not endpoint.exists():
             assert process.poll() is None and time.monotonic()<deadline,'GUI startup failed'
             time.sleep(.05)
+        inventory = call('plugins.list', {})
+        quick = next(p for p in inventory['packages'] if p['id']=='quick')
+        assert quick['status']=='loaded' and 'locales' in quick['capabilities']
+        assert inventory['contribution_owners']['panels']['quick.panel']=='quick'
+        assert inventory['lifecycle']['locales']=='hot_reload'
         call('canvas.new',dict(width=256,height=192))
         call('native.checkerboard',dict(cell=16))
         call('brush.set',dict(radius=8,color='#0077ff',stabilizer=.35,pressure_size=True,pressure_opacity=True,spacing=.2,minimum_opacity=.25))
@@ -84,6 +90,10 @@ def main():
             call('workflow.open',{})
             time.sleep(.25)
             screenshot(f'{language}-workbench.png')
+            call('window.command', dict(panel='quick.panel',operation='focus'))
+            time.sleep(.15)
+            screenshot(f'{language}-plugin-panel.png')
+            call('window.command', dict(panel='layers',operation='focus'))
             for command, name in [(10144, 'canvas-size'), (10145, 'canvas-crop')]:
                 call('ui.dispatch', dict(id='command', value=dict(UiCommand=command)))
                 time.sleep(.15)
@@ -107,6 +117,21 @@ def main():
         call('settings.update',dict(path=str(settings),ui=dict(language='en')))
         # Exercise the live watcher without restarting the GUI or changing artwork.
         call('settings.update',dict(path=str(settings),ui=dict(language='zh-CN')))
+        call('window.command',dict(panel='quick.panel',operation='focus'))
+        plugin_locale=plugins/'quick-tools/locales/zh-CN.json'
+        plugin_original=plugin_locale.read_text(encoding='utf-8')
+        plugin_edited=json.loads(plugin_original)
+        plugin_edited['Select Blue Soft Brush']='插件热加载测试'
+        plugin_locale.write_text(json.dumps(plugin_edited,ensure_ascii=False),encoding='utf-8')
+        time.sleep(1.2)
+        screenshot('plugin-hot-reload-valid.png')
+        plugin_locale.write_text('{',encoding='utf-8')
+        time.sleep(1.2)
+        screenshot('plugin-hot-reload-invalid-keeps-last.png')
+        plugin_locale.write_text(plugin_original,encoding='utf-8')
+        time.sleep(1.2)
+        screenshot('plugin-hot-reload-restored.png')
+        call('window.command',dict(panel='layers',operation='focus'))
         chinese = locale_dir/'zh-CN.json'
         original = chinese.read_text(encoding='utf-8')
         edited = json.loads(original)

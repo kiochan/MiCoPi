@@ -17,8 +17,17 @@ impl Viewer<'_> {
                 .panels
                 .values()
                 .find(|d| crate::plugins::panel_key(&d.id) == *key)
-                .map(|d| localize(d.title.clone()))
-                .unwrap_or_else(|| "Plugin Not Loaded".into())
+                .map(|d| {
+                    crate::i18n::translated_for(
+                        self.editor
+                            .session
+                            .registry
+                            .contribution_owner("panels", &d.id),
+                        &d.title,
+                    )
+                    .into_owned()
+                })
+                .unwrap_or_else(|| crate::i18n::text("Plugin Not Loaded").into_owned())
                 .into();
         }
         if *p == Panel::Canvas {
@@ -57,8 +66,17 @@ impl Viewer<'_> {
                 .panels
                 .values()
                 .find(|d| d.builtin.as_deref() == Some(builtin))
-                .map(|d| localize(d.title.clone()))
-                .unwrap_or_else(|| p.title().into())
+                .map(|d| {
+                    crate::i18n::translated_for(
+                        self.editor
+                            .session
+                            .registry
+                            .contribution_owner("panels", &d.id),
+                        &d.title,
+                    )
+                    .into_owned()
+                })
+                .unwrap_or_else(|| localize(p.title()).into_owned())
                 .into()
         }
     }
@@ -194,11 +212,16 @@ impl Editor {
             .find(|d| crate::plugins::panel_key(&d.id) == key)
             .cloned();
         if let Some(panel) = definition {
+            let owner = self
+                .session
+                .registry
+                .contribution_owner("panels", &panel.id)
+                .map(str::to_owned);
             for button in panel.buttons {
                 if ui
                     .add_sized(
                         [ui.available_width(), self.settings.ui.control_height],
-                        Button::new(tr(&button.title)),
+                        Button::new(tr_for(owner.as_deref(), &button.title)),
                     )
                     .clicked()
                 {

@@ -21,6 +21,9 @@ impl Editor {
         if let Err(error) = self.settings.keys.register_actions(actions) {
             self.status = error;
         }
+        self.settings
+            .keys
+            .register_action_owners(&self.session.registry.owners);
     }
     pub(super) fn begin_plugin_command(&mut self, action: &str) {
         let Some(def) = self.session.registry.actions.get(action) else {
@@ -65,7 +68,13 @@ impl Editor {
         let mut run = false;
         let mut invalid = false;
         let definition = self.session.registry.actions[&form.action].clone();
-        Window::new(tr(&definition.title))
+        let title = tr_for(
+            self.session
+                .registry
+                .contribution_owner("actions", &form.action),
+            &definition.title,
+        );
+        Window::new(title)
             .id(Id::new("plugin-command-arguments"))
             .open(&mut open)
             .default_width(480.)

@@ -275,8 +275,11 @@ impl Editor {
                         );
                         ui.painter().text(
                             pos2(r.left() + 44., r.center().y - 8.),
-                            Align2::LEFT_CENTER,localize(
-                            self.settings.keys.command(index).title),
+                            Align2::LEFT_CENTER,
+                            crate::i18n::translated_for(
+                                self.settings.keys.command(index).owner,
+                                self.settings.keys.command(index).title,
+                            ),
                             FontId::proportional(a.font_size),
                             c.text,
                         );

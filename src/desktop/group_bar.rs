@@ -243,7 +243,7 @@ impl panels::Viewer<'_> {
                         .font(if active { theme::strong(ui.ctx(), a.font_size) } else { FontId::proportional(a.font_size) })
                         .color(if active { colors.text } else { colors.muted });
                     // A transparent frame keeps button padding; surfaces are painted separately.
-                    let response = ui.add(Button::new(tr(title))
+                    let response = ui.add(Button::new(title)
                         .fill(Color32::TRANSPARENT)
                         .stroke(Stroke::NONE)
                         .sense(Sense::click_and_drag())

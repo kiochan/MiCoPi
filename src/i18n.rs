@@ -63,9 +63,16 @@ fn build_catalogs(values: [Catalog; 4]) -> Catalogs {
         .collect();
     let legacy = values[1]
         .iter()
+        .filter(|(key, _)| !key.starts_with(PLUGIN_PREFIX))
         .map(|(en, zh)| (zh.clone(), en.clone()))
         .collect();
-    let localized = std::array::from_fn(|i| values[i].values().cloned().collect());
+    let localized = std::array::from_fn(|i| {
+        values[i]
+            .iter()
+            .filter(|(key, _)| !key.starts_with(PLUGIN_PREFIX))
+            .map(|(_, value)| value.clone())
+            .collect()
+    });
     Catalogs {
         values,
         templates,
@@ -99,6 +106,36 @@ fn install(data: Arc<Catalogs>) {
 #[path = "i18n_external.rs"]
 mod external;
 pub use external::HotReload;
+pub use external::PluginCatalog;
+const PLUGIN_PREFIX: &str = "@plugin/";
+fn plugin_key(owner: &str, message: &str) -> String {
+    format!("{PLUGIN_PREFIX}{owner}/{message}")
+}
+pub fn translated_for<'a>(owner: Option<&str>, message: &'a str) -> Cow<'a, str> {
+    translated_for_in(owner, current(), message)
+}
+pub fn translated_for_in<'a>(
+    owner: Option<&str>,
+    language: Language,
+    message: &'a str,
+) -> Cow<'a, str> {
+    if let Some(owner) = owner.filter(|_| language != Language::English) {
+        let key = plugin_key(owner, message);
+        let value = translated_in(language, &key);
+        if value != key {
+            return Cow::Owned(value.into_owned());
+        }
+    }
+    translated_in(language, message)
+}
+pub fn search_text_for(owner: Option<&str>, message: &str) -> String {
+    let mut result = message.to_owned();
+    for language in Language::ALL.into_iter().skip(1) {
+        result.push(' ');
+        result.push_str(&translated_for_in(owner, language, message));
+    }
+    result
+}
 #[cfg(test)]
 pub(crate) fn load_test_catalogs() {
     static DATA: OnceLock<Arc<Catalogs>> = OnceLock::new();

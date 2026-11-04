@@ -16,6 +16,9 @@ enum Stamp {
     Error(String),
 }
 struct Source {
+    owner: Option<String>,
+    root: Option<PathBuf>,
+    bytes: usize,
     path: PathBuf,
     language: usize,
     stamp: Option<Stamp>,
@@ -31,6 +34,13 @@ pub(super) struct Reader {
     sources: Vec<Source>,
     initial: bool,
 }
+#[derive(Clone, Debug)]
+pub struct PluginCatalog {
+    pub owner: String,
+    pub language: Language,
+    pub path: PathBuf,
+    pub root: PathBuf,
+}
 impl Reader {
     pub(super) fn new(directories: Vec<PathBuf>) -> Self {
         let mut seen = BTreeSet::new();
@@ -43,6 +53,9 @@ impl Reader {
                     .enumerate()
                     .skip(1)
                     .map(move |(language, l)| Source {
+                        owner: None,
+                        root: None,
+                        bytes: 0,
                         path: d.join(format!("{}.json", l.code())),
                         language,
                         stamp: None,
@@ -57,8 +70,31 @@ impl Reader {
             initial: true,
         }
     }
+    fn with_plugins(directories: Vec<PathBuf>, plugins: Vec<PluginCatalog>) -> Self {
+        let mut reader = Self::new(directories);
+        let at = reader.sources.len().min(3);
+        reader.sources.splice(
+            at..at,
+            plugins
+                .into_iter()
+                .filter(|p| p.language != Language::English)
+                .map(|p| Source {
+                    owner: Some(p.owner),
+                    root: Some(p.root),
+                    bytes: 0,
+                    path: p.path,
+                    language: index(p.language),
+                    stamp: None,
+                    good: Catalog::new(),
+                    error: None,
+                    retry_after: None,
+                }),
+        );
+        reader
+    }
     pub(super) fn refresh(&mut self) -> Option<Update> {
         let mut changed = std::mem::take(&mut self.initial);
+        let mut used: usize = self.sources.iter().map(|s| s.bytes).sum();
         for source in &mut self.sources {
             let stamp = match fs::metadata(&source.path) {
                 Ok(m) => Stamp::File(m.len(), m.modified().ok()),
@@ -72,13 +108,42 @@ impl Reader {
             }
             source.stamp = Some(stamp.clone());
             let result = match stamp {
-                Stamp::Missing => Ok(Catalog::new()),
+                Stamp::Missing => Ok((Catalog::new(), 0)),
                 Stamp::Error(e) => Err(e),
                 Stamp::File(size, _) if size > LIMIT => Err("Language file exceeds 2 MiB".into()),
-                Stamp::File(_, _) => read(&source.path),
+                Stamp::File(size, _) if used - source.bytes + size as usize > 16 * 1024 * 1024 => {
+                    Err("External catalogs exceed the combined 16 MiB limit".into())
+                }
+                Stamp::File(_, _) => {
+                    let contained = source
+                        .root
+                        .as_ref()
+                        .map(|root| {
+                            let root = fs::canonicalize(root).map_err(|e| e.to_string())?;
+                            let path = fs::canonicalize(&source.path).map_err(|e| e.to_string())?;
+                            if !path.starts_with(root) {
+                                return Err(
+                                    "Plugin locale file escapes its package directory".into()
+                                );
+                            }
+                            Ok(())
+                        })
+                        .unwrap_or(Ok(()));
+                    contained
+                        .and_then(|_| read(&source.path))
+                        .and_then(|(catalog, size)| {
+                            if used - source.bytes + size > 16 * 1024 * 1024 {
+                                Err("External catalogs exceed the combined 16 MiB limit".into())
+                            } else {
+                                Ok((catalog, size))
+                            }
+                        })
+                }
             };
             match result {
-                Ok(catalog) => {
+                Ok((catalog, size)) => {
+                    used = used - source.bytes + size;
+                    source.bytes = size;
                     changed |= source.good != catalog || source.error.is_some();
                     source.good = catalog;
                     source.error = None;
@@ -103,7 +168,16 @@ impl Reader {
         });
         let mut errors = vec![];
         for source in &self.sources {
-            values[source.language].extend(source.good.clone());
+            for (key, value) in &source.good {
+                values[source.language].insert(
+                    source
+                        .owner
+                        .as_ref()
+                        .map(|owner| plugin_key(owner, key))
+                        .unwrap_or_else(|| key.clone()),
+                    value.clone(),
+                );
+            }
             if let Some(error) = &source.error {
                 errors.push(format!("{}: {error}", source.path.display()));
             }
@@ -114,7 +188,7 @@ impl Reader {
         })
     }
 }
-fn read(path: &std::path::Path) -> Result<Catalog, String> {
+fn read(path: &std::path::Path) -> Result<(Catalog, usize), String> {
     let mut bytes = Vec::new();
     fs::File::open(path)
         .map_err(|e| e.to_string())?
@@ -143,7 +217,7 @@ fn read(path: &std::path::Path) -> Result<Catalog, String> {
             return Err(format!("Format placeholders differ for {key:?}"));
         }
     }
-    Ok(catalog)
+    Ok((catalog, bytes.len()))
 }
 /// Application language files first, per-profile overrides second. Only English is embedded.
 pub struct HotReload {
@@ -152,7 +226,10 @@ pub struct HotReload {
 }
 impl HotReload {
     pub fn new(directories: Vec<PathBuf>) -> Self {
-        let mut reader = Reader::new(directories);
+        Self::with_plugins(directories, vec![])
+    }
+    pub fn with_plugins(directories: Vec<PathBuf>, plugins: Vec<PluginCatalog>) -> Self {
+        let mut reader = Reader::with_plugins(directories, plugins);
         let first = reader.refresh().expect("initial catalog snapshot");
         install(first.data.clone());
         let (tx, updates) = mpsc::sync_channel(1);
@@ -324,5 +401,136 @@ mod tests {
             .retry_after = Some(Instant::now());
         assert!(apply(&mut reader).is_empty());
         assert_eq!(text_in(Language::Japanese, "File"), "Repaired");
+    }
+    fn plugin(owner: &str, root: &std::path::Path, file: &str) -> PluginCatalog {
+        PluginCatalog {
+            owner: owner.into(),
+            language: Language::Chinese,
+            path: root.join(file),
+            root: root.into(),
+        }
+    }
+    #[test]
+    fn plugin_catalogs_are_isolated_hot_reloadable_and_profile_overridable() {
+        let app = root();
+        let profile = root();
+        let packages = root();
+        fs::write(app.join("zh-CN.json"), r#"{"File":"文件"}"#).unwrap();
+        fs::write(
+            packages.join("a.json"),
+            r#"{"File":"A 文件","Title":"文件","Collision":"File","Count {:02}":"A {:02}","Search":"甲插件专属搜索"}"#,
+        )
+        .unwrap();
+        fs::write(packages.join("b.json"), r#"{"File":"B 文件"}"#).unwrap();
+        let mut reader = Reader::with_plugins(
+            vec![app, profile.clone()],
+            vec![
+                plugin("a", &packages, "a.json"),
+                plugin("b", &packages, "b.json"),
+            ],
+        );
+        assert!(apply(&mut reader).is_empty());
+        assert_eq!(text_in(Language::Chinese, "File"), "文件");
+        assert_eq!(text_in(Language::English, "文件"), "File");
+        assert_eq!(
+            translated_for_in(Some("a"), Language::Chinese, "File"),
+            "A 文件"
+        );
+        assert_eq!(
+            translated_for_in(Some("b"), Language::Chinese, "File"),
+            "B 文件"
+        );
+        assert_eq!(
+            translated_for_in(Some("a"), Language::English, "File"),
+            "File"
+        );
+        assert_eq!(
+            translated_for_in(Some("a"), Language::Chinese, "Count 03"),
+            "A 03"
+        );
+        assert_eq!(
+            translated_for_in(Some("unknown"), Language::Chinese, "File"),
+            "文件"
+        );
+        let mut keymap = crate::ui::keymap::Keymap::default();
+        keymap
+            .register_actions([("a.open".into(), "Search".into())])
+            .unwrap();
+        keymap.register_action_owners(&BTreeMap::from([("a.open".into(), "a".into())]));
+        let mut palette =
+            crate::ui::palette::Palette::new(crate::ui::palette::Mode::Commands, &keymap);
+        palette.query("甲插件专属搜索".into(), &keymap);
+        let command = keymap.command(palette.current().unwrap());
+        assert_eq!(command.id, "plugin.a.open");
+        assert_eq!(command.owner, Some("a"));
+        assert_eq!(command.title, "Search");
+        fs::write(
+            profile.join("zh-CN.json"),
+            r#"{"@plugin/a/File":"Profile A"}"#,
+        )
+        .unwrap();
+        assert!(apply(&mut reader).is_empty());
+        assert_eq!(
+            translated_for_in(Some("a"), Language::Chinese, "File"),
+            "Profile A"
+        );
+        fs::remove_file(profile.join("zh-CN.json")).unwrap();
+        fs::write(packages.join("a.json"), r#"{"File":"Updated A"}"#).unwrap();
+        assert!(apply(&mut reader).is_empty());
+        assert_eq!(
+            translated_for_in(Some("a"), Language::Chinese, "File"),
+            "Updated A"
+        );
+        fs::write(packages.join("a.json"), "{").unwrap();
+        assert!(!apply(&mut reader).is_empty());
+        assert_eq!(
+            translated_for_in(Some("a"), Language::Chinese, "File"),
+            "Updated A"
+        );
+        fs::remove_file(packages.join("a.json")).unwrap();
+        assert!(apply(&mut reader).is_empty());
+        assert_eq!(
+            translated_for_in(Some("a"), Language::Chinese, "File"),
+            "文件"
+        );
+        assert_eq!(
+            translated_for_in(Some("b"), Language::Chinese, "File"),
+            "B 文件"
+        );
+    }
+    #[test]
+    fn plugin_paths_are_contained_and_total_catalog_bytes_are_bounded() {
+        let packages = root();
+        let outside = root();
+        fs::write(outside.join("outside.json"), r#"{"File":"Outside"}"#).unwrap();
+        let mut bad = plugin("escape", &outside, "outside.json");
+        bad.root = packages.clone();
+        let mut reader = Reader::with_plugins(vec![], vec![bad]);
+        assert!(apply(&mut reader)[0].contains("escapes its package"));
+        assert_eq!(
+            translated_for_in(Some("escape"), Language::Chinese, "File"),
+            "File"
+        );
+        let mut sources = vec![];
+        for i in 0..9 {
+            let mut content = br#"{"File":"Packed"}"#.to_vec();
+            content.resize(LIMIT as usize, b' ');
+            let file = format!("{i}.json");
+            fs::write(packages.join(&file), content).unwrap();
+            sources.push(plugin(&format!("p{i}"), &packages, &file));
+        }
+        let mut reader = Reader::with_plugins(vec![], sources);
+        let errors = apply(&mut reader);
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("16 MiB"));
+        assert_eq!(
+            translated_for_in(Some("p7"), Language::Chinese, "File"),
+            "Packed"
+        );
+        assert_eq!(
+            translated_for_in(Some("p8"), Language::Chinese, "File"),
+            "File"
+        );
+        assert!(reader.sources.iter().map(|s| s.bytes).sum::<usize>() <= 16 * 1024 * 1024);
     }
 }

@@ -69,6 +69,8 @@ pub struct Manifest {
     pub author: Option<String>,
     #[serde(default)]
     pub min_host_version: Option<String>,
+    #[serde(default)]
+    pub locales: BTreeMap<String, String>,
     #[serde(default = "yes")]
     pub enabled: bool,
     #[serde(default)]
@@ -656,7 +658,7 @@ impl Registry {
         out
     }
     pub fn describe(&self) -> Value {
-        json!({"directory":self.root,"loaded":self.loaded,"packages":self.packages,"disabled":self.disabled,"lifecycle":{"contributions":"restart_required","native_library":"restart_required"},"native":self.native_plugins.iter().map(|(id,p)|json!({"id":id,"library":p.path,"abi_version":micopi_plugin_api::ABI_VERSION})).collect::<Vec<_>>(),"diagnostics":self.diagnostics,"tools":self.tools.values().collect::<Vec<_>>(),"actions":self.actions.values().collect::<Vec<_>>(),"states":self.states.values().collect::<Vec<_>>(),"nodes":self.nodes.values().map(|(_,d)|d).collect::<Vec<_>>(),"panels":self.panels.values().collect::<Vec<_>>()})
+        json!({"directory":self.root,"loaded":self.loaded,"packages":self.packages,"contribution_owners":self.contribution_owners(),"disabled":self.disabled,"lifecycle":{"contributions":"restart_required","native_library":"restart_required","locales":"hot_reload"},"native":self.native_plugins.iter().map(|(id,p)|json!({"id":id,"library":p.path,"abi_version":micopi_plugin_api::ABI_VERSION})).collect::<Vec<_>>(),"diagnostics":self.diagnostics,"tools":self.tools.values().collect::<Vec<_>>(),"actions":self.actions.values().collect::<Vec<_>>(),"states":self.states.values().collect::<Vec<_>>(),"nodes":self.nodes.values().map(|(_,d)|d).collect::<Vec<_>>(),"panels":self.panels.values().collect::<Vec<_>>()})
     }
 }
 pub fn valid_id(id: &str) -> bool {

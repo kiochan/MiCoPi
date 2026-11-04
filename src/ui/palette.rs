@@ -103,7 +103,7 @@ impl Palette {
             let title = format!(
                 "{} {}",
                 crate::i18n::search_text(c.category),
-                crate::i18n::search_text(c.title)
+                crate::i18n::search_text_for(c.owner, c.title)
             )
             .to_lowercase();
             let hay = format!("{} {} {} {}", title, c.id, c.keywords, map.label(i)).to_lowercase();
