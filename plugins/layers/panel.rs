@@ -156,7 +156,11 @@ impl Editor {
             }
         });
         if ui
-            .add(Button::new(tr("Node Editor…")).frame(false))
+            .add(
+                Button::new(tr(RichText::new(localize("Node Editor…"))
+                    .color(theme::Colors::new(&self.settings.ui).accent_text)))
+                .frame(false),
+            )
             .clicked()
         {
             self.core("graph.open", serde_json::json!({}));
@@ -191,13 +195,23 @@ impl Editor {
                 r,
                 self.settings.ui.corner_radius,
                 if index == self.session.doc.active {
-                    colors.panel.lerp_to_gamma(colors.accent, 0.15)
+                    colors.tint(if colors.dark { 0.16 } else { 0.13 })
                 } else if response.hovered() {
                     colors.raised
                 } else {
                     colors.panel
                 },
             );
+            if index == self.session.doc.active {
+                ui.painter().rect_filled(
+                    Rect::from_center_size(
+                        pos2(r.left() + 1.5, r.center().y),
+                        vec2(3., row_height * 0.5),
+                    ),
+                    1.5,
+                    colors.accent,
+                );
+            }
             let eye =
                 Rect::from_min_size(r.min + vec2(4., (row_height - 24.) / 2.), Vec2::splat(24.));
             let toggle = ui.interact(
@@ -221,7 +235,8 @@ impl Editor {
                 );
             }
             let thumb = Rect::from_center_size(pos2(r.left() + 49., r.center().y), vec2(32., 32.));
-            ui.painter().rect_filled(thumb, 2., Color32::from_gray(245));
+            ui.painter().rect_filled(thumb.expand(1.), 5., colors.border);
+            ui.painter().rect_filled(thumb, 4., Color32::from_gray(248));
             // A 16×16 sampled mesh keeps thumbnails cheap even on 4096px documents.
             let mut mesh = egui::Mesh::default();
             for y in 0..16 {
@@ -255,7 +270,11 @@ impl Editor {
                 } else {
                     self.session.doc.layer_name(index)
                 },
-                FontId::proportional(self.settings.ui.font_size),
+                if index == self.session.doc.active {
+                    theme::strong(ui.ctx(), self.settings.ui.font_size)
+                } else {
+                    FontId::proportional(self.settings.ui.font_size)
+                },
                 colors.text,
             );
             ui.painter().text(

@@ -18,22 +18,40 @@ pub(super) struct NativeWindow {
 pub(super) fn dock_style(ctx: &Context, a: &Appearance) -> egui_dock::Style {
     let colors = theme::Colors::new(a);
     let mut style = egui_dock::Style::from_egui(ctx.style().as_ref());
+    let radius = theme::card_radius(a);
     style.dock_area_padding = Some(Margin::ZERO);
     style.tab_bar.height = a.tab_height;
     style.tab_bar.bg_fill = colors.panel;
     style.tab_bar.inner_margin = Margin::symmetric(8, 0);
     style.tab_bar.show_scroll_bar_on_overflow = false;
+    // Group row and body read as one floating card.
+    style.tab_bar.corner_radius = CornerRadius {
+        nw: radius,
+        ne: radius,
+        sw: 0,
+        se: 0,
+    };
+    style.tab_bar.hline_color = Color32::TRANSPARENT;
     style.tab.tab_body.inner_margin = Margin::same(a.panel_padding as i8);
     style.tab.tab_body.bg_fill = colors.panel;
     style.tab.tab_body.stroke = Stroke::NONE;
-    style.tab.tab_body.corner_radius = CornerRadius::same(a.corner_radius as u8);
-    style.tab.hline_below_active_tab_name = true;
+    style.tab.tab_body.corner_radius = CornerRadius {
+        nw: 0,
+        ne: 0,
+        sw: radius,
+        se: radius,
+    };
+    style.tab.hline_below_active_tab_name = false;
     style.tab.active.bg_fill = colors.panel;
     style.tab.focused.bg_fill = colors.panel;
-    style.tab.focused.text_color = colors.accent;
-    style.separator.width = a.item_spacing;
+    style.tab.focused.text_color = colors.accent_text;
+    // Gaps between cards match the workspace edge inset.
+    style.separator.width = a.outer_padding;
     style.separator.extra = a.tab_height + a.control_height + a.panel_padding * 2. + 8.;
     style.separator.color_idle = colors.background;
+    style.separator.color_hovered = colors.tint(0.5);
+    style.separator.color_dragged = colors.accent;
+    style.overlay.selection_color = colors.accent.gamma_multiply(0.35);
     style.main_surface_border_stroke = Stroke::NONE;
     style
 }

@@ -10,6 +10,8 @@ pub(super) struct HeaderLayout {
     pub tabs: Rect,
     pub maximize: Rect,
     pub close: Rect,
+    /// The whole floating card: group row plus body.
+    pub card: Rect,
 }
 pub(super) fn layout(body: Rect, padding: f32, a: &Appearance) -> HeaderLayout {
     let bar = Rect::from_min_max(
@@ -37,6 +39,7 @@ pub(super) fn layout(body: Rect, padding: f32, a: &Appearance) -> HeaderLayout {
         tabs,
         maximize,
         close,
+        card: Rect::from_min_max(bar.min, pos2(bar.right(), body.bottom() + padding)),
     }
 }
 impl panels::Viewer<'_> {
@@ -61,7 +64,28 @@ impl panels::Viewer<'_> {
         );
         row.set_clip_rect(h.bar.intersect(ui.ctx().content_rect()));
         let colors = theme::Colors::new(&a);
-        row.painter().rect_filled(h.bar, 0., colors.panel);
+        let radius = theme::card_radius(&a);
+        row.painter().rect_filled(
+            h.bar,
+            CornerRadius { nw: radius, ne: radius, sw: 0, se: 0 },
+            colors.panel,
+        );
+        // Hairline card outline, painted on the body layer so content stays on top.
+        ui.ctx()
+            .layer_painter(ui.layer_id())
+            .with_clip_rect(h.card.expand(1.).intersect(ui.ctx().content_rect()))
+            .rect_stroke(
+                h.card,
+                radius,
+                Stroke::new(1., if colors.dark { colors.border.gamma_multiply(0.7) } else { colors.border }),
+                StrokeKind::Inside,
+            );
+        // Window chrome stays quiet until the pointer reaches the group row.
+        let near = row.rect_contains_pointer(h.bar.expand(4.));
+        let reveal = row
+            .ctx()
+            .animate_bool_with_time(Id::new(("group-chrome", panel)), near, 0.15);
+        let chrome = colors.muted.gamma_multiply(0.35 + 0.65 * reveal);
         row.interact(
             h.bar,
             Id::new(("group-row-background", panel)),
@@ -109,9 +133,13 @@ impl panels::Viewer<'_> {
                 ui.spacing_mut().item_spacing.x = a.item_spacing * 0.5;
                 for (index, mut tab) in tabs.iter().copied().enumerate() {
                     let title = self.tab_title(&mut tab);
-                    let response = ui.add(Button::new(title.color(if tab == panel { colors.text } else { colors.muted }))
-                        .frame_when_inactive(tab == panel)
-                        .fill(if tab == panel {colors.panel.lerp_to_gamma(colors.accent, 0.17)} else {colors.raised})
+                    let active = tab == panel;
+                    let title = RichText::new(title.text())
+                        .font(if active { theme::strong(ui.ctx(), a.font_size) } else { FontId::proportional(a.font_size) })
+                        .color(if active { colors.text } else { colors.muted });
+                    let response = ui.add(Button::new(tr(title))
+                        .frame_when_inactive(active)
+                        .fill(if active { colors.tint(if colors.dark { 0.2 } else { 0.16 }) } else { colors.raised })
                         .corner_radius((a.corner_radius * 2.).min(a.tab_height * 0.5))
                         .sense(Sense::click_and_drag())
                         .min_size(vec2(0., a.tab_height - 4.)));
@@ -172,7 +200,7 @@ impl panels::Viewer<'_> {
                 row.painter().circle_filled(
                     h.grip.center() + vec2(x as f32 * 5. - 2.5, y as f32 * 5. - 5.),
                     1.2,
-                    colors.muted,
+                    chrome,
                 );
             }
         }
@@ -209,13 +237,13 @@ impl panels::Viewer<'_> {
         if restore {
             row.painter().rect_stroke(
                 r.translate(vec2(2., -2.)),
-                0.,
-                Stroke::new(1., colors.muted),
+                1.5,
+                Stroke::new(1.2, chrome),
                 StrokeKind::Inside,
             );
         }
         row.painter()
-            .rect_stroke(r, 0., Stroke::new(1., colors.muted), StrokeKind::Inside);
+            .rect_stroke(r, 1.5, Stroke::new(1.2, chrome), StrokeKind::Inside);
         if max
             .on_hover_text(tr(if restore {
                 "Restore Window"
@@ -233,11 +261,11 @@ impl panels::Viewer<'_> {
         );
         row.painter().line_segment(
             [r.left_top(), r.right_bottom()],
-            Stroke::new(1.2, colors.muted),
+            Stroke::new(1.3, chrome),
         );
         row.painter().line_segment(
             [r.right_top(), r.left_bottom()],
-            Stroke::new(1.2, colors.muted),
+            Stroke::new(1.3, chrome),
         );
         if close.on_hover_text(tr("Hide Panel Group")).clicked() {
             self.editor.core(

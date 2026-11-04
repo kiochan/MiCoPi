@@ -4,7 +4,11 @@ impl Studio {
     pub(super) fn draw_shell(&mut self, ctx: &Context) {
         let a = self.editor.settings.ui.clone();
         let c = theme::Colors::new(&a);
+        let edge = ctx
+            .data(|d| d.get_temp::<f32>(Id::new("workspace-card-left")))
+            .unwrap_or(a.outer_padding);
         TopBottomPanel::top("title")
+            .show_separator_line(false)
             .exact_height(a.title_height + a.outer_padding)
             .frame(Frame::new().fill(c.background).inner_margin(Margin {
                 left: a.outer_padding as i8,
@@ -22,21 +26,19 @@ impl Studio {
                     self.editor.core(if ctx.input(|i|i.viewport().maximized.unwrap_or(false)) {"application.restore"} else {"application.maximize"},serde_json::json!({}));
                 }
                 let center_y = r.center().y;
-                ui.painter().rect_filled(
-                    Rect::from_center_size(pos2(r.left() + 18., center_y),Vec2::splat(26.)),
-                    a.corner_radius,
-                    c.panel.lerp_to_gamma(c.accent,0.22),
-                );
+                // Brand mark: lavender to peach, like ink catching warm light.
+                let mark = Rect::from_min_size(pos2(edge, center_y - 13.), Vec2::splat(26.));
+                theme::gradient_rect(ui.painter(), mark, 8., c.accent, c.blush);
                 ui.painter().text(
-                    pos2(r.left() + 18., center_y),
+                    mark.center() + vec2(0., -0.5),
                     Align2::CENTER_CENTER,
                     localize("M"),
-                    FontId::proportional(15.),
-                    c.accent,
+                    theme::strong(ctx, 14.),
+                    Color32::WHITE,
                 );
                 let menu = Rect::from_min_max(
-                    pos2(r.left() + 46., r.top()),
-                    pos2(r.left() + 390., r.bottom()),
+                    pos2(edge + 38., r.top()),
+                    pos2(edge + 382., r.bottom()),
                 );
                 ui.scope_builder(
                     UiBuilder::new()
@@ -189,14 +191,13 @@ impl Studio {
                 let response = ui
                     .interact(search, ui.id().with("command-center"), Sense::click())
                     .on_hover_text(tr("Search Commands, Tools and Settings"));
-                ui.painter().rect_filled(
+                let pill = search.height() * 0.5;
+                ui.painter().rect(
                     search,
-                    (a.corner_radius * 2.).min(search.height()*0.5),
-                    if response.hovered() {
-                        c.raised
-                    } else {
-                        c.panel
-                    },
+                    pill,
+                    if response.hovered() { c.raised } else { c.panel },
+                    Stroke::new(1., if response.hovered() { c.tint(0.45) } else { c.border.gamma_multiply(if c.dark { 0.7 } else { 1. }) }),
+                    StrokeKind::Inside,
                 );
                 ui.painter().text(
                     pos2(search.left() + 16., center_y),
@@ -232,10 +233,11 @@ impl Studio {
                 }
             });
         TopBottomPanel::bottom("status")
+            .show_separator_line(false)
             .exact_height(24. + a.outer_padding)
             .frame(Frame::new().fill(c.background).inner_margin(Margin {
-                left: 16,
-                right: 16,
+                left: edge.round() as i8,
+                right: edge.round() as i8,
                 top: 0,
                 bottom: a.outer_padding as i8,
             }))
@@ -250,6 +252,12 @@ impl Studio {
                         vec2(ui.available_width() - 330., 24.),
                         Layout::left_to_right(Align::Center),
                         |ui| {
+                            let (dot, _) = ui.allocate_exact_size(vec2(6., 8.), Sense::hover());
+                            ui.painter().circle_filled(
+                                pos2(dot.left() + 3., dot.center().y),
+                                3.,
+                                if self.editor.pen_active { c.blush } else { c.accent },
+                            );
                             ui.add(
                                 Label::new(tr(RichText::new(localize(status))
                                     .small()

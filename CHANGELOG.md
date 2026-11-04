@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Present panels as rounded floating cards with hairline outlines and soft shadows; the canvas sits on a recessed stage with a layered paper shadow.
+- Deepen theme palettes, add a lavender-to-peach brand mark, Segoe UI text with semibold titles and active tabs, hover-revealed group chrome, a pill command search and an accent marker on the active layer.
+
 - Shape the workbench for anime and manga illustrators with muted plum/paper/ivory themes, lavender accents, rounded tab capsules and a compact tool tray.
 - Give brush presets lightweight tapered vector previews and selection feedback; soften title-row command search and move history memory details into the status tooltip.
 

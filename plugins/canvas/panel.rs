@@ -118,7 +118,10 @@ impl Editor {
     pub(super) fn canvas_ui(&mut self, ui: &mut Ui) {
         let appearance = self.settings.ui.clone();
         Frame::new()
-            .inner_margin(Margin::same((appearance.panel_padding / 2.) as i8))
+            .inner_margin(Margin::symmetric(
+                appearance.panel_padding as i8,
+                (appearance.panel_padding / 2.) as i8,
+            ))
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     for (id, action) in [
@@ -153,7 +156,6 @@ impl Editor {
                     }
                 });
             });
-        ui.separator();
         let c = theme::Colors::new(&self.settings.ui);
         let (bounds, response) = ui.allocate_exact_size(
             ui.available_size().max(vec2(1., 1.)),
@@ -294,13 +296,31 @@ impl Editor {
         );
         self.refresh_texture(ui.ctx());
         let painter = ui.painter().with_clip_rect(bounds);
-        painter.rect_filled(bounds, 0, c.background);
+        // A recessed stage sits inside the card; its bottom corners follow the card.
+        let card = theme::card_radius(&self.settings.ui);
+        painter.rect_filled(
+            bounds,
+            CornerRadius { nw: 0, ne: 0, sw: card, se: card },
+            c.stage,
+        );
+        painter.rect_stroke(
+            bounds,
+            CornerRadius { nw: 0, ne: 0, sw: card, se: card },
+            Stroke::new(1., c.border.gamma_multiply(if c.dark { 0.7 } else { 1. })),
+            StrokeKind::Inside,
+        );
         if let Some(texture) = &self.texture {
-            painter.rect_filled(
-                self.image_rect.translate(vec2(0., 3.)).expand(2.),
-                2.,
-                Color32::from_black_alpha(65),
-            );
+            for (offset, blur, alpha) in [([0, 2], 6, 0.6), ([0, 14], 40, 1.)] {
+                painter.add(
+                    Shadow {
+                        offset,
+                        blur,
+                        spread: 0,
+                        color: c.shadow.gamma_multiply(alpha),
+                    }
+                    .as_shape(self.image_rect, 1),
+                );
+            }
             painter.image(
                 texture.id(),
                 self.image_rect,

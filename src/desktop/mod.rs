@@ -869,6 +869,8 @@ impl Studio {
                     .inner_margin(Margin::same(a.outer_padding as i8)),
             )
             .show(ctx, |ui| {
+                // Card shadows are known only after layout; reserve their slot beneath the dock.
+                let shadows = ui.painter().add(Shape::Noop);
                 let style = native_windows::dock_style(ctx, &a);
                 let can_float = self.dock.iter_surfaces().filter(|s| !s.is_empty()).count() < 32;
                 DockArea::new(if separate { &mut main } else { &mut self.dock })
@@ -888,6 +890,30 @@ impl Studio {
                             focused: self.dock_before_focus.is_some(),
                         },
                     );
+                let radius = theme::card_radius(&a);
+                let soft = Shadow {
+                    offset: [0, 1],
+                    blur: 6,
+                    spread: 0,
+                    color: colors.shadow.gamma_multiply(0.7),
+                };
+                let cards: Vec<Shape> = self
+                    .editor
+                    .headers
+                    .values()
+                    .map(|h| soft.as_shape(h.card, radius).into())
+                    .collect();
+                ui.painter().set(shadows, Shape::Vec(cards));
+                // The title mark and status dot align with the outermost card edge.
+                if let Some(left) = self
+                    .editor
+                    .headers
+                    .values()
+                    .map(|h| h.card.left())
+                    .min_by(f32::total_cmp)
+                {
+                    ctx.data_mut(|d| d.insert_temp(Id::new("workspace-card-left"), left));
+                }
             });
         if separate {
             std::mem::swap(main.main_surface_mut(), self.dock.main_surface_mut());
