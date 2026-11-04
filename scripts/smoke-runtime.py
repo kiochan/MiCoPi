@@ -81,6 +81,20 @@ def main():
         dict(action="native.invert",args={}),
         dict(action="native.stats",args={}),
     ]
+    commands += [
+        dict(action="layer.add", args={}),
+        dict(action="layer.fill_color", args=dict(color="#dd884480")),
+        dict(action="layer.stamp_visible", args={}),
+        dict(action="history.undo", args={}),
+        dict(action="layer.merge_down", args={}),
+        dict(action="history.undo", args={}),
+        dict(action="layer.merge_visible", args={}),
+        dict(action="history.undo", args={}),
+        dict(action="layer.flatten", args={}),
+        dict(action="history.undo", args={}),
+        dict(action="layer.delete", args={}),
+        dict(action="replay.verify", args={}),
+    ]
     graph=dict(enabled=True,nodes=[
         dict(id=0,kind="layer",index=0,position=[0,20]),
         dict(id=1,kind="filter",filter="brightness",amount=.125,position=[230,20]),
@@ -127,6 +141,8 @@ def main():
     tools = next(r for r in replies if r["id"] == 2)["result"]["tools"]
     assert any(t["name"] == "quick.blue_stroke" for t in tools), "Custom plugin missing from MCP tools"
     assert any(t["name"] == "native.invert" for t in tools), "Native DLL action missing from MCP tools"
+    for name in ("layer.merge_down", "layer.merge_visible", "layer.flatten", "layer.stamp_visible"):
+        assert any(t["name"] == name for t in tools), f"Layer consolidation action missing from MCP tools: {name}"
     assert any(r["uri"]=="micopi://state/ai_assistant.context" for r in next(r for r in replies if r["id"]==101)["result"]["resources"])
     context=json.loads(next(r for r in replies if r["id"]==102)["result"]["contents"][0]["text"])
     assert context["resources"]["native_paint.stats"]["ok"]

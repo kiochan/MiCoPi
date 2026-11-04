@@ -6,6 +6,7 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Painting and document editing
 
+- Add compositor-backed Merge Down, Merge Visible, transparent-canvas flattening and Stamp Visible, with stable target IDs, hidden-layer preservation, single-entry undo, atomic rollback and verified outcomes. Expose four-language menus, configurable PS shortcuts and shared headless/workflow actions; explicitly reject unsupported free-graph/backdrop-dependent merges and locked destructive targets.
 - Add stable layer identities, names, duplication, reordering and deletion, plus native flips, 180° rotation and integer offsets. Structural edits retain undo and graph references.
 - Add persistent, undoable transparency locking and foreground/background fills, including Alt+Backspace and Ctrl+Backspace shortcuts. Keep draft layer names when toggling the lock.
 - Extend connected fill with whole-layer color matching, tolerance, expansion/contraction and feathering. Correct repeated translucent fills so source-over alpha accumulates.

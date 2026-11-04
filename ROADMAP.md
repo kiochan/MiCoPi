@@ -16,7 +16,7 @@ This roadmap starts from the **0.21.0 implementation and subsequent work on main
 - Unified package metadata, host compatibility checks, lifecycle diagnostics and dependency-aware enable/disable plans shared by Settings and automation.
 - English-only embedding; external Chinese, Japanese and Korean catalogs with profile overrides, owner-scoped plugin catalogs and background hot reload.
 
-Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no selections, free transforms or layer groups/merging. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
+Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no selections, free transforms or layer groups. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
 
 ## Delivery order
 
@@ -53,7 +53,8 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 - [x] Add connected fill with tolerance, linear/radial gradient gestures and inline pressure controls through shared native actions.
 - [x] Add whole-layer color matching, fill expansion/contraction and feathering, repeated/reflected gradients, transparency locking and layer color fills.
 - [x] Add anchored canvas resizing and exact all-layer crop with dimension-aware history, atomic rollback and outcome replay.
-- [ ] Add groups and merge with explicit reference and history behavior.
+- [x] Add layer Merge Down, Merge Visible, Stamp Visible and transparent-canvas flattening with explicit graph/lock contracts, undo, atomic rollback and verified replay.
+- [ ] Add layer groups with explicit reference and history behavior.
 - [ ] Make structural and multi-layer edits reliably undoable; define optional undo grouping separately from transaction rollback.
 - [ ] Add rectangle/lasso selections and selection masks, followed by selection-aware move, scale, rotate and crop.
 - [ ] Add useful document controls: new-canvas presets, resolution/background choices, clearer dirty state and save/recovery feedback.

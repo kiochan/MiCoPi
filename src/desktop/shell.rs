@@ -66,6 +66,10 @@ impl Studio {
                                         (10145, "Crop Canvas…"),
                                         (42, "New Layer"),
                                         (43, "Clear Current Layer…"),
+                                        (10146, "Merge Down"),
+                                        (10147, "Merge Visible"),
+                                        (10148, "Flatten Image"),
+                                        (10149, "Stamp Visible"),
                                     ],
                                 ),
                                 (

@@ -549,6 +549,16 @@ impl Studio {
                     }
                     match id {
                         10144 | 10145 => self.editor.open_canvas_geometry(id == 10145),
+                        10146..=10149 => {
+                            self.editor.finish_stroke();
+                            let action = match id {
+                                10146 => "layer.merge_down",
+                                10147 => "layer.merge_visible",
+                                10148 => "layer.flatten",
+                                _ => "layer.stamp_visible",
+                            };
+                            self.editor.core(action, serde_json::json!({}));
+                        }
                         10142 | 10143 => {
                             self.editor.finish_stroke();
                             self.editor.push_gui_parameters();

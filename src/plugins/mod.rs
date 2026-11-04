@@ -38,7 +38,9 @@ pub(crate) fn execute(
             document::execute(session, op, args)
         }
         AddLayer | RenameLayer | DuplicateLayer | MoveLayer | DeleteLayer | SelectLayer
-        | LayerProperties | ClearLayer => layers::execute(session, op, args),
+        | MergeDown | MergeVisible | FlattenImage | StampVisible | LayerProperties | ClearLayer => {
+            layers::execute(session, op, args)
+        }
         SelectTool | Parameters | Pointer | Stroke | Pick | View => {
             painting::execute(session, op, args)
         }

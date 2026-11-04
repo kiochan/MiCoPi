@@ -21,6 +21,8 @@ mod editing_tests;
 #[cfg(test)]
 mod graph_tests;
 #[cfg(test)]
+mod layer_merge_tests;
+#[cfg(test)]
 mod linked_graph_tests;
 #[cfg(test)]
 mod pipeline_tests;

@@ -100,6 +100,10 @@ pub enum Operation {
     DuplicateLayer,
     MoveLayer,
     DeleteLayer,
+    MergeDown,
+    MergeVisible,
+    FlattenImage,
+    StampVisible,
     SelectLayer,
     LayerProperties,
     ClearLayer,
@@ -215,7 +219,7 @@ impl Operation {
                 json!({"tool":{"type":"string"},"points":{"type":"array","items":point,"minItems":1,"maxItems":65536}}),
                 vec!["points"],
             ),
-            Self::SelectLayer | Self::DuplicateLayer | Self::DeleteLayer => (
+            Self::SelectLayer | Self::DuplicateLayer | Self::DeleteLayer | Self::MergeDown => (
                 json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64}}),
                 vec![],
             ),

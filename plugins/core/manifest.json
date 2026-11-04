@@ -116,6 +116,26 @@
       "operation": "delete_layer"
     },
     {
+      "id": "layer.merge_down",
+      "title": "Merge Down",
+      "operation": "merge_down"
+    },
+    {
+      "id": "layer.merge_visible",
+      "title": "Merge Visible",
+      "operation": "merge_visible"
+    },
+    {
+      "id": "layer.flatten",
+      "title": "Flatten Image",
+      "operation": "flatten_image"
+    },
+    {
+      "id": "layer.stamp_visible",
+      "title": "Stamp Visible",
+      "operation": "stamp_visible"
+    },
+    {
       "id": "layer.select",
       "title": "Select layer",
       "operation": "select_layer"

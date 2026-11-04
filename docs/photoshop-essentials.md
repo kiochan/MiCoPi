@@ -15,7 +15,7 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 | Area | Available foundation | Main gap |
 | --- | --- | --- |
 | Drawing | Native DLL tools, pressure, stabilization, spacing, pressure curve, size/shape cursor | Rich tips/dynamics and additional painting tools |
-| Layers | Stable IDs, rename/duplicate/reorder/delete, opacity, visibility, alpha lock | Merge/stamp, masks, clipping, groups and multi-selection |
+| Layers | Stable IDs, rename/duplicate/reorder/delete, opacity, visibility, alpha lock, merge/flatten/stamp | Masks, clipping, groups and multi-selection |
 | Selection/editing | Fill color matching and edge processing | Document selection, clipboard and selection-aware operations |
 | Geometry | Anchored canvas size, exact crop, layer flips/180°/offset | Image resampling, quarter turns and free transform |
 | Composition | Linked layer/filter/blend graphs and explicit free graphs | More adjustments, filters and mask-aware composition |
@@ -27,11 +27,13 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 
 ### P1 — Everyday layer consolidation
 
-- [ ] Merge Down with explicit visibility, blend/filter and transparency-lock behavior.
-- [ ] Merge Visible while retaining hidden layers and their identities/filters.
-- [ ] Flatten the rendered image with an explicit transparency/background contract.
-- [ ] Stamp visible content into a new layer without deleting source layers.
-- [ ] Expose layer-menu actions, configurable PS-style shortcuts, schemas and headless examples.
+- [x] Merge Down with explicit visibility, blend/filter and transparency-lock behavior.
+- [x] Merge Visible while retaining hidden layers and their identities/filters.
+- [x] Flatten the rendered image with an explicit transparency/background contract.
+- [x] Stamp visible content into a new layer without deleting source layers.
+- [x] Expose layer-menu actions, configurable PS-style shortcuts, schemas and headless examples.
+
+Delivered on 2026-11-04. See [Layer editing](layer-editing.md) for supported blend/free-graph behavior, transparent flattening and stamp opacity. Desktop/headless regression tests cover undo, rollback, native renderer failure, project persistence and verified replay; runtime smoke compares JSONL/MCP/GUI pixels. P2 is the next stage.
 
 Acceptance: source buffers and metadata return on undo; redo restores the merged state; filters are baked once; free graphs have an explicit supported path or fail before mutation; atomic failure restores document/history; saved projects and outcome replay reproduce the result. Test missing compositors and stale IDs/revisions.
 

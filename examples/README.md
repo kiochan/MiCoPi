@@ -20,6 +20,7 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 | [ai-pipeline.jsonl](automation/ai-pipeline.jsonl) | Discovery, state, cross-plugin calls and typed pipeline execution |
 | [nodes.jsonl](automation/nodes.jsonl) | Non-destructive image graph and PNG export |
 | [linked-layers.jsonl](automation/linked-layers.jsonl) | Per-layer filters following duplication/reorder, synchronized blend modes and verified outcomes |
+| [layer-merge.jsonl](automation/layer-merge.jsonl) | Merge Down, Merge Visible, Stamp Visible, transparent flattening, undo and replay verification |
 | [workflow.jsonl](automation/workflow.jsonl) | State/action nodes, patching, validation, dry run and execution |
 
 Generated artwork belongs in ignored `target/example-output/`, not beside source files. Separate CLI invocations create separate Sessions; use GUI attachment when you want to modify a running desktop document.

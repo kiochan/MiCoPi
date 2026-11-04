@@ -457,6 +457,42 @@ pub static COMMANDS: &[Command] = &[
         43
     ),
     c!(
+        "layer.merge_down",
+        "Merge Down",
+        "Layers",
+        "merge down combine layer he bing tuceng",
+        UiCommand(10146),
+        "Ctrl+E",
+        10146
+    ),
+    c!(
+        "layer.merge_visible",
+        "Merge Visible",
+        "Layers",
+        "merge visible combine layers he bing kejian",
+        UiCommand(10147),
+        "Ctrl+Shift+E",
+        10147
+    ),
+    c!(
+        "layer.flatten",
+        "Flatten Image",
+        "Layers",
+        "flatten rasterize image pinhe",
+        UiCommand(10148),
+        "",
+        10148
+    ),
+    c!(
+        "layer.stamp_visible",
+        "Stamp Visible",
+        "Layers",
+        "stamp visible merged copy new layer gaiyin",
+        UiCommand(10149),
+        "Ctrl+Alt+Shift+E",
+        10149
+    ),
+    c!(
         "layer.fill_foreground",
         "Fill with Foreground",
         "Layers",

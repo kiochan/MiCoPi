@@ -63,6 +63,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/application/atomic.rs` | Shared-tile rollback checkpoints and atomic action capability checks |
 | `src/application/replay.rs` | Recording boundaries, project persistence and replay actions |
 | `src/engine/document.rs` | Pixels, composition and copy-on-write undo tiles |
+| `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
 | `src/engine/linked_graph.rs` | Validated layer-stack topology, per-layer filter branches and metadata-only synchronization |
 | `src/engine/replay.rs` | Journal storage, compressed tile/metadata encoding and integrity verification |
 | `plugins/replay/panel.rs` | Read-only time-lapse presentation |

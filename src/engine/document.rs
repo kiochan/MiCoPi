@@ -97,6 +97,11 @@ struct Edit {
 #[derive(Clone)]
 enum LayerChange {
     Canvas(Arc<CanvasState>),
+    Replace {
+        current: Vec<usize>,
+        saved: Vec<(usize, Arc<Layer>)>,
+        active: usize,
+    },
     Toggle {
         index: usize,
         active: usize,
@@ -135,6 +140,9 @@ impl Edit {
                     removed.as_ref().map_or(0, |l| l.pixels.len() * 4)
                 }
                 LayerChange::Canvas(state) => state.layers.iter().map(|l| l.pixels.len() * 4).sum(),
+                LayerChange::Replace { saved, .. } => {
+                    saved.iter().map(|(_, l)| l.pixels.len() * 4).sum()
+                }
                 _ => 0,
             })
     }
@@ -794,6 +802,22 @@ impl Document {
             let before = self.composition();
             if let Some(change) = &mut e.layer_change {
                 match change {
+                    LayerChange::Replace {
+                        current,
+                        saved,
+                        active,
+                    } => {
+                        let mut removed = Vec::with_capacity(current.len());
+                        for &index in current.iter().rev() {
+                            removed.push((index, Arc::new(self.layers.remove(index))));
+                        }
+                        removed.reverse();
+                        *current = saved.iter().map(|(index, _)| *index).collect();
+                        for (index, layer) in std::mem::replace(saved, removed) {
+                            self.layers.insert(index, Arc::unwrap_or_clone(layer));
+                        }
+                        std::mem::swap(&mut self.active, active);
+                    }
                     LayerChange::Canvas(saved) => {
                         let old = std::mem::replace(
                             saved,
@@ -1161,6 +1185,9 @@ impl Document {
 mod canvas_editing;
 #[path = "layer_editing.rs"]
 mod layer_editing;
+#[path = "layer_merge.rs"]
+mod layer_merge;
+pub use layer_merge::MergeLayers;
 #[cfg(test)]
 #[path = "document_tests.rs"]
 mod tests;

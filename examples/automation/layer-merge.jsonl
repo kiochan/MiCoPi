@@ -1,0 +1,12 @@
+{"action":"canvas.new","args":{"width":320,"height":240}}
+{"action":"layer.fill_color","args":{"color":"#304060"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.fill_color","args":{"color":"#e0805080"}}
+{"action":"layer.stamp_visible","args":{}}
+{"action":"history.undo","args":{}}
+{"action":"layer.merge_down","args":{}}
+{"action":"history.undo","args":{}}
+{"action":"layer.merge_visible","args":{}}
+{"action":"history.undo","args":{}}
+{"action":"layer.flatten","args":{}}
+{"action":"replay.verify","args":{}}

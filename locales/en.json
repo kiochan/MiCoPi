@@ -870,5 +870,9 @@
   "Tools Icons": "Tools Icons",
   "Order and Visibility of Icons in the Tools Window": "Order and Visibility of Icons in the Tools Window",
   "Move Up": "Move Up",
-  "Move Down": "Move Down"
+  "Move Down": "Move Down",
+  "Merge Down": "Merge Down",
+  "Merge Visible": "Merge Visible",
+  "Flatten Image": "Flatten Image",
+  "Stamp Visible": "Stamp Visible"
 }

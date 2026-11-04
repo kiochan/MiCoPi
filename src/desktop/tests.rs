@@ -476,6 +476,89 @@ fn layer_name_entry_commits_and_duplicate_shortcut_uses_the_shared_action() {
 }
 
 #[test]
+fn photoshop_merge_shortcuts_dispatch_shared_actions_and_keep_undo() {
+    let mut app = studio();
+    app.editor.session = crate::application::Session::new(
+        crate::plugins::Registry::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"))
+            .unwrap(),
+    )
+    .unwrap();
+    let ctx = Context::default();
+    let size = vec2(1360., 920.);
+    assert!(app
+        .editor
+        .core("canvas.new", serde_json::json!({"width":12,"height":8})));
+    assert!(app
+        .editor
+        .core("layer.fill_color", serde_json::json!({"color":"#225588"})));
+    assert!(app.editor.core("layer.add", serde_json::json!({})));
+    assert!(app
+        .editor
+        .core("layer.fill_color", serde_json::json!({"color":"#ff330088"})));
+    app.editor.sync_from_session();
+    for t in 0..3 {
+        frame(&mut app, &ctx, size, vec![], t as f64);
+    }
+    let source = app.editor.session.doc.composition();
+    let run = |app: &mut Studio, modifiers, time| {
+        frame(
+            app,
+            &ctx,
+            size,
+            vec![Event::Key {
+                key: Key::E,
+                physical_key: Some(Key::E),
+                pressed: true,
+                repeat: false,
+                modifiers,
+            }],
+            time,
+        );
+        frame(
+            app,
+            &ctx,
+            size,
+            vec![Event::Key {
+                key: Key::E,
+                physical_key: Some(Key::E),
+                pressed: false,
+                repeat: false,
+                modifiers,
+            }],
+            time + 0.1,
+        );
+    };
+    run(&mut app, Modifiers::CTRL, 4.);
+    assert_eq!(app.editor.session.doc.layers.len(), 1);
+    assert!(app.editor.core("history.undo", serde_json::json!({})));
+    assert_eq!(app.editor.session.doc.composition(), source);
+    run(
+        &mut app,
+        Modifiers {
+            ctrl: true,
+            shift: true,
+            ..Modifiers::NONE
+        },
+        5.,
+    );
+    assert_eq!(app.editor.session.doc.layers.len(), 1);
+    assert!(app.editor.core("history.undo", serde_json::json!({})));
+    run(
+        &mut app,
+        Modifiers {
+            ctrl: true,
+            shift: true,
+            alt: true,
+            ..Modifiers::NONE
+        },
+        6.,
+    );
+    assert_eq!(app.editor.session.doc.layers.len(), 3);
+    assert!(app.editor.core("history.undo", serde_json::json!({})));
+    assert_eq!(app.editor.session.doc.composition().layers.len(), 2);
+}
+
+#[test]
 fn alpha_lock_toggle_keeps_pending_names_and_color_shortcuts_keep_coverage() {
     fn label(shape: &Shape) -> Option<Pos2> {
         match shape {

@@ -32,6 +32,8 @@ Press **Ctrl+Shift+P** to search commands. Arrow keys select, Enter runs and Esc
 
 Defaults follow familiar Photoshop conventions: B for Brush, E for Eraser, I for Eyedropper, H for Hand, Z for Zoom; Space temporarily pans and Alt temporarily picks color. File operations use Ctrl+N/O/S and standard undo/redo commands. The shortcut editor is authoritative for all current bindings.
 
+Layer consolidation uses **Ctrl+E** for Merge Down, **Ctrl+Shift+E** for Merge Visible and **Ctrl+Alt+Shift+E** for Stamp Visible. Flatten Image is available through Edit, layer menus and command search; it preserves canvas transparency. These operations support undo and verified replay; see [Layer editing](layer-editing.md) for visibility, lock and graph restrictions.
+
 Open Keyboard Shortcuts to edit, record or clear a binding. Multiple alternatives are comma-separated. Modifier-only hold gestures and wheel combinations are supported. Conflicts are checked before application. Apply previews a binding; Save Settings persists it. Command and action IDs remain stable across languages.
 
 ## Panels and workspace
@@ -54,7 +56,7 @@ Install each plugin directory beside the executable, with its manifest and DLL w
 
 [JSONL, MCP and GUI attachment](plugins-and-actions.md) use the same Session as the desktop. For file automation, supply explicit paths to document and export actions. Headless UI actions return effects without opening windows.
 
-Current omissions include selections, free transforms, layer groups/merging, Wintab, multi-document tabs and watercolor blending. The UI does not present placeholders for these features.
+Current omissions include selections, free transforms, layer groups, Wintab, multi-document tabs and watercolor blending. The UI does not present placeholders for these features.
 
 ## Organize and transform layers
 

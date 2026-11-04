@@ -90,6 +90,10 @@ impl Operation {
                 | Self::DuplicateLayer
                 | Self::MoveLayer
                 | Self::DeleteLayer
+                | Self::MergeDown
+                | Self::MergeVisible
+                | Self::FlattenImage
+                | Self::StampVisible
                 | Self::SelectLayer
                 | Self::LayerProperties
                 | Self::ClearLayer

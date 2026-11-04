@@ -870,5 +870,9 @@
   "Tools Icons": "工具图标",
   "Order and Visibility of Icons in the Tools Window": "工具窗口中图标的顺序和显示",
   "Move Up": "上移",
-  "Move Down": "下移"
+  "Move Down": "下移",
+  "Merge Down": "向下合并",
+  "Merge Visible": "合并可见图层",
+  "Flatten Image": "拼合图像",
+  "Stamp Visible": "盖印可见图层"
 }

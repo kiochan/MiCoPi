@@ -122,7 +122,23 @@ impl Graph {
         new_ids: &[u64],
         duplicate: Option<(u64, u64)>,
     ) -> Result<Self, String> {
-        let branches = self.stack_branches(old_ids.len())?;
+        self.sync_baked_stack(modes, old_ids, new_ids, duplicate, &[])
+    }
+    /// Preserve surviving branches while dropping filters already baked into a raster layer.
+    pub(crate) fn sync_baked_stack(
+        &self,
+        modes: &[BlendMode],
+        old_ids: &[u64],
+        new_ids: &[u64],
+        duplicate: Option<(u64, u64)>,
+        baked: &[u64],
+    ) -> Result<Self, String> {
+        let mut branches = self.stack_branches(old_ids.len())?;
+        for (id, branch) in old_ids.iter().zip(&mut branches) {
+            if baked.contains(id) {
+                branch.filters.clear();
+            }
+        }
         let by_id: BTreeMap<_, _> = old_ids.iter().copied().zip(branches).collect();
         let mut next = self
             .nodes

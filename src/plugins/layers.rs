@@ -27,6 +27,25 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         Ok(i)
     };
     match op {
+        MergeDown | MergeVisible | FlattenImage | StampVisible => {
+            use crate::engine::document::MergeLayers;
+            let i = if op == MergeDown {
+                index()?
+            } else {
+                s.doc.active
+            };
+            let operation = match op {
+                MergeDown => MergeLayers::Down,
+                MergeVisible => MergeLayers::Visible,
+                FlattenImage => MergeLayers::Flatten,
+                _ => MergeLayers::Stamp,
+            };
+            s.finish_stroke();
+            s.doc
+                .merge_layers(operation, i)
+                .map_err(|e| ActionError::new("layer_merge", e))?;
+            Ok(s.state())
+        }
         AddLayer => {
             if s.doc.layers.len() >= MAX_LAYERS
                 || s.doc.width * s.doc.height * (s.doc.layers.len() + 1) > 64 * 1024 * 1024

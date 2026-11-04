@@ -870,5 +870,9 @@
   "Tools Icons": "도구 아이콘",
   "Order and Visibility of Icons in the Tools Window": "도구 창 아이콘의 순서와 표시",
   "Move Up": "위로 이동",
-  "Move Down": "아래로 이동"
+  "Move Down": "아래로 이동",
+  "Merge Down": "아래 레이어와 병합",
+  "Merge Visible": "보이는 레이어 병합",
+  "Flatten Image": "이미지 병합",
+  "Stamp Visible": "보이는 내용을 새 레이어로"
 }

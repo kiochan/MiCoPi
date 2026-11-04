@@ -38,6 +38,44 @@ impl Editor {
             }
         }
         ui.separator();
+        for (command, title, args, enabled) in [
+            (
+                "layer.merge_down",
+                "Merge Down",
+                serde_json::json!({"layer_id":id}),
+                index > 0,
+            ),
+            (
+                "layer.merge_visible",
+                "Merge Visible",
+                serde_json::json!({}),
+                self.session.doc.layers.iter().filter(|l| l.visible).count() > 1,
+            ),
+            (
+                "layer.flatten",
+                "Flatten Image",
+                serde_json::json!({}),
+                true,
+            ),
+            (
+                "layer.stamp_visible",
+                "Stamp Visible",
+                serde_json::json!({}),
+                count < 16,
+            ),
+        ] {
+            if ui
+                .add_enabled(
+                    enabled && self.session.registry.actions.contains_key(command),
+                    Button::new(tr(title)),
+                )
+                .clicked()
+            {
+                action = Some(Action::new(command, args));
+                ui.close();
+            }
+        }
+        ui.separator();
         for (title, color) in [
             ("Fill with Foreground", &self.session.parameters.color),
             (

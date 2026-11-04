@@ -870,5 +870,9 @@
   "Tools Icons": "ツールアイコン",
   "Order and Visibility of Icons in the Tools Window": "ツールウィンドウのアイコンの並び順と表示",
   "Move Up": "上へ移動",
-  "Move Down": "下へ移動"
+  "Move Down": "下へ移動",
+  "Merge Down": "下のレイヤーと結合",
+  "Merge Visible": "表示レイヤーを結合",
+  "Flatten Image": "画像を統合",
+  "Stamp Visible": "表示内容を新規レイヤーに統合"
 }

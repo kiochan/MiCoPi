@@ -40,10 +40,35 @@ The final layer cannot be deleted. Existing limits remain 16 layers, 4096 pixels
 
 ## Scope and verification
 
-This increment covers stable identities, layer rename/duplicate/reorder/delete and exact pixel transforms. Selections, masks, arbitrary rotation/scaling, canvas resize/crop, groups, merge and PSD interchange remain future work in the [roadmap](../ROADMAP.md). PhotoCraft's GPU/web frontend and wider module architecture are not adopted.
+Implemented layer editing covers stable identities, rename/duplicate/reorder/delete, consolidation and exact pixel transforms. Canvas resize/crop has a separate [geometry contract](canvas-editing.md). Selections, masks, arbitrary rotation/scaling, groups and PSD interchange remain future work in the [roadmap](../ROADMAP.md). PhotoCraft's GPU/web frontend and wider module architecture are not adopted.
 
 Regression coverage checks graph remapping, undo/redo pixels, stable ID allocation, failed atomic groups, saved projects, old verified journals and new replay frame parity. Native transform tests compare asymmetric images and overlapping translations with an independent out-of-place oracle. Buffer pointer checks verify reorder and ordinary delete/undo reuse pixel allocations; atomic checkpoints may share removed undo buffers and can require a copy on restoration.
 
 ## Transparency lock
 
 `layer.set` accepts optional `alpha_locked` with either the existing index or stable ID selector. It defaults to false. A property change that combines lock, opacity or blend properties creates one composition undo entry. Duplicates inherit their source lock; new layers start unlocked. Locking preserves raw pixel alpha during painting and color processing. Layer removal, history navigation and project replacement remain structural operations. See [Painting tools](painting-tools.md) for behavior, shortcuts and native compatibility.
+
+## Merge, flatten and stamp
+
+The Layers menu, each layer's context menu and Edit menu expose these shared actions. Shortcuts remain configurable in Settings.
+
+| Action | Default shortcut | Result |
+| --- | --- | --- |
+| `layer.merge_down` | Ctrl+E | Bake the selected layer and its immediate lower neighbor into one normal raster layer, retaining the lower layer's ID/name |
+| `layer.merge_visible` | Ctrl+Shift+E | Bake the visible stack, retaining the top visible layer's ID/name and leaving hidden layers intact |
+| `layer.flatten` | Unbound | Bake the rendered image into one visible normal layer, removing all other layers and replacing its image graph with a linked raster stack |
+| `layer.stamp_visible` | Ctrl+Alt+Shift+E | Copy the current composite into a new top layer with a fresh ID, retaining all source layers |
+
+Merge Down accepts the usual optional `index` or `layer_id`; other actions operate on the document's visible/rendered stack and take no arguments. All accept the action envelope's expected revision. Their schemas are discoverable through `app.describe`, automatically become workflow nodes, and run through JSONL, MCP and GUI attachment. See [the runnable merge example](../examples/automation/layer-merge.jsonl).
+
+Pixel baking uses the existing native compositor; it must be loaded. Rendering and graph validation finish before source layers are replaced. Filters on baked branches are removed once, while hidden/surviving branches retain their filter and node identities. Each operation creates one structural undo entry. History owns the removed buffers; untouched hidden layers retain their allocations. Atomic batches restore pixels, graph, active layer, allocator and history after a later failure. Verified replay restores recorded results without rerunning the compositor.
+
+The supported contracts are explicit:
+
+- Merge Down requires both neighboring layers to be visible and unlocked. A pair above other layers must use Normal blending; backdrop-dependent modes require Merge Visible or Flatten Image. The pair is baked in isolation, so 8-bit alpha quantization can affect subsequent compositing over a lower backdrop.
+- Merge Visible retains hidden layers, their locks, raw pixels and filters. With only one visible layer it is a no-op; with none it fails. Its visible result matches the previous composite.
+- Flatten Image discards hidden layers and the editable image graph, with undo support. It **preserves canvas transparency** rather than inserting a white Photoshop Background layer. It is the explicit path for baking a free graph.
+- Merge Down, Merge Visible and Stamp Visible require linked composition, even when a free graph is disabled. Destructive merges reject alpha-locked source layers; stamp leaves locked sources untouched.
+- Stamp keeps sources visible. On a transparent canvas, displaying the stamped composite above its sources can increase opacity; hide the sources when a single baked appearance is desired.
+
+Missing compositors, failed renders, invalid IDs, unsupported graph/blend combinations and layer/pixel limits fail before layer replacement. The existing native ABI and project/replay formats are unchanged.
