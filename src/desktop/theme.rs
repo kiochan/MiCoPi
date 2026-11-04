@@ -17,9 +17,9 @@ pub fn rgb(value: u32) -> Color32 {
 impl Colors {
     pub fn new(a: &Appearance) -> Self {
         let (background, panel, raised, border, text, muted) = match a.theme.as_str() {
-            "light" => (0xe9edf2, 0xf8fafc, 0xffffff, 0xd9e0e8, 0x273544, 0x697c8f),
-            "warm" => (0xe9e5de, 0xf8f5ef, 0xfffdf8, 0xded8cd, 0x383b36, 0x777c70),
-            _ => (0x161b21, 0x20262e, 0x2a333e, 0x333e49, 0xe0e7ee, 0x91a1b2),
+            "light" => (0xe9ebef, 0xf7f8fa, 0xffffff, 0xdde1e7, 0x303640, 0x747e8b),
+            "warm" => (0xeae6e0, 0xf8f5f0, 0xfffcf7, 0xe1dbd2, 0x3c3b38, 0x817c74),
+            _ => (0x17191e, 0x21242b, 0x2b2f38, 0x343943, 0xdde1e9, 0x8e97a6),
         };
         Self {
             background: rgb(background),
@@ -54,11 +54,13 @@ pub fn apply(ctx: &Context, a: &Appearance) {
     style.spacing.item_spacing = vec2(a.item_spacing, a.item_spacing);
     style.spacing.button_padding = vec2(
         a.panel_padding * 0.75,
-        (a.control_height - a.font_size) * 0.35,
+        (a.control_height - a.font_size - 2.).max(0.) * 0.5,
     );
     style.spacing.interact_size = vec2(a.control_height, a.control_height);
     style.spacing.slider_width = 112.;
     style.spacing.scroll = egui::style::ScrollStyle::solid();
+    style.spacing.scroll.bar_width = (a.item_spacing * 0.75).clamp(3., 8.);
+    style.spacing.slider_rail_height = 3.;
     style.spacing.combo_width = 120.;
     style.spacing.menu_margin = Margin::same(a.panel_padding as i8);
     style.spacing.window_margin = Margin::same(a.panel_padding as i8);
@@ -73,7 +75,7 @@ pub fn apply(ctx: &Context, a: &Appearance) {
     style.visuals.menu_corner_radius = CornerRadius::same(a.corner_radius as u8);
     style.visuals.extreme_bg_color = c.background;
     style.visuals.faint_bg_color = c.raised;
-    style.visuals.selection.bg_fill = c.accent.gamma_multiply(0.24);
+    style.visuals.selection.bg_fill = c.panel.lerp_to_gamma(c.accent, 0.16);
     style.visuals.selection.stroke = Stroke::new(1., c.accent);
     for v in [
         &mut style.visuals.widgets.inactive,
@@ -88,7 +90,10 @@ pub fn apply(ctx: &Context, a: &Appearance) {
         v.fg_stroke = Stroke::new(1., c.text);
     }
     style.visuals.widgets.hovered.bg_fill = c.border;
-    style.visuals.widgets.active.bg_fill = c.accent.gamma_multiply(0.32);
+    style.visuals.widgets.hovered.weak_bg_fill = c.raised;
+    style.visuals.widgets.active.bg_fill = c.panel.lerp_to_gamma(c.accent, 0.2);
+    style.visuals.widgets.active.weak_bg_fill = style.visuals.widgets.active.bg_fill;
+    style.visuals.widgets.noninteractive.bg_fill = c.background;
     style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(1., c.border);
     style.visuals.widgets.noninteractive.fg_stroke = Stroke::new(1., c.muted);
     style
@@ -105,6 +110,19 @@ pub fn apply(ctx: &Context, a: &Appearance) {
         .insert(TextStyle::Heading, FontId::proportional(a.font_size + 3.));
     style.animation_time = 0.1;
     ctx.set_style(style);
+}
+
+/// Quiet chrome actions share the configured hit size, with a subtle hover surface.
+pub fn chrome_button(ui: &mut Ui, rect: Rect) -> Response {
+    let response = ui.put(rect, Button::new("").frame(false));
+    if response.hovered() || response.is_pointer_button_down_on() {
+        ui.painter().rect_filled(
+            rect,
+            ui.visuals().widgets.inactive.corner_radius,
+            ui.visuals().widgets.hovered.bg_fill,
+        );
+    }
+    response
 }
 pub fn fonts(ctx: &Context) {
     let mut fonts = FontDefinitions::default();

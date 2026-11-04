@@ -818,5 +818,6 @@
   "Merge Panel Group as Tabs": "전체 그룹을 탭으로 병합",
   "Merge Panel Group as Tabs: {name}": "전체 그룹을 탭으로 병합: {name}",
   "Release to Dock the Entire Group": "마우스를 놓아 전체 그룹 도킹",
-  "Dock Group at Desktop Point": "데스크톱 위치에 그룹 도킹"
+  "Dock Group at Desktop Point": "데스크톱 위치에 그룹 도킹",
+  "Ready to Paint": "그리기 준비 완료"
 }

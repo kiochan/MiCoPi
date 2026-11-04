@@ -24,6 +24,10 @@ impl Editor {
         });
         let wide = ui.available_width() > 400.;
         let body = |ui: &mut Ui| {
+            ui.spacing_mut().button_padding = vec2(
+                self.settings.ui.item_spacing * 0.75,
+                self.settings.ui.item_spacing * 0.5,
+            );
             for tool in tools {
                 let icon = match tool.kind {
                     Tool::Brush => 10,
@@ -32,7 +36,8 @@ impl Editor {
                     Tool::Hand => 13,
                     Tool::Zoom => 14,
                 };
-                let size = self.settings.ui.control_height + 8.;
+                let size = self.settings.ui.control_height + 2.;
+                let selected = self.session.selected_tool == tool.id && self.area_mode == 0;
                 if ui
                     .add_sized(
                         [size.min(ui.available_width().max(24.)), size],
@@ -40,7 +45,8 @@ impl Editor {
                             theme::action_icon(icon),
                             self.settings.ui.icon_size,
                         )))
-                        .selected(self.session.selected_tool == tool.id && self.area_mode == 0),
+                        .frame_when_inactive(selected)
+                        .selected(selected),
                     )
                     .on_hover_text(tr(&tool.title))
                     .clicked()
@@ -105,7 +111,7 @@ impl Editor {
             }
         };
         if wide {
-            ui.horizontal(body);
+            ui.horizontal_centered(body);
         } else {
             ScrollArea::vertical()
                 .auto_shrink([false, false])

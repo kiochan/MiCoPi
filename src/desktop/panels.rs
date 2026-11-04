@@ -167,15 +167,15 @@ impl TabViewer for Viewer<'_> {
 }
 pub(super) fn section(ui: &mut Ui, title: &str, gap: f32) {
     ui.add_space(gap * 0.5);
-    ui.separator();
-    ui.add_space(gap * 0.25);
     ui.label(tr(RichText::new(localize(title)).small().strong()));
 }
 pub(super) fn icon_button(ui: &mut Ui, editor: &Editor, id: u32, selected: bool) -> Response {
     let a = &editor.settings.ui;
     let response = ui.add_sized(
         [a.control_height + 4., a.control_height],
-        Button::new(tr(theme::icon(theme::action_icon(id), a.icon_size))).selected(selected),
+        Button::new(tr(theme::icon(theme::action_icon(id), a.icon_size)))
+            .frame_when_inactive(selected)
+            .selected(selected),
     );
     let hint = editor.hint(id);
     let keys = editor.label(id);
@@ -225,18 +225,9 @@ pub(super) fn parameter(
 ) {
     let width = ui.available_width();
     let gap = ui.spacing().item_spacing.x;
-    let label_width = ui
-        .painter()
-        .layout_no_wrap(
-            crate::i18n::translated(label).into_owned(),
-            TextStyle::Small.resolve(ui.style()),
-            ui.visuals().text_color(),
-        )
-        .size()
-        .x
-        .max(ui.text_style_height(&TextStyle::Body) * 3.)
-        + 4.;
-    let number_width = if percent { 48. } else { 58. };
+    // A shared column grid keeps short and translated labels aligned.
+    let label_width = (width * 0.32).clamp(64., 104.);
+    let number_width = 58.;
     let narrow = width < label_width + number_width + gap * 2. + 60.;
     let mut display = if percent { *value * 100. } else { *value };
     let display_range = if percent {
@@ -245,27 +236,38 @@ pub(super) fn parameter(
         range.clone()
     };
     ui.horizontal(|ui| {
-        ui.add_sized(
-            [
-                if narrow {
-                    width - number_width - gap
-                } else {
-                    label_width
-                },
-                ui.spacing().interact_size.y,
-            ],
-            Label::new(tr(RichText::new(localize(label)).small())).truncate(),
+        let label_size = vec2(
+            if narrow {
+                width - number_width - gap
+            } else {
+                label_width
+            },
+            ui.spacing().interact_size.y,
         );
+        ui.allocate_ui_with_layout(label_size, Layout::left_to_right(Align::Center), |ui| {
+            ui.set_min_size(label_size);
+            ui.add(
+                Label::new(tr(RichText::new(localize(label))
+                    .small()
+                    .color(ui.visuals().weak_text_color())))
+                .truncate(),
+            )
+            .on_hover_text(tr(label));
+        });
         if !narrow {
             ui.spacing_mut().slider_width =
                 (width - label_width - number_width - gap * 2.).max(24.);
             let changed = ui
-                .add(
-                    Slider::new(value, range.clone())
-                        .show_value(false)
-                        .logarithmic(logarithmic),
-                )
-                .changed();
+                .scope(|ui| {
+                    ui.spacing_mut().interact_size.y *= 0.6;
+                    ui.add(
+                        Slider::new(value, range.clone())
+                            .show_value(false)
+                            .logarithmic(logarithmic),
+                    )
+                    .changed()
+                })
+                .inner;
             if changed {
                 display = if percent { *value * 100. } else { *value };
             }

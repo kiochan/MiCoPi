@@ -25,7 +25,7 @@ pub(super) fn dock_style(ctx: &Context, a: &Appearance) -> egui_dock::Style {
     style.tab_bar.show_scroll_bar_on_overflow = false;
     style.tab.tab_body.inner_margin = Margin::same(a.panel_padding as i8);
     style.tab.tab_body.bg_fill = colors.panel;
-    style.tab.tab_body.stroke = Stroke::new(1., colors.border);
+    style.tab.tab_body.stroke = Stroke::NONE;
     style.tab.tab_body.corner_radius = CornerRadius::same(a.corner_radius as u8);
     style.tab.hline_below_active_tab_name = true;
     style.tab.active.bg_fill = colors.panel;

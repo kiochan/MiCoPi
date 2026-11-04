@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Refine the workbench with neutral themes, quiet icon controls, padded underline tabs, lighter panel boundaries and compact default metrics.
+- Align property labels and numeric fields, consolidate layer actions, reduce canvas toolbar weight and bound swatch sizes without leaking local spacing.
+
 - Unify docked and native panel headers into one row with a group grip, scrollable/reorderable tabs, maximize/restore and close-group controls; remove duplicate floating title bars.
 - Add leaf-scoped group commands and observable header geometry, preserving sibling groups when detaching or closing tabs.
 

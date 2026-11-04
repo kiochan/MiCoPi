@@ -86,13 +86,13 @@ impl Editor {
             if icon_button(ui, self, 43, false).clicked() {
                 self.actions.push(Action::UiCommand(43));
             }
+            ui.menu_button(tr("···"), |ui| {
+                pending = self.layer_menu(ui, self.session.doc.active);
+            })
+            .response
+            .on_hover_text(tr("Layer Actions"));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.weak(tr(format!("{} / 16", self.session.doc.layers.len())));
-            });
-        });
-        ui.horizontal(|ui| {
-            ui.menu_button(tr("Layer Actions"), |ui| {
-                pending = self.layer_menu(ui, self.session.doc.active);
             });
         });
         let index = self.session.doc.active;
@@ -155,7 +155,10 @@ impl Editor {
                 );
             }
         });
-        if ui.button(tr("Node Editor…")).clicked() {
+        if ui
+            .add(Button::new(tr("Node Editor…")).frame(false))
+            .clicked()
+        {
             self.core("graph.open", serde_json::json!({}));
         }
         if self.session.doc.graph.enabled && !self.session.doc.graph.linked {
@@ -180,7 +183,7 @@ impl Editor {
         }
         ui.add_space(self.settings.ui.item_spacing);
         let colors = theme::Colors::new(&self.settings.ui);
-        let row_height = self.settings.ui.control_height + 24.;
+        let row_height = self.settings.ui.control_height + self.settings.ui.panel_padding * 2.;
         for index in (0..self.session.doc.layers.len()).rev() {
             let (r, response) =
                 ui.allocate_exact_size(vec2(ui.available_width(), row_height), Sense::click());
@@ -188,11 +191,23 @@ impl Editor {
                 r,
                 self.settings.ui.corner_radius,
                 if index == self.session.doc.active {
+                    colors.panel.lerp_to_gamma(colors.accent, 0.10)
+                } else if response.hovered() {
                     colors.raised
                 } else {
                     colors.panel
                 },
             );
+            if index == self.session.doc.active {
+                ui.painter().rect_filled(
+                    Rect::from_min_size(
+                        r.min + vec2(0., self.settings.ui.item_spacing),
+                        vec2(2., r.height() - self.settings.ui.item_spacing * 2.),
+                    ),
+                    1.,
+                    colors.accent,
+                );
+            }
             let eye =
                 Rect::from_min_size(r.min + vec2(4., (row_height - 24.) / 2.), Vec2::splat(24.));
             let toggle = ui.interact(

@@ -62,6 +62,10 @@ impl panels::Viewer<'_> {
         row.set_clip_rect(h.bar.intersect(ui.ctx().content_rect()));
         let colors = theme::Colors::new(&a);
         row.painter().rect_filled(h.bar, 0., colors.panel);
+        row.painter().line_segment(
+            [h.bar.left_bottom(), h.bar.right_bottom()],
+            Stroke::new(1., colors.border.gamma_multiply(0.65)),
+        );
         row.interact(
             h.bar,
             Id::new(("group-row-background", panel)),
@@ -102,14 +106,17 @@ impl panels::Viewer<'_> {
             .scroll_source(egui::scroll_area::ScrollSource { drag: false, ..Default::default() })
             .show(&mut tab_ui, |ui| {
             ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 2.;
+                ui.spacing_mut().item_spacing.x = a.item_spacing * 0.5;
                 for (index, mut tab) in tabs.iter().copied().enumerate() {
                     let title = self.tab_title(&mut tab);
-                    let response = ui.add(Button::new(title)
-                        .selected(tab == panel)
-                        .fill(if tab == panel { colors.raised } else { Color32::TRANSPARENT })
+                    let response = ui.add(Button::new(title.color(if tab == panel { colors.text } else { colors.muted }))
+                        .frame_when_inactive(false)
                         .sense(Sense::click_and_drag())
                         .min_size(vec2(0., a.tab_height)));
+                    if tab == panel {
+                        let underline = Rect::from_min_max(pos2(response.rect.left()+a.item_spacing, h.bar.bottom()-2.),pos2(response.rect.right()-a.item_spacing,h.bar.bottom()));
+                        ui.painter().rect_filled(underline, 1., colors.accent);
+                    }
                     if let Some(id) = self.editor.panel_id(tab) {
                         if response.clicked() {
                             self.editor.core("window.command", json!({"panel":id,"operation":"focus"}));
@@ -196,7 +203,7 @@ impl panels::Viewer<'_> {
         grip.context_menu(|ui| self.editor.window_menu(panel, ui));
         let restore = self.focused
             || self.native.is_some() && row.input(|i| i.viewport().maximized.unwrap_or(false));
-        let max = row.put(h.maximize.shrink(2.), Button::new(""));
+        let max = theme::chrome_button(&mut row, h.maximize.shrink(2.));
         let r = Rect::from_center_size(
             max.rect.center(),
             Vec2::splat(max.rect.width().min(max.rect.height()) * 0.45),
@@ -205,12 +212,12 @@ impl panels::Viewer<'_> {
             row.painter().rect_stroke(
                 r.translate(vec2(2., -2.)),
                 0.,
-                Stroke::new(1.2, colors.text),
+                Stroke::new(1., colors.muted),
                 StrokeKind::Inside,
             );
         }
         row.painter()
-            .rect_stroke(r, 0., Stroke::new(1.2, colors.text), StrokeKind::Inside);
+            .rect_stroke(r, 0., Stroke::new(1., colors.muted), StrokeKind::Inside);
         if max
             .on_hover_text(tr(if restore {
                 "Restore Window"
@@ -221,17 +228,18 @@ impl panels::Viewer<'_> {
         {
             self.editor.core("window.command",json!({"panel":id,"scope":"tabs","operation":if restore {"restore"} else {"maximize"}}));
         }
-        let close = row.put(h.close.shrink(2.), Button::new(""));
-        let r = close
-            .rect
-            .shrink(close.rect.width().min(close.rect.height()) * 0.3);
+        let close = theme::chrome_button(&mut row, h.close.shrink(2.));
+        let r = Rect::from_center_size(
+            close.rect.center(),
+            Vec2::splat(close.rect.width().min(close.rect.height()) * 0.34),
+        );
         row.painter().line_segment(
             [r.left_top(), r.right_bottom()],
-            Stroke::new(1.3, colors.text),
+            Stroke::new(1.2, colors.muted),
         );
         row.painter().line_segment(
             [r.right_top(), r.left_bottom()],
-            Stroke::new(1.3, colors.text),
+            Stroke::new(1.2, colors.muted),
         );
         if close.on_hover_text(tr("Hide Panel Group")).clicked() {
             self.editor.core(

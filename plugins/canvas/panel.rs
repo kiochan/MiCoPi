@@ -120,7 +120,7 @@ impl Editor {
         Frame::new()
             .inner_margin(Margin::same((appearance.panel_padding / 2.) as i8))
             .show(ui, |ui| {
-                ui.horizontal_wrapped(|ui| {
+                ui.horizontal(|ui| {
                     for (id, action) in [
                         (86, Action::ZoomOut),
                         (85, Action::ZoomIn),
@@ -131,15 +131,25 @@ impl Editor {
                         }
                     }
                     if ui
-                        .add_sized([42., appearance.control_height], Button::new(tr("1:1")))
+                        .add_sized(
+                            [36., appearance.control_height],
+                            Button::new(tr("1:1")).frame_when_inactive(false),
+                        )
                         .on_hover_text(tr(self.hint(41)))
                         .clicked()
                     {
                         self.actions.push(Action::ActualPixels);
                     }
-                    ui.label(format!("{:.0}%", self.zoom * 100.));
-                    if ui.button(tr("Export PNG")).clicked() {
-                        self.actions.push(Action::Export);
+                    ui.weak(format!("{:.0}%", self.zoom * 100.));
+                    if ui.available_width() > appearance.control_height * 3. {
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            if ui
+                                .add(Button::new(tr("Export PNG")).frame_when_inactive(false))
+                                .clicked()
+                            {
+                                self.actions.push(Action::Export);
+                            }
+                        });
                     }
                 });
             });

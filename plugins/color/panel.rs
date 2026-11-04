@@ -41,28 +41,33 @@ impl Editor {
             0x252830, 0xffffff, 0x929aa8, 0xefe3cf, 0xe66b72, 0xed9b62, 0xe8ca76, 0xb1c978,
             0x75b89b, 0x71bcc5, 0x7699d4, 0x9990d3, 0xc68cc2, 0x8c5854, 0x6d7b62, 0x465e77,
         ];
-        let side = ((ui.available_width() - 7. * 4.) / 8.).max(14.);
-        ui.spacing_mut().item_spacing = vec2(4., 4.);
-        for row in colors.chunks(8) {
-            ui.horizontal(|ui| {
-                for &c in row {
-                    let (r, response) = ui.allocate_exact_size(Vec2::splat(side), Sense::click());
-                    ui.painter().rect_filled(r, 3., theme::rgb(c));
-                    if response.hovered() {
-                        ui.painter().rect_stroke(
-                            r,
-                            3.,
-                            Stroke::new(1.5, ui.visuals().text_color()),
-                            StrokeKind::Inside,
-                        );
+        let swatch_gap = self.settings.ui.item_spacing * 0.5;
+        let side = ((ui.available_width() - 7. * swatch_gap) / 8.)
+            .clamp(14., self.settings.ui.control_height);
+        ui.scope(|ui| {
+            ui.spacing_mut().item_spacing = Vec2::splat(swatch_gap);
+            for row in colors.chunks(8) {
+                ui.horizontal(|ui| {
+                    for &c in row {
+                        let (r, response) =
+                            ui.allocate_exact_size(Vec2::splat(side), Sense::click());
+                        ui.painter().rect_filled(r, 3., theme::rgb(c));
+                        if response.hovered() {
+                            ui.painter().rect_stroke(
+                                r,
+                                3.,
+                                Stroke::new(1.5, ui.visuals().text_color()),
+                                StrokeKind::Inside,
+                            );
+                        }
+                        if response.clicked() {
+                            self.ink = [(c >> 16) as u8, (c >> 8) as u8, c as u8];
+                        }
+                        response.on_hover_text(tr(format!("#{c:06X}")));
                     }
-                    if response.clicked() {
-                        self.ink = [(c >> 16) as u8, (c >> 8) as u8, c as u8];
-                    }
-                    response.on_hover_text(tr(format!("#{c:06X}")));
-                }
-            });
-        }
+                });
+            }
+        });
         CollapsingHeader::new(tr("RGB Values"))
             .id_salt("rgb-channels")
             .show(ui, |ui| {

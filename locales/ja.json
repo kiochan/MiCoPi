@@ -818,5 +818,6 @@
   "Merge Panel Group as Tabs": "グループ全体をタブに統合",
   "Merge Panel Group as Tabs: {name}": "グループ全体をタブに統合: {name}",
   "Release to Dock the Entire Group": "離してグループ全体をドッキング",
-  "Dock Group at Desktop Point": "デスクトップ位置にグループをドッキング"
+  "Dock Group at Desktop Point": "デスクトップ位置にグループをドッキング",
+  "Ready to Paint": "描画できます"
 }

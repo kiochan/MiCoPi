@@ -788,7 +788,7 @@ impl Studio {
         if let Some(server) = &self.action_server {
             if server.poll(&mut self.editor.session) > 0 {
                 self.editor.sync_from_session();
-                self.editor.status = "MCP / Action Updated the Session".into();
+                self.editor.status = "Ready to Paint".into();
             }
         }
         crate::i18n::set_language(self.editor.settings.ui.language);
