@@ -136,6 +136,11 @@
       "operation": "plugins"
     },
     {
+      "id": "plugins.plan",
+      "title": "Plan plugin dependencies and restart changes",
+      "operation": "plugin_plan"
+    },
+    {
       "id": "events.list",
       "title": "Read action events",
       "operation": "events"

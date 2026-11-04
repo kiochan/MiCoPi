@@ -61,6 +61,14 @@ pub struct Manifest {
     pub api_version: u32,
     pub id: String,
     pub name: String,
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub author: Option<String>,
+    #[serde(default)]
+    pub min_host_version: Option<String>,
     #[serde(default = "yes")]
     pub enabled: bool,
     #[serde(default)]
@@ -168,6 +176,8 @@ pub struct PluginDiagnostic {
 }
 #[derive(Clone, Debug)]
 pub struct Registry {
+    pub packages: Vec<super::PluginInfo>,
+    pub disabled: Vec<String>,
     pub nodes: BTreeMap<String, (String, super::nodes::Definition)>,
     pub tools: BTreeMap<String, ToolDefinition>,
     pub actions: BTreeMap<String, ActionDefinition>,
@@ -208,6 +218,7 @@ impl Registry {
                 })
                 .collect(),
             root.clone(),
+            &[],
         )
     }
     pub fn load(root: &Path) -> Result<Self, ActionError> {
@@ -269,14 +280,7 @@ impl Registry {
                         if s.len() > 1024 * 1024 {
                             Err("Plugin manifest exceeds 1 MB".into())
                         } else {
-                            serde_json::from_str::<Manifest>(&s)
-                                .map(|mut m| {
-                                    if disabled.contains(&m.id) {
-                                        m.enabled = false;
-                                    }
-                                    m
-                                })
-                                .map_err(|e| e.to_string())
+                            serde_json::from_str::<Manifest>(&s).map_err(|e| e.to_string())
                         }
                     });
                 (path, parsed)
@@ -344,14 +348,24 @@ impl Registry {
                 if let Some(panel) = panels.iter().find(|p| p.id == module.id) {
                     module.panels = vec![panel.clone()];
                 }
-                module.enabled = enabled && !disabled.contains(&module.id);
+                module.enabled = enabled;
                 inputs.push((root.join(path), Ok(module)));
             }
         }
-        Ok(Self::assemble(inputs, root.to_path_buf()))
+        Ok(Self::assemble(inputs, root.to_path_buf(), disabled))
     }
-    fn assemble(inputs: Vec<(PathBuf, Result<Manifest, String>)>, root: PathBuf) -> Self {
+    fn assemble(
+        inputs: Vec<(PathBuf, Result<Manifest, String>)>,
+        root: PathBuf,
+        disabled: &[String],
+    ) -> Self {
+        let inventory: Vec<_> = inputs
+            .iter()
+            .map(|(path, manifest)| super::PluginInfo::discovered(path, manifest.as_ref().ok()))
+            .collect();
         let mut out = Self {
+            packages: vec![],
+            disabled: disabled.to_vec(),
             nodes: BTreeMap::new(),
             tools: BTreeMap::new(),
             actions: BTreeMap::new(),
@@ -372,7 +386,12 @@ impl Registry {
         let mut pending = vec![];
         for (path, value) in inputs {
             match value {
-                Ok(m) if m.enabled => pending.push((path, m)),
+                Ok(m) if m.enabled && !disabled.contains(&m.id) => {
+                    match super::packages::validate_metadata(&m) {
+                        Ok(()) => pending.push((path, m)),
+                        Err(error) => out.diagnostics.push(PluginDiagnostic { path, error }),
+                    }
+                }
                 Ok(_) => {}
                 Err(error) => out.diagnostics.push(PluginDiagnostic { path, error }),
             }
@@ -627,10 +646,17 @@ impl Registry {
                 out.panels.insert(p.id.clone(), p);
             }
         }
+        out.packages = inventory
+            .into_iter()
+            .map(|mut package| {
+                package.resolve(&out);
+                package
+            })
+            .collect();
         out
     }
     pub fn describe(&self) -> Value {
-        json!({"directory":self.root,"loaded":self.loaded,"native":self.native_plugins.iter().map(|(id,p)|json!({"id":id,"library":p.path,"abi_version":micopi_plugin_api::ABI_VERSION})).collect::<Vec<_>>(),"diagnostics":self.diagnostics,"tools":self.tools.values().collect::<Vec<_>>(),"actions":self.actions.values().collect::<Vec<_>>(),"states":self.states.values().collect::<Vec<_>>(),"nodes":self.nodes.values().map(|(_,d)|d).collect::<Vec<_>>(),"panels":self.panels.values().collect::<Vec<_>>()})
+        json!({"directory":self.root,"loaded":self.loaded,"packages":self.packages,"disabled":self.disabled,"lifecycle":{"contributions":"restart_required","native_library":"restart_required"},"native":self.native_plugins.iter().map(|(id,p)|json!({"id":id,"library":p.path,"abi_version":micopi_plugin_api::ABI_VERSION})).collect::<Vec<_>>(),"diagnostics":self.diagnostics,"tools":self.tools.values().collect::<Vec<_>>(),"actions":self.actions.values().collect::<Vec<_>>(),"states":self.states.values().collect::<Vec<_>>(),"nodes":self.nodes.values().map(|(_,d)|d).collect::<Vec<_>>(),"panels":self.panels.values().collect::<Vec<_>>()})
     }
 }
 pub fn valid_id(id: &str) -> bool {

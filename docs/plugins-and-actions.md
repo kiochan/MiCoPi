@@ -4,6 +4,8 @@ All entry points operate through the same Session: GUI buttons, typed pen input,
 
 ## Plugin packages
 
+See [Unified plugin packages](plugin-system.md) for package versions, compatibility checks, per-package lifecycle states and dependency-aware enable/disable plans.
+
 Plugins are loaded from `plugins/` beside the executable, or from `--plugins <directory>`. Packages contain `manifest.json`; first-level JSON manifests are also supported. A missing directory is initialized from the bundled definitions. Existing files and personal customizations are not overwritten.
 
 `requires` establishes dependency order. `enabled:false` disables a package; `settings.json` also supports `plugins.disabled`. Changes take effect after restart. Registration is atomic: an invalid package contributes nothing and does not block other valid packages. Inspect `plugins.list` for duplicate IDs, bad schemas, missing dependencies or DLL errors.

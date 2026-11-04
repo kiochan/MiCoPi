@@ -97,6 +97,9 @@ def main():
             call('ui.dispatch',dict(id='settings.search',value='ui.language'))
             time.sleep(.25)
             screenshot(f'{language}-settings.png')
+            call('ui.dispatch',dict(id='settings.search',value='plugins'))
+            time.sleep(.15)
+            screenshot(f'{language}-plugins.png')
             assert base64.b64decode(call('canvas.snapshot',{})['data'])==expected
             assert call('workflow.read',{})['graph']==graph
             # Close only this isolated settings preview through the UI effect API.

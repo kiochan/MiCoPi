@@ -856,5 +856,14 @@
   "Bottom Right": "Bottom Right",
   "Apply": "Apply",
   "Canvas Size": "Canvas Size",
-  "Crop Canvas": "Crop Canvas"
+  "Crop Canvas": "Crop Canvas",
+  "Blocked": "Blocked",
+  "Disabled": "Disabled",
+  "Failed": "Failed",
+  "Restart Required": "Restart Required",
+  "Dependencies": "Dependencies",
+  "Enabling includes dependencies; disabling includes dependent plugins.": "Enabling includes dependencies; disabling includes dependent plugins.",
+  "Requires MiCoPi {minimum}": "Requires MiCoPi {minimum}",
+  "Plan plugin dependencies and restart changes": "Plan plugin dependencies and restart changes",
+  "List loaded plugins and diagnostics": "List loaded plugins and diagnostics"
 }

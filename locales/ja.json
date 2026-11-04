@@ -856,5 +856,14 @@
   "Bottom Right": "右下",
   "Apply": "適用",
   "Canvas Size": "キャンバスサイズ",
-  "Crop Canvas": "キャンバスを切り抜き"
+  "Crop Canvas": "キャンバスを切り抜き",
+  "Blocked": "依存関係の問題",
+  "Disabled": "無効",
+  "Failed": "読み込み失敗",
+  "Restart Required": "再起動が必要",
+  "Dependencies": "依存先",
+  "Enabling includes dependencies; disabling includes dependent plugins.": "有効化すると依存先も有効にし、無効化すると依存するプラグインも無効にします。",
+  "Requires MiCoPi {minimum}": "MiCoPi {minimum} が必要",
+  "Plan plugin dependencies and restart changes": "プラグインの依存関係と再起動後の変更を計画",
+  "List loaded plugins and diagnostics": "読み込んだプラグインと診断を表示"
 }

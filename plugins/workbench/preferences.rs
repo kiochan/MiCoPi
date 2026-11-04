@@ -719,64 +719,91 @@ impl Studio {
                     ctx.copy_text(registry.root.display().to_string());
                 }
             }
-            for plugin in &registry.available {
-                let disabled = draft.plugins.disabled.contains(&plugin.id);
+            ui.weak(tr(
+                "Enabling includes dependencies; disabling includes dependent plugins.",
+            ));
+            for plugin in &registry.packages {
+                let id = plugin.id.as_deref();
+                let disabled = id.is_some_and(|id| draft.plugins.disabled.iter().any(|v| v == id));
                 if !matches(
                     &prefs.query,
-                    &format!("plugins 插件 {} {}", plugin.id, plugin.name),
+                    &format!(
+                        "plugins {} {} {} {}",
+                        id.unwrap_or(""),
+                        plugin.name,
+                        plugin.status.title(),
+                        plugin.error.as_deref().unwrap_or("")
+                    ),
                     disabled,
                 ) {
                     continue;
                 }
                 count += 1;
-                ui.push_id(&plugin.id, |ui| {
-                    ui.strong(tr(&plugin.name));
-                    ui.weak(tr(&plugin.id));
-                    let mut enabled = !disabled;
-                    let essential = ["core", "painting", "workbench"].contains(&plugin.id.as_str());
-                    if ui
-                        .add_enabled(!essential, Checkbox::new(&mut enabled, "Enable Plugin"))
-                        .changed()
-                    {
-                        draft.plugins.disabled.retain(|id| id != &plugin.id);
-                        if !enabled {
-                            draft.plugins.disabled.push(plugin.id.clone());
+                ui.push_id(&plugin.manifest, |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.strong(tr(&plugin.name));
+                        if let Some(version) = &plugin.version {
+                            ui.weak(version);
+                        }
+                        ui.label(tr(plugin.status.title()));
+                    });
+                    if let Some(author) = &plugin.author {
+                        ui.weak(author);
+                    }
+                    if !plugin.description.is_empty() {
+                        ui.label(tr(&plugin.description));
+                    }
+                    if let Some(id) = id {
+                        ui.weak(id);
+                        let essential = ["core", "painting", "workbench"].contains(&id);
+                        let mut enabled = !disabled && plugin.manifest_enabled;
+                        if ui
+                            .add_enabled(
+                                !essential
+                                    && plugin.manifest_enabled
+                                    && crate::plugins::valid_id(id),
+                                Checkbox::new(&mut enabled, tr("Enable Plugin")),
+                            )
+                            .changed()
+                        {
+                            match registry.plan_enabled(&draft.plugins.disabled, id, enabled) {
+                                Ok(plan) => draft.plugins.disabled = plan.disabled,
+                                Err(error) => self.editor.status = error,
+                            }
+                        }
+                        if essential {
+                            ui.weak(tr("Built-in Core Plugin"));
+                        }
+                        if disabled != registry.disabled.iter().any(|v| v == id) {
+                            ui.label(tr("Restart Required"));
                         }
                     }
-                    if essential {
-                        ui.weak(tr("Built-in Core Plugin"));
+                    if let Some(minimum) = &plugin.min_host_version {
+                        ui.weak(tr(format!("Requires MiCoPi {minimum}")));
                     }
-                    if let Some(library) = &plugin.library {
-                        ui.weak(tr(format!("Native DLL · {library}")));
+                    if !plugin.requires.is_empty() {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.weak(tr("Dependencies"));
+                            ui.weak(plugin.requires.join(", "));
+                        });
                     }
                     ui.weak(tr(format!(
                         "{} tools · {} actions · {} panels · {}",
-                        plugin.tools.len(),
-                        plugin.actions.len(),
-                        plugin.panels.len(),
-                        if registry.loaded.contains(&plugin.id) {
-                            "Loaded"
-                        } else {
-                            "Not Loaded"
-                        }
+                        plugin.contributions.get("tools").copied().unwrap_or(0),
+                        plugin.contributions.get("actions").copied().unwrap_or(0),
+                        plugin.contributions.get("panels").copied().unwrap_or(0),
+                        crate::i18n::text(plugin.status.title())
                     )));
-                    if !plugin.enabled && !disabled {
+                    if !plugin.manifest_enabled && id.is_some() {
                         ui.weak(tr("Manifest Has enabled=false; Edit It and Restart."));
                     }
+                    if let Some(error) = &plugin.error {
+                        ui.colored_label(ui.visuals().error_fg_color, tr(error));
+                    }
+                    ui.weak(plugin.manifest.display().to_string());
                     ui.separator();
                     ui.add_space(8.);
                 });
-            }
-            for error in &registry.diagnostics {
-                if matches(
-                    &prefs.query,
-                    &format!("plugins 插件 错误 {} {}", error.path.display(), error.error),
-                    true,
-                ) {
-                    count += 1;
-                    ui.colored_label(ui.visuals().error_fg_color, tr(&error.error));
-                    ui.weak(tr(error.path.display().to_string()));
-                }
             }
         }
         prefs.result_count = count;

@@ -2,8 +2,10 @@
 //! Native DLL handlers use the versioned C ABI in micopi-plugin-api.
 pub(crate) mod native;
 pub mod nodes;
+mod packages;
 pub(crate) mod registry;
 pub mod tools;
+pub use packages::{PluginInfo, PluginPlan, PluginStatus};
 pub use registry::*;
 pub fn panel_key(id: &str) -> u32 {
     id.bytes().fold(2166136261, |hash, b| {
@@ -44,7 +46,7 @@ pub(crate) fn execute(
             windows::execute(session, op, args)
         }
         SettingsRead | SettingsWrite | Ui => workbench::execute(session, op, args),
-        State | Plugins | Events => system::execute(session, op, args),
+        State | Plugins | PluginPlan | Events => system::execute(session, op, args),
         Describe => Ok(crate::application::pipeline::describe(session)),
         ContextRead => crate::application::pipeline::context(session, args),
         PipelineRun => crate::application::pipeline::run(session, args),

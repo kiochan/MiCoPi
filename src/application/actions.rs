@@ -112,6 +112,7 @@ pub enum Operation {
     WindowCapture,
     WindowDrop,
     Plugins,
+    PluginPlan,
     Events,
 }
 impl Operation {
@@ -250,6 +251,10 @@ impl Operation {
                 vec!["panel", "operation"],
             ),
             Self::Events => (json!({"after":{"type":"integer","minimum":0}}), vec![]),
+            Self::PluginPlan => (
+                json!({"id":{"type":"string","minLength":1},"enabled":{"type":"boolean"},"disabled":{"type":"array","maxItems":256,"items":{"type":"string"}}}),
+                vec!["id", "enabled"],
+            ),
             _ => (json!({}), vec![]),
         };
         json!({"type":"object","properties":props,"required":required,"additionalProperties":false})
@@ -274,6 +279,7 @@ impl Operation {
                 | Self::ContextRead
                 | Self::State
                 | Self::Plugins
+                | Self::PluginPlan
                 | Self::Events
                 | Self::Render
                 | Self::SettingsRead

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add unified package version/author/host compatibility metadata, path-based lifecycle inventory and dependency-aware enable/disable plans shared by Settings and the read-only `plugins.plan` action.
+
 - Embed only English; load Chinese, Japanese and Korean from external JSON catalogs with per-profile overrides and background hot reload. Preserve last-good translations on invalid edits, bound file/update memory and keep locale I/O off the drawing thread.
 
 - Add anchored canvas resizing and exact all-layer crop through shared actions, workflow nodes and Edit dialogs, with transparent expansion and an on-canvas crop guide.

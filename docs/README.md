@@ -22,6 +22,7 @@ The technical documentation is maintained in English. The project overview is al
 | Guide | Scope |
 | --- | --- |
 | [Plugins and Actions](plugins-and-actions.md) | Packages, manifests, JSONL, MCP and GUI attachment |
+| [Unified Plugin System](plugin-system.md) | Package metadata, compatibility, lifecycle inventory and dependency plans |
 | [Plugin Windows](plugin-windows.md) | Independent control bar, canvas, feature adapters and registered layout commands |
 | [Native Plugins](native-plugins.md) | DLL lifecycle, C ABI, borrowed pixels and independent builds |
 | [AI Pipeline](ai-pipeline.md) | Discovery, public state, validated execution and partial failures |

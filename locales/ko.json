@@ -856,5 +856,14 @@
   "Bottom Right": "오른쪽 아래",
   "Apply": "적용",
   "Canvas Size": "캔버스 크기",
-  "Crop Canvas": "캔버스 자르기"
+  "Crop Canvas": "캔버스 자르기",
+  "Blocked": "의존성 문제",
+  "Disabled": "비활성화됨",
+  "Failed": "로드 실패",
+  "Restart Required": "다시 시작 필요",
+  "Dependencies": "의존성",
+  "Enabling includes dependencies; disabling includes dependent plugins.": "활성화 시 필요한 플러그인도 활성화하고, 비활성화 시 이 플러그인에 의존하는 플러그인도 비활성화합니다.",
+  "Requires MiCoPi {minimum}": "MiCoPi {minimum} 필요",
+  "Plan plugin dependencies and restart changes": "플러그인 의존성과 재시작 변경 계획",
+  "List loaded plugins and diagnostics": "로드된 플러그인과 진단 정보 보기"
 }
