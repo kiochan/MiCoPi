@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Tighten default spacing for a denser workbench: 4 pt item gaps, 8 pt panel padding, 6 pt workspace edges, 26 pt controls and 30 pt tab rows; the Compact preset goes further.
 - Move canvas zoom from the top toolbar into a thin strip beneath the stage with a logarithmic slider and an editable percentage field; remove the workspace status bar and show status, pen pressure, document size and history memory in that strip.
 - Replace rounded tab capsules with browser-style tabs: the active tab shares the panel surface and flares into it, while resting tabs are labels separated by thin dividers.
 - Set group tab rows apart from panel content with a tinted band and hairline divider; show rounded grab handles on splitters that highlight while hovered or dragged.

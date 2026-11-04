@@ -35,33 +35,34 @@ impl Default for Appearance {
             theme: "graphite".into(),
             font_size: 13.,
             small_font_size: 12.,
-            item_spacing: 6.,
-            section_spacing: 16.,
-            panel_padding: 12.,
-            outer_padding: 10.,
-            control_height: 28.,
+            item_spacing: 4.,
+            section_spacing: 12.,
+            panel_padding: 8.,
+            outer_padding: 6.,
+            control_height: 26.,
             title_height: 36.,
-            toolbar_height: 36.,
-            tab_height: 32.,
+            toolbar_height: 34.,
+            tab_height: 30.,
             corner_radius: 8.,
             icon_size: 18.,
             left_panel_width: 244.,
             toolbox_width: 720.,
-            toolbox_height: 88.,
-            right_panel_width: 280.,
-            canvas_margin: 32.,
+            toolbox_height: 80.,
+            right_panel_width: 272.,
+            canvas_margin: 24.,
             accent: "#B8A2E4".into(),
         }
     }
 }
 impl Appearance {
     pub fn compact(&mut self) {
-        self.item_spacing = 6.;
-        self.section_spacing = 12.;
-        self.panel_padding = 10.;
-        self.control_height = 26.;
-        self.toolbar_height = 36.;
-        self.tab_height = 30.;
+        self.item_spacing = 4.;
+        self.section_spacing = 8.;
+        self.panel_padding = 6.;
+        self.outer_padding = 4.;
+        self.control_height = 24.;
+        self.toolbar_height = 32.;
+        self.tab_height = 28.;
     }
     pub fn validate(&self) -> Result<(), String> {
         for (name, value, low, high) in [

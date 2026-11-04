@@ -14,18 +14,18 @@ All dimensions below are logical points and follow each viewport's DPI scale. Se
 | --- | ---: | --- |
 | `ui.font_size` | 13 | Body and control text |
 | `ui.small_font_size` | 12 | Secondary labels and metadata |
-| `ui.item_spacing` | 6 | Gaps within a control group |
-| `ui.section_spacing` | 16 | Separation between related property sections |
-| `ui.panel_padding` | 12 | Content inset within panels |
-| `ui.outer_padding` | 10 | Workspace and native-window edge inset |
-| `ui.control_height` | 28 | Shared control hit height |
-| `ui.tab_height` | 32 | Grip, tabs and group controls |
+| `ui.item_spacing` | 4 | Gaps within a control group |
+| `ui.section_spacing` | 12 | Separation between related property sections |
+| `ui.panel_padding` | 8 | Content inset within panels |
+| `ui.outer_padding` | 6 | Workspace and native-window edge inset |
+| `ui.control_height` | 26 | Shared control hit height |
+| `ui.tab_height` | 30 | Grip, tabs and group controls |
 | `ui.title_height` | 36 | Application title row |
 | `ui.icon_size` | 18 | Toolbar icon size |
 | `ui.corner_radius` | 8 | Controls and content surfaces |
 | `ui.accent` | `#B8A2E4` | Lavender selection and identity color |
-| `ui.toolbox_height` | 88 | Preferred control-bar group height |
-| `ui.right_panel_width` | 280 | Default property sidebar width |
+| `ui.toolbox_height` | 80 | Preferred control-bar group height |
+| `ui.right_panel_width` | 272 | Default property sidebar width |
 
 Property rows share a proportional label column, a flexible slider and a consistent numeric column. Long translated labels truncate with a tooltip. Narrow panels place the slider below its label/value row. Tab labels retain internal padding, while the tab strip scrolls independently of the fixed group buttons. Swatches stop growing at the configured control height. Their local spacing does not leak into neighboring controls.
 
