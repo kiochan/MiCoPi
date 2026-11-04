@@ -16,13 +16,14 @@ The technical documentation is maintained in English. The project overview is al
 | [Project Structure](project-structure.md) | Directory responsibilities, generated files and Git boundaries |
 | [Architecture](architecture.md) | Session ownership, execution, rendering and persistence |
 | [Development](development.md) | Toolchains, builds, tests and performance checks |
+| [Agent Guide](../AGENTS.md) | Repository instructions, architecture invariants and verification by change type |
 
 ## Extending and automating MiCoPi
 
 | Guide | Scope |
 | --- | --- |
 | [Plugins and Actions](plugins-and-actions.md) | Packages, manifests, JSONL, MCP and GUI attachment |
-| [Unified Plugin System](plugin-system.md) | Package metadata, compatibility, lifecycle inventory and dependency plans |
+| [Unified Plugin System](plugin-system.md) | Package metadata, compatibility, dependency plans, contribution ownership and hot-reloadable language packs |
 | [Plugin Windows](plugin-windows.md) | Independent control bar, canvas, feature adapters and registered layout commands |
 | [Native Plugins](native-plugins.md) | DLL lifecycle, C ABI, borrowed pixels and independent builds |
 | [AI Pipeline](ai-pipeline.md) | Discovery, public state, validated execution and partial failures |

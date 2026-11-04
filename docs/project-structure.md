@@ -9,6 +9,7 @@ micopi/
 ├── README.ja.md              Japanese overview
 ├── README.ko.md              Korean overview
 ├── ROADMAP.md               Priorities, milestones and acceptance criteria
+├── AGENTS.md                Repository instructions for coding agents
 ├── Cargo.toml / Cargo.lock   Host package, workspace and locked dependencies
 ├── src/
 │   ├── main.rs              Desktop entry point
@@ -21,10 +22,11 @@ micopi/
 │   ├── platform/            Windows input, chrome and file integration
 │   ├── ui/                  Commands, shortcuts and workspace models
 │   ├── configuration.rs     Validated settings persistence
-│   └── i18n.rs              Embedded translation lookup
+│   ├── i18n.rs              Embedded English and owner-aware presentation lookup
+│   └── i18n_external.rs     Bounded external catalog watcher and snapshots
 ├── crates/plugin-api/       Independent C ABI SDK and C header
 ├── plugins/                 Feature UI adapters, manifests and DLL source
-├── locales/                 Four versioned UI catalogs
+├── locales/                 English source and three external UI catalogs
 ├── assets/                  Runtime assets and upstream notices
 ├── docs/
 │   ├── README.md            Guide index
@@ -50,6 +52,8 @@ micopi/
 `src/plugins/` and root `plugins/` have different jobs. The former is host integration: registration, validation, lifecycle and dispatch. The latter is the installable extension boundary: manifests and independent DLL implementations. Feature UI adapters are source-owned in `plugins/<feature>/panel.rs` and compiled into the desktop host. Shared window lifecycle lives in `src/desktop/windows.rs`; native viewport presentation lives in `src/desktop/native_windows.rs` and topology-preserving group moves in `src/desktop/window_groups.rs`; the unified grip/tab/button row lives in `src/desktop/group_bar.rs`; cross-viewport drag/drop resolution lives in `src/desktop/group_drop.rs`; the document texture cache lives in `src/desktop/document_texture.rs`. This source boundary does not expose egui objects through the native C ABI. See [Plugin Windows](plugin-windows.md). Keep new pixel algorithms in the appropriate plugin, while the host retains document and history ownership.
 
 The `engine` directory contains shared document structures and the image graph model. The legacy GDI UI under `src/platform/windows/` remains a regression reference. It is not the production desktop entry point; moving it requires its own measured refactor, not a cosmetic directory change.
+
+`src/plugins/packages.rs` owns package metadata validation, lifecycle inventory, contribution ownership and dependency planning. Loaded packages declare optional external language files in their manifests; `src/i18n_external.rs` merges those owner-scoped files with host catalogs and profile overrides. Only English is compiled into the executable. See [Plugin System](plugin-system.md) and [Localization](localization.md).
 
 ## Document execution modules
 
@@ -82,6 +86,6 @@ Runtime assets belong in `assets/`; documentation screenshots do not. Avoid plac
 
 Track source, manifests, translation catalogs, SDK headers, reference examples, selected screenshots, notices and `Cargo.lock`. Ignore compiled executables/DLLs, all Cargo target directories, downloaded toolchains, release archives, session endpoints, personal settings, editor state and artwork.
 
-The repository uses `main` as the baseline branch. Use focused work branches and coherent commits, and annotate reviewed release versions with `vX.Y.Z`. Keep the existing release version when a change only organizes documentation. Never manufacture historical commits for versions that were not previously recorded.
+The repository uses `main` as the baseline branch. Follow the maintainer's requested workflow: current maintainer-directed agent work commits coherent changes directly to `main`; external contributions normally use focused branches. Annotate reviewed release versions with `vX.Y.Z`. Keep the existing release version when a change only organizes documentation. Never manufacture historical commits for versions that were not previously recorded. Agent-specific instructions live in [AGENTS.md](../AGENTS.md).
 
 Run `python scripts/check-repository.py` after moving documentation or examples. Run the relevant build and smoke checks when executable paths, runtime contracts or source behavior change. See [Contributing](../CONTRIBUTING.md) for the Git workflow.

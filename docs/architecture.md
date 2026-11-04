@@ -26,7 +26,7 @@ flowchart TD
 | automation | JSONL, MCP and local GUI request transport |
 | engine | Pixel layers, image DAG, dirty rectangles and tiled history |
 | configuration | Window-free settings validation and atomic persistence |
-| i18n / locales | Embedded translations; English source messages and stable protocol IDs |
+| i18n / locales | Embedded English, external catalog snapshots and owner-scoped plugin translations |
 | desktop | egui presentation, coordinates, caches, dock state and dialogs |
 | platform | Windows Ink, DWM, file replacement and native integration |
 
@@ -57,6 +57,8 @@ Project headers are recognized independently of the filename extension; renamed 
 `settings.json` contains appearance, language, keybindings, painting defaults and plugin preferences. Saving validates ranges/conflicts, preserves unknown root fields and atomically replaces the file. Dock trees and floating rectangles are kept in `workspace.egui.json`; new plugin panels are reconciled without reopening previously closed panels.
 
 Localization is applied at presentation boundaries. English metadata, machine IDs, schemas, file paths and documents stay independent of display language. Only English is embedded; external Chinese, Japanese and Korean JSON catalogs hot-reload through a bounded background watcher and immutable UI snapshots. Existing Windows CJK fonts provide glyph fallback without a bundled font pack. See [Localization](localization.md) for file precedence, validation and fallback behavior.
+
+The plugin registry validates package metadata and compatibility before native loading, resolves dependencies and registers contributions atomically. Package inventory retains disabled, blocked and failed records with paths and diagnostics. Settings and automation share a pure dependency planner; saving its disabled list does not unload live instances. Contribution and DLL changes take effect after restart. Loaded packages supply scoped locale sources to the same catalog watcher; their text cannot replace another owner's labels. See [Plugin System](plugin-system.md).
 
 Window activation is forwarded to winit. `WM_NCACTIVATE` uses `lParam=-1` to preserve activation handling while suppressing native non-client repaint; see [Microsoft's message contract](https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-ncactivate).
 

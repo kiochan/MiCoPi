@@ -18,6 +18,8 @@
 
 キャンバスサイズ変更と全レイヤーの正確な切り抜きに対応し、レイヤー・ノードの識別情報、取り消しと検証可能な再生を維持します。[キャンバス編集](docs/canvas-editing.md)を参照してください。
 
+[統一プラグインシステム](docs/plugin-system.md)は、バージョン、互換性、依存関係、読み込み状態を設定画面と自動化 API に公開します。有効化・無効化の計画は依存関係を解決し、保存後の再起動で反映されます。プラグイン独自の翻訳ファイルは互いに分離され、ホットリロードできます。
+
 ## 基本理念
 
 **描画を最優先に。機能はプラグインで実装し、人と自動化は同じ実行コアを使う。**
@@ -37,6 +39,7 @@ AI-ready は、発見・確認・検証できる連携仕様を意味します�
 - 透明 PNG 書き出し、PNG/JPEG/BMP 読み込み、`.mcp` プロジェクト。
 - レイヤー連動の非破壊画像グラフ、レイヤーごとのフィルター、自由合成とプラグイン登録の操作・状態ワークフロー。
 - JSONL バッチ、MCP stdio、実行中の GUI への接続。
+- 共通のプラグイン一覧、依存関係を考慮する設定、プラグインごとに分離した言語パック。
 
 レイヤーの名前変更、複製（**Ctrl+J**）、並べ替え、削除と、反転、180° 回転、整数オフセットをサポートします。[レイヤー編集](docs/layer-editing.md)を参照してください。
 
@@ -52,7 +55,7 @@ cargo run --release --locked
 .\scripts\build.ps1 -Test
 ```
 
-`dist/MiCoPi.exe` を起動してください。同じ場所の `plugins/` と `licenses/` が必要です。利用者の環境に Rust は不要です。プロジェクト内のポータブルツールチェーンについては英語の[開発ガイド](docs/development.md)をご覧ください。
+`dist/MiCoPi.exe` を起動してください。同じ場所の `plugins/`、`locales/`、`licenses/` が必要です。利用者の環境に Rust は不要です。プロジェクト内のポータブルツールチェーンについては英語の[開発ガイド](docs/development.md)をご覧ください。
 
 ```powershell
 New-Item -ItemType Directory -Force target/example-output | Out-Null
@@ -73,11 +76,21 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 
 言語を切り替えてもアクション ID、設定キー、ノード端子名、ファイルパス、キャンバスの画素は変わりません。詳細は英語の[ローカライズガイド](docs/localization.md)を参照してください。
 
+英語のみ実行ファイルに埋め込みます。他の言語は実行ファイルと同じ場所の `locales/` から読み込み、設定ディレクトリの `locales/` で上書きできます。JSON の変更は再ビルド・再起動なしで反映され、不正な編集時は直前の有効な翻訳を維持します。`--locales-dir <directory>` で基本カタログの場所を変更できます。
+
+## MiCoPi の拡張
+
+[Quick tools サンプル](examples/plugins/quick-tools/manifest.json)にはブラシプリセット、マクロ、多言語ボタンパネルが含まれます。パッケージ全体をプラグインディレクトリへコピーして再起動してください。`plugins.list` で状態・診断・機能の所有者を確認し、読み取り専用の `plugins.plan` で依存関係の変更を確認できます。
+
+画素処理は[ネイティブ C ABI SDK](docs/native-plugins.md)で拡張します。機能 UI のソースはホストと一緒にコンパイルし、DLL の交換や機能定義の変更には再起動が必要です。実行、文書履歴、ウィンドウのライフサイクルはホストが管理します。[プラグインシステム](docs/plugin-system.md)と[プラグインウィンドウ](docs/plugin-windows.md)を参照してください。
+
 ## 構成と貢献
 
 `src/` はホストと UI、`plugins/` はインストール可能なパッケージと独立したアルゴリズム、`crates/plugin-api/` は ABI SDK です。文書、画像、サンプル、開発ツールは `docs/`、`docs/screenshots/`、`examples/`、`scripts/` に分かれています。ビルド結果、配布ファイル、個人の作品は Git に含めません。
 
 英語の[貢献ガイド](CONTRIBUTING.md)、[アーキテクチャ](docs/architecture.md)、[変更履歴](CHANGELOG.md)をご覧ください。英語 README を基準とし、翻訳版も同じ機能と制約を説明します。
+
+コーディングエージェントは [AGENTS.md](AGENTS.md) も参照してください。メンテナー指定の Git 手順に従い、現在の委託作業は `main` に機能単位でコミットします。プッシュは明示的な依頼時のみ行い、ビルド成果物や個人設定はコミットしません。
 
 ## ライセンス
 

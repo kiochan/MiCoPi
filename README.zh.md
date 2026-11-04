@@ -18,6 +18,8 @@
 
 画布尺寸调整与精确裁剪可同时处理所有图层，保留图层和节点身份，并支持撤销与可验证回放。参见[画布编辑](docs/canvas-editing.md)。
 
+[统一插件系统](docs/plugin-system.md)在设置和自动化接口中公开版本、兼容性、依赖与加载状态。启用/禁用规划会处理依赖，保存后重启生效；插件可提供互不干扰、支持热加载的语言包。
+
 ## 主要理念
 
 **绘画优先，行为由插件承载，人与自动化共用同一个执行核心。**
@@ -37,6 +39,7 @@
 - PNG 透明导出、PNG/JPEG/BMP 导入和 `.mcp` 工程文件。
 - 图像节点与图层栈联动，支持逐层滤镜及自由合成；插件可注册 action/状态流程节点。
 - JSONL 批处理、MCP stdio，以及连接正在运行的 GUI。
+- 统一插件清单、依赖感知的设置和按插件隔离的语言包。
 
 图层支持重命名、复制（**Ctrl+J**）、重排和删除，以及精确翻转、旋转 180° 和整数偏移。详见[图层编辑](docs/layer-editing.md)。
 
@@ -52,7 +55,7 @@ cargo run --release --locked
 .\scripts\build.ps1 -Test
 ```
 
-运行 `dist/MiCoPi.exe`，保留同目录的 `plugins/` 和 `licenses/`。最终用户无需安装 Rust。项目本地便携工具链的用法见英文[开发指南](docs/development.md)。
+运行 `dist/MiCoPi.exe`，保留同目录的 `plugins/`、`locales/` 和 `licenses/`。最终用户无需安装 Rust。项目本地便携工具链的用法见英文[开发指南](docs/development.md)。
 
 ```powershell
 New-Item -ItemType Directory -Force target/example-output | Out-Null
@@ -73,11 +76,21 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 
 语言不会改变 action ID、配置键、节点端口、文件路径或画布像素。详见英文[多语言说明](docs/localization.md)。
 
+仅英语内嵌在程序中。其他语言从程序目录的 `locales/` 加载，配置目录中的 `locales/` 可覆盖默认翻译。修改 JSON 后无需编译或重启；文件错误时保留上一版有效翻译。使用 `--locales-dir <目录>` 可更换基础语言包目录。
+
+## 扩展 MiCoPi
+
+[Quick tools 示例](examples/plugins/quick-tools/manifest.json)包含笔刷预设、宏和多语言按钮面板。将整个插件包复制到插件目录后重启；用 `plugins.list` 查看状态、诊断和功能归属，用只读的 `plugins.plan` 预览依赖变化。
+
+像素算法通过[原生 C ABI SDK](docs/native-plugins.md)扩展。功能界面源码随宿主编译；更换 DLL 或修改功能声明后需重启。宿主统一提供执行、文档历史和窗口生命周期。详见[插件系统](docs/plugin-system.md)和[插件窗口](docs/plugin-windows.md)。
+
 ## 目录与贡献
 
 `src/` 保存宿主与界面，`plugins/` 保存可安装插件包和独立算法，`crates/plugin-api/` 保存 ABI SDK。文档、截图、示例和工具分别位于 `docs/`、`docs/screenshots/`、`examples/` 和 `scripts/`。构建、发行产物与个人作品不进入 Git。
 
 请阅读英文[贡献指南](CONTRIBUTING.md)、[架构说明](docs/architecture.md)和[变更记录](CHANGELOG.md)。英语 README 是项目概述的基准，三个翻译版本与其保持一致。
+
+编码代理还应阅读 [AGENTS.md](AGENTS.md)。遵循维护者指定的 Git 流程；当前维护者委托的工作直接在 `main` 按功能提交。仅在明确要求时推送，不提交构建产物或个人配置。
 
 ## 许可证
 

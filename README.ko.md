@@ -18,6 +18,8 @@
 
 캔버스 크기 변경과 모든 레이어의 정밀 자르기를 지원하며 레이어·노드 식별 정보, 실행 취소와 검증 가능한 재생을 유지합니다. [캔버스 편집](docs/canvas-editing.md)을 참고하세요.
 
+[통합 플러그인 시스템](docs/plugin-system.md)은 설정과 자동화 API에서 버전, 호환성, 의존성 및 로드 상태를 제공합니다. 활성화·비활성화 계획은 의존성을 처리하며 저장 후 재시작하면 적용됩니다. 플러그인별 번역 파일은 서로 격리되며 실행 중 다시 불러올 수 있습니다.
+
 ## 핵심 철학
 
 **그리기를 우선하고, 동작은 플러그인으로 구현하며, 사람과 자동화가 하나의 실행 코어를 사용합니다.**
@@ -37,6 +39,7 @@ AI-ready는 기능을 검색하고 상태를 확인하며 실행 계획을 검�
 - 투명 PNG 내보내기, PNG/JPEG/BMP 가져오기 및 `.mcp` 프로젝트.
 - 레이어 연동 비파괴 이미지 그래프, 레이어별 필터, 자유 합성 및 플러그인이 등록하는 작업·상태 워크플로.
 - JSONL 일괄 처리, MCP stdio 및 실행 중인 GUI 연결.
+- 공통 플러그인 목록, 의존성을 고려하는 설정 및 플러그인별로 격리된 언어 팩.
 
 레이어 이름 변경, 복제(**Ctrl+J**), 순서 변경, 삭제와 정확한 뒤집기, 180° 회전, 정수 오프셋을 지원합니다. [레이어 편집](docs/layer-editing.md)을 참고하세요.
 
@@ -52,7 +55,7 @@ cargo run --release --locked
 .\scripts\build.ps1 -Test
 ```
 
-`dist/MiCoPi.exe`를 실행하고, 같은 위치의 `plugins/`와 `licenses/`를 유지하세요. 최종 사용자는 Rust를 설치할 필요가 없습니다. 프로젝트 로컬 포터블 도구 모음은 영어 [개발 가이드](docs/development.md)를 참고하세요.
+`dist/MiCoPi.exe`를 실행하고, 같은 위치의 `plugins/`, `locales/`, `licenses/`를 유지하세요. 최종 사용자는 Rust를 설치할 필요가 없습니다. 프로젝트 로컬 포터블 도구 모음은 영어 [개발 가이드](docs/development.md)를 참고하세요.
 
 ```powershell
 New-Item -ItemType Directory -Force target/example-output | Out-Null
@@ -73,11 +76,21 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 
 언어를 바꿔도 작업 ID, 설정 키, 노드 포트 이름, 파일 경로 및 캔버스 픽셀은 바뀌지 않습니다. 자세한 내용은 영어 [현지화 가이드](docs/localization.md)를 참고하세요.
 
+영어만 실행 파일에 내장됩니다. 다른 언어는 실행 파일 옆의 `locales/`에서 읽고, 설정 디렉터리의 `locales/`에서 덮어쓸 수 있습니다. JSON 변경은 재빌드나 재시작 없이 반영되며 잘못된 편집 시 마지막 유효 번역을 유지합니다. `--locales-dir <directory>`로 기본 카탈로그 위치를 바꿀 수 있습니다.
+
+## MiCoPi 확장
+
+[Quick tools 예제](examples/plugins/quick-tools/manifest.json)는 브러시 프리셋, 매크로 및 다국어 버튼 패널을 제공합니다. 패키지 전체를 플러그인 디렉터리에 복사한 뒤 재시작하세요. `plugins.list`로 상태, 진단 및 기능 소유자를 확인하고, 읽기 전용 `plugins.plan`으로 의존성 변경을 미리 볼 수 있습니다.
+
+픽셀 알고리즘은 [네이티브 C ABI SDK](docs/native-plugins.md)로 확장합니다. 기능 UI 소스는 호스트와 함께 컴파일하며 DLL 교체나 기능 선언 변경에는 재시작이 필요합니다. 호스트는 실행, 문서 기록 및 창 수명 주기를 관리합니다. [플러그인 시스템](docs/plugin-system.md)과 [플러그인 창](docs/plugin-windows.md)을 참고하세요.
+
 ## 구조 및 기여
 
 `src/`에는 호스트와 UI, `plugins/`에는 설치 가능한 패키지와 독립 알고리즘, `crates/plugin-api/`에는 ABI SDK가 있습니다. 문서, 스크린샷, 예제 및 개발 도구는 각각 `docs/`, `docs/screenshots/`, `examples/`, `scripts/`에 정리되어 있습니다. 빌드 결과, 배포 파일 및 개인 작품은 Git에 포함하지 않습니다.
 
 영어 [기여 가이드](CONTRIBUTING.md), [아키텍처](docs/architecture.md) 및 [변경 기록](CHANGELOG.md)을 참고하세요. 영어 README를 기준으로 하며, 번역본도 같은 기능과 제약을 설명합니다.
+
+코딩 에이전트는 [AGENTS.md](AGENTS.md)도 읽어야 합니다. 관리자가 지정한 Git 절차를 따르며, 현재 위임 작업은 `main`에 기능별로 커밋합니다. 푸시는 명시적인 요청이 있을 때만 수행하고 빌드 결과나 개인 설정은 커밋하지 않습니다.
 
 ## 라이선스
 

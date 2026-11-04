@@ -16,6 +16,8 @@ Connected or whole-layer color fill with tolerance and edge controls, linear/rad
 
 Canvas size and exact all-layer crop preserve layer/node identities, undo and verified replay. See [Canvas editing](docs/canvas-editing.md).
 
+The [unified plugin system](docs/plugin-system.md) exposes package versions, compatibility, dependencies and lifecycle status in Settings and automation. Enable/disable plans resolve dependencies before saving; activation takes effect after restart. Plugins can provide isolated language catalogs that hot-reload while the app runs.
+
 ## Why MiCoPi
 
 **Painting first. Plugins carry behavior. One execution core serves artists and automation.**
@@ -36,6 +38,7 @@ Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadma
 - Non-destructive [image graphs](docs/node-editor.md) with linked layer stacks, per-layer filters and explicit free compositing.
 - [Plugin workflow graphs](docs/workflow-nodes.md) generated from action and state schemas.
 - Independent native DLL plugins, headless JSONL, MCP stdio and attachment to a running GUI.
+- Shared plugin inventory, dependency-aware settings and owner-scoped language packs.
 - [Atomic document groups](docs/atomic-operations.md), shared-tile rollback and compact verified events.
 - Verified [event replay](docs/replay.md), time-lapse preview and PNG frame sequences.
 
@@ -53,7 +56,7 @@ cargo run --release --locked
 .\scripts\build.ps1 -Test
 ```
 
-Run `dist/MiCoPi.exe`. Keep `plugins/` and `licenses/` beside the executable. End users do not need Rust. A project-local portable toolchain is available; see [Development](docs/development.md).
+Run `dist/MiCoPi.exe`. Keep `plugins/`, `locales/` and `licenses/` beside the executable. End users do not need Rust. A project-local portable toolchain is available; see [Development](docs/development.md).
 
 ```powershell
 New-Item -ItemType Directory -Force target/example-output | Out-Null
@@ -74,6 +77,14 @@ Open Settings with **Ctrl+,**, search for **Display Language** or `ui.language`,
 ```
 
 Supported codes: `en`, `zh-CN`, `ja`, `ko`. Existing configurations without a language use English. Language selection does not change action IDs, key names, node ports, document pixels or file paths.
+
+Only English is embedded. Other languages load from `<executable-directory>/locales/`, with overrides in `<config-directory>/locales/`. Editing a JSON catalog updates the desktop without rebuilding or restarting; invalid edits retain the last valid translations. Use `--locales-dir <directory>` to choose a different base catalog directory. See [Localization](docs/localization.md) for precedence and plugin catalogs.
+
+## Extending MiCoPi
+
+Start with the installable [Quick tools example](examples/plugins/quick-tools/manifest.json): a brush preset, macro and translated button panel. Copy the whole package into your plugin directory and restart. Inspect `plugins.list` for package status, diagnostics and contribution owners; `plugins.plan` previews dependency changes without modifying the running registry.
+
+Native pixel algorithms use the [C ABI SDK](docs/native-plugins.md). Feature UI adapters compile with the desktop host; DLL replacement and contribution changes require restart. The host supplies shared execution, document history and window lifecycle. See [Plugin system](docs/plugin-system.md) and [Plugin windows](docs/plugin-windows.md).
 
 ## Source layout
 
@@ -99,7 +110,7 @@ See [Architecture](docs/architecture.md), [User Guide](docs/user-guide.md), [Con
 
 ## Contributing and version control
 
-See [Contributing](CONTRIBUTING.md). Start with the [development guide](docs/development.md), use a focused branch and commit coherent, verified changes. Release tags use `vX.Y.Z`. Runtime binaries and personal files stay outside source history; selected documentation screenshots stay versioned.
+See [Contributing](CONTRIBUTING.md) and the repository [Agent guide](AGENTS.md). Start with the [development guide](docs/development.md) and commit coherent, verified changes. Follow the maintainer's requested branch workflow; current maintainer-directed work commits directly to `main`. Release tags use `vX.Y.Z`. Runtime binaries and personal files stay outside source history; selected documentation screenshots stay versioned.
 
 ```powershell
 python scripts/check-repository.py

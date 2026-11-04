@@ -27,7 +27,7 @@ def package(dist: Path, output: Path):
     add(max(gui_candidates, key=lambda p: p.stat().st_mtime_ns), 'MiCoPi.exe')
     add(dist/f'MiCoPi-CLI-{version}.exe', 'micopi-cli.exe')
     for name in ['README.md', 'README.zh.md', 'README.ja.md', 'README.ko.md',
-                 'LICENSE', 'CONTRIBUTING.md', 'CHANGELOG.md', 'ROADMAP.md']:
+                 'LICENSE', 'CONTRIBUTING.md', 'AGENTS.md', 'CHANGELOG.md', 'ROADMAP.md']:
         add(ROOT/name, name)
     for directory in ['docs', 'examples', 'locales', 'assets/material-symbols']:
         for path in sorted((ROOT/directory).rglob('*')):

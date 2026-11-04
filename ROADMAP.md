@@ -2,7 +2,7 @@
 
 MiCoPi aims to be a small, responsive painting application whose document operations are inspectable, replayable and accessible to artists, plugins and AI clients through one execution core.
 
-This roadmap starts from the **0.21.0 implementation**. Milestones describe intended order and acceptance criteria, not release dates or promises that a feature already exists. The [Changelog](CHANGELOG.md) records completed work; the [design philosophy](docs/philosophy.md) explains the principles behind these priorities.
+This roadmap starts from the **0.21.0 implementation and subsequent work on main**. Checked items are implemented; unchecked items describe intended work, not release dates or promises that a feature already exists. The [Changelog](CHANGELOG.md) records completed work; the [design philosophy](docs/philosophy.md) explains the principles behind these priorities.
 
 ## Implemented baseline
 
@@ -11,6 +11,10 @@ This roadmap starts from the **0.21.0 implementation**. Milestones describe inte
 - Schema-described actions, public plugin state, workflow nodes, JSONL, MCP and GUI attachment.
 - Verified outcome replay, compact MCRPLY02 events, atomic document groups and legacy recording support.
 - Linked layer composition with per-layer plugin filters, synchronized structural edits and an explicit legacy/free graph mode.
+- Brush spacing and minimum pressure opacity; connected/whole-layer color fill with expansion/contraction and feathering; repeated/reflected gradients.
+- Stable layer IDs, exact layer transforms, transparency locking, color fills, anchored canvas sizing and all-layer crop with history and outcome replay.
+- Unified package metadata, host compatibility checks, lifecycle diagnostics and dependency-aware enable/disable plans shared by Settings and automation.
+- English-only embedding; external Chinese, Japanese and Korean catalogs with profile overrides, owner-scoped plugin catalogs and background hot reload.
 
 Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no selections, free transforms or layer groups/merging. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
 
@@ -26,6 +30,8 @@ Current boundaries include one document per Session, in-process native plugins, 
 | M6 — Replay production and release readiness | Later | M1; M2–M4 daily-use validation | Shareable time-lapses and a dependable public alpha |
 
 M2, M3 and M4 can progress independently after their foundation requirements are met. Every new editing feature must support actions, schemas, undo, recording and headless execution when introduced; AI integration is not deferred to a later rewrite.
+
+The next plugin increment should build on the existing registry: an authoring kit and conformance runner, clearer package diagnostics and upgrade guidance. Locale edits already hot-reload; package activation, contribution changes and DLL replacement still require restart. Do not present runtime DLL unloading or a plugin marketplace as available. Reliability measurement and selection contracts remain priorities alongside plugin authoring.
 
 ## M1 — Reliable document foundation
 
@@ -43,6 +49,7 @@ M2, M3 and M4 can progress independently after their foundation requirements are
 - [x] Introduce stable layer IDs, persist names/identities and remap image-node references for reorder, rename, duplication and deletion.
 - [x] Add exact layer flips, 180° rotation and clipped integer offsets through native plugin actions.
 - [x] Add connected fill with tolerance, linear/radial gradient gestures and inline pressure controls through shared native actions.
+- [x] Add whole-layer color matching, fill expansion/contraction and feathering, repeated/reflected gradients, transparency locking and layer color fills.
 - [x] Add anchored canvas resizing and exact all-layer crop with dimension-aware history, atomic rollback and outcome replay.
 - [ ] Add groups and merge with explicit reference and history behavior.
 - [ ] Make structural and multi-layer edits reliably undoable; define optional undo grouping separately from transaction rollback.
@@ -53,17 +60,22 @@ M2, M3 and M4 can progress independently after their foundation requirements are
 
 ## M3 — Plugin, node and AI authoring
 
+- [x] Unify package metadata, host version validation, path-based status inventory and contribution ownership without replacing the existing C ABI.
+- [x] Share dependency-aware enable/disable planning between Settings and `plugins.plan`; preserve running registry status until restart and protect required core packages.
+- [x] Add isolated plugin language catalogs, profile overrides, translated command search and bounded background hot reload with last-good fallback.
 - [ ] Publish a small, versioned plugin authoring kit with templates, schema examples, host compatibility rules and a reusable conformance runner.
 - [ ] Improve schema validation and discovery for capabilities, units, defaults, errors, document targets and atomic scope. Keep display labels separate from machine identifiers.
 - [ ] Improve node search, port compatibility feedback, parameter editing, execution progress and failed-node inspection. Keep image composition and action workflows as distinct typed domains.
 - [ ] Let an AI client discover capabilities, read public state, propose/patch a graph, dry-run it, execute against an expected revision and inspect the committed result using the same public interfaces as the UI.
-- [ ] Define plugin enable/disable and upgrade behavior at safe idle boundaries. Evaluate isolated plugin workers where crash containment is worth the overhead; retain the typed native path for latency-sensitive tools.
+- [ ] Add package upgrade/migration guidance and diagnostics for failed locale files. Evaluate runtime activation only with explicit instance, document-reference and ABI lifetime rules; retain restart-based changes until those rules are implemented.
+- [ ] Evaluate isolated plugin workers where crash containment is worth the overhead; retain the typed native path for latency-sensitive tools.
 
 **Acceptance:** an independently built example registers an action, state and schema-derived node without host source changes. It passes conformance checks and runs through GUI, MCP and headless modes. Invalid schemas, stale revisions, unsupported atomic effects and incompatible plugins fail clearly without corrupting the document.
 
 ## M4 — Brush and tablet refinement
 
-- [ ] Add spacing, flow, textured tips and richer pressure curves through tool plugins, with accurate size/shape cursor previews.
+- [x] Add configurable dab spacing, minimum pressure opacity and inline pressure curve controls through the typed painting path.
+- [ ] Add flow, textured tips and richer brush dynamics through tool plugins, with accurate size/shape cursor previews.
 - [ ] Surface tilt, rotation and device capabilities where the backend supports them, with explicit fallbacks for other devices and headless input.
 - [ ] Build a Windows Ink device/driver test matrix covering hover, fast movement, focus changes, DPI, capture loss and interrupted contact.
 - [ ] Profile before adding SIMD, parallel tile work or GPU painting. Preserve a lightweight CPU/headless path and document any rendering differences.

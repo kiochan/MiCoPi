@@ -40,7 +40,9 @@ python scripts/smoke-linked-graphs.py
 python scripts/smoke-localization.py
 ```
 
-Runtime smoke compares JSONL, MCP and GUI PNG bytes and tests streaming input, settings and plugin preferences. Workflow smoke tests DLL-contributed nodes, dry runs, patching, project persistence and inert editing. Localization smoke checks English defaults, four-language switching/persistence, captures settings and node UIs, and confirms unchanged canvas pixels. Each script uses its own profile and closes only the GUI process it created.
+Runtime smoke compares JSONL, MCP and GUI PNG bytes and tests streaming input, settings and plugin preferences. Workflow smoke tests DLL-contributed nodes, dry runs, patching, project persistence and inert editing. Localization smoke checks English defaults, four-language switching/persistence, captures settings, nodes and plugin panels, exercises valid/invalid/restored host and plugin language files, and confirms unchanged canvas pixels and workflow graphs. Each script uses its own profile and closes only the GUI process it created.
+
+Package metadata, compatibility, lifecycle and dependency planning have focused tests under `plugins::packages::tests`. External catalog tests under `i18n::external::tests` cover scope isolation, translated command search, profile precedence, path containment and file budgets. Build matching native DLLs before running tests that load the default plugin set; otherwise loader failures can hide the behavior being tested.
 
 Use --cli and --gui to select debug binaries for quick UI iteration. Outputs are retained under target/test-output/. Visually inspect screenshots after changes, including English and CJK text at narrow and wide window sizes. Translation catalog tests validate key parity and format placeholders. Documentation and new source messages must be English.
 
@@ -59,6 +61,8 @@ The DLL/reference benchmark interleaves five runs of 80 strokes and 5,120 varyin
 ## Repository and release packaging
 
 Documentation is indexed in [docs/README.md](README.md); runnable scripts and configuration examples are indexed in [Examples](../examples/README.md). Run `python scripts/check-repository.py` after reorganizing either. Build artifacts remain ignored.
+
+For documentation-only changes, run the repository checker and `git diff --check`; do not rebuild the application solely to validate prose. Keep root README translations, roadmap checkboxes and the [Agent guide](../AGENTS.md) consistent with implemented behavior. The portable package includes these root guides so relative links remain valid after extraction.
 
 After building, `python scripts/package.py` creates the portable ZIP from versioned binaries, source-controlled default manifests, current documentation and examples. It excludes personal configuration and historical screenshots. Archive entries use stable ordering and timestamps. This packages locally and does not publish a release.
 
