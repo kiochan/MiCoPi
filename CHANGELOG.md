@@ -2,84 +2,49 @@
 
 ## Unreleased
 
-- Refresh all four project READMEs, architecture/development guides and roadmap progress; add repository agent instructions and include them in portable documentation.
+Implemented changes since 0.21.0, grouped by their current behavior. Git history retains the individual commits and intermediate design iterations.
 
-- Add isolated, hot-reloadable plugin language catalogs, shared contribution ownership and translated command search; include a multilingual Quick tools example.
+### Painting and document editing
 
-- Add unified package version/author/host compatibility metadata, path-based lifecycle inventory and dependency-aware enable/disable plans shared by Settings and the read-only `plugins.plan` action.
+- Add stable layer identities, names, duplication, reordering and deletion, plus native flips, 180° rotation and integer offsets. Structural edits retain undo and graph references.
+- Add persistent, undoable transparency locking and foreground/background fills, including Alt+Backspace and Ctrl+Backspace shortcuts. Keep draft layer names when toggling the lock.
+- Extend connected fill with whole-layer color matching, tolerance, expansion/contraction and feathering. Correct repeated translucent fills so source-over alpha accumulates.
+- Add linear/radial gradient gestures with repeat/reflection, reversed endpoints, transparent endpoints and Shift constraints.
+- Add anchored canvas resizing and exact all-layer crop with Edit dialogs and an on-canvas guide. Preserve layer/node identities, dimension-aware history, atomic rollback and verified replay.
+- Expose pressure dynamics with a curve preview, dab spacing and minimum opacity in the Brush panel and Painting settings. Freeze typed options at contact start and preserve the default painting pixels.
+- Make new documents use linked layer compositing: layer insertion, duplication, reorder and deletion keep per-layer filters and blend nodes synchronized. Retain explicit free graphs for advanced and legacy documents.
 
-- Embed only English; load Chinese, Japanese and Korean from external JSON catalogs with per-profile overrides and background hot reload. Preserve last-good translations on invalid edits, bound file/update memory and keep locale I/O off the drawing thread.
+### Workbench and windows
 
-- Add anchored canvas resizing and exact all-layer crop through shared actions, workflow nodes and Edit dialogs, with transparent expansion and an on-canvas crop guide.
-- Preserve graph/layer identities, hidden/locked pixels and prior history across framing, undo/redo, atomic rollback, projects and verified replay; retain legacy formats and the typed painting path.
+- Give anime and manga illustrators a configurable workbench with plum, paper and ivory palettes, lavender accents, tapered brush previews and aligned property controls. Panels use rounded cards, hairline outlines and soft shadows around a recessed canvas stage.
+- Split Tools into an icon strip and an independent Tool Options window; reconcile the new panel into existing workspaces once. Configure icon visibility and order through Settings, `ui.tool_order` and `ui.hidden_tools`.
+- Use browser-style tabs on a tinted group row with a group grip, maximize/restore and close-group controls. Keep the active tab visible; support tab ordering, detachment and leaf-scoped group commands.
+- Float Canvas, Tools and property groups as native windows across monitors. Shared themes, textures and per-window Windows Ink queues retain pressure and stabilization; owned palettes stay above the application without system-wide topmost flags.
+- Dock native groups by dragging onto split/tab guides, with previews and Escape cancellation. Preserve active tabs and nested split topology; expose the same targeting through `window.drop` and registered window commands.
+- Separate requested placement from observed geometry to avoid resize/DPI feedback. Add splitter grab handles and persist normal geometry without restoring obsolete sizes during a live resize.
+- Move zoom, document status, pen pressure and history memory into a thin strip beneath the canvas, with a logarithmic slider and editable percentage; remove the separate workspace status bar.
+- Tighten default spacing to 4 pt item gaps, 8 pt panel padding, 6 pt workspace edges, 26 pt controls and 30 pt tabs, with a denser Compact preset. Preserve explicit user settings.
 
-- Add undoable, persistent layer transparency locking with native source-atop brush, fill and gradient behavior, host alpha validation and atomic rollback.
-- Add foreground/background layer fills and Alt+Backspace / Ctrl+Backspace shortcuts through the same native action; keep pending layer renames when toggling lock.
-- Add size-checked optional alpha-lock capability tails to stroke options while retaining old v1 prefixes and unlocked legacy DLL compatibility.
+### Plugins and localization
 
-- Add fill expansion/contraction and linear feather controls to GUI, native actions and workflow schemas; preserve atomic rollback and verified outcomes.
-- Reuse a capped byte-distance buffer after region selection, feather the final geometry and keep the existing zero-edge kernels.
-- Fix identical translucent fills incorrectly returning early instead of accumulating source-over alpha.
+- Unify package version/author/host compatibility metadata, path-based lifecycle inventory, contribution ownership and dependency-aware enable/disable plans. Settings and the read-only `plugins.plan` action share the planner; activation and DLL changes require restart.
+- Embed only English and load Chinese, Japanese and Korean from external JSON catalogs, with profile overrides and bounded background hot reload. Keep the last valid translations after malformed edits and keep locale I/O off the drawing thread.
+- Add owner-scoped plugin catalogs and translated command search, including a multilingual Quick tools example. A package's translations cannot replace another owner's labels.
+- Keep feature UI source in plugin packages compiled into the desktop host, with shared window lifecycle commands and searchable, configurable actions. Keep workflow and image-composition editors separate.
 
-- Add whole-layer seed-color matching alongside connected fill, with no visited bitmap in the whole-layer path.
-- Add repeated/reflected gradients, endpoint reversal, a transparent endpoint control and Shift-constrained gradient gestures; retain existing action defaults, atomic rollback and outcome replay.
+### Reliability, performance and compatibility
 
-- Split the Tools window into an icon-only Tools strip and a separate Tool Options window; flood fill and gradient gain icons. Existing layouts receive Tool Options once beside Tools.
-- Configure Tools icon order and visibility with `ui.tool_order` and `ui.hidden_tools`, or in Settings under **Tools Icons**.
-- Tighten default spacing for a denser workbench: 4 pt item gaps, 8 pt panel padding, 6 pt workspace edges, 26 pt controls and 30 pt tab rows; the Compact preset goes further.
-- Move canvas zoom from the top toolbar into a thin strip beneath the stage with a logarithmic slider and an editable percentage field; remove the workspace status bar and show status, pen pressure, document size and history memory in that strip.
-- Replace rounded tab capsules with browser-style tabs: the active tab shares the panel surface and flares into it, while resting tabs are labels separated by thin dividers.
-- Set group tab rows apart from panel content with a tinted band and hairline divider; show rounded grab handles on splitters that highlight while hovered or dragged.
-- Present panels as rounded floating cards with hairline outlines and soft shadows; the canvas sits on a recessed stage with a layered paper shadow.
-- Deepen theme palettes, add a lavender-to-peach brand mark, Segoe UI text with semibold titles and active tabs, hover-revealed group chrome, a pill command search and an accent marker on the active layer.
+- Share provisional contact recording and storage-failure rollback between GUI input and `canvas.pointer`; preserve revisions after failed atomic native results and refresh replay textures when an external client replaces an archive.
+- Make layer creation undoable, restore the previous active layer and invalidate stale redo branches. Recognize project headers independently of filename extensions and retain the opened save path.
+- Bound GUI pipe reads/writes and acknowledge complete responses without an unbounded flush. Coalesce settled workspace gestures into layout commands and preserve fractional metadata for replay verification.
+- Optimize brush dab distance checks and reuse a capped byte-distance buffer for fill edges. Keep zero-edge fill kernels, dirty-region updates, cached tool instances and the normal-layer composition fast path.
+- Extend optional typed stroke options with size/capability checks for pressure settings and alpha lock. Retain old v1 prefixes, unlocked legacy DLL compatibility, project readers and recorded hashes; explicitly reject unsupported options.
+- Pin configured themes before applying styles and preserve native activation handling. Make resize checks honor effective client bounds and desktop tracking limits; synthetic checks do not establish physical tablet compatibility.
 
-- Shape the workbench for anime and manga illustrators with muted plum/paper/ivory themes, lavender accents, rounded tab capsules and a compact tool tray.
-- Give brush presets lightweight tapered vector previews and selection feedback; soften title-row command search and move history memory details into the status tooltip.
+### Documentation and contribution workflow
 
-- Refine the workbench with neutral themes, quiet icon controls, padded underline tabs, lighter panel boundaries and compact default metrics.
-- Align property labels and numeric fields, consolidate layer actions, reduce canvas toolbar weight and bound swatch sizes without leaking local spacing.
-
-- Unify docked and native panel headers into one row with a group grip, scrollable/reorderable tabs, maximize/restore and close-group controls; remove duplicate floating title bars.
-- Add leaf-scoped group commands and observable header geometry, preserving sibling groups when detaching or closing tabs.
-
-- Dock complete native panel groups by dragging their title bars back onto workspace guides, with split/tab previews, destination hints and Escape cancellation.
-- Route native releases and desktop-point automation through shared group hit testing; preserve nested layouts, pen input, replay verification and resize stability.
-
-- Keep native palettes above the application with a main-window/canvas/palette ownership chain instead of system-wide topmost flags.
-- Add whole-group float, hide, dock and tab-merge commands; preserve active tabs, order and nested split topology, with tab double-click and a visible group drag title.
-- Separate explicit viewport placement from observed OS geometry to prevent resize/DPI feedback; defer layout commits until native sizing ends.
-
-- Render floating plugin surfaces as independent native OS viewports with shared themes/textures, monitor placement, stable panel commands and persisted normal geometry.
-- Route Windows Ink through per-HWND bounded queues with viewport-specific DPI conversion; preserve pressure, stabilization, focus cancellation and verified outcomes.
-- Expose native window observations and registered minimize/maximize/restore commands; verify top-level HWNDs, independent movement, native mouse drawing and restart persistence.
-
-- Replace the left control area with an independent Tools bar and movable Canvas window; share dock/float/tab/hide/show commands across registered feature windows.
-- Move feature UI adapters into plugin packages, separate workflow and compositing windows, and expose every action in command search and configurable shortcuts.
-- Coalesce workspace gestures into registered layout commands, preserve legacy layouts with a backup, and verify fractional window metadata without JSON precision drift.
-
-- Make new documents use linked layer compositing: graph branches follow layer insertion, duplication, reorder and deletion; per-layer filters retain identity and copy with their layer.
-- Synchronize linked blend-node modes with layer properties, apply opacity once, protect stack wiring and provide connected plugin filter insertion/removal, source controls and automatic clean-view refresh.
-- Preserve legacy/free graph semantics with an explicit advanced mode; validate linked topology, retain atomic undo/replay contracts and keep unfiltered stacks on the existing fast path.
-
-- Add dab spacing and minimum pressure opacity in the Brush panel and persistent Painting settings. Freeze typed options at DOWN through an optional extension while preserving default pixels and legacy recording hashes.
-- Reject custom options explicitly for DLLs without the extension, retaining existing tool tables and default compatibility.
-
-- Surface pressure dynamics with a curve preview; add click-to-fill and drag-to-gradient desktop modes backed by shared native actions, undo, atomic rollback and verified replay.
-- Add scanline four-connected fill with tolerance, premultiplied-alpha linear/radial gradients and guarded gesture cancellation.
-- Skip unnecessary distance calculations outside brush dabs and inside solid hard tips while retaining reference stroke pixels and the existing tool ABI.
-- Pin the configured UI theme before applying styles so first-frame system theme events cannot mix default light controls with the dark workbench.
-
-- Add document-scoped stable layer IDs, rename/duplicate/reorder/delete actions, undoable structural edits and identity-preserving image-node remapping.
-- Add exact flips, 180° rotation and clipped integer translation in the native painting DLL; expose layer menus, editable names and Ctrl+J in the four-language desktop.
-- Move layer buffers during reorder/delete history and transform pixels in place; preserve legacy project/replay loading and recorded hashes.
-
-- Make native resize tests honor effective client bounds and cover desktop tracking limits, avoiding false CI failures on small hosted displays.
-
-- Share provisional contact recording and storage-failure rollback between GUI input and canvas.pointer actions.
-- Preserve revisions after failed atomic native results and refresh replay textures when external clients replace an archive.
-- Make layer creation undoable, restore its active layer on undo/redo and discard stale redo branches.
-- Recognize project file headers independently of extensions and retain the opened project's save path.
-- Bound GUI pipe reads and writes; acknowledge complete responses before disconnecting without an unbounded flush.
+- Refresh all four READMEs, architecture/development guides, feature references and roadmap progress. Include repository agent instructions in portable documentation.
+- Consolidate Unreleased notes by current behavior while retaining released-version history. Expand the agent guide with product direction, directory ownership and implementation conventions; require a matching changelog summary, explanatory commit body and validation report for every authored commit.
 
 ## 0.21.0
 

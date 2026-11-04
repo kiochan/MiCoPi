@@ -10,6 +10,37 @@ These instructions apply throughout this repository. Explicit maintainer instruc
 - For this maintainer's workflow, work directly on `main`. Do not create branches unless asked. Push only when explicitly requested; never force-push or rewrite published history.
 - Use repository-local Git identity and credentials. Do not change global Git configuration or substitute another account. Verify the configured remote before pushing.
 
+## Product direction
+
+- Build a small, responsive native Rust painting studio for anime and manga illustrators. Prioritize drawing, clear tool feedback and a calm, configurable workspace. See [Interface Design](docs/interface-design.md).
+- AI readiness means discoverable actions, schemas, public state and shared execution through plugins, MCP and headless clients. Keep document operations accessible through those contracts; presentation-only commands must explicitly report headless unavailability.
+- Put implemented behavior in [CHANGELOG](CHANGELOG.md), intended work and acceptance criteria in [ROADMAP](ROADMAP.md), and module ownership in [Project Structure](docs/project-structure.md). Keep these guides consistent rather than treating plans as completed work.
+
+## Repository map and ownership
+
+| Location | Responsibility |
+| --- | --- |
+| `src/main.rs`, `src/bin/micopi-cli.rs` | Desktop and CLI/MCP entry points |
+| `src/application/` | Session ownership, action schemas, validation, revisions, atomic execution, workflows and replay orchestration |
+| `src/automation/` | JSONL, MCP and attachment transport; dispatch against Session |
+| `src/engine/` | Document/layer structures, image composition, tiled history and replay encoding |
+| `src/plugins/` | Host registration, DLL loading, lifecycle, contribution ownership and dependency planning |
+| `crates/plugin-api/` | Independent C ABI SDK, capability contracts and C header |
+| `plugins/` | Installable packages, manifests, native algorithm source and feature-owned UI adapters |
+| `plugins/<feature>/panel.rs` | Feature UI source compiled into the desktop host |
+| `src/desktop/` | Shared window lifecycle, docking, native viewports, input routing, themes and texture cache |
+| `src/platform/` | Windows Ink, window chrome, DPI and native file integration |
+| `src/ui/` | Shared command, shortcut and workspace models |
+| `src/configuration.rs` | Window-free settings validation and persistence |
+| `src/i18n.rs`, `src/i18n_external.rs`, `locales/` | Presentation lookup, owner-scoped external catalogs and background reload |
+| `assets/` | Runtime fonts/icons and third-party notices |
+| `docs/`, `docs/reference/`, `docs/screenshots/` | English guides, machine-readable references and reviewed application captures |
+| `examples/` | Runnable automation, configuration, MCP and extension examples |
+| `scripts/`, `tests/`, `.github/` | Build/smoke/repository tooling, shared fixtures/reference implementations and CI |
+| `target/`, `dist/`, `artworks/` | Ignored local builds, test output, release artifacts and personal artwork |
+
+Keep `src/plugins/` host integration separate from root `plugins/` feature packages. The legacy GDI frontend under `src/platform/windows/` remains a regression reference. Update this map and the detailed structure guide when moving responsibilities; avoid directory-only refactors mixed into feature commits.
+
 ## Architecture and performance
 
 - `application::Session` owns mutable document state. Desktop, JSONL, MCP and workflow clients share its validation and execution contracts.
@@ -20,6 +51,14 @@ These instructions apply throughout this repository. Explicit maintainer instruc
 - New document operations need schemas, validation, revision behavior, undo, atomic capability declarations and verified outcome replay. Test failure/rollback behavior where relevant. Replay restores outcomes without executing DLL commands or external effects.
 - Preserve supported project, recording and ABI compatibility. Extend optional ABI tails with size/capability checks; retain rejection fixtures and old recording hashes.
 - Measure hot-path or dependency costs. Do not claim physical tablet compatibility from synthetic tests.
+
+## Implementation conventions
+
+- Register operations and their public contracts through the shared registry. Desktop controls, command search, shortcuts, nodes and automation should dispatch the same operations instead of introducing a second editing path.
+- Keep appearance, shortcuts, painting defaults and plugin preferences in validated `settings.json`; keep docking/native geometry in `workspace.egui.json`. Preserve existing explicit preferences and supported unknown root settings fields when saving.
+- Derive UI spacing and sizes from configured appearance metrics, use viewport DPI coordinates consistently, and check narrow/wide layouts and CJK labels. Keep schema editors and user document text independent of localization.
+- Follow existing Rust module/style conventions and `cargo fmt`. Keep refactors focused, reuse existing helpers and justify dependency additions with measured costs. Keep `Cargo.lock` tracked and use the existing native build path.
+- Use reference projects for feature and interaction ideas. For PhotoCraft-inspired work, independently implement suitable behavior within MiCoPi's architecture; the maintainer has excluded copying its source code. Retain provenance and required notices for any separately approved third-party assets or dependencies.
 
 ## Plugins and localization
 
@@ -45,6 +84,12 @@ Choose checks that exercise the changed behavior:
 | Nodes, replay or windows | Corresponding `scripts/smoke-*.py` and targeted regression tests |
 
 Use locked dependencies (`--locked`); use `--offline` when the local cache suffices. Smoke scripts accept `--cli` and `--gui` to select built executables. Use isolated profiles, keep captures under `target/test-output/`, and close only processes created by the check. Report what ran and any remaining limitations; do not rerun an entire suite for documentation-only edits.
+
+## Change summaries and commits
+
+- Every authored commit must update the relevant summary under `CHANGELOG.md` > `Unreleased`, including documentation, maintenance and formatting commits. Describe the concrete change and its effect in English; consolidate overlapping notes and remove superseded Unreleased descriptions. Keep released-version history intact and planned work in `ROADMAP.md`.
+- Give each commit a descriptive subject and an English body summarizing what changed, why, checks actually run and any remaining limitations. Before committing, verify that the summary matches the staged diff. After committing, report the hash, a brief change summary and validation to the maintainer; do not report a push unless one occurred.
+- Follow the concrete message example in [Contributing](CONTRIBUTING.md). Documentation-only work needs repository/link and whitespace checks, without an application rebuild. Confirm the current branch and working-tree state again before staging; include only the intended change.
 
 ## Repository hygiene
 

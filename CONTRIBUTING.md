@@ -23,11 +23,33 @@ Only English is embedded; other catalogs and declared plugin catalogs load exter
 
 For issues, include the MiCoPi and Windows versions, reproduction steps, expected behavior and actual behavior. For pen problems, include the device, driver and Windows Ink configuration.
 
-Keep each PR focused. Describe the problem, resulting behavior and validation, and update [CHANGELOG.md](CHANGELOG.md) for user-visible changes. Exclude `target/`, `dist/`, downloaded toolchains, personal artwork and local workspace settings.
+Keep each PR focused. Describe the problem, resulting behavior and validation. Exclude `target/`, `dist/`, downloaded toolchains, personal artwork and local workspace settings.
 
 ## Git workflow
 
 Keep `main` reviewable. Follow explicit maintainer instructions: current maintainer-directed agent work commits directly to `main` without creating branches. External contributions normally use focused branches and PRs. Commit a coherent change after its relevant checks pass; use short, descriptive messages such as `docs: explain the execution model` or `fix: preserve pen pressure on release`. Use repository-local identity and credentials when projects use different accounts.
+
+### Change summaries for every commit
+
+Before each authored commit, update the relevant category under [CHANGELOG.md](CHANGELOG.md) > **Unreleased**, including documentation, maintenance and formatting work. Summarize the concrete result and its effect in English. Consolidate overlapping entries rather than repeating the same feature; replace superseded Unreleased descriptions with the current behavior. Keep released-version notes intact and planned features in [ROADMAP.md](ROADMAP.md). Git history retains the individual commits.
+
+Use a short subject and an English commit body explaining what changed, why, checks actually run and remaining limitations. State when a check was not run or is not applicable. Match the summary to the staged diff; never claim a test result from an unrelated change.
+
+For example:
+
+```text
+fix: keep the selected panel tab visible
+
+Changes:
+- Scroll the tab strip when selection changes so the active tab stays visible.
+- Update the Unreleased workbench summary.
+
+Validation:
+- Describe the targeted checks actually run and their results.
+- State any remaining interactive or hardware checks.
+```
+
+After committing, report the commit hash, a brief change summary and validation to the maintainer. Distinguish a local commit from a push; publishing still requires an explicit request.
 
 Do not rewrite published history or commit built DLLs, release archives, personal settings or generated test output. Keep `Cargo.lock`, SDK headers, source assets and selected documentation screenshots tracked. Annotated `vX.Y.Z` tags identify reviewed application versions. Commit and tag locally before an explicitly requested push; creating a local version does not publish it.
 
