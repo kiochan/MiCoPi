@@ -957,7 +957,10 @@ fn tools_strip_follows_configured_order_and_visibility() {
     assert_eq!(default.first().map(String::as_str), Some("brush"));
     // Area modes appear only when the painting plugin registers their actions.
     let actions = &app.editor.session.registry.actions;
-    assert_eq!(default.iter().any(|id| id == "fill"), actions.contains_key("layer.fill"));
+    assert_eq!(
+        default.iter().any(|id| id == "fill"),
+        actions.contains_key("layer.fill")
+    );
     assert_eq!(
         default.iter().any(|id| id == "gradient"),
         actions.contains_key("layer.gradient")

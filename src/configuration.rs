@@ -107,7 +107,10 @@ impl Appearance {
                 "Controls, tabs and toolbars must fit the font and vertical padding".into(),
             );
         }
-        for (name, list) in [("tool_order", &self.tool_order), ("hidden_tools", &self.hidden_tools)] {
+        for (name, list) in [
+            ("tool_order", &self.tool_order),
+            ("hidden_tools", &self.hidden_tools),
+        ] {
             if list.len() > 64
                 || list
                     .iter()
@@ -358,7 +361,9 @@ mod tests {
         .unwrap();
         assert_eq!(s.ui.tool_order, ["zoom", "brush"]);
         assert_eq!(s.ui.hidden_tools, ["gradient"]);
-        assert!(Settings::decode(r#"{"ui":{"tool_order":["Not An ID"]}}"#, PathBuf::new()).is_err());
+        assert!(
+            Settings::decode(r#"{"ui":{"tool_order":["Not An ID"]}}"#, PathBuf::new()).is_err()
+        );
         let mut a = Appearance::default();
         a.compact();
         a.validate().unwrap();

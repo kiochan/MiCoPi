@@ -563,9 +563,11 @@ impl Studio {
     ) {
         ui.strong(tr("Tools Icons"));
         ui.weak(tr("Order and Visibility of Icons in the Tools Window"));
-        ui.label(tr(RichText::new(localize("ui.tool_order · ui.hidden_tools"))
-            .small()
-            .monospace()));
+        ui.label(tr(RichText::new(localize(
+            "ui.tool_order · ui.hidden_tools",
+        ))
+        .small()
+        .monospace()));
         let mut catalog = self.editor.toolbar_catalog();
         let mut items = vec![];
         for id in &draft.ui.tool_order {
@@ -595,7 +597,9 @@ impl Studio {
                         Layout::left_to_right(Align::Center),
                         |ui| {
                             ui.set_min_width(140.);
-                            ui.add(Label::new(tr_for(item.owner.as_deref(), &item.title)).truncate());
+                            ui.add(
+                                Label::new(tr_for(item.owner.as_deref(), &item.title)).truncate(),
+                            );
                         },
                     );
                     if ui
@@ -607,7 +611,10 @@ impl Studio {
                         changed = true;
                     }
                     if ui
-                        .add_enabled(index + 1 < count, Button::new(tr(theme::icon('\u{e5db}', 16.))))
+                        .add_enabled(
+                            index + 1 < count,
+                            Button::new(tr(theme::icon('\u{e5db}', 16.))),
+                        )
                         .on_hover_text(tr("Move Down"))
                         .clicked()
                     {
