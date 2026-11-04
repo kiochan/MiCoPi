@@ -22,6 +22,7 @@ pub(super) fn dock_style(ctx: &Context, a: &Appearance) -> egui_dock::Style {
     style.tab_bar.height = a.tab_height;
     style.tab_bar.bg_fill = colors.panel;
     style.tab_bar.inner_margin = Margin::symmetric(8, 0);
+    style.tab_bar.show_scroll_bar_on_overflow = false;
     style.tab.tab_body.inner_margin = Margin::same(a.panel_padding as i8);
     style.tab.tab_body.bg_fill = colors.panel;
     style.tab.tab_body.stroke = Stroke::new(1., colors.border);
@@ -110,6 +111,7 @@ impl Studio {
             local.translations = self.dock.translations.clone();
             let panels: Vec<_> = local.iter_all_tabs().map(|(_, p)| *p).collect();
             let contains_canvas = panels.contains(&Panel::Canvas);
+            let single_leaf = local.main_surface().iter().filter(|n| n.is_leaf()).count() == 1;
             let desired = geometry(&state);
             let viewport = ViewportId::from_hash_of(("micopi-plugin-viewport", index));
             let bootstrap = format!("MiCoPi viewport {}:{index}", std::process::id());
@@ -164,8 +166,7 @@ impl Studio {
                 } else if panels.contains(&Panel::Tools) {
                     vec2(
                         180.,
-                        a.title_height
-                            + a.tab_height
+                        a.tab_height
                             + a.control_height
                             + 2. * (a.outer_padding + a.panel_padding)
                             + 8.,
@@ -174,7 +175,7 @@ impl Studio {
                     vec2(180., 100.)
                 });
             let mut close = false;
-            let mut dock_back = false;
+
             root.show_viewport_immediate(viewport, builder, |ctx, class| {
                 if class == ViewportClass::Embedded {
                     return;
@@ -193,14 +194,16 @@ impl Studio {
                         colors.border.b(),
                     ]);
                     // DWM updates only when the configured theme changes.
-                    let theme_key = Id::new(("native-window-theme",index));
-                    if first || ctx.data_mut(|d| {
-                        let changed = d.get_temp::<Appearance>(theme_key).as_ref() != Some(&a);
-                        if changed {
-                            d.insert_temp(theme_key, a.clone());
-                        }
-                        changed
-                    }) {
+                    let theme_key = Id::new(("native-window-theme", index));
+                    if first
+                        || ctx.data_mut(|d| {
+                            let changed = d.get_temp::<Appearance>(theme_key).as_ref() != Some(&a);
+                            if changed {
+                                d.insert_temp(theme_key, a.clone());
+                            }
+                            changed
+                        })
+                    {
                         native.appearance(t, a.theme == "graphite");
                     }
                     if contains_canvas {
@@ -208,65 +211,43 @@ impl Studio {
                     }
                 }
                 ctx.send_viewport_cmd(ViewportCommand::Title(title.clone()));
-                window.maximized=ctx.input(|i|i.viewport().maximized.unwrap_or(false));
-                window.minimized=ctx.input(|i|i.viewport().minimized.unwrap_or(false));
+                window.maximized = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
+                window.minimized = ctx.input(|i| i.viewport().minimized.unwrap_or(false));
                 if let Some(rect) = ctx
                     .input(|i| i.viewport().outer_rect)
                     .filter(|r| r.is_finite() && r.is_positive())
                 {
-                    window.outer_rect=rect;
+                    window.outer_rect = rect;
                     if !window.maximized && !window.minimized {
-                        let size=ctx.input(|i|i.viewport().inner_rect.map(|r|r.size())).unwrap_or(rect.size());
-                        window.geometry=Rect::from_min_size(rect.min,size);
+                        let size = ctx
+                            .input(|i| i.viewport().inner_rect.map(|r| r.size()))
+                            .unwrap_or(rect.size());
+                        window.geometry = Rect::from_min_size(rect.min, size);
                     }
                 }
                 window.focused = ctx.input(|i| i.focused);
-                window.pixels_per_point=ctx.pixels_per_point();
+                window.pixels_per_point = ctx.pixels_per_point();
                 close = ctx.input(|i| i.viewport().close_requested());
                 if close {
                     ctx.send_viewport_cmd(ViewportCommand::CancelClose);
                 }
                 self.editor.shortcuts(ctx);
-                TopBottomPanel::top(Id::new(("native-window-title", index)))
-                    .exact_height(a.title_height)
-                    .frame(
-                        Frame::new()
-                            .fill(colors.background)
-                            .inner_margin(Margin::symmetric(a.panel_padding as i8, 0)),
-                    )
-                    .show(ctx, |ui| {
-                        ui.horizontal(|ui| {
-                            let width = (ui.available_width()
-                                - a.control_height * 2.
-                                - a.item_spacing * 2.)
-                                .max(20.);
-                            let response = ui.add_sized(
-                                [width, a.title_height],
-                                Label::new(tr(&label)).sense(Sense::click_and_drag()),
-                            );
-                            // Draw the grip instead of relying on a font-specific glyph.
-                            for column in 0..2 {for row in 0..3 {
-                                ui.painter().circle_filled(pos2(response.rect.left()+5.+column as f32*5.,response.rect.center().y-5.+row as f32*5.),1.2,colors.muted);
-                            }}
-                            let response=response.on_hover_cursor(CursorIcon::Grab).on_hover_text(tr("Drag This Title Bar to Move the Entire Group"));
-                            if response.drag_started() {
-                                if let (Some(native),Some(pointer))=(&window.native,response.interact_pointer_pos()) {native.begin_group_drag(pointer*ctx.pixels_per_point());}
-
-                                ctx.send_viewport_cmd(ViewportCommand::StartDrag);
-                            }
-                            if response.double_clicked() {
-                                if let Some(id)=panels.first().and_then(|p|self.editor.panel_id(*p)) {
-                                    self.editor.core("window.command",json!({"panel":id,"operation":if ctx.input(|i|i.viewport().maximized.unwrap_or(false)) {"restore"} else {"maximize"}}));
-                                }
-                            }
-                            if ui.button("▣").on_hover_text(tr(if panels.len()>1 {"Dock Group Right"} else {"Dock Window"})).clicked() {
-                                dock_back = true;
-                            }
-                            if ui.button("×").on_hover_text(tr(if panels.len()>1 {"Hide Panel Group"} else {"Hide Window"})).clicked() {
-                                close = true;
-                            }
-                        });
-                    });
+                if self.pending_group_drag.is_some_and(|p| panels.contains(&p))
+                    && window.native.is_some()
+                {
+                    self.pending_group_drag = None;
+                    if Native::primary_down() {
+                        let native = window.native.as_ref().unwrap();
+                        native.begin_group_drag(
+                            pos2(
+                                a.outer_padding + a.control_height * 0.5,
+                                a.outer_padding + a.tab_height * 0.5,
+                            ) * ctx.pixels_per_point(),
+                        );
+                        ctx.send_viewport_cmd(ViewportCommand::Focus);
+                        ctx.send_viewport_cmd(ViewportCommand::StartDrag);
+                    }
+                }
                 CentralPanel::default()
                     .frame(
                         Frame::new()
@@ -277,6 +258,8 @@ impl Studio {
                         DockArea::new(&mut local)
                             .id(Id::new(("native-dock-tree", index)))
                             .style(dock_style(ctx, &a))
+                            .draggable_tabs(false)
+                            .show_close_buttons(false)
                             .show_leaf_close_all_buttons(false)
                             .show_leaf_collapse_buttons(false)
                             .show_inside(
@@ -284,23 +267,62 @@ impl Studio {
                                 &mut panels::Viewer {
                                     editor: &mut self.editor,
                                     can_float: true,
+                                    native: window.native.as_ref(),
+                                    single_leaf,
+                                    focused: false,
                                 },
                             );
                     });
-                window.image_rect=if contains_canvas && self.editor.image_rect.is_finite() {Some(self.editor.image_rect)} else {None};
-                if let Some((source,target))=&drag_preview {
-                    Self::paint_group_drop(ctx,target,&a);
-                    if *source==index && !target.operation.is_empty() {
-                        let painter=ctx.layer_painter(LayerId::new(Order::Tooltip,Id::new("group-docking-hint")));
-                        let hint=Rect::from_min_size(pos2(a.outer_padding,a.title_height+a.outer_padding),vec2((ctx.content_rect().width()-a.outer_padding*2.).max(1.),a.control_height*2.));
-                        painter.rect_filled(hint,4.,colors.raised);
-                        let operation=match target.operation {"dock_left"=>"Dock Group Left","dock_right"=>"Dock Group Right","dock_top"=>"Dock Group Top","dock_bottom"=>"Dock Group Bottom",_=>"Merge Panel Group as Tabs"};
-                        let name=target.target.and_then(|p|self.editor.panel_id(p)).and_then(|id|self.editor.session.registry.panels.get(&id)).map(|p|localize(p.title.clone())).unwrap_or_else(||crate::i18n::text("Workspace").into());
-                        painter.text(hint.center()-vec2(0.,a.font_size*0.7),Align2::CENTER_CENTER,crate::i18n::text("Release to Dock the Entire Group"),FontId::proportional(a.small_font_size),colors.muted);
-                        painter.text(hint.center()+vec2(0.,a.font_size*0.7),Align2::CENTER_CENTER,format!("{} · {name}",crate::i18n::text(operation)),FontId::proportional(a.font_size),colors.accent);
+                window.image_rect = if contains_canvas && self.editor.image_rect.is_finite() {
+                    Some(self.editor.image_rect)
+                } else {
+                    None
+                };
+                if let Some((source, target)) = &drag_preview {
+                    Self::paint_group_drop(ctx, target, &a);
+                    if *source == index && !target.operation.is_empty() {
+                        let painter = ctx.layer_painter(LayerId::new(
+                            Order::Tooltip,
+                            Id::new("group-docking-hint"),
+                        ));
+                        let hint = Rect::from_min_size(
+                            pos2(a.outer_padding, a.tab_height + a.outer_padding),
+                            vec2(
+                                (ctx.content_rect().width() - a.outer_padding * 2.).max(1.),
+                                a.control_height * 2.,
+                            ),
+                        );
+                        painter.rect_filled(hint, 4., colors.raised);
+                        let operation = match target.operation {
+                            "dock_left" => "Dock Group Left",
+                            "dock_right" => "Dock Group Right",
+                            "dock_top" => "Dock Group Top",
+                            "dock_bottom" => "Dock Group Bottom",
+                            _ => "Merge Panel Group as Tabs",
+                        };
+                        let name = target
+                            .target
+                            .and_then(|p| self.editor.panel_id(p))
+                            .and_then(|id| self.editor.session.registry.panels.get(&id))
+                            .map(|p| localize(p.title.clone()))
+                            .unwrap_or_else(|| crate::i18n::text("Workspace").into());
+                        painter.text(
+                            hint.center() - vec2(0., a.font_size * 0.7),
+                            Align2::CENTER_CENTER,
+                            crate::i18n::text("Release to Dock the Entire Group"),
+                            FontId::proportional(a.small_font_size),
+                            colors.muted,
+                        );
+                        painter.text(
+                            hint.center() + vec2(0., a.font_size * 0.7),
+                            Align2::CENTER_CENTER,
+                            format!("{} · {name}", crate::i18n::text(operation)),
+                            FontId::proportional(a.font_size),
+                            colors.accent,
+                        );
                     }
                 }
-                self.schedule_viewport_capture(ctx,viewport);
+                self.schedule_viewport_capture(ctx, viewport);
                 if contains_canvas && !window.focused && self.editor.input_owned {
                     self.editor.finish_stroke();
                     self.editor.pen_active = false;
@@ -319,9 +341,12 @@ impl Studio {
                 Surface::Window(tree, state)
             };
             self.absorb_native_surfaces(local);
-            if close || dock_back {
+            if close {
                 if let Some(id) = panels.first().and_then(|p| self.editor.panel_id(*p)) {
-                    self.editor.core("window.command",json!({"panel":id,"scope":"group","operation":if close {"hide"} else {"dock_right"}}));
+                    self.editor.core(
+                        "window.command",
+                        json!({"panel":id,"scope":"group","operation":"hide"}),
+                    );
                 }
             }
             report_changed |= first

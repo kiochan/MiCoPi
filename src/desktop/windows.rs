@@ -39,7 +39,7 @@ impl Editor {
                     if ui.button(tr(label)).clicked() {
                         self.core(
                             "window.command",
-                            json!({"panel":id,"scope":"group","operation":operation}),
+                            json!({"panel":id,"scope":"tabs","operation":operation}),
                         );
                         ui.close();
                     }
@@ -48,7 +48,7 @@ impl Editor {
                     let members=self.session.ui["windows.actual"].as_array().and_then(|a|a.iter().find(|v|v["id"]==id)).map(|v|v["group"].clone()).unwrap_or_default();
                     let targets:Vec<_>=self.session.registry.panels.values().filter(|p|p.id!=id && !members.as_array().is_some_and(|a|a.iter().any(|v|v==&p.id))).cloned().collect();
                     for target in targets {if ui.button(tr(&target.title)).clicked() {
-                        self.core("window.command",json!({"panel":id,"scope":"group","operation":"tab","target":target.id}));ui.close();
+                        self.core("window.command",json!({"panel":id,"scope":"tabs","operation":"tab","target":target.id}));ui.close();
                     }}
                 });
             });
@@ -95,10 +95,13 @@ impl Studio {
             let location=self.dock.find_tab(&contributed_panel(definition));
             let bounds=location.and_then(|(s,n,_)|match &self.dock[s][n] {egui_dock::Node::Leaf(leaf) if leaf.rect.is_finite() && leaf.rect.is_positive()=>Some(json!({"x":leaf.rect.left(),"y":leaf.rect.top(),"width":leaf.rect.width(),"height":leaf.rect.height()})),_=>None});
             let members:Vec<Panel>=location.map(|(s,n,_)|if s.is_main() {self.dock[s][n].iter_tabs().copied().collect()} else {self.dock[s].iter().flat_map(|n|n.iter_tabs()).copied().collect()}).unwrap_or_default();
+            let tabs:Vec<_>=location.map(|(s,n,_)|self.dock[s][n].iter_tabs().filter_map(|p|self.editor.panel_id(*p)).collect::<Vec<_>>()).unwrap_or_default();
             let group:Vec<_>=members.iter().filter_map(|p|self.editor.panel_id(*p)).collect();
+            let header=location.and_then(|(s,n,_)|match &self.dock[s][n] {egui_dock::Node::Leaf(leaf)=>leaf.tabs.get(leaf.active.0).and_then(|p|self.editor.headers.get(p)),_=>None})
+                .map(|h|json!({"bar":h.bar,"grip":h.grip,"tabs":h.tabs,"maximize":h.maximize,"close":h.close}));
             let native=location.and_then(|(s,_,_)|self.native_window_state(s));
             let active=location.is_some_and(|(s,n,t)|matches!(&self.dock[s][n],egui_dock::Node::Leaf(leaf) if leaf.active==t));
-            json!({"id":definition.id,"open":location.is_some(),"active":active,"floating":location.is_some_and(|(s,_,_)|!s.is_main()),"bounds":bounds,"native":native,"group":group})
+            json!({"id":definition.id,"open":location.is_some(),"active":active,"floating":location.is_some_and(|(s,_,_)|!s.is_main()),"bounds":bounds,"native":native,"group":group,"header":header,"tabs":tabs})
         }).collect();
         self.editor.session.ui["windows.actual"] = json!(actual);
     }
@@ -118,6 +121,31 @@ impl Studio {
         let operation = args["operation"]
             .as_str()
             .ok_or("Missing window operation")?;
+        if matches!(operation, "maximize" | "restore")
+            && self
+                .dock
+                .find_tab(&panel)
+                .is_some_and(|(s, _, _)| s.is_main())
+        {
+            self.reset_window_input();
+            if operation == "restore" {
+                if let Some(before) = self.dock_before_focus.take() {
+                    self.dock = before;
+                }
+            } else {
+                if let Some(before) = self.dock_before_focus.take() {
+                    self.dock = before;
+                }
+                let (s, n, _) = self.dock.find_tab(&panel).ok_or("Open the group first")?;
+                let leaf = self.dock[s][n].clone();
+                self.dock_before_focus = Some(self.dock.clone());
+                let mut tree = egui_dock::Tree::new(vec![panel]);
+                tree[NodeIndex::root()] = leaf;
+                *self.dock.main_surface_mut() = tree;
+            }
+            self.layout_changed = Some(Instant::now());
+            return Ok(());
+        }
         if matches!(operation, "minimize" | "maximize" | "restore") {
             self.reset_window_input();
             let (surface, _, _) = self.dock.find_tab(&panel).ok_or("Open the window first")?;
@@ -139,7 +167,9 @@ impl Studio {
             }
             return Ok(());
         }
-        if args["scope"] == "group" && !matches!(operation, "show" | "focus") {
+        if matches!(args["scope"].as_str(), Some("group" | "tabs"))
+            && !matches!(operation, "show" | "focus")
+        {
             return self.apply_window_group(ctx, args, panel);
         }
         let target = args["target"]
@@ -232,7 +262,13 @@ impl Studio {
                     .ok_or("Open the target window before docking or grouping")?;
                 if operation == "tab" {
                     dock.set_focused_node_and_surface((s, n));
-                    dock.push_to_focused_leaf(panel);
+                    if let Some(index) = args["index"].as_u64() {
+                        let count = dock[s][n].iter_tabs().count();
+                        dock[s][n]
+                            .insert_tab(egui_dock::TabIndex((index as usize).min(count)), panel);
+                    } else {
+                        dock.push_to_focused_leaf(panel);
+                    }
                 } else {
                     let split = match operation {
                         "dock_left" => egui_dock::Split::Left,
@@ -285,6 +321,9 @@ impl Studio {
         }
         self.dock_before_focus = None;
         self.dock = dock;
+        if operation == "float" && args["drag"] == true {
+            self.pending_group_drag = Some(panel);
+        }
         self.editor.canvas = Rect::NOTHING;
         self.editor.image_rect = Rect::NOTHING;
         self.layout_changed = Some(Instant::now());
@@ -304,6 +343,29 @@ mod tests {
             .unwrap();
         app.consume_ui_effects(ctx);
         assert_eq!(app.editor.session.ui["windows.result"]["status"], "applied");
+    }
+    #[test]
+    fn tab_reorder_uses_registered_commands_without_detaching_the_group() {
+        let mut app = studio();
+        let ctx = Context::default();
+        command(
+            &mut app,
+            &ctx,
+            json!({"panel":"color","operation":"tab","target":"layers","index":0}),
+        );
+        let (s, n, _) = app.dock.find_tab(&Panel::Color).unwrap();
+        let members: Vec<_> = app.dock[s][n].iter_tabs().copied().collect();
+        assert_eq!(members, vec![Panel::Color, Panel::Layers, Panel::Brush]);
+        assert!(s.is_main());
+        command(
+            &mut app,
+            &ctx,
+            json!({"panel":"color","operation":"tab","target":"brush","index":2}),
+        );
+        let (s, n, t) = app.dock.find_tab(&Panel::Color).unwrap();
+        assert_eq!(t.0, 2);
+        assert_eq!(app.dock[s][n].iter_tabs().count(), 3);
+        assert!(valid_dock(&app.dock));
     }
     #[test]
     fn canvas_floats_groups_hides_and_restores_without_losing_pressure_strokes() {

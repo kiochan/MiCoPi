@@ -3,10 +3,12 @@ use egui_dock::TabViewer;
 pub(super) struct Viewer<'a> {
     pub editor: &'a mut Editor,
     pub can_float: bool,
+    pub native: Option<&'a Native>,
+    pub single_leaf: bool,
+    pub focused: bool,
 }
-impl TabViewer for Viewer<'_> {
-    type Tab = Panel;
-    fn title(&mut self, p: &mut Panel) -> WidgetText {
+impl Viewer<'_> {
+    pub(super) fn tab_title(&mut self, p: &mut Panel) -> WidgetText {
         if let Panel::Plugin(key) = p {
             return self
                 .editor
@@ -60,6 +62,12 @@ impl TabViewer for Viewer<'_> {
                 .into()
         }
     }
+}
+impl TabViewer for Viewer<'_> {
+    type Tab = Panel;
+    fn title(&mut self, _: &mut Panel) -> WidgetText {
+        "".into()
+    }
     fn id(&mut self, p: &mut Panel) -> Id {
         Id::new(("panel", *p))
     }
@@ -97,7 +105,7 @@ impl TabViewer for Viewer<'_> {
             if let Some(id) = self.editor.panel_id(*panel) {
                 self.editor.core(
                     "window.command",
-                    serde_json::json!({"panel":id,"operation":"float","scope":"group"}),
+                    serde_json::json!({"panel":id,"operation":"float","scope":"tabs"}),
                 );
             }
         }
@@ -120,6 +128,7 @@ impl TabViewer for Viewer<'_> {
         Some(style)
     }
     fn ui(&mut self, ui: &mut Ui, p: &mut Panel) {
+        self.group_bar(ui, *p);
         if *p == Panel::Tools {
             self.editor.toolbox_ui(ui);
             return;

@@ -37,7 +37,8 @@ impl Studio {
         let (source, node, _) = dock
             .find_tab(&panel)
             .ok_or("Open the group before moving it")?;
-        let members: Vec<_> = if source.is_main() {
+        let per_leaf = source.is_main() || args["scope"] == "tabs";
+        let members: Vec<_> = if per_leaf {
             dock[source][node].iter_tabs().copied().collect()
         } else {
             dock[source]
@@ -68,7 +69,7 @@ impl Studio {
             return Err("Unsupported group operation".into());
         }
         let mut state = None;
-        let group = if source.is_main() {
+        let group = if per_leaf {
             let leaf = dock[source][node].clone();
             dock.remove_leaf((source, node));
             let mut tree = Tree::new(vec![panel]);
@@ -90,7 +91,7 @@ impl Studio {
         if operation == "float" {
             let old = state.as_ref().map(super::native_windows::geometry);
             let rect = floating_rect(ctx, args, panel, &self.editor.settings.ui, old);
-            let surface = if source.is_main() {
+            let surface = if per_leaf {
                 dock.add_window(vec![])
             } else {
                 source
@@ -151,6 +152,9 @@ impl Studio {
         }
         self.reset_window_input();
         self.dock = dock;
+        if operation == "float" && args["drag"] == true {
+            self.pending_group_drag = Some(panel);
+        }
         self.dock_before_focus = None;
         self.editor.canvas = Rect::NOTHING;
         self.editor.image_rect = Rect::NOTHING;
@@ -191,11 +195,6 @@ pub(super) fn floating_rect(
             .or(old.map(|r| r.height()))
             .unwrap_or(if panel == Panel::Tools {
                 a.toolbox_height
-                    + if ctx.embed_viewports() {
-                        0.
-                    } else {
-                        a.title_height
-                    }
             } else {
                 460.
             }),
@@ -255,6 +254,26 @@ mod tests {
             }
             Node::Empty => Value::Null,
         }
+    }
+    #[test]
+    fn closing_a_tab_group_in_a_split_native_window_keeps_sibling_groups() {
+        let mut app = studio();
+        let ctx = Context::default();
+        command(&mut app, &ctx, "layers", "float", "group", None);
+        command(
+            &mut app,
+            &ctx,
+            "color",
+            "dock_bottom",
+            "panel",
+            Some("layers"),
+        );
+        command(&mut app, &ctx, "layers", "hide", "tabs", None);
+        assert!(app.dock.find_tab(&Panel::Layers).is_none());
+        assert!(app.dock.find_tab(&Panel::Brush).is_none());
+        assert!(!app.dock.find_tab(&Panel::Color).unwrap().0.is_main());
+        assert!(app.dock.find_tab(&Panel::Canvas).is_some());
+        assert!(valid_dock(&app.dock));
     }
     #[test]
     fn moving_groups_preserves_active_tabs_nested_splits_pixels_and_replay() {

@@ -43,7 +43,7 @@ micopi-cli call window.list '{}' --attach session.json
 
 Check the queued request via `window.list` before issuing dependent layout operations. Use `app.describe` to discover complete schemas and `workbench.windows` for plugin-visible state.
 
-Native window placement and size use the existing workspace snapshot and quiet-period event compression. Maximized/minimized frames preserve the normal restore rectangle. Closing a feature window hides its panels; closing the main application retains the existing unsaved-document confirmation. Drag a native group title bar over another workspace or native viewport to dock the whole group. Individual tab dragging remains local to its docking viewport; use group title dragging or commands for cross-window moves.
+Native window placement and size use the existing workspace snapshot and quiet-period event compression. Maximized/minimized frames preserve the normal restore rectangle. Closing the main application retains the existing unsaved-document confirmation. Drag a group grip over another workspace or native viewport to dock it; dragging an individual tab out detaches only that panel.
 
 `window.capture` takes `panel` and `path` and writes that native viewport directly from the OpenGL renderer, independent of window occlusion. Inspect `window.list.last_capture` for saved/failed completion. Screenshot capture is an explicit presentation/file effect and is unavailable in headless execution. The native smoke check verifies both dark and light render output without capturing the surrounding desktop.
 
@@ -53,9 +53,15 @@ Floating canvases are owned by the main application window. Other floating panel
 
 ![A movable group retaining tabbed and split panels](screenshots/native-panel-group.png)
 
-Double-click a tab, or use **Group Actions > Float Panel Group**, to detach its complete tab group. Drag the marked group title bar to move the whole native window, including any nested splits. Its dock button moves the whole tree back together beside the open canvas, including when the canvas is in a separate native window. A single tab can still be dragged out individually.
+Every docked or floating tab group uses one row: **grip · tabs · maximize/restore · close group**. There is no second floating title bar. Drag the six-dot grip to move the group, drag tabs within the row to reorder them, or drag a tab outside the row to detach it. Double-click a tab, or use **Group Actions > Float Panel Group**, to detach its complete tab group. In a floating window containing splits, each grip moves only its own tab group; the remaining groups stay in place. Right-click a grip or tab for docking and grouping commands.
 
-`window.command` accepts optional `scope: "group"` (default `"panel"`). For a docked panel, a group means all tabs in its leaf. For a floating panel, it means the entire native window, including nested splits. Group float and directional dock operations preserve tab order, active tabs and split fractions. Group hide removes its members together. A group tab merge explicitly flattens its tabs into the target leaf. Targets within the source group are rejected before changing the layout.
+Maximize expands a docked group inside the workbench and restores the previous layout on the next click. In a native window it uses OS maximize/restore. The row's close button hides only that leaf's tabs, preserving sibling groups. An OS close request hides the entire native window. Tab height, control height, item spacing and panel padding remain configurable in Settings.
+
+`window.list.actual[].tabs` exposes leaf membership and `.header` exposes viewport-local logical rectangles for the grip, tab area and buttons. These observations support automation and do not enter document pixels.
+
+Header clicks are covered by egui pointer-input tests. The native smoke check validates the single-row geometry and the underlying maximize/restore and leaf-close commands. Synthetic Windows button messages can be discarded on isolated desktops when the hardware pointer is outside the viewport; physical native clicking and dragging still require an interactive desktop check.
+
+`window.command` accepts optional `scope: "group"` or `scope: "tabs"` (default `"panel"`). The row controls use `"tabs"`, which always means the current leaf. For a docked panel, `"group"` also means all tabs in its leaf. For a floating panel, `"group"` means the entire native window, including nested splits. Group float and directional dock operations preserve tab order, active tabs and split fractions. Group hide removes its members together. A group tab merge explicitly flattens its tabs into the target leaf. Targets within the source group are rejected before changing the layout. Individual tab moves accept an optional zero-based `index` in the destination leaf. `drag: true` continues a pointer gesture into a newly floated native window while the primary mouse button remains down.
 
 Generated actions also expose `.float_group`, `.hide_group`, `.dock_left_group`, `.dock_right_group`, `.dock_top_group`, `.dock_bottom_group` and `.tab_group`. They use the same command palette, shortcut, schema and MCP pipeline as individual panel commands. `window.list.actual[].group` contains the member panel IDs.
 

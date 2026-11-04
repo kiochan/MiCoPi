@@ -8,6 +8,7 @@ mod canvas;
 mod color;
 mod commands;
 mod document_texture;
+mod group_bar;
 mod group_drop;
 #[path = "../../plugins/layers/panel.rs"]
 mod layers;
@@ -100,6 +101,7 @@ fn tr(value: impl Into<WidgetText>) -> RichText {
 }
 
 pub(super) struct Editor {
+    headers: std::collections::HashMap<Panel, group_bar::HeaderLayout>,
     command_form: Option<plugin_commands::CommandForm>,
     area_mode: u8,
     area_tolerance: u32,
@@ -194,6 +196,7 @@ impl Editor {
         session.runtime = "desktop";
         let plugin_nodes = session.registry.node_catalog();
         let mut editor = Self {
+            headers: Default::default(),
             command_form: None,
             plugin_nodes,
             workflow: Default::default(),
@@ -401,6 +404,7 @@ impl Editor {
 }
 
 pub struct Studio {
+    pending_group_drag: Option<Panel>,
     window_capture_results: std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
     pending_window_captures: std::collections::HashMap<ViewportId, PathBuf>,
     native_windows: std::collections::BTreeMap<usize, native_windows::NativeWindow>,
@@ -530,6 +534,7 @@ impl Studio {
         };
         Self {
             action_server,
+            pending_group_drag: None,
             window_capture_results: Default::default(),
             pending_window_captures: Default::default(),
             native_windows: Default::default(),
@@ -834,6 +839,7 @@ impl Studio {
             || self.editor.new_open
             || self.editor.command_form.is_some()
             || self.replay.open;
+        self.editor.headers.clear();
         self.draw_shell(ctx);
         let a = self.editor.settings.ui.clone();
         let colors = theme::Colors::new(&a);
@@ -868,6 +874,8 @@ impl Studio {
                 DockArea::new(if separate { &mut main } else { &mut self.dock })
                     .id(Id::new("micopi-workspace"))
                     .style(style)
+                    .draggable_tabs(false)
+                    .show_close_buttons(false)
                     .show_leaf_close_all_buttons(false)
                     .show_leaf_collapse_buttons(false)
                     .show_inside(
@@ -875,6 +883,9 @@ impl Studio {
                         &mut panels::Viewer {
                             editor: &mut self.editor,
                             can_float,
+                            native: None,
+                            single_leaf: false,
+                            focused: self.dock_before_focus.is_some(),
                         },
                     );
             });

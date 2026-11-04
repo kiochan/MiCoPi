@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Unify docked and native panel headers into one row with a group grip, scrollable/reorderable tabs, maximize/restore and close-group controls; remove duplicate floating title bars.
+- Add leaf-scoped group commands and observable header geometry, preserving sibling groups when detaching or closing tabs.
+
 - Dock complete native panel groups by dragging their title bars back onto workspace guides, with split/tab previews, destination hints and Escape cancellation.
 - Route native releases and desktop-point automation through shared group hit testing; preserve nested layouts, pen input, replay verification and resize stability.
 

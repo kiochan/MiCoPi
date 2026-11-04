@@ -1,0 +1,364 @@
+//! One compact group row for docked and native panels: grip, tabs, maximize, close.
+use super::*;
+use serde_json::json;
+#[derive(Clone)]
+struct DraggedTab(Panel);
+#[derive(Clone, Debug)]
+pub(super) struct HeaderLayout {
+    pub bar: Rect,
+    pub grip: Rect,
+    pub tabs: Rect,
+    pub maximize: Rect,
+    pub close: Rect,
+}
+pub(super) fn layout(body: Rect, padding: f32, a: &Appearance) -> HeaderLayout {
+    let bar = Rect::from_min_max(
+        pos2(body.left() - padding, body.top() - padding - a.tab_height),
+        pos2(body.right() + padding, body.top() - padding),
+    );
+    let button = a
+        .control_height
+        .min(a.tab_height)
+        .max(18.)
+        .min((bar.width() - a.item_spacing * 2.).max(4.) / 4.);
+    let grip = Rect::from_min_size(bar.min, vec2(button, bar.height()));
+    let close = Rect::from_min_size(
+        pos2(bar.right() - button, bar.top()),
+        vec2(button, bar.height()),
+    );
+    let maximize = close.translate(vec2(-button, 0.));
+    let tabs = Rect::from_min_max(
+        pos2(grip.right() + a.item_spacing, bar.top()),
+        pos2(maximize.left() - a.item_spacing, bar.bottom()),
+    );
+    HeaderLayout {
+        bar,
+        grip,
+        tabs,
+        maximize,
+        close,
+    }
+}
+impl panels::Viewer<'_> {
+    pub(super) fn group_bar(&mut self, ui: &Ui, panel: Panel) {
+        let a = self.editor.settings.ui.clone();
+        let padding = if panel == Panel::Canvas {
+            0.
+        } else {
+            a.panel_padding
+        };
+        let h = layout(ui.max_rect(), padding, &a);
+        if !h.bar.is_positive() || !h.bar.is_finite() || h.tabs.width() <= 0. {
+            return;
+        }
+        self.editor.headers.insert(panel, h.clone());
+        // The docking library reserves this row; paint controls outside the body clip
+        // without advancing its layout. Its own tab widgets stay passive underneath.
+        let mut row = Ui::new(
+            ui.ctx().clone(),
+            Id::new(("panel-group-controls", panel)),
+            UiBuilder::new().max_rect(h.bar).layer_id(ui.layer_id()),
+        );
+        row.set_clip_rect(h.bar.intersect(ui.ctx().content_rect()));
+        let colors = theme::Colors::new(&a);
+        row.painter().rect_filled(h.bar, 0., colors.panel);
+        row.interact(
+            h.bar,
+            Id::new(("group-row-background", panel)),
+            Sense::click(),
+        );
+        let members = self
+            .editor
+            .panel_id(panel)
+            .and_then(|id| {
+                self.editor.session.ui["windows.actual"]
+                    .as_array()
+                    .and_then(|list| list.iter().find(|v| v["id"] == id))
+                    .and_then(|v| v["tabs"].as_array())
+                    .cloned()
+            })
+            .unwrap_or_default();
+        let mut tabs: Vec<_> = members
+            .iter()
+            .filter_map(|v| v.as_str())
+            .filter_map(|id| self.editor.session.registry.panels.get(id))
+            .map(contributed_panel)
+            .collect();
+        if tabs.is_empty() {
+            tabs.push(panel);
+        }
+        let group = tabs[0];
+        let drag_id = Id::new("dragged-panel-tab");
+        let mut tab_ui = Ui::new(
+            ui.ctx().clone(),
+            Id::new(("group-tabs", group)),
+            UiBuilder::new().max_rect(h.tabs).layer_id(ui.layer_id()),
+        );
+        tab_ui.set_clip_rect(h.tabs.intersect(ui.ctx().content_rect()));
+        ScrollArea::horizontal()
+            .id_salt(("group-tab-scroll", group))
+            .auto_shrink([false, false])
+            .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+            .scroll_source(egui::scroll_area::ScrollSource { drag: false, ..Default::default() })
+            .show(&mut tab_ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 2.;
+                for (index, mut tab) in tabs.iter().copied().enumerate() {
+                    let title = self.tab_title(&mut tab);
+                    let response = ui.add(Button::new(title)
+                        .selected(tab == panel)
+                        .fill(if tab == panel { colors.raised } else { Color32::TRANSPARENT })
+                        .sense(Sense::click_and_drag())
+                        .min_size(vec2(0., a.tab_height)));
+                    if let Some(id) = self.editor.panel_id(tab) {
+                        if response.clicked() {
+                            self.editor.core("window.command", json!({"panel":id,"operation":"focus"}));
+                        }
+                        if response.double_clicked() {
+                            self.editor.core("window.command", json!({"panel":id,"operation":"float","scope":"tabs"}));
+                        }
+                        if response.drag_started() {
+                            ui.ctx().data_mut(|d| d.insert_temp(drag_id, DraggedTab(tab)));
+                        }
+                        if response.dragged()
+                            && ui.ctx().data(|d| d.get_temp::<DraggedTab>(drag_id)).is_some_and(|d| d.0 == tab)
+                            && response.interact_pointer_pos().is_some_and(|p| !h.bar.expand(8.).contains(p))
+                        {
+                            if let Some(p) = response.interact_pointer_pos() {
+                                ui.ctx().data_mut(|d| d.remove::<DraggedTab>(drag_id));
+                                let origin = ui.input(|i| i.viewport().outer_rect.map(|r| r.min)).unwrap_or_default();
+                                let position = origin + p.to_vec2()
+                                    - vec2(a.outer_padding + a.control_height * 0.5, a.outer_padding + a.tab_height * 0.5);
+                                self.editor.core("window.command", json!({"panel":id,"operation":"float","drag":true,"x":position.x,"y":position.y}));
+                            }
+                        }
+                        if ui.input(|i| i.pointer.primary_released()) && response.contains_pointer() {
+                            let dragged = ui.ctx().data_mut(|d| {
+                                let value = d.get_temp::<DraggedTab>(drag_id);
+                                d.remove::<DraggedTab>(drag_id);
+                                value
+                            });
+                            if let Some(DraggedTab(source)) = dragged {
+                                if source != tab {
+                                    if let Some(source_id) = self.editor.panel_id(source) {
+                                        self.editor.core("window.command", json!({"panel":source_id,"operation":"tab","target":id,"index":index}));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    response.context_menu(|ui| self.editor.window_menu(tab, ui));
+                }
+            });
+        });
+        if row.input(|i| i.pointer.primary_released() || i.key_pressed(Key::Escape)) {
+            row.ctx().data_mut(|d| d.remove::<DraggedTab>(drag_id));
+        }
+        let grip = row
+            .interact(
+                h.grip,
+                Id::new(("group-grip", panel)),
+                Sense::click_and_drag(),
+            )
+            .on_hover_cursor(CursorIcon::Grab)
+            .on_hover_text(tr("Drag This Title Bar to Move the Entire Group"));
+        for x in 0..2 {
+            for y in 0..3 {
+                row.painter().circle_filled(
+                    h.grip.center() + vec2(x as f32 * 5. - 2.5, y as f32 * 5. - 5.),
+                    1.2,
+                    colors.muted,
+                );
+            }
+        }
+        let Some(id) = self.editor.panel_id(panel) else {
+            return;
+        };
+        if grip.drag_started() {
+            if let Some(native) = self.native.filter(|_| self.single_leaf) {
+                if let Some(p) = grip.interact_pointer_pos() {
+                    native.begin_group_drag(p * row.ctx().pixels_per_point());
+                }
+                row.ctx().send_viewport_cmd(ViewportCommand::StartDrag);
+            } else if let Some(p) = grip.interact_pointer_pos() {
+                let origin = row
+                    .input(|i| i.viewport().outer_rect.map(|r| r.min))
+                    .unwrap_or_default();
+                let position = origin + p.to_vec2()
+                    - vec2(
+                        a.outer_padding + h.grip.width() * 0.5,
+                        a.outer_padding + a.tab_height * 0.5,
+                    );
+                self.editor.core("window.command",json!({"panel":id,"scope":"tabs","operation":"float","drag":true,"x":position.x,"y":position.y,
+                    "width":(h.bar.width()+a.outer_padding*2.).max(200.),"height":(ui.max_rect().height()+padding*2.+a.tab_height+a.outer_padding*2.).max(160.)}));
+            }
+        }
+        grip.context_menu(|ui| self.editor.window_menu(panel, ui));
+        let restore = self.focused
+            || self.native.is_some() && row.input(|i| i.viewport().maximized.unwrap_or(false));
+        let max = row.put(h.maximize.shrink(2.), Button::new(""));
+        let r = Rect::from_center_size(
+            max.rect.center(),
+            Vec2::splat(max.rect.width().min(max.rect.height()) * 0.45),
+        );
+        if restore {
+            row.painter().rect_stroke(
+                r.translate(vec2(2., -2.)),
+                0.,
+                Stroke::new(1.2, colors.text),
+                StrokeKind::Inside,
+            );
+        }
+        row.painter()
+            .rect_stroke(r, 0., Stroke::new(1.2, colors.text), StrokeKind::Inside);
+        if max
+            .on_hover_text(tr(if restore {
+                "Restore Window"
+            } else {
+                "Maximize Window"
+            }))
+            .clicked()
+        {
+            self.editor.core("window.command",json!({"panel":id,"scope":"tabs","operation":if restore {"restore"} else {"maximize"}}));
+        }
+        let close = row.put(h.close.shrink(2.), Button::new(""));
+        let r = close
+            .rect
+            .shrink(close.rect.width().min(close.rect.height()) * 0.3);
+        row.painter().line_segment(
+            [r.left_top(), r.right_bottom()],
+            Stroke::new(1.3, colors.text),
+        );
+        row.painter().line_segment(
+            [r.right_top(), r.left_bottom()],
+            Stroke::new(1.3, colors.text),
+        );
+        if close.on_hover_text(tr("Hide Panel Group")).clicked() {
+            self.editor.core(
+                "window.command",
+                json!({"panel":id,"scope":"tabs","operation":"hide"}),
+            );
+        }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::desktop::tests::{frame, studio};
+    #[test]
+    fn canvas_row_maximize_button_receives_pointer_input() {
+        let mut app = studio();
+        let ctx = Context::default();
+        let size = vec2(1360., 920.);
+        for t in 0..3 {
+            frame(&mut app, &ctx, size, vec![], t as f64);
+        }
+        let p = app.editor.headers[&Panel::Canvas].maximize.center();
+        for (i, pressed) in [true, false].into_iter().enumerate() {
+            frame(
+                &mut app,
+                &ctx,
+                size,
+                vec![
+                    Event::PointerMoved(p),
+                    Event::PointerButton {
+                        pos: p,
+                        button: PointerButton::Primary,
+                        pressed,
+                        modifiers: Modifiers::NONE,
+                    },
+                ],
+                4. + i as f64 * 0.1,
+            );
+        }
+        frame(&mut app, &ctx, size, vec![], 6.);
+        assert!(app.dock_before_focus.is_some());
+    }
+    #[test]
+    fn row_buttons_maximize_restore_and_close_only_their_tab_group() {
+        let mut app = studio();
+        let ctx = Context::default();
+        let size = vec2(1360., 920.);
+        let pixels = app.editor.session.doc.layers[0].pixels.clone();
+        for t in 0..3 {
+            frame(&mut app, &ctx, size, vec![], t as f64);
+        }
+        let before = encode_dock(&app.dock).unwrap();
+        let click = |app: &mut Studio, p: Pos2, time| {
+            frame(
+                app,
+                &ctx,
+                size,
+                vec![
+                    Event::PointerMoved(p),
+                    Event::PointerButton {
+                        pos: p,
+                        button: PointerButton::Primary,
+                        pressed: true,
+                        modifiers: Modifiers::NONE,
+                    },
+                ],
+                time,
+            );
+            frame(
+                app,
+                &ctx,
+                size,
+                vec![Event::PointerButton {
+                    pos: p,
+                    button: PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Modifiers::NONE,
+                }],
+                time + 0.1,
+            );
+            frame(app, &ctx, size, vec![], time + 0.2);
+        };
+        let active = app
+            .dock
+            .find_tab(&Panel::Layers)
+            .map(|(s, n, _)| match &app.dock[s][n] {
+                egui_dock::Node::Leaf(l) => l.tabs[l.active.0],
+                _ => unreachable!(),
+            })
+            .unwrap();
+        let p = app.editor.headers[&active].maximize.center();
+        click(&mut app, p, 4.);
+        assert!(app.dock_before_focus.is_some());
+        for tab in [Panel::Layers, Panel::Brush, Panel::Color] {
+            assert!(app.dock.find_tab(&tab).is_some());
+        }
+        let p = app.editor.headers[&active].maximize.center();
+        click(&mut app, p, 5.);
+        assert!(app.dock_before_focus.is_none());
+        // Layout fractions and tabs are restored; viewport rectangles are refreshed by rendering.
+        let restored = encode_dock(&app.dock).unwrap();
+        assert_eq!(restored, before);
+        let p = app.editor.headers[&active].close.center();
+        click(&mut app, p, 6.);
+        for tab in [Panel::Layers, Panel::Brush, Panel::Color] {
+            assert!(app.dock.find_tab(&tab).is_none());
+        }
+        assert!(app.dock.find_tab(&Panel::Canvas).is_some());
+        assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+    }
+    #[test]
+    fn grip_tabs_and_group_buttons_share_one_non_overlapping_row() {
+        for width in [180., 320., 720.] {
+            for padding in [0., 8.] {
+                let a = Appearance::default();
+                let h = layout(
+                    Rect::from_min_size(pos2(20., 100.), vec2(width, 400.)),
+                    padding,
+                    &a,
+                );
+                assert_eq!(h.grip.center().y, h.maximize.center().y);
+                assert_eq!(h.tabs.center().y, h.close.center().y);
+                assert!(h.grip.right() < h.tabs.left());
+                assert!(h.tabs.right() < h.maximize.left());
+                assert_eq!(h.maximize.right(), h.close.left());
+                assert!(h.tabs.width() > 0.);
+            }
+        }
+    }
+}

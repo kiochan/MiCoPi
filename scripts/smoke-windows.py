@@ -294,6 +294,21 @@ def main():
             while not path.exists():
                 assert time.monotonic()<deadline, 'Native viewport capture timed out'
                 time.sleep(.05)
+        def check_header(panel):
+            actual = {p['id']: p for p in call('window.list', {})['actual']}
+            entry = actual[panel]
+            header = entry['header']
+            centers = [(header[key]['min']['y']+header[key]['max']['y'])/2
+                       for key in ['grip', 'tabs', 'maximize', 'close']]
+            assert max(centers)-min(centers) < .01, 'Group controls must share one row'
+            assert header['grip']['max']['x'] < header['tabs']['min']['x']
+            assert header['tabs']['max']['x'] < header['maximize']['min']['x']
+            assert header['maximize']['max']['x'] <= header['close']['min']['x']
+        # Header widget clicks are tested with egui RawInput. Isolated Windows
+        # desktops may discard synthetic button events when the real pointer is
+        # outside the viewport, so verify native geometry and commands separately.
+        check_header('canvas')
+        check_header('toolbox')
         normal_rect=native_rect(canvas_hwnd)
         window('canvas','maximize')
         deadline=time.monotonic()+10
@@ -350,6 +365,26 @@ def main():
         call('document.open', dict(path=str(output/'windows.mcp')))
         assert base64.b64decode(call('canvas.snapshot', {})['data']) == expected
         assert call('replay.verify', {})['valid']
+        # A row closes its leaf, preserving another group in the same native window.
+        for panel in ['layers', 'brush', 'color']:
+            window(panel, 'show')
+        window('brush', 'tab', target='layers')
+        window('color', 'tab', target='layers')
+        window('layers', 'float', scope='tabs', x=100, y=160, width=360, height=650)
+        window('color', 'dock_bottom', target='layers')
+        time.sleep(.3)
+        check_header('layers')
+        window('layers', 'hide', scope='tabs')
+        deadline=time.monotonic()+10
+        while True:
+            actual={p['id']:p for p in call('window.list',{})['actual']}
+            if not actual['layers']['open'] and not actual['brush']['open']:
+                break
+            assert time.monotonic()<deadline, 'Close-group command did not hide the tabs'
+            time.sleep(.05)
+        assert actual['color']['open'] and actual['color']['floating']
+        assert actual['canvas']['open'] and actual['toolbox']['open']
+        assert base64.b64decode(call('canvas.snapshot', {})['data']) == expected
         call('ui.dispatch', dict(id='close', value=True))
         assert process.wait(timeout=10) == 0
     finally:

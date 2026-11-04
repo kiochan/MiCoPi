@@ -149,6 +149,9 @@ impl Native {
                 .is_some_and(|h| h.sizing)
         })
     }
+    pub fn primary_down() -> bool {
+        unsafe { GetAsyncKeyState(1) < 0 }
+    }
     pub fn begin_group_drag(&self, client: egui::Pos2) {
         HOOKS.with(|hooks| {
             if let Some(h) = hooks.borrow_mut().get_mut(&(self.hwnd as usize)) {
