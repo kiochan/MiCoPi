@@ -17,6 +17,7 @@ pub(crate) mod affine;
 pub(crate) mod clipboard;
 mod compositing;
 mod document;
+pub(crate) mod export;
 mod geometry;
 mod layer_transfer;
 mod layers;
@@ -36,6 +37,9 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        Export | Render | ExportPlan | ExportPreview | ExportDialog => {
+            export::execute(session, op, args)
+        }
         MovePixels | Nudge => movement::execute(session, op, args),
         TransformRepeat | TransformRepeatCopy => affine::repeat(
             session,
@@ -77,8 +81,9 @@ pub(crate) fn execute(
         NodeCatalog | WorkflowRead | WorkflowSet | WorkflowPatch | WorkflowValidate
         | WorkflowRun | WorkflowState => crate::application::workflow::execute(session, op, args),
         GraphRead | GraphSet | GraphCatalog => compositing::execute(session, op, args),
-        New | DocumentInfo | DocumentResolution | CanvasSize | Crop | Open | Save | Export
-        | Render | Undo | Redo => document::execute(session, op, args),
+        New | DocumentInfo | DocumentResolution | CanvasSize | Crop | Open | Save | Undo | Redo => {
+            document::execute(session, op, args)
+        }
         AddLayer | RenameLayer | DuplicateLayer | MoveLayer | DeleteLayer | SelectLayer
         | MergeDown | MergeVisible | FlattenImage | StampVisible | LayerProperties | ClearLayer => {
             layers::execute(session, op, args)

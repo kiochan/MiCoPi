@@ -130,18 +130,6 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             s.doc.dirty = false;
             Ok(json!({"path":path}))
         }
-        Export => {
-            let path = path()?;
-            s.finish_stroke();
-            codec::export(&mut s.doc, &path)?;
-            Ok(json!({"path":path}))
-        }
-        Render => {
-            let bytes = codec::png(&mut s.doc)?;
-            Ok(
-                json!({"mimeType":"image/png","data":codec::base64(&bytes),"width":s.doc.width,"height":s.doc.height}),
-            )
-        }
         Undo => {
             s.finish_stroke();
             s.doc.undo();

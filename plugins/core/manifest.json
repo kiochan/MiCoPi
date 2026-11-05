@@ -1173,12 +1173,841 @@
     {
       "id": "canvas.export",
       "title": "Export transparent PNG",
-      "operation": "export"
+      "operation": "export",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "source_width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "source_height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "nearest",
+              "bilinear",
+              "area"
+            ]
+          },
+          "identity": {
+            "type": "boolean",
+            "description": "Spatial identity; output density may still differ."
+          },
+          "document_info": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "resolution_ppi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2400,
+                "description": "Editable nominal scalar; inspect per-axis PPI for exact imported metric density. Setting this replaces imported density."
+              },
+              "initial_background": {
+                "type": "string",
+                "description": "Creation fill intent, not a permanent compositing background."
+              },
+              "width_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_explicit": {
+                "type": "boolean",
+                "description": "An explicit document resolution also writes PNG density at 72 PPI."
+              },
+              "png_density": {
+                "type": "object",
+                "properties": {
+                  "xppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "yppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "meter",
+                      "unspecified"
+                    ]
+                  }
+                },
+                "required": [
+                  "xppu",
+                  "yppu",
+                  "unit"
+                ],
+                "additionalProperties": false,
+                "description": "Exact imported PNG pHYs. Zero axes or unspecified units have no known physical size."
+              },
+              "physical_size_known": {
+                "type": "boolean"
+              },
+              "resolution_source": {
+                "type": "string",
+                "enum": [
+                  "png",
+                  "document"
+                ]
+              },
+              "resolution_ppi_x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_ppi_y": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "width",
+              "height",
+              "resolution_ppi",
+              "initial_background",
+              "physical_size_known",
+              "resolution_source"
+            ]
+          },
+          "estimated_output_bytes": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 67108864,
+            "description": "ARGB output pixel buffer only; excludes encoder, transport, caches and source document."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 64,
+            "description": "SHA-256 of the successfully published PNG; compact context binds it to the export event."
+          }
+        },
+        "required": [
+          "source_width",
+          "source_height",
+          "width",
+          "height",
+          "method",
+          "identity",
+          "document_info",
+          "estimated_output_bytes",
+          "revision",
+          "drawing",
+          "path",
+          "sha256"
+        ]
+      }
+    },
+    {
+      "id": "canvas.export.plan",
+      "title": "Plan PNG Export",
+      "operation": "export_plan",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "source_width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "source_height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "nearest",
+              "bilinear",
+              "area"
+            ]
+          },
+          "identity": {
+            "type": "boolean",
+            "description": "Spatial identity; output density may still differ."
+          },
+          "document_info": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "resolution_ppi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2400,
+                "description": "Editable nominal scalar; inspect per-axis PPI for exact imported metric density. Setting this replaces imported density."
+              },
+              "initial_background": {
+                "type": "string",
+                "description": "Creation fill intent, not a permanent compositing background."
+              },
+              "width_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_explicit": {
+                "type": "boolean",
+                "description": "An explicit document resolution also writes PNG density at 72 PPI."
+              },
+              "png_density": {
+                "type": "object",
+                "properties": {
+                  "xppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "yppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "meter",
+                      "unspecified"
+                    ]
+                  }
+                },
+                "required": [
+                  "xppu",
+                  "yppu",
+                  "unit"
+                ],
+                "additionalProperties": false,
+                "description": "Exact imported PNG pHYs. Zero axes or unspecified units have no known physical size."
+              },
+              "physical_size_known": {
+                "type": "boolean"
+              },
+              "resolution_source": {
+                "type": "string",
+                "enum": [
+                  "png",
+                  "document"
+                ]
+              },
+              "resolution_ppi_x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_ppi_y": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "width",
+              "height",
+              "resolution_ppi",
+              "initial_background",
+              "physical_size_known",
+              "resolution_source"
+            ]
+          },
+          "estimated_output_bytes": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 67108864,
+            "description": "ARGB output pixel buffer only; excludes encoder, transport, caches and source document."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source_width",
+          "source_height",
+          "width",
+          "height",
+          "method",
+          "identity",
+          "document_info",
+          "estimated_output_bytes",
+          "revision",
+          "drawing"
+        ]
+      }
+    },
+    {
+      "id": "canvas.export.preview",
+      "title": "Preview PNG Export",
+      "operation": "export_preview",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "source_width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "source_height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "nearest",
+              "bilinear",
+              "area"
+            ]
+          },
+          "identity": {
+            "type": "boolean",
+            "description": "Spatial identity; output density may still differ."
+          },
+          "document_info": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "resolution_ppi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2400,
+                "description": "Editable nominal scalar; inspect per-axis PPI for exact imported metric density. Setting this replaces imported density."
+              },
+              "initial_background": {
+                "type": "string",
+                "description": "Creation fill intent, not a permanent compositing background."
+              },
+              "width_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_explicit": {
+                "type": "boolean",
+                "description": "An explicit document resolution also writes PNG density at 72 PPI."
+              },
+              "png_density": {
+                "type": "object",
+                "properties": {
+                  "xppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "yppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "meter",
+                      "unspecified"
+                    ]
+                  }
+                },
+                "required": [
+                  "xppu",
+                  "yppu",
+                  "unit"
+                ],
+                "additionalProperties": false,
+                "description": "Exact imported PNG pHYs. Zero axes or unspecified units have no known physical size."
+              },
+              "physical_size_known": {
+                "type": "boolean"
+              },
+              "resolution_source": {
+                "type": "string",
+                "enum": [
+                  "png",
+                  "document"
+                ]
+              },
+              "resolution_ppi_x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_ppi_y": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "width",
+              "height",
+              "resolution_ppi",
+              "initial_background",
+              "physical_size_known",
+              "resolution_source"
+            ]
+          },
+          "estimated_output_bytes": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 67108864,
+            "description": "ARGB output pixel buffer only; excludes encoder, transport, caches and source document."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "boolean"
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/png"
+            ]
+          },
+          "data": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_width",
+          "source_height",
+          "width",
+          "height",
+          "method",
+          "identity",
+          "document_info",
+          "estimated_output_bytes",
+          "revision",
+          "drawing",
+          "mimeType",
+          "data"
+        ]
+      }
+    },
+    {
+      "id": "canvas.export.open",
+      "title": "PNG Export Options",
+      "operation": "export_dialog",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          },
+          "plan": {
+            "type": "object",
+            "properties": {
+              "source_width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "source_height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "nearest",
+                  "bilinear",
+                  "area"
+                ]
+              },
+              "identity": {
+                "type": "boolean",
+                "description": "Spatial identity; output density may still differ."
+              },
+              "document_info": {
+                "type": "object",
+                "properties": {
+                  "width": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4096
+                  },
+                  "height": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4096
+                  },
+                  "resolution_ppi": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2400,
+                    "description": "Editable nominal scalar; inspect per-axis PPI for exact imported metric density. Setting this replaces imported density."
+                  },
+                  "initial_background": {
+                    "type": "string",
+                    "description": "Creation fill intent, not a permanent compositing background."
+                  },
+                  "width_mm": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "height_mm": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "resolution_explicit": {
+                    "type": "boolean",
+                    "description": "An explicit document resolution also writes PNG density at 72 PPI."
+                  },
+                  "png_density": {
+                    "type": "object",
+                    "properties": {
+                      "xppu": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483647
+                      },
+                      "yppu": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 2147483647
+                      },
+                      "unit": {
+                        "type": "string",
+                        "enum": [
+                          "meter",
+                          "unspecified"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "xppu",
+                      "yppu",
+                      "unit"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Exact imported PNG pHYs. Zero axes or unspecified units have no known physical size."
+                  },
+                  "physical_size_known": {
+                    "type": "boolean"
+                  },
+                  "resolution_source": {
+                    "type": "string",
+                    "enum": [
+                      "png",
+                      "document"
+                    ]
+                  },
+                  "resolution_ppi_x": {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "resolution_ppi_y": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "width",
+                  "height",
+                  "resolution_ppi",
+                  "initial_background",
+                  "physical_size_known",
+                  "resolution_source"
+                ]
+              },
+              "estimated_output_bytes": {
+                "type": "integer",
+                "minimum": 4,
+                "maximum": 67108864,
+                "description": "ARGB output pixel buffer only; excludes encoder, transport, caches and source document."
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "drawing": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "source_width",
+              "source_height",
+              "width",
+              "height",
+              "method",
+              "identity",
+              "document_info",
+              "estimated_output_bytes",
+              "revision",
+              "drawing"
+            ]
+          }
+        },
+        "required": [
+          "queued",
+          "plan"
+        ]
+      }
     },
     {
       "id": "canvas.snapshot",
       "title": "Render canvas as PNG",
-      "operation": "render"
+      "operation": "render",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "source_width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "source_height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "nearest",
+              "bilinear",
+              "area"
+            ]
+          },
+          "identity": {
+            "type": "boolean",
+            "description": "Spatial identity; output density may still differ."
+          },
+          "document_info": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "resolution_ppi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2400,
+                "description": "Editable nominal scalar; inspect per-axis PPI for exact imported metric density. Setting this replaces imported density."
+              },
+              "initial_background": {
+                "type": "string",
+                "description": "Creation fill intent, not a permanent compositing background."
+              },
+              "width_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_explicit": {
+                "type": "boolean",
+                "description": "An explicit document resolution also writes PNG density at 72 PPI."
+              },
+              "png_density": {
+                "type": "object",
+                "properties": {
+                  "xppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "yppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "meter",
+                      "unspecified"
+                    ]
+                  }
+                },
+                "required": [
+                  "xppu",
+                  "yppu",
+                  "unit"
+                ],
+                "additionalProperties": false,
+                "description": "Exact imported PNG pHYs. Zero axes or unspecified units have no known physical size."
+              },
+              "physical_size_known": {
+                "type": "boolean"
+              },
+              "resolution_source": {
+                "type": "string",
+                "enum": [
+                  "png",
+                  "document"
+                ]
+              },
+              "resolution_ppi_x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_ppi_y": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "width",
+              "height",
+              "resolution_ppi",
+              "initial_background",
+              "physical_size_known",
+              "resolution_source"
+            ]
+          },
+          "estimated_output_bytes": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 67108864,
+            "description": "ARGB output pixel buffer only; excludes encoder, transport, caches and source document."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "boolean"
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/png"
+            ]
+          },
+          "data": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_width",
+          "source_height",
+          "width",
+          "height",
+          "method",
+          "identity",
+          "document_info",
+          "estimated_output_bytes",
+          "revision",
+          "drawing",
+          "mimeType",
+          "data"
+        ]
+      }
     },
     {
       "id": "history.undo",
@@ -4062,6 +4891,165 @@
           "initial_background",
           "physical_size_known",
           "resolution_source"
+        ]
+      }
+    },
+    {
+      "id": "core.export",
+      "title": "Inspect Default PNG Export",
+      "action": "canvas.export.plan",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "source_width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "source_height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "nearest",
+              "bilinear",
+              "area"
+            ]
+          },
+          "identity": {
+            "type": "boolean",
+            "description": "Spatial identity; output density may still differ."
+          },
+          "document_info": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "resolution_ppi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2400,
+                "description": "Editable nominal scalar; inspect per-axis PPI for exact imported metric density. Setting this replaces imported density."
+              },
+              "initial_background": {
+                "type": "string",
+                "description": "Creation fill intent, not a permanent compositing background."
+              },
+              "width_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_explicit": {
+                "type": "boolean",
+                "description": "An explicit document resolution also writes PNG density at 72 PPI."
+              },
+              "png_density": {
+                "type": "object",
+                "properties": {
+                  "xppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "yppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "meter",
+                      "unspecified"
+                    ]
+                  }
+                },
+                "required": [
+                  "xppu",
+                  "yppu",
+                  "unit"
+                ],
+                "additionalProperties": false,
+                "description": "Exact imported PNG pHYs. Zero axes or unspecified units have no known physical size."
+              },
+              "physical_size_known": {
+                "type": "boolean"
+              },
+              "resolution_source": {
+                "type": "string",
+                "enum": [
+                  "png",
+                  "document"
+                ]
+              },
+              "resolution_ppi_x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_ppi_y": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "width",
+              "height",
+              "resolution_ppi",
+              "initial_background",
+              "physical_size_known",
+              "resolution_source"
+            ]
+          },
+          "estimated_output_bytes": {
+            "type": "integer",
+            "minimum": 4,
+            "maximum": 67108864,
+            "description": "ARGB output pixel buffer only; excludes encoder, transport, caches and source document."
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source_width",
+          "source_height",
+          "width",
+          "height",
+          "method",
+          "identity",
+          "document_info",
+          "estimated_output_bytes",
+          "revision",
+          "drawing"
         ]
       }
     }

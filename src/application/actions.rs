@@ -121,6 +121,9 @@ pub enum Operation {
     Open,
     Save,
     Export,
+    ExportPlan,
+    ExportPreview,
+    ExportDialog,
     Render,
     SelectTool,
     Parameters,
@@ -184,6 +187,12 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if matches!(
+            self,
+            Self::Export | Self::ExportPlan | Self::ExportPreview | Self::Render
+        ) {
+            return super::output_size::schema(self == Self::Export);
+        }
         let number = json!({"type":"number"});
         let point = json!({"type":"object","properties":{"x":number,"y":number,"pressure":{"type":"number","minimum":0,"maximum":1},"time":{"type":"integer","minimum":0},"pen":{"type":"boolean"},"eraser":{"type":"boolean"},"tool_override":{"type":"string","enum":["brush","eraser","picker","hand","zoom"]},"view_x":number,"view_y":number},"required":["x","y"],"additionalProperties":false});
         let (props, required) = match self {
@@ -280,6 +289,10 @@ impl Operation {
                 json!({"target":{"type":"string","enum":["auto","layer","selection","selection_mask"]},"quad":{"type":"array","minItems":4,"maxItems":4,"items":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-8192,"maximum":8192}},"description":"Destination corners in source TL,TR,BR,BL order; cannot combine with affine controls. Must be finite and convex."},"translate_x":{"type":"number","minimum":-8192,"maximum":8192,"default":0},"translate_y":{"type":"number","minimum":-8192,"maximum":8192,"default":0},"scale_x":{"type":"number","minimum":0.01,"maximum":100,"default":1},"scale_y":{"type":"number","minimum":0.01,"maximum":100,"default":1},"angle":{"type":"number","minimum":-360,"maximum":360,"default":0,"description":"Clockwise degrees in document coordinates."},"skew_x":{"type":"number","minimum":-80,"maximum":80,"default":0,"description":"Local horizontal shear angle, after scale/flip and before vertical shear and rotation."},"skew_y":{"type":"number","minimum":-80,"maximum":80,"default":0,"description":"Local vertical shear angle. Combined coefficients must fit native affine limits."},"flip_x":{"type":"boolean","default":false},"flip_y":{"type":"boolean","default":false},"pivot_x":{"type":"number","minimum":-8192,"maximum":8192,"description":"Document-edge pivot; supply both coordinates or neither (source bounds center)."},"pivot_y":{"type":"number","minimum":-8192,"maximum":8192},"method":{"type":"string","enum":["nearest","bilinear"],"default":"bilinear"}}),
                 vec![],
             ),
+            Self::ExportDialog => (
+                json!({"parameters":super::output_size::schema(false)}),
+                vec![],
+            ),
             Self::TransformPreview => (
                 json!({"parameters":Self::TransformPixels.schema()}),
                 vec!["parameters"],
@@ -301,11 +314,7 @@ impl Operation {
                 json!({"x":{"type":"integer","minimum":0,"maximum":4095},"y":{"type":"integer","minimum":0,"maximum":4095},"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096}}),
                 vec!["x", "y", "width", "height"],
             ),
-            Self::Open
-            | Self::Save
-            | Self::Export
-            | Self::SettingsRead
-            | Self::CaptureWorkspace => (
+            Self::Open | Self::Save | Self::SettingsRead | Self::CaptureWorkspace => (
                 json!({"path":{"type":"string","minLength":1}}),
                 vec!["path"],
             ),
@@ -401,6 +410,8 @@ impl Operation {
                 | Self::PluginPlan
                 | Self::Events
                 | Self::Render
+                | Self::ExportPlan
+                | Self::ExportPreview
                 | Self::SettingsRead
                 | Self::WindowState
         )

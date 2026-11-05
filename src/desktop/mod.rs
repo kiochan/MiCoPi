@@ -4,6 +4,8 @@ mod area;
 mod brush;
 #[path = "../../plugins/canvas/panel.rs"]
 mod canvas;
+#[path = "../../plugins/canvas/export.rs"]
+mod canvas_export;
 #[path = "../../plugins/canvas/geometry.rs"]
 mod canvas_geometry;
 #[path = "../../plugins/canvas/movement.rs"]
@@ -190,6 +192,7 @@ pub(super) struct Editor {
     native: Option<Native>,
     blocked: bool,
     new_canvas: Option<canvas_new_document::NewCanvasDraft>,
+    export_draft: Option<canvas_export::Draft>,
     new_open: bool,
     geometry: Option<canvas_geometry::CanvasDialog>,
 }
@@ -320,6 +323,7 @@ impl Editor {
             native,
             blocked: false,
             new_canvas: None,
+            export_draft: None,
             new_open: false,
             geometry: None,
         };
@@ -484,6 +488,13 @@ impl Editor {
             let before = self.session.revision;
             if self.core("view.set", serde_json::to_value(view).unwrap()) {
                 if let Some(draft) = self.new_canvas.as_mut() {
+                    draft.accept_local_view(
+                        self.session.doc.identity,
+                        before,
+                        self.session.revision,
+                    );
+                }
+                if let Some(draft) = self.export_draft.as_mut() {
                     draft.accept_local_view(
                         self.session.doc.identity,
                         before,
@@ -695,6 +706,9 @@ impl Studio {
         let effects = std::mem::take(&mut self.editor.session.ui_effects);
         for effect in effects {
             match effect["id"].as_str() {
+                Some("canvas.export.open") => {
+                    self.editor.open_export_options(effect["value"].clone())
+                }
                 Some("application.window") => match effect["value"].as_str() {
                     Some("minimize") => ctx.send_viewport_cmd(ViewportCommand::Minimized(true)),
                     Some("maximize") => ctx.send_viewport_cmd(ViewportCommand::Maximized(true)),
@@ -1040,6 +1054,7 @@ impl Studio {
             || self.editor.palette.is_some()
             || self.editor.new_open
             || self.editor.geometry.is_some()
+            || self.editor.export_draft.is_some()
             || self.editor.transform.is_some()
             || self.editor.command_form.is_some()
             || self.replay.open;
@@ -1150,6 +1165,7 @@ impl Studio {
         self.editor.palette_ui(ctx);
         self.new_document_window(ctx);
         self.editor.canvas_geometry_window(ctx);
+        self.editor.export_window(ctx);
         self.editor.transform_window(ctx);
         self.run_actions(ctx);
         if !ctx.input(|i| i.focused)

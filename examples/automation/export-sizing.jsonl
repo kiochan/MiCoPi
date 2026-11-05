@@ -1,0 +1,10 @@
+{"action":"canvas.new","args":{"width":192,"height":128,"background":"#F8EFE0","resolution_ppi":300}}
+{"action":"brush.set","args":{"color":"#994477","radius":6,"stabilizer":0.35,"pressure_size":true,"pressure_opacity":true}}
+{"action":"canvas.stroke","args":{"points":[{"x":16,"y":96,"pressure":0.2,"pen":true,"time":0},{"x":84,"y":30,"pressure":1,"pen":true,"time":40},{"x":176,"y":100,"pressure":0.4,"pen":true,"time":80}]}}
+{"action":"canvas.export.plan","args":{"width":96,"method":"area"}}
+{"action":"canvas.export.preview","args":{"width":96,"method":"area"}}
+{"action":"canvas.export","args":{"path":"target/example-output/export-sizing.png","width":96,"method":"area"}}
+{"action":"canvas.export.plan","args":{"width":25.4,"unit":"mm","resolution_ppi":300}}
+{"action":"canvas.export.preview","args":{"scale":50}}
+{"action":"canvas.state","args":{}}
+{"action":"replay.verify","args":{}}

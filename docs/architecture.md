@@ -76,6 +76,8 @@ See [Development](development.md) for unit, actual-DLL and end-to-end checks. Ru
 
 Document transactions and provisional pen contacts use replay state plus shared undo tiles as rollback checkpoints. Atomic pipelines suppress child journal writes and publish one outcome after success; failure restores the checkpoint. A journal append publishes its index/head only after writing the entire compressed record. Partial writes truncate the uncommitted tail. MCRPLY02 adds metadata deltas, intra-event tile references and sparse XOR blocks; MCRPLY01 remains readable. See [Atomic Operations](atomic-operations.md).
 
+PNG export sizing uses pure unit/aspect plans and a cached native sampler on the composed frame. Previews remain read-only; file export stages its PNG before replacement and binds a compact artifact digest to its external-effect event. It does not resize source layers or add document undo. See [PNG Export Sizing](export-sizing.md).
+
 ## Stable layer editing
 
 Optional composition metadata stores document-scoped layer IDs, custom names and the next ID. Legacy projects receive deterministic IDs when opened. IDs persist across save, undo and reorder; committed undo does not reuse allocated IDs. Atomic failure restores the allocator with the document checkpoint. Image graphs retain their index-based wire format. New documents use validated linked stacks: structural edits rebuild branches through stable IDs, preserving per-layer filters; duplication copies filters and deletion removes the corresponding branch. Linked blend modes stay synchronized with layer properties. Legacy/free graphs keep explicit wiring and reject deletion of referenced layers, including disabled sources. See [Image Node Editor](node-editor.md).

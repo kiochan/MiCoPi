@@ -75,7 +75,8 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 - [ ] Add selection-aware move, scale and rotate.
 - [x] Add central new-canvas presets, background choices and document-resolution metadata with revision-guarded creation and shared history/project/replay contracts.
 - [x] Preserve exact PNG density in native document metadata, import/export and recorded-state output, including unknown/asymmetric axes and strict bounded validation.
-- [ ] Add useful export sizing and physical-unit input; improve dirty-state and save/recovery feedback.
+- [x] Add shared PNG export sizing in pixels/physical units/percent, native composed-frame sampling, read-only previews, artifact digests and source-preserving desktop controls.
+- [ ] Add physical-unit input to New Canvas/Image Size; improve dirty-state and save/recovery feedback.
 
 **Acceptance:** an artist can create, select, transform and organize a small illustration, save/reopen it, undo/redo its structural edits and replay the same visible results. GUI, MCP and headless actions produce matching pixels for shared fixtures. Graph references remain valid after layer changes.
 

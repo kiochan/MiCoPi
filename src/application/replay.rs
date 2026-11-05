@@ -142,7 +142,14 @@ impl Session {
             self.replay_error = None;
             self.replay_identity = self.doc.identity;
         }
-        let context = if success
+        let context = if op == Some(Operation::Export) {
+            let artifact = self.export_event.take();
+            if success {
+                artifact
+            } else {
+                None
+            }
+        } else if success
             && matches!(
                 op,
                 Some(
@@ -150,7 +157,8 @@ impl Session {
                         | Operation::TransformRepeat
                         | Operation::TransformRepeatCopy
                 )
-            ) {
+            )
+        {
             self.transform_event.take()
         } else if success && matches!(op, Some(Operation::MovePixels | Operation::Nudge)) {
             Some(

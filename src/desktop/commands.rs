@@ -490,15 +490,17 @@ impl Editor {
         }
     }
     fn export(&mut self) {
-        if let Some(path) = self.native.as_ref().and_then(|n| n.dialog(true, true)) {
-            let action = if self.session.replay_error.is_some() {
-                "replay.recover_png"
-            } else {
-                "canvas.export"
-            };
-            if self.core(action, serde_json::json!({"path":path})) {
-                self.status = "PNG Exported".into();
+        if self.session.replay_error.is_some() {
+            if let Some(path) = self.native.as_ref().and_then(|n| n.dialog(true, true)) {
+                if self.core("replay.recover_png", serde_json::json!({"path":path})) {
+                    self.status = "PNG Exported".into();
+                }
             }
+        } else {
+            self.finish_stroke();
+            self.push_gui_parameters();
+            self.push_gui_view();
+            self.core("canvas.export.open", serde_json::json!({}));
         }
     }
 }
@@ -855,6 +857,7 @@ impl Studio {
                     self.editor.palette = None;
                     self.editor.command_form = None;
                     self.editor.new_open = false;
+                    self.editor.export_draft = None;
                     self.editor.geometry = None;
                     self.editor.transform = None;
                     self.editor.finish_stroke();

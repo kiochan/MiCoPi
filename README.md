@@ -26,6 +26,8 @@ The [unified plugin system](docs/plugin-system.md) exposes package versions, com
 
 [PNG density](docs/png-density.md) preserves exact X/Y counts and units through import/export, projects and replay PNG output. Unknown physical sizes stay explicit; setting resolution replaces imported density without resampling.
 
+[PNG Export Sizing](docs/export-sizing.md) supports pixels, millimeters, inches and percentage output, explicit previews and output-only PPI overrides. Native sampling runs on the composed frame, preserving source layers/history; file digests are bound to export events.
+
 ## Why MiCoPi
 
 **Painting first. Plugins carry behavior. One execution core serves artists and automation.**

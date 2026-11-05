@@ -11,6 +11,7 @@ These are actual application captures, not interface mockups. Current images com
 | [Free Transform skew](free-transform-skew.png) | Native idle skew preview, edge diamonds, ordered X/Y controls and fixed Apply/Cancel actions |
 | [Canvas trim](trim-canvas.png) | Cached trim preview, selected sides and resulting dimensions beside visible artwork |
 | [PNG density](png-density.png) | Imported unequal density and the explicit metadata-only resolution replacement contract |
+| [PNG export sizing](export-sizing.png) | Source-preserving output dimensions, sampling, density and explicit preview controls |
 | [New canvas](new-canvas.png) | Configurable preset, editable background and physical-resolution creation controls |
 | [Image size](image-size.png) | Actual aspect-locked image sizing dialog with native sampling choices |
 | [Canvas quarter turn](canvas-quarter-turn.png) | Actual clockwise document rotation, transformed selection and navigator preview |
@@ -53,3 +54,5 @@ Older screenshots live in [archive](archive/README.md) for historical reference.
 `new-canvas.png` comes from the English Release capture in `scripts/smoke-document-setup.py`. The same isolated check captures Chinese, Japanese and Korean dialogs while verifying unchanged document info and PNG pixels on cancellation.
 
 `png-density.png` is the English final Release capture from `scripts/smoke-png-density.py`; all four language captures were reviewed. Its generated color fixture is opened by signature, and cancellation preserves exact density and artwork PNG bytes.
+
+`export-sizing.png` is the English final Release capture from `scripts/smoke-export.py` on 2026-11-05. All four language captures were reviewed. The options show inherited unequal-axis density alongside output size and sampling; opening and canceling preserve source document info and PNG bytes. Preview rasterization requires an explicit Refresh Preview request.

@@ -68,6 +68,9 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/selection.rs` | Immutable coverage storage, bounded encoding and shared selection snapshots |
 | `src/application/movement_preferences.rs`, `src/application/movement_tests.rs` | Validated move targets/steps, public state and shared history/replay regressions |
 | `src/engine/homography.rs`, `src/application/perspective_tests.rs` | Finite convex quad geometry, horizon validation and projective action/history/persistence contracts |
+| `src/application/output_size.rs`, `src/application/export_tests.rs` | Pure output-unit/aspect planning and shared export/history/transport contracts |
+| `src/plugins/export.rs` | Borrowed composed-frame sampling, preview/file orchestration and compact artifact context |
+| `plugins/canvas/export.rs` | Compiled export draft, explicit cached preview, source guards and responsive controls |
 | `src/application/png_io.rs`, `src/application/png_density_tests.rs` | Bounded PNG scanning, shared density encoding, legacy-byte and persistence/transport regressions |
 | `src/application/geometry_density_tests.rs` | Density axis semantics under document geometry and structural undo |
 | `src/engine/document_info.rs`, `src/application/document_setup_tests.rs` | Bounded physical metadata, legacy omission and setup/history/replay contracts |

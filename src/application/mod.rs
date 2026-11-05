@@ -78,3 +78,7 @@ mod document_setup_tests;
 mod geometry_density_tests;
 #[cfg(test)]
 mod png_density_tests;
+
+#[cfg(test)]
+mod export_tests;
+pub(crate) mod output_size;

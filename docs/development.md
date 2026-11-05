@@ -131,3 +131,7 @@ Run `python scripts/smoke-document-setup.py --cli <built-cli> --gui <built-deskt
 ## PNG-density checks
 
 Run `python scripts/smoke-png-density.py --cli <built-cli> --gui <built-desktop>` for signature-based input, exact asymmetric/unknown/zero density, cross-transport PNG parity, project and plugin-independent recording restoration, malformed late-chunk rejection and four-language resolution forms. `scripts/smoke-document-setup.py` now compares decoded pixels across differing resolutions while checking the expected density chunks. Run `png_io_cost` as an ignored Release library test to measure its deterministic cold encode/scan/decode workload. See [PNG Density](png-density.md) for supported limits and costs.
+
+## Export-sizing checks
+
+Run `python scripts/smoke-export.py --cli <built-cli> --gui <built-desktop>` for independent native sampling references, PNG/density parity across JSONL/MCP/desktop, unchanged source state, actual file digests, guarded project destinations and outcome playback without recreating files. UI captures cover English, Chinese, Japanese and Korean. The ignored Release `export_preview_cost` test times a cached 2048-square source through dispatch, native sampling, PNG and Base64/JSON, with source preparation, recording, file I/O and reference checking outside the timers. Library tests also inject recording failure after publication and verify the explicit file receipt. See [PNG Export Sizing](export-sizing.md).

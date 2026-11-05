@@ -15,6 +15,8 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 
 [PNG density](automation/png-density.jsonl) compares implicit defaults and explicit physical resolution through snapshots without resampling pixels.
 
+[Export sizing](automation/export-sizing.jsonl) plans and writes a composed PNG without resizing the document. Create `target/example-output/` first.
+
 ## Automation
 
 | File | Demonstrates |

@@ -9,6 +9,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Photoshop-common Editing Plan](photoshop-essentials.md) | Independent functional adoption checklist, dependencies and acceptance checks |
 | [User Guide](user-guide.md) | Drawing, pen input, settings, shortcuts and panels |
 | [Interface Design](interface-design.md) | Visual hierarchy, configurable spacing and layout behavior |
+| [PNG Export Sizing](export-sizing.md) | Shared pixel/physical/percentage sizing, explicit preview, artifact hashes and file safety |
 | [PNG Density](png-density.md) | Exact physical/aspect density, unknown dimensions, bounded import and replay output |
 | [Document Setup](document-setup.md) | New-canvas presets, editable background initialization, physical resolution and shared actions |
 | [Canvas Editing](canvas-editing.md) | Framing/crop, rotation/flips, resampling/trim, Move/nudge, Free Transform, history and public actions |

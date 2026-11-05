@@ -201,6 +201,7 @@ pub struct Session {
     pub(crate) system_clipboard: Option<Box<dyn crate::platform::clipboard::SystemClipboard>>,
     pub(crate) system_clipboard_event: Option<Value>,
     pub(crate) transform_event: Option<Value>,
+    pub(crate) export_event: Option<Value>,
     pub(crate) clipboard: Option<std::sync::Arc<crate::plugins::clipboard::Payload>>,
     pub(crate) pointer_checkpoint: Option<(
         super::atomic::Checkpoint,
@@ -300,6 +301,7 @@ impl Session {
             system_clipboard: None,
             system_clipboard_event: None,
             transform_event: None,
+            export_event: None,
             ui_effects: VecDeque::new(),
             stroke: Default::default(),
             events: VecDeque::with_capacity(512),
@@ -353,6 +355,7 @@ impl Session {
         self.execution_depth -= 1;
         if let (Err(error), Some(action)) = (&result, rejected) {
             if self.read_depth == 0
+                && self.replay_error.is_none()
                 && self.journal.as_ref().map_or(0, |j| j.entries.len()) == replay_sequence
             {
                 self.replay_commit(
@@ -394,6 +397,9 @@ impl Session {
         let mut result = json!({});
         for (index, (id, op, args)) in plan.into_iter().enumerate() {
             let event_args = args.clone();
+            if op == Some(Operation::Export) {
+                self.export_event = None;
+            }
             if self.remaining_actions == 0 {
                 return Err(ActionError::new(
                     "execution_limit",
@@ -491,6 +497,7 @@ impl Session {
                                     | Operation::Pointer
                                     | Operation::CaptureWorkspace
                                     | Operation::TransformPreview
+                                    | Operation::ExportDialog
                                     | Operation::ReplayExport
                                     | Operation::ReplayFrames
                                     | Operation::ReplayRecover
@@ -499,7 +506,9 @@ impl Session {
                     {
                         self.revision += 1;
                     }
-                    if recording {
+                    // Preserve a child's partial report when recording has already
+                    // stopped; a second append cannot record or undo its effects.
+                    if recording && !(failed && self.replay_error.is_some()) {
                         if let Err(error) = self.replay_action(
                             &id,
                             &event_args,
@@ -509,6 +518,11 @@ impl Session {
                         ) {
                             if let Some(saved) = checkpoint.take() {
                                 saved.restore(self);
+                            }
+                            if op == Some(Operation::Export) && !failed {
+                                return Err(ActionError::new("export_recording",format!(
+                                    "PNG was written to {} (SHA-256 {}), but recording failed: {}",
+                                    value["path"].as_str().unwrap_or_default(),value["sha256"].as_str().unwrap_or_default(),error)));
                             }
                             return Err(error);
                         }
