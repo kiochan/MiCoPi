@@ -142,6 +142,12 @@ impl Document {
     ) -> Result<(), String> {
         selection.validate(self.width, self.height)?;
         if let Some(p) = pixels {
+            if self.pixel_locked(self.active) {
+                return Err("Unlock layer pixels before transforming them".into());
+            }
+            if self.position_locked(self.active) {
+                return Err("Unlock layer position before transforming pixels".into());
+            }
             if p.len() != self.width * self.height {
                 return Err("Invalid movement pixel count".into());
             }

@@ -40,6 +40,30 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 FlattenImage => MergeLayers::Flatten,
                 _ => MergeLayers::Stamp,
             };
+            let consumed: Vec<_> = match op {
+                MergeDown if i > 0 => vec![i - 1, i],
+                MergeVisible => {
+                    let v: Vec<_> = (0..s.doc.layers.len())
+                        .filter(|&i| s.doc.layers[i].visible)
+                        .collect();
+                    if v.len() > 1 {
+                        v
+                    } else {
+                        vec![]
+                    }
+                }
+                FlattenImage => (0..s.doc.layers.len()).collect(),
+                _ => vec![],
+            };
+            for target in consumed {
+                super::PixelAccess::Pixels.require(&s.doc, target)?;
+                if s.doc.alpha_locked(target) {
+                    return Err(ActionError::new(
+                        "alpha_locked",
+                        "Unlock layer transparency before merging these layers",
+                    ));
+                }
+            }
             s.finish_stroke();
             s.doc
                 .merge_layers(operation, i)
@@ -88,6 +112,17 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             if i >= s.doc.layers.len() {
                 return Err(ActionError::new("invalid_layer", "Layer does not exist"));
             }
+            if op == LayerProperties
+                && ["pixel_locked", "position_locked", "color_label"]
+                    .iter()
+                    .any(|key| args.get(*key).is_some())
+                && (s.stroke.active() || s.pointer_checkpoint.is_some())
+            {
+                return Err(ActionError::new(
+                    "stroke_active",
+                    "Finish the current contact before changing layer organization",
+                ));
+            }
             s.finish_stroke();
             if op == SelectLayer {
                 s.doc.active = i;
@@ -104,7 +139,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                     l.mode
                 };
                 s.doc
-                    .set_layer_properties_with_lock(
+                    .set_layer_properties_organized(
                         i,
                         visible,
                         opacity,
@@ -112,12 +147,23 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                         args["alpha_locked"]
                             .as_bool()
                             .unwrap_or(s.doc.alpha_locked(i)),
+                        args["pixel_locked"]
+                            .as_bool()
+                            .unwrap_or(s.doc.pixel_locked(i)),
+                        args["position_locked"]
+                            .as_bool()
+                            .unwrap_or(s.doc.position_locked(i)),
+                        args.get("color_label")
+                            .map(|v| serde_json::from_value(v.clone()))
+                            .transpose()?
+                            .unwrap_or(s.doc.color_label(i)),
                     )
                     .map_err(|e| ActionError::new("layer_properties", e))?;
             }
             Ok(s.state())
         }
         ClearLayer => {
+            super::PixelAccess::Pixels.require(&s.doc, s.doc.active)?;
             if s.doc.alpha_locked(s.doc.active) {
                 return Err(ActionError::new(
                     "alpha_locked",

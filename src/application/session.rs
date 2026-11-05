@@ -324,7 +324,14 @@ impl Session {
         let mut parameters = json!(self.parameters);
         parameters["spacing"] = json!(self.parameters.spacing);
         parameters["minimum_opacity"] = json!(self.parameters.minimum_opacity);
-        json!({"document_info":self.doc.info().state(self.doc.width,self.doc.height),"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"id":self.doc.layer_id(index),"name":self.doc.layer_name(index),"alpha_locked":self.doc.alpha_locked(index),"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"last_transform":crate::plugins::affine::repeat_state(self),"movement_defaults":self.movement_defaults,"movement_options":self.movement_options(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
+        json!({"document_info":self.doc.info().state(self.doc.width,self.doc.height),"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":(0..self.doc.layers.len()).map(|index|self.layer_state(index)).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"last_transform":crate::plugins::affine::repeat_state(self),"movement_defaults":self.movement_defaults,"movement_options":self.movement_options(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
+    }
+    pub(crate) fn layer_state(&self, index: usize) -> Value {
+        let l = &self.doc.layers[index];
+        json!({"index":index,"id":self.doc.layer_id(index),"name":self.doc.layer_name(index),
+            "alpha_locked":self.doc.alpha_locked(index),"pixel_locked":self.doc.pixel_locked(index),
+            "position_locked":self.doc.position_locked(index),"color_label":self.doc.color_label(index),
+            "visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode,"active":index==self.doc.active})
     }
     pub fn apply(&mut self, action: Action) -> ActionResult {
         let pointer_action = self
@@ -431,6 +438,9 @@ impl Session {
                 && self.runtime == "desktop"
                 && self.system_clipboard.is_some()
             {
+                if op == Some(Operation::SystemClipboardCut) {
+                    crate::plugins::PixelAccess::Pixels.require(&self.doc, self.doc.active)?;
+                }
                 self.finish_stroke();
             }
             if recording {
@@ -592,6 +602,9 @@ impl Session {
             }
             if matches!(op, Operation::ImageSize | Operation::ImageSizePlan) {
                 super::image_size::validate(&action.args)?;
+            }
+            if op == Operation::LayerQuery {
+                super::layer_query::validate(&action.args)?;
             }
             out.push((action.action.clone(), Some(op), action.args.clone()));
         } else if definition.native.is_some() {

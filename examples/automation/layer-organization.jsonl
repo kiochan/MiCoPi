@@ -1,0 +1,11 @@
+{"action":"canvas.new","args":{"width":96,"height":64,"background":"#FFF9EF"}}
+{"action":"layer.rename","args":{"name":"Ink"}}
+{"action":"canvas.stroke","args":{"points":[{"x":10,"y":48,"pressure":0.2,"pen":true,"time":0},{"x":42,"y":12,"pressure":1,"pen":true,"time":40},{"x":84,"y":48,"pressure":0.4,"pen":true,"time":80}]}}
+{"action":"layer.set","args":{"pixel_locked":true,"position_locked":true,"color_label":"violet"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Color"}}
+{"action":"layer.set","args":{"color_label":"blue","opacity":0.5}}
+{"action":"layer.query","args":{"query":"ink","locked":true,"color_label":"violet"}}
+{"action":"pipeline.run","args":{"atomic":true,"steps":[{"id":"find","action":"layer.query","args":{"query":"color"}},{"id":"label","action":"layer.set","args":{"layer_id":{"$ref":"find#/result/layers/0/id"},"color_label":"green"}}]}}
+{"action":"canvas.export","args":{"path":"target/example-output/layer-organization.png"}}
+{"action":"replay.verify","args":{}}

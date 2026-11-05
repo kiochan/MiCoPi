@@ -146,5 +146,12 @@
       "operation": "pick"
     }
   ],
-  "library": "micopi_painting_tools.dll"
+  "library": "micopi_painting_tools.dll",
+  "action_access": {
+    "tool.select": "none",
+    "brush.set": "none",
+    "canvas.pointer": "pixels",
+    "canvas.stroke": "pixels",
+    "color.pick": "none"
+  }
 }

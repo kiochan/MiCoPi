@@ -81,6 +81,9 @@ pub struct Manifest {
     pub tools: Vec<ToolDefinition>,
     #[serde(default)]
     pub actions: Vec<ActionDefinition>,
+    /// Access declarations for contributions returned by an unchanged DLL.
+    #[serde(default)]
+    pub action_access: BTreeMap<String, PixelAccess>,
     #[serde(default)]
     pub panels: Vec<PanelDefinition>,
     #[serde(default)]
@@ -123,10 +126,19 @@ pub struct ActionDefinition {
     pub read_only: bool,
     #[serde(default)]
     pub document_atomic: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pixel_access: Option<PixelAccess>,
     #[serde(default)]
     pub output_schema: Option<Value>,
 }
 impl ActionDefinition {
+    pub fn effective_pixel_access(&self) -> PixelAccess {
+        if self.is_read_only() {
+            PixelAccess::None
+        } else {
+            self.pixel_access.unwrap_or(PixelAccess::Geometry)
+        }
+    }
     pub fn is_document_atomic(&self) -> bool {
         self.operation
             .map(Operation::document_atomic)
@@ -143,6 +155,49 @@ impl ActionDefinition {
                 .map(Operation::schema)
                 .unwrap_or(json!({"type":"object"}))
         })
+    }
+}
+/// Host-enforced access to existing layer pixels; unrelated host actions retain
+/// their own target-aware validation. Legacy opaque DLL actions are geometric.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum PixelAccess {
+    None,
+    Pixels,
+    Geometry,
+}
+impl PixelAccess {
+    pub(crate) fn require(
+        self,
+        document: &crate::engine::Document,
+        index: usize,
+    ) -> Result<(), ActionError> {
+        if self != Self::None && document.pixel_locked(index) {
+            return Err(ActionError::new(
+                "pixel_locked",
+                "Unlock layer pixels before editing them",
+            ));
+        }
+        if self == Self::Geometry && document.position_locked(index) {
+            return Err(ActionError::new(
+                "position_locked",
+                "Unlock layer position before transforming its pixels",
+            ));
+        }
+        Ok(())
+    }
+    pub(crate) fn require_write(
+        self,
+        document: &crate::engine::Document,
+        index: usize,
+    ) -> Result<(), ActionError> {
+        if self == Self::None {
+            return Err(ActionError::new(
+                "pixel_access",
+                "This contribution has no permission to edit layer pixels",
+            ));
+        }
+        self.require(document, index)
     }
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -457,8 +512,20 @@ impl Registry {
                 if !valid_id(&m.id) || out.loaded.contains(&m.id) {
                     return Err("Invalid or duplicate plugin ID".into());
                 }
+                for (id, access) in &m.action_access {
+                    let action = m.actions.iter_mut().find(|a| &a.id == id).ok_or_else(|| {
+                        format!("Action access references an unknown owned action: {id}")
+                    })?;
+                    if action
+                        .pixel_access
+                        .is_some_and(|declared| declared != *access)
+                    {
+                        return Err(format!("Conflicting pixel access declarations: {id}"));
+                    }
+                    action.pixel_access = Some(*access);
+                }
                 let mut ids = BTreeSet::new();
-                for a in &m.actions {
+                for a in &mut m.actions {
                     if !valid_id(&a.id)
                         || !ids.insert(a.id.clone())
                         || out.actions.contains_key(&a.id)
@@ -484,6 +551,18 @@ impl Registry {
                                 a.id
                             ));
                         }
+                    }
+                    if a.is_read_only()
+                        && a.pixel_access
+                            .is_some_and(|access| access != PixelAccess::None)
+                    {
+                        return Err(format!(
+                            "Read-only actions cannot declare pixel writes: {}",
+                            a.id
+                        ));
+                    }
+                    if a.native.is_some() {
+                        a.pixel_access = Some(a.effective_pixel_access());
                     }
                     if a.steps.len() > 256 {
                         return Err("Macro action exceeds 256 steps".into());
@@ -810,4 +889,63 @@ pub fn validate(schema: &Value, value: &Value) -> Result<(), ActionError> {
         Ok(())
     }
     check(schema, value, "args").map_err(|e| ActionError::new("invalid_arguments", e))
+}
+
+#[cfg(test)]
+mod access_tests {
+    use super::*;
+
+    #[test]
+    fn legacy_native_access_is_conservative_and_readonly_has_no_write_access() {
+        let mut action: ActionDefinition = serde_json::from_value(json!({
+            "id":"legacy.action", "title":"Legacy action", "native":"run"
+        }))
+        .unwrap();
+        assert_eq!(action.effective_pixel_access(), PixelAccess::Geometry);
+        action.read_only = true;
+        assert_eq!(action.effective_pixel_access(), PixelAccess::None);
+        action.read_only = false;
+        action.pixel_access = Some(PixelAccess::Pixels);
+        assert_eq!(action.effective_pixel_access(), PixelAccess::Pixels);
+    }
+
+    fn assemble(access: Value, declared: Option<PixelAccess>) -> Registry {
+        let mut action = json!({"id":"access.state", "title":"State", "operation":"state"});
+        if let Some(declared) = declared {
+            action["pixel_access"] = json!(declared);
+        }
+        let manifest = serde_json::from_value(json!({
+            "api_version":1, "id":"access", "name":"Access policy fixture",
+            "actions":[action], "action_access":access,
+            "panels":[{"id":"access.panel","title":"Fixture"}]
+        }))
+        .unwrap();
+        Registry::assemble(
+            vec![(PathBuf::from("access/manifest.json"), Ok(manifest))],
+            PathBuf::new(),
+            &[],
+        )
+    }
+
+    #[test]
+    fn access_overlay_is_applied_and_invalid_owned_references_reject_the_whole_package() {
+        let registry = assemble(json!({"access.state":"none"}), None);
+        assert_eq!(registry.loaded, ["access"]);
+        assert_eq!(
+            registry.actions["access.state"].pixel_access,
+            Some(PixelAccess::None)
+        );
+        assert!(registry.panels.contains_key("access.panel"));
+        for (overlay, declared) in [
+            (json!({"another.owner":"pixels"}), None),
+            (json!({"access.state":"pixels"}), None),
+            (json!({"access.state":"none"}), Some(PixelAccess::Pixels)),
+        ] {
+            let registry = assemble(overlay, declared);
+            assert!(registry.loaded.is_empty());
+            assert!(registry.actions.is_empty());
+            assert!(registry.panels.is_empty());
+            assert_eq!(registry.diagnostics.len(), 1);
+        }
+    }
 }

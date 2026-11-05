@@ -32,7 +32,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -648,7 +725,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -1048,7 +1202,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -1199,7 +1430,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -1350,7 +1658,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -2392,6 +2777,121 @@
       "operation": "layer_properties"
     },
     {
+      "id": "layer.query",
+      "title": "Find Layers",
+      "operation": "layer_query",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16
+          },
+          "matched": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "total",
+          "matched",
+          "layers",
+          "revision",
+          "drawing"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "layer.clear",
       "title": "Clear current layer",
       "operation": "clear_layer"
@@ -2959,7 +3459,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -3110,7 +3687,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -3670,7 +4324,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -3821,7 +4552,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -3972,7 +4780,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -4123,7 +5008,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -4274,7 +5236,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -4425,7 +5464,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -4576,7 +5692,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -4727,7 +5920,84 @@
             "type": "object"
           },
           "layers": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
           },
           "selection": {
             "type": "object",
@@ -5368,6 +6638,122 @@
           "revision",
           "drawing"
         ]
+      }
+    },
+    {
+      "id": "core.layers",
+      "title": "Inspect Layers",
+      "action": "layer.query",
+      "args": {},
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16
+          },
+          "matched": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 16
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "total",
+          "matched",
+          "layers",
+          "revision",
+          "drawing"
+        ],
+        "additionalProperties": false
       }
     }
   ]

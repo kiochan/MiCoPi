@@ -63,6 +63,9 @@ fn transfer(s: &mut Session, cut: bool) -> Result<(), String> {
     )
 }
 pub(crate) fn execute(s: &mut Session, op: Operation) -> ActionResult {
+    if op == Operation::LayerViaCut {
+        super::PixelAccess::Pixels.require(&s.doc, s.doc.active)?;
+    }
     transfer(s, op == Operation::LayerViaCut).map_err(|e| ActionError::new("layer_transfer", e))?;
     Ok(s.state())
 }

@@ -3,5 +3,9 @@
   "id": "ai_assistant",
   "name": "AI pipeline example",
   "requires": ["core", "painting", "native_paint"],
-  "library": "micopi_ai_assistant.dll"
+  "library": "micopi_ai_assistant.dll",
+  "action_access": {
+    "assistant.context": "none",
+    "assistant.checkerboard": "pixels"
+  }
 }

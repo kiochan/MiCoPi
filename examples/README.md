@@ -17,6 +17,8 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 
 [Physical Image Size](automation/physical-image-size.jsonl) plans and resamples every layer and the selection using millimeters at the retained density, then checks undo/redo and exports a PNG. Create `target/example-output/` first.
 
+[Layer organization](automation/layer-organization.jsonl) protects an ink layer, labels layers, queries metadata and binds a found stable ID to a later atomic property action. Create `target/example-output/` first.
+
 [PNG density](automation/png-density.jsonl) compares implicit defaults and explicit physical resolution through snapshots without resampling pixels.
 
 [Export sizing](automation/export-sizing.jsonl) plans and writes a composed PNG without resizing the document. Create `target/example-output/` first.

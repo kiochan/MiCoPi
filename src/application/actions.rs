@@ -146,6 +146,7 @@ pub enum Operation {
     StampVisible,
     SelectLayer,
     LayerProperties,
+    LayerQuery,
     ClearLayer,
     SelectionShape,
     SelectAll,
@@ -189,6 +190,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::LayerQuery {
+            return super::layer_query::schema();
+        }
         if matches!(self, Self::ImageSize | Self::ImageSizePlan) {
             return super::image_size::schema();
         }
@@ -349,7 +353,7 @@ impl Operation {
                 vec!["to"],
             ),
             Self::LayerProperties => (
-                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},"visible":{"type":"boolean"},"alpha_locked":{"type":"boolean"},"opacity":{"type":"number","minimum":0,"maximum":1},"blend_mode":{"type":"string","enum":["normal","multiply","screen","overlay","darken","lighten","add","difference"]}}),
+                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},"visible":{"type":"boolean"},"alpha_locked":{"type":"boolean"},"pixel_locked":{"type":"boolean"},"position_locked":{"type":"boolean"},"color_label":{"type":"string","enum":["none","red","orange","yellow","green","blue","violet","gray"]},"opacity":{"type":"number","minimum":0,"maximum":1},"blend_mode":{"type":"string","enum":["normal","multiply","screen","overlay","darken","lighten","add","difference"]}}),
                 vec![],
             ),
             Self::Pick => (json!({"x":number,"y":number}), vec!["x", "y"]),
@@ -399,6 +403,7 @@ impl Operation {
                 | Self::Describe
                 | Self::ContextRead
                 | Self::State
+                | Self::LayerQuery
                 | Self::NewPlan
                 | Self::ImageSizePlan
                 | Self::DocumentInfo

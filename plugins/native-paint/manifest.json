@@ -3,5 +3,18 @@
   "id": "native_paint",
   "name": "Native Painting Plugin · Rust DLL",
   "requires": ["core", "painting", "workbench"],
-  "library": "micopi_native_paint.dll"
+  "library": "micopi_native_paint.dll",
+  "action_access": {
+    "native.invert": "pixels",
+    "native.checkerboard": "pixels",
+    "native.invert_region": "pixels",
+    "native.stats": "none",
+    "layer.flip_horizontal": "geometry",
+    "layer.flip_vertical": "geometry",
+    "layer.rotate_180": "geometry",
+    "layer.translate": "geometry",
+    "layer.fill": "pixels",
+    "layer.gradient": "pixels",
+    "layer.fill_color": "pixels"
+  }
 }

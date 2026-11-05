@@ -51,7 +51,7 @@ pub fn describe(s: &Session) -> Value {
         "entrypoints":{"discover":"app.describe","query":"context.read","execute":"pipeline.run","node_catalog":"node.catalog","workflow_read":"workflow.read","workflow_edit":"workflow.patch","workflow_execute":"workflow.run","events":"events.list","image":"canvas.snapshot","replay_status":"replay.status","replay_events":"replay.events","replay_verify":"replay.verify","replay_image":"replay.snapshot"},
         "actions":s.registry.actions.values().map(|a|json!({"id":a.id,"title":a.title,
             "owner":s.registry.owners.get(&a.id),"inputSchema":a.schema(),"outputSchema":a.output_schema,
-            "readOnly":a.is_read_only(),"documentAtomic":a.is_document_atomic()})).collect::<Vec<_>>(),
+            "readOnly":a.is_read_only(),"documentAtomic":a.is_document_atomic(),"pixelAccess":a.pixel_access})).collect::<Vec<_>>(),
         "resources":resources,"limits":{"steps":128,"nested_calls":16,"action_budget":1024,"events":512},
         "execution":{"order":"sequential","transactional":false,"atomic_option":true,"atomic_scope":"document","stop_on_error":true,
             "reference":{"$ref":"step-id#/result/field"},"dry_run":"validate_only_no_plugin_execution",

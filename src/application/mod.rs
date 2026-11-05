@@ -27,6 +27,9 @@ mod graph_tests;
 #[cfg(test)]
 mod layer_merge_tests;
 #[cfg(test)]
+mod layer_organization_tests;
+pub(crate) mod layer_query;
+#[cfg(test)]
 mod linked_graph_tests;
 #[cfg(test)]
 mod pipeline_tests;

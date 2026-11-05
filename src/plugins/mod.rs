@@ -37,6 +37,7 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        LayerQuery => crate::application::layer_query::execute(session, &args),
         Export | Render | ExportPlan | ExportPreview | ExportDialog => {
             export::execute(session, op, args)
         }

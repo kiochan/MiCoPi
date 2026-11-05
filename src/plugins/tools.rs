@@ -14,6 +14,7 @@ struct Contact {
     owner: String,
     handler: u32,
     kind: ToolKind,
+    write_pixels: bool,
     flags: u32,
     last: Pointer,
 }
@@ -68,16 +69,9 @@ impl StrokeEngine {
                     )
                 })?;
             let parameters = parameters(&s.parameters)?;
-            let instance = match s.tool_instances.remove(&owner) {
-                Some(instance) => instance,
-                None => {
-                    ToolInstance::new(s.registry.native_plugins.get(&owner).cloned().ok_or_else(
-                        || ActionError::new("tool_plugin_missing", "Tool DLL is not loaded"),
-                    )?)?
-                }
-            };
             let painting = matches!(kind, ToolKind::Brush | ToolKind::Eraser);
             if painting {
+                super::PixelAccess::Pixels.require(&s.doc, s.doc.active)?;
                 if s.doc.alpha_locked(s.doc.active) && (kind == ToolKind::Eraser || p.eraser) {
                     return Err(ActionError::new(
                         "alpha_locked",
@@ -93,6 +87,16 @@ impl StrokeEngine {
                 if !s.doc.layers[s.doc.active].visible {
                     return Err(ActionError::new("hidden_layer", "Current layer is hidden"));
                 }
+            }
+            let instance = match s.tool_instances.remove(&owner) {
+                Some(instance) => instance,
+                None => {
+                    ToolInstance::new(s.registry.native_plugins.get(&owner).cloned().ok_or_else(
+                        || ActionError::new("tool_plugin_missing", "Tool DLL is not loaded"),
+                    )?)?
+                }
+            };
+            if painting {
                 s.doc.begin_plugin_stroke();
             }
             let contact = Contact {
@@ -100,6 +104,7 @@ impl StrokeEngine {
                 owner,
                 handler,
                 kind,
+                write_pixels: painting,
                 flags: 0,
                 last: p,
             };
@@ -136,7 +141,7 @@ impl StrokeEngine {
             height: s.doc.height as u32,
             zoom: s.view.zoom,
         };
-        let painting = matches!(contact.kind, ToolKind::Brush | ToolKind::Eraser);
+        let painting = contact.write_pixels;
         let ended = matches!(p.phase, PointerPhase::Up | PointerPhase::Cancel);
         let result = contact
             .instance

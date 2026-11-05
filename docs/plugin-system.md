@@ -4,6 +4,8 @@ All package types use the same manifest, dependency resolver and registry. Tools
 
 ## Package identity and compatibility
 
+Native pixel access is part of action registration: optional `pixel_access` and package `action_access` overlays classify `none`, `pixels` or `geometry` access to existing layers. The shared registry validates ownership/conflicts and publishes effective native access. Old DLLs can be annotated through manifests; tables and binary descriptors need no change. See [Layer pixel access](native-plugins.md#layer-pixel-access) for conservative defaults and host enforcement.
+
 Manifests may add `version`, `description`, `author` and `min_host_version`. Versions use numeric `major.minor.patch` release triples. Existing manifests without these fields remain valid. `api_version` still describes manifest/registration compatibility; native SDK table versions remain independent.
 
 ```json

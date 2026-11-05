@@ -4,6 +4,22 @@ MiCoPi loads library DLLs declared by plugin manifests and merges their describe
 
 This is a synchronous in-process Windows x64 ABI. A DLL shares process permissions and can terminate the host through a crash or panic=abort. There is no crash isolation or hot replacement. Restart after updating or enabling/disabling a loaded DLL.
 
+## Layer pixel access
+
+Action contributions can declare `pixel_access` as `none`, `pixels` or `geometry`. It describes access to existing layer pixels, independently of `read_only` and `document_atomic`. Read-only actions resolve to `none`; conflicting declarations reject the package. Opaque mutating DLL actions without a declaration conservatively resolve to `geometry`. `app.describe` exposes `pixelAccess`; registry inventory preserves the effective native declaration.
+
+- `none` forbids direct mutable pixel callbacks. An action can still issue permitted host dispatches, each with its own target-aware checks.
+- `pixels` permits a raw pixel edit when the current layer is not pixel-locked.
+- `geometry` additionally requires the current layer not be position-locked.
+
+The package-level `action_access` map can annotate actions after DLL contributions are loaded, without changing an existing DLL's descriptor or ABI table. IDs must belong to that package; unknown IDs and conflicting declarations fail registration atomically. Built-in package overlays classify fills/filters and pixel-producing orchestration as `pixels`, layer transforms as `geometry`, and read/configuration operations as `none`. Older opaque extensions must explicitly narrow their declaration to use pixel-only effects on position-locked layers. Contribution changes require restart.
+
+```json
+{"action_access":{"my_plugin.adjust":"pixels","my_plugin.translate":"geometry","my_plugin.inspect":"none"}}
+```
+
+The host checks locks before invoking opaque actions and again at every mutable region loan, including after nested dispatch changes the active target. Denied loans are reported even if a plugin ignores a callback failure. Immutable sampling and selection snapshots remain available. Typed tool contacts cache write permission at Down: Brush/Eraser can write only to an unlocked target; Picker/Hand/Zoom cannot obtain mutable pixels. Callbacks recheck the read-only scope and current lock. These are bounded field checks, without new per-MOVE JSON, registry lookup, instance creation or image copies. Existing struct prefixes, table sizes and callback signatures are unchanged. This is an in-process extension contract, not memory isolation from arbitrary native code.
+
 ## SDK and builds
 
 crates/plugin-api contains dependency-free repr(C) types, function tables and include/micopi_plugin.h. Independent examples are painting, native-paint, ai-assistant and compositing. The SDK source package builds without the host or GUI crates.

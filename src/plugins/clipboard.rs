@@ -223,5 +223,8 @@ fn run(s: &mut Session, op: Operation, args: Value) -> Result<Value, String> {
     Ok(state(s))
 }
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
+    if op == Operation::ClipboardCut {
+        super::PixelAccess::Pixels.require(&s.doc, s.doc.active)?;
+    }
     run(s, op, args).map_err(|e| ActionError::new("clipboard", e))
 }

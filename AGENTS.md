@@ -49,6 +49,7 @@ Keep `src/plugins/` host integration separate from root `plugins/` feature packa
 - Keep the typed pointer path free of per-MOVE JSON serialization, file I/O, registry lookup, instance creation and whole-image copying. Preserve cached instances, dirty rectangles, reused buffers and tiled history.
 - Keep image composition and action workflows separate. Editing a workflow must not execute it.
 - New document operations need schemas, validation, revision behavior, undo, atomic capability declarations and verified outcome replay. Test failure/rollback behavior where relevant. Replay restores outcomes without executing DLL commands or external effects.
+- New single-layer pixel edits must honor pixel locks; geometric pixel edits also honor position locks. Preserve immutable reads, selection-only edits and document-wide geometry. Native actions declare `pixel_access` (`none`, `pixels`, `geometry`) or use owner-scoped `action_access` manifest overlays; undeclared opaque mutations are conservatively geometric. Gate every mutable host loan and keep typed permissions cached at contact start. See [Layer Editing](docs/layer-editing.md) and [Native Access](docs/native-plugins.md#layer-pixel-access).
 - Preserve supported project, recording and ABI compatibility. Extend optional ABI tails with size/capability checks; retain rejection fixtures and old recording hashes.
 - Measure hot-path or dependency costs. Do not claim physical tablet compatibility from synthetic tests.
 

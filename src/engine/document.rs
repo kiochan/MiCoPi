@@ -36,13 +36,59 @@ fn is_false(value: &bool) -> bool {
 fn is_zero(value: &u64) -> bool {
     *value == 0
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LayerColor {
+    #[default]
+    None,
+    Red,
+    Orange,
+    Yellow,
+    Green,
+    Blue,
+    Violet,
+    Gray,
+}
+impl LayerColor {
+    pub const ALL: [Self; 8] = [
+        Self::None,
+        Self::Red,
+        Self::Orange,
+        Self::Yellow,
+        Self::Green,
+        Self::Blue,
+        Self::Violet,
+        Self::Gray,
+    ];
+    pub fn is_none(&self) -> bool {
+        *self == Self::None
+    }
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::None => "No Color Label",
+            Self::Red => "Red",
+            Self::Orange => "Orange",
+            Self::Yellow => "Yellow",
+            Self::Green => "Green",
+            Self::Blue => "Blue",
+            Self::Violet => "Violet",
+            Self::Gray => "Gray",
+        }
+    }
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LayerMetadata {
     pub id: u64,
     pub name: String,
     #[serde(default, skip_serializing_if = "is_false")]
     pub alpha_locked: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub pixel_locked: bool,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub position_locked: bool,
+    #[serde(default, skip_serializing_if = "LayerColor::is_none")]
+    pub color_label: LayerColor,
 }
 impl Composition {
     pub fn validate_layer_metadata(&self) -> Result<(), String> {
@@ -263,6 +309,7 @@ impl Document {
                 id: 1,
                 name: String::new(),
                 alpha_locked: false,
+                ..Default::default()
             }],
             next_layer_id: 2,
             selection: Default::default(),
@@ -390,6 +437,7 @@ impl Document {
                     id: i as u64 + 1,
                     name: String::new(),
                     alpha_locked: false,
+                    ..Default::default()
                 })
                 .collect()
         } else {
@@ -510,13 +558,52 @@ impl Document {
         if index >= self.layers.len() {
             return Err("Layer does not exist".into());
         }
+        self.set_layer_properties_organized(
+            index,
+            visible,
+            opacity,
+            mode,
+            alpha_locked,
+            self.pixel_locked(index),
+            self.position_locked(index),
+            self.color_label(index),
+        )
+    }
+    pub fn set_layer_properties_organized(
+        &mut self,
+        index: usize,
+        visible: bool,
+        opacity: u8,
+        mode: BlendMode,
+        alpha_locked: bool,
+        pixel_locked: bool,
+        position_locked: bool,
+        color_label: LayerColor,
+    ) -> Result<(), String> {
+        if index >= self.layers.len() {
+            return Err("Layer does not exist".into());
+        }
         if mode != BlendMode::Normal && self.renderer.is_none() {
             return Err("Layer compositor DLL is not loaded".into());
         }
         let l = &self.layers[index];
-        if (l.visible, l.opacity, l.mode, self.alpha_locked(index))
-            == (visible, opacity, mode, alpha_locked)
-        {
+        if (
+            l.visible,
+            l.opacity,
+            l.mode,
+            self.alpha_locked(index),
+            self.pixel_locked(index),
+            self.position_locked(index),
+            self.color_label(index),
+        ) == (
+            visible,
+            opacity,
+            mode,
+            alpha_locked,
+            pixel_locked,
+            position_locked,
+            color_label,
+        ) {
             return Ok(());
         }
         self.finish();
@@ -526,6 +613,9 @@ impl Document {
         l.opacity = opacity;
         l.mode = mode;
         self.layer_metadata[index].alpha_locked = alpha_locked;
+        self.layer_metadata[index].pixel_locked = pixel_locked;
+        self.layer_metadata[index].position_locked = position_locked;
+        self.layer_metadata[index].color_label = color_label;
         if self.graph.linked {
             let ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
             let modes: Vec<_> = self.layers.iter().map(|l| l.mode).collect();
@@ -673,7 +763,8 @@ impl Document {
         width: usize,
         height: usize,
     ) -> bool {
-        if self.stroke.is_none()
+        if self.pixel_locked(self.active)
+            || self.stroke.is_none()
             || width == 0
             || height == 0
             || x.checked_add(width).is_none_or(|n| n > self.width)
@@ -751,7 +842,7 @@ impl Document {
     }
     pub fn begin(&mut self, x: f32, y: f32, b: Brush) {
         self.finish();
-        if !self.layers[self.active].visible {
+        if !self.layers[self.active].visible || self.pixel_locked(self.active) {
             return;
         }
         self.stroke = Some(Edit {
@@ -823,7 +914,7 @@ impl Document {
         edit.tiles.insert(id, Arc::new(data));
     }
     fn dab(&mut self, x: f32, y: f32, b: Brush) {
-        if self.alpha_locked(self.active) {
+        if self.alpha_locked(self.active) || self.pixel_locked(self.active) {
             return;
         }
         if b.opacity <= 0. || b.radius <= 0. {
@@ -1011,6 +1102,7 @@ impl Document {
             id: self.next_layer_id,
             name: String::new(),
             alpha_locked: false,
+            ..Default::default()
         });
         let graph = self.reindexed_graph(&metadata, None)?;
         if self.next_layer_id > u32::MAX as u64 {
@@ -1050,7 +1142,8 @@ impl Document {
         height: usize,
         pixels: &[u32],
     ) -> bool {
-        if width == 0
+        if self.pixel_locked(self.active)
+            || width == 0
             || height == 0
             || x.checked_add(width).is_none_or(|v| v > self.width)
             || y.checked_add(height).is_none_or(|v| v > self.height)
@@ -1118,7 +1211,7 @@ impl Document {
         changed
     }
     pub fn clear_layer(&mut self) {
-        if self.alpha_locked(self.active) {
+        if self.alpha_locked(self.active) || self.pixel_locked(self.active) {
             return;
         }
         self.finish();
@@ -1233,6 +1326,7 @@ impl Document {
                 id: i as u64 + 1,
                 name: String::new(),
                 alpha_locked: false,
+                ..Default::default()
             })
             .collect();
         doc.next_layer_id = n as u64 + 1;

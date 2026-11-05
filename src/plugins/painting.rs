@@ -48,14 +48,30 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 sample.validate()?;
                 samples.push(sample);
             }
-            if let Some(tool) = args["tool"].as_str() {
-                super::execute(s, SelectTool, json!({"tool":tool}))?;
-            }
             if s.stroke.active() {
                 return Err(ActionError::new(
                     "stroke_active",
                     "Finish the current stroke first",
                 ));
+            }
+            let selected_kind = if let Some(id) = args["tool"].as_str() {
+                s.registry
+                    .tools
+                    .get(id)
+                    .ok_or_else(|| ActionError::new("unknown_tool", id))?
+                    .kind
+            } else {
+                s.tool
+            };
+            let kind = samples[0].tool_override.unwrap_or(selected_kind);
+            if matches!(
+                kind,
+                crate::application::ToolKind::Brush | crate::application::ToolKind::Eraser
+            ) {
+                super::PixelAccess::Pixels.require(&s.doc, s.doc.active)?;
+            }
+            if let Some(tool) = args["tool"].as_str() {
+                super::execute(s, SelectTool, json!({"tool":tool}))?;
             }
             for sample in &samples {
                 s.pointer(*sample)?;

@@ -104,6 +104,9 @@ fn run(s: &mut Session, op: Operation, args: &Value) -> Result<(), String> {
     s.doc.apply_movement(pixels.as_deref(), selection)
 }
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
+    if options(s, op, &args).kind != 2 {
+        super::PixelAccess::Geometry.require(&s.doc, s.doc.active)?;
+    }
     run(s, op, &args).map_err(|e| ActionError::new("movement", e))?;
     Ok(s.state())
 }

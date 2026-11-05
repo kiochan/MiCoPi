@@ -52,6 +52,8 @@ Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadma
 - [Atomic document groups](docs/atomic-operations.md), shared-tile rollback and compact verified events.
 - Verified [event replay](docs/replay.md), time-lapse preview and PNG frame sequences.
 
+Layers support pixel/position locks, color labels and shared read-only name/visibility/lock filters, with undo, projects and verified replay. Native write permissions retain read tools and protect locked targets.
+
 Layers support renaming, reordering, deletion and selection-aware **Layer via Copy (Ctrl+J)** / **Layer via Cut (Ctrl+Shift+J)**. Without a selection, Ctrl+J duplicates the whole layer. Layers also support Merge Down (**Ctrl+E**), Merge Visible (**Ctrl+Shift+E**), Stamp Visible (**Ctrl+Alt+Shift+E**) and transparent-canvas flattening. Exact flips, 180° rotation and integer offsets are also available. See [Layer editing](docs/layer-editing.md).
 
 Current limits: one document per session; no Wintab, off-canvas layer storage, layer groups or watercolor engine. Native plugin DLLs execute inside the host process.

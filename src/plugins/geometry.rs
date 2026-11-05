@@ -85,6 +85,12 @@ fn run(s: &mut Session, op: Operation) -> Result<(), String> {
         .replace_geometry_with_info(w, h, pixels, selection, info)
 }
 pub(crate) fn execute(s: &mut Session, op: Operation) -> ActionResult {
+    if matches!(
+        op,
+        Operation::RotateLayerClockwise | Operation::RotateLayerCounterclockwise
+    ) {
+        super::PixelAccess::Geometry.require(&s.doc, s.doc.active)?;
+    }
     run(s, op).map_err(|e| ActionError::new("geometry", e))?;
     Ok(s.state())
 }

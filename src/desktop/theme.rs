@@ -1,6 +1,56 @@
 use super::{localize, settings::Appearance, tr};
 use eframe::egui::{self, *};
 
+#[cfg(test)]
+mod glyph_tests {
+    use super::*;
+    #[test]
+    fn embedded_material_subset_covers_theme_and_layer_controls() {
+        let ctx = Context::default();
+        let mut definitions = FontDefinitions::default();
+        definitions.font_data.insert(
+            "Material".into(),
+            FontData::from_static(include_bytes!(
+                "../../assets/material-symbols/MiCoPiSymbols.ttf"
+            ))
+            .into(),
+        );
+        definitions
+            .families
+            .insert(FontFamily::Name("Material".into()), vec!["Material".into()]);
+        ctx.set_fonts(definitions);
+        let _ = ctx.run(RawInput::default(), |ctx| {
+            ctx.fonts_mut(|fonts| {
+                let font = FontId::new(18., FontFamily::Name("Material".into()));
+                for source in [
+                    include_str!("theme.rs"),
+                    include_str!("../../plugins/layers/panel.rs"),
+                ] {
+                    for tail in source.split("\\u{").skip(1) {
+                        let Some((hex, _)) = tail.split_once('}') else {
+                            continue;
+                        };
+                        let Ok(code) = u32::from_str_radix(hex, 16) else {
+                            continue;
+                        };
+                        if (0xe000..=0xf8ff).contains(&code) {
+                            let glyph = char::from_u32(code).unwrap();
+                            assert!(
+                                fonts.has_glyph(&font, glyph),
+                                "Material subset is missing U+{code:04X}"
+                            );
+                            assert!(
+                                fonts.glyph_width(&font, glyph) > 0.,
+                                "Material glyph U+{code:04X} has no width"
+                            );
+                        }
+                    }
+                }
+            });
+        });
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Colors {
     pub background: Color32,

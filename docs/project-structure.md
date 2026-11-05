@@ -65,6 +65,8 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/document.rs` | Pixels, composition and copy-on-write undo tiles |
 | `src/engine/canvas_editing.rs` | Staged geometry, shared transform validation/publication and borrowed-source preview composition |
 | `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
+| `src/application/layer_query.rs`, `src/application/layer_organization_tests.rs` | Read-only layer discovery, organization schema and lock/label/history/replay contracts |
+| `plugins/layers/panel.rs` | Compiled layer properties, metadata-based filter cache, markers, names and responsive rows |
 | `src/engine/selection.rs` | Immutable coverage storage, bounded encoding and shared selection snapshots |
 | `src/application/movement_preferences.rs`, `src/application/movement_tests.rs` | Validated move targets/steps, public state and shared history/replay regressions |
 | `src/engine/homography.rs`, `src/application/perspective_tests.rs` | Finite convex quad geometry, horizon validation and projective action/history/persistence contracts |

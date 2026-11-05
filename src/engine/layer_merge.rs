@@ -118,8 +118,13 @@ impl Document {
             if self.next_layer_id > u32::MAX as u64 {
                 return Err("Layer identity limit reached".into());
             }
-        } else if indices.iter().any(|&i| self.alpha_locked(i)) {
-            return Err("Unlock layer transparency before merging these layers".into());
+        } else {
+            if indices.iter().any(|&i| self.pixel_locked(i)) {
+                return Err("Unlock layer pixels before merging these layers".into());
+            }
+            if indices.iter().any(|&i| self.alpha_locked(i)) {
+                return Err("Unlock layer transparency before merging these layers".into());
+            }
         }
         let full = operation != MergeLayers::Down;
         // Full-stack rendering includes original visibility, filters and blend modes.
@@ -138,6 +143,7 @@ impl Document {
                 id: self.next_layer_id,
                 name: "Merged copy".into(),
                 alpha_locked: false,
+                ..Default::default()
             });
             modes.push(BlendMode::Normal);
             (self.layers.len(), vec![])

@@ -1,6 +1,15 @@
 //! Structural edits move pixel buffers; only duplication allocates another layer.
 use super::*;
 impl Document {
+    pub fn pixel_locked(&self, index: usize) -> bool {
+        self.layer_metadata[index].pixel_locked
+    }
+    pub fn position_locked(&self, index: usize) -> bool {
+        self.layer_metadata[index].position_locked
+    }
+    pub fn color_label(&self, index: usize) -> LayerColor {
+        self.layer_metadata[index].color_label
+    }
     pub fn alpha_locked(&self, index: usize) -> bool {
         self.layer_metadata[index].alpha_locked
     }
@@ -115,6 +124,9 @@ impl Document {
                 id: self.next_layer_id,
                 name: self.layer_metadata[index].name.clone(),
                 alpha_locked: staged.is_none() && self.layer_metadata[index].alpha_locked,
+                pixel_locked: staged.is_none() && self.pixel_locked(index),
+                position_locked: staged.is_none() && self.position_locked(index),
+                color_label: self.color_label(index),
             },
         );
         let graph =
@@ -173,6 +185,9 @@ impl Document {
             return Err("Link the layer stack before inserting pasted pixels".into());
         }
         if let Some(([x, y, w, h], source)) = cut {
+            if self.pixel_locked(self.active) {
+                return Err("Cannot cut a pixel-locked layer".into());
+            }
             if self.alpha_locked(self.active) {
                 return Err("Cannot cut an alpha-locked layer".into());
             }
@@ -193,6 +208,7 @@ impl Document {
                 id: self.next_layer_id,
                 name: String::new(),
                 alpha_locked: false,
+                ..Default::default()
             },
         );
         let graph = self.reindexed_graph(&metadata, None)?;

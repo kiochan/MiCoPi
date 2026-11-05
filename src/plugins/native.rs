@@ -1,4 +1,5 @@
 //! Versioned native-code plugin loader and synchronous host capabilities.
+use super::PixelAccess;
 use crate::application::{Action, ActionError, ActionResult, Session};
 use micopi_plugin_api as abi;
 use serde::Deserialize;
@@ -604,7 +605,13 @@ impl Instance {
         };
         Ok(Self { plugin, state })
     }
-    fn invoke(&mut self, session: &mut Session, handler: &str, args: Value) -> ActionResult {
+    fn invoke(
+        &mut self,
+        session: &mut Session,
+        handler: &str,
+        args: Value,
+        access: PixelAccess,
+    ) -> ActionResult {
         let args = serde_json::to_vec(&args)?;
         if args.len() > abi::MAX_MESSAGE {
             return Err(ActionError::new(
@@ -617,6 +624,8 @@ impl Instance {
             session,
             busy: false,
             selection,
+            access,
+            denied: None,
         };
         let host = abi::HostApiSelection {
             base: abi::HostApi {
@@ -639,6 +648,9 @@ impl Instance {
                 reply,
             )
         };
+        if let Some(error) = context.denied {
+            return Err(error);
+        }
         if output.overflow {
             return Err(ActionError::new(
                 "native_output",
@@ -655,6 +667,8 @@ impl Instance {
     }
 }
 pub(crate) fn execute(session: &mut Session, action: &str, args: Value) -> ActionResult {
+    let access = session.registry.actions[action].effective_pixel_access();
+    access.require(&session.doc, session.doc.active)?;
     let (plugin_id, handler) = session
         .registry
         .native_actions
@@ -681,7 +695,7 @@ pub(crate) fn execute(session: &mut Session, action: &str, args: Value) -> Actio
         None => Instance::new(plugin)?,
     };
     session.native_stack.push(plugin_id.clone());
-    let result = instance.invoke(session, &handler, args);
+    let result = instance.invoke(session, &handler, args, access);
     session.native_stack.pop();
     session.native_instances.insert(plugin_id, instance);
     result
@@ -718,6 +732,8 @@ struct HostContext {
     session: *mut Session,
     busy: bool,
     selection: Option<crate::engine::selection::Mask>,
+    access: PixelAccess,
+    denied: Option<ActionError>,
 }
 unsafe extern "C" fn read_selection(context: *mut c_void, output: *mut abi::Coverage) -> i32 {
     if context.is_null() || output.is_null() {
@@ -968,6 +984,13 @@ unsafe extern "C" fn edit_region(
     };
     let session = &mut *(*host).session;
     if session.read_depth != 0 {
+        return abi::ERROR;
+    }
+    if let Err(error) = (*host)
+        .access
+        .require_write(&session.doc, session.doc.active)
+    {
+        (*host).denied = Some(error);
         return abi::ERROR;
     }
     let [x, y, w, h] = [
@@ -1975,6 +1998,8 @@ mod tests {
             session: &mut session,
             busy: false,
             selection,
+            access: PixelAccess::None,
+            denied: None,
         };
         let mut mask = abi::Coverage::default();
         let pointer = (&mut context as *mut HostContext).cast();
@@ -2035,6 +2060,8 @@ mod tests {
             session: &mut session,
             busy: false,
             failed: false,
+            write_pixels: true,
+            denied: None,
         };
         let region = abi::Region {
             x: 63,
@@ -2153,6 +2180,174 @@ mod tests {
         *(*pixels).data = 0xff123456;
         abi::OK
     }
+    unsafe extern "C" fn count_paint(context: *mut c_void, pixels: *mut abi::Pixels) -> i32 {
+        *context.cast::<usize>() += 1;
+        paint(std::ptr::null_mut(), pixels)
+    }
+    #[test]
+    fn legacy_unclassified_action_is_rejected_before_invoking_a_locked_layer() {
+        use crate::engine::{document::LayerColor, graph::BlendMode};
+        let mut registry = super::super::Registry::load(
+            &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+        )
+        .unwrap();
+        registry
+            .actions
+            .get_mut("native.invert")
+            .unwrap()
+            .pixel_access = None;
+        let mut session = Session::new(registry).unwrap();
+        session.doc = crate::engine::Document::new(8, 8);
+        session
+            .doc
+            .set_layer_properties_organized(
+                0,
+                true,
+                255,
+                BlendMode::Normal,
+                false,
+                false,
+                true,
+                LayerColor::None,
+            )
+            .unwrap();
+        let history = session.doc.history_bytes();
+        let error = session
+            .apply(Action::new("native.invert", json!({})))
+            .unwrap_err();
+        assert_eq!(error.code, "position_locked");
+        assert!(!session.native_instances.contains_key("native_paint"));
+        assert_eq!(session.doc.history_bytes(), history);
+        assert!(session.doc.layers[0].pixels.iter().all(|p| *p == 0));
+        // A read-only action from the same unchanged DLL remains usable.
+        session
+            .apply(Action::new("native.stats", json!({})))
+            .unwrap();
+        assert!(session.native_instances.contains_key("native_paint"));
+    }
+    #[test]
+    fn mutable_action_loans_recheck_current_layer_locks_and_declared_access() {
+        use crate::engine::{document::LayerColor, graph::BlendMode};
+        let mut session = Session::new(super::super::Registry::bundled()).unwrap();
+        session.doc = crate::engine::Document::new(8, 8);
+        session.doc.try_add_layer().unwrap();
+        session
+            .doc
+            .set_layer_properties_organized(
+                1,
+                true,
+                255,
+                BlendMode::Normal,
+                false,
+                true,
+                false,
+                LayerColor::None,
+            )
+            .unwrap();
+        session.doc.active = 0;
+        session
+            .doc
+            .set_layer_properties_organized(
+                0,
+                true,
+                255,
+                BlendMode::Normal,
+                false,
+                false,
+                true,
+                LayerColor::None,
+            )
+            .unwrap();
+        let mut context = HostContext {
+            session: &mut session,
+            busy: false,
+            selection: None,
+            access: PixelAccess::None,
+            denied: None,
+        };
+        let region = abi::Region {
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1,
+        };
+        let mut calls = 0usize;
+        let pointer = (&mut context as *mut HostContext).cast();
+        let user = (&mut calls as *mut usize).cast();
+        assert_eq!(
+            unsafe { edit_region(pointer, region, Some(count_paint), user) },
+            abi::ERROR
+        );
+        assert_eq!(context.denied.take().unwrap().code, "pixel_access");
+        context.access = PixelAccess::Geometry;
+        assert_eq!(
+            unsafe { edit_region(pointer, region, Some(count_paint), user) },
+            abi::ERROR
+        );
+        assert_eq!(context.denied.take().unwrap().code, "position_locked");
+        assert_eq!(calls, 0);
+        context.access = PixelAccess::Pixels;
+        assert_eq!(
+            unsafe { edit_region(pointer, region, Some(count_paint), user) },
+            abi::OK
+        );
+        assert_eq!(calls, 1);
+        assert_eq!(session.doc.layers[0].pixels[0], 0xff123456);
+        // A nested dispatch may select a different layer after action entry.
+        session.doc.active = 1;
+        let history = session.doc.history_bytes();
+        assert_eq!(
+            unsafe { edit_region(pointer, region, Some(count_paint), user) },
+            abi::ERROR
+        );
+        assert_eq!(context.denied.take().unwrap().code, "pixel_locked");
+        assert_eq!(calls, 1);
+        assert_eq!(session.doc.layers[1].pixels[0], 0);
+        assert_eq!(session.doc.history_bytes(), history);
+    }
+    #[test]
+    fn nonpainting_and_readonly_tools_cannot_borrow_mutable_pixels() {
+        let mut session = Session::new(super::super::Registry::bundled()).unwrap();
+        session.doc = crate::engine::Document::new(8, 8);
+        // An already-open document edit must not grant a read tool write access.
+        session.doc.begin_plugin_stroke();
+        let mut context = ToolContext {
+            session: &mut session,
+            busy: false,
+            failed: false,
+            write_pixels: false,
+            denied: None,
+        };
+        let region = abi::Region {
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1,
+        };
+        let mut calls = 0usize;
+        let pointer = (&mut context as *mut ToolContext).cast();
+        let user = (&mut calls as *mut usize).cast();
+        assert_eq!(
+            unsafe { tool_pixels(pointer, region, Some(count_paint), user) },
+            abi::ERROR
+        );
+        assert!(context.failed);
+        context.failed = false;
+        context.write_pixels = true;
+        session.read_depth = 1;
+        assert_eq!(
+            unsafe { tool_pixels(pointer, region, Some(count_paint), user) },
+            abi::ERROR
+        );
+        assert!(context.failed);
+        assert_eq!(calls, 0);
+        assert!(session.doc.layers[0].pixels.iter().all(|p| *p == 0));
+        assert_eq!(session.doc.history_bytes(), 0);
+        let mut color = 0x123456;
+        assert_eq!(unsafe { tool_pick(pointer, 1., 1., &mut color) }, abi::OK);
+        assert_eq!(color, 0x123456);
+        session.doc.rollback_plugin_stroke();
+    }
     #[test]
     fn pixel_callback_failure_is_atomic_and_success_is_undoable() {
         let mut session = Session::new(super::super::Registry::bundled()).unwrap();
@@ -2161,6 +2356,8 @@ mod tests {
             session: &mut session,
             busy: false,
             selection: None,
+            access: PixelAccess::Pixels,
+            denied: None,
         };
         let region = abi::Region {
             x: 2,
@@ -2406,6 +2603,8 @@ impl ToolInstance {
             session,
             busy: false,
             failed: false,
+            write_pixels: painting,
+            denied: None,
         };
         let host = abi::ToolHost {
             abi_version: abi::TOOL_ABI_VERSION,
@@ -2425,6 +2624,9 @@ impl ToolInstance {
                 &mut output,
             )
         };
+        if let Some(error) = context.denied {
+            return Err(error);
+        }
         if status != abi::OK || context.failed {
             return Err(ActionError::new(
                 "tool_plugin",
@@ -2464,6 +2666,8 @@ struct ToolContext {
     session: *mut Session,
     busy: bool,
     failed: bool,
+    write_pixels: bool,
+    denied: Option<ActionError>,
 }
 unsafe extern "C" fn tool_pixels(
     context: *mut c_void,
@@ -2484,6 +2688,15 @@ unsafe extern "C" fn tool_pixels(
         return abi::ERROR;
     };
     let session = &mut *(*context).session;
+    if !(*context).write_pixels || session.read_depth != 0 {
+        (*context).failed = true;
+        return abi::ERROR;
+    }
+    if let Err(error) = PixelAccess::Pixels.require(&session.doc, session.doc.active) {
+        (*context).failed = true;
+        (*context).denied = Some(error);
+        return abi::ERROR;
+    }
     let (x, y, w, h) = (
         region.x as usize,
         region.y as usize,

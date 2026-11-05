@@ -37,6 +37,8 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 
 ## M1 — Reliable document foundation
 
+Layer organization now includes persistent pixel/position locks, color labels, read-only name/metadata filtering and host-enforced native write permissions. These are shared with nodes/MCP/headless and retain atomic history/replay; multi-layer selection, groups and raster/clipping masks remain planned in the [editing checklist](docs/photoshop-essentials.md).
+
 - [ ] Audit rollback across single actions, active-contact transitions, structural edits and project lifecycle operations. Make unsupported atomic effects explicit before execution.
 - [ ] Add durable recovery checkpoints and a recovery UI. Recover only validated committed outcomes; never rerun DLL commands or external side effects to restore a canvas.
 - [ ] Stream archive verification/export and introduce bounded seek checkpoints so large histories do not require loading an entire archive into memory.

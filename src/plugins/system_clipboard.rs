@@ -105,5 +105,8 @@ pub(crate) fn execute(s: &mut Session, op: Operation) -> ActionResult {
             "System clipboard requires a Windows desktop session",
         ));
     }
+    if op == Operation::SystemClipboardCut {
+        super::PixelAccess::Pixels.require(&s.doc, s.doc.active)?;
+    }
     run(s, op).map_err(|e| ActionError::new("system_clipboard", e))
 }

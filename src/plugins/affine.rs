@@ -261,9 +261,8 @@ pub(crate) fn describe(s: &Session, args: Value) -> ActionResult {
         json!({"target":plan.target,"source_bounds":b,"matrix":m,"pivot_x":plan.pivot[0],"pivot_y":plan.pivot[1],"corners":corners,"denominator":plan.denominator,"identity_matrix":mapping.identity(),"width":s.doc.width,"height":s.doc.height,"revision":s.revision,"drawing":s.is_drawing()}),
     )
 }
-fn run(s: &mut Session, args: Value) -> Result<(), String> {
+fn run(s: &mut Session, p: Parameters) -> Result<(), String> {
     s.transform_event = None;
-    let p: Parameters = serde_json::from_value(args).map_err(|e| e.to_string())?;
     let plan = plan(s, p)?;
     s.finish_stroke();
     let o = &plan.options;
@@ -302,7 +301,15 @@ pub(crate) fn execute(s: &mut Session, args: Value) -> ActionResult {
     if args.get("quad").is_some() {
         require_idle(s)?;
     }
-    run(s, args).map_err(|e| ActionError::new("transform", e))?;
+    let parameters: Parameters = serde_json::from_value(args)?;
+    let target = super::movement::resolved_target(
+        s,
+        parameters.target.unwrap_or(s.movement_options().target),
+    );
+    if target != MoveTarget::SelectionMask {
+        super::PixelAccess::Geometry.require(&s.doc, s.doc.active)?;
+    }
+    run(s, parameters).map_err(|e| ActionError::new("transform", e))?;
     Ok(s.state())
 }
 pub(crate) fn request_preview(s: &mut Session, args: Value) -> ActionResult {
@@ -339,6 +346,13 @@ pub(crate) fn repeat_state(s: &Session) -> Value {
     }
 }
 pub(crate) fn repeat(s: &mut Session, duplicate: bool) -> ActionResult {
+    if !duplicate
+        && s.doc
+            .last_transform()
+            .is_some_and(|r| r.target != Target::SelectionMask)
+    {
+        super::PixelAccess::Geometry.require(&s.doc, s.doc.active)?;
+    }
     if s.doc
         .last_transform()
         .is_some_and(|r| r.denominator != [0., 0., 1.])
