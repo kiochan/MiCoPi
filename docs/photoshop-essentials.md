@@ -16,7 +16,7 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 | --- | --- | --- |
 | Drawing | Native DLL tools, pressure, stabilization, spacing, pressure curve, size/shape cursor | Rich tips/dynamics and additional painting tools |
 | Layers | Stable IDs, rename/duplicate/reorder/delete, opacity, visibility, alpha lock, merge/flatten/stamp | Masks, clipping, groups and multi-selection |
-| Selection/editing | Fill color matching and edge processing | Document selection, clipboard and selection-aware operations |
+| Selection/editing | Document masks, gestures, color matching, edge processing and selected painting | Clipboard and selection transforms |
 | Geometry | Anchored canvas size, exact crop, layer flips/180°/offset | Image resampling, quarter turns and free transform |
 | Composition | Linked layer/filter/blend graphs and explicit free graphs | More adjustments, filters and mask-aware composition |
 | Files | PNG/JPEG/BMP import, PNG export, projects and verified replay | Rich export and layered interchange |
@@ -39,14 +39,14 @@ Acceptance: source buffers and metadata return on undo; redo restores the merged
 
 ### P2 — Selection and clipboard foundation
 
-In progress: bounded storage, geometry/combine commands, Select All/Deselect/Reselect/Invert, native drawing/action clipping, selection-aware fill connectivity and a cached static outline are implemented. Direct marquee/lasso gestures and reversible previews are implemented. Color-selection commands now provide tolerance-based Wand, connected/global matching and Grow/Similar through command parameter forms, workflow nodes and automation; direct W activation and session-local sampling controls are implemented; persisted searchable selection defaults are implemented; selection edge processing and clipboard remain pending. See [Selections](selections.md).
+Implemented: bounded masks, geometry/combinations, marquee/lasso gestures, color matching, persistent sampling defaults, native edge processing, selected painting/actions and cached outlines. Undo, rollback and outcome replay share the document contracts. Clipboard operations remain pending. See [Selections](selections.md).
 
 - [x] Add bounded document selection data, persistence, undo, atomic rollback and outcome replay.
 - [x] Add rectangular/elliptical marquees, freehand/polygonal lassos and replace/add/subtract/intersect modes.
 - [x] Add Select All, Deselect, Reselect and Invert with PS-style configurable bindings.
 - [x] Add direct Magic Wand activation, tolerance/source/contiguous controls and Grow/Similar through shared commands.
 - [x] Add persisted selection defaults to searchable settings while retaining explicit action arguments.
-- [ ] Add selection feather, expansion/contraction and smoothing.
+- [x] Add native selection feather, exact disk expansion/contraction and binary smoothing, with explicit radius/edge contracts.
 - [x] Clip brush, eraser, clear, fill, gradient and applicable direct filters to the selection through a cached typed path (including the connected-fill traversal contract below).
 - [x] Restrict connected fill traversal to selected coverage so excluded pixels cannot bridge separate selected islands, including expansion/feathering.
 - [ ] Add copy, copy merged, cut, paste, paste in place, duplicate selection to layer and selection-to-layer cut.

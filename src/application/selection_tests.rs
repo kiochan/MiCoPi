@@ -9,6 +9,148 @@ fn rectangle(s: &mut Session) {
         json!({"kind":"rectangle","x":3,"y":2,"width":5,"height":3}),
     );
 }
+#[test]
+fn native_selection_edges_preserve_source_pixels_and_roundtrip_history_projects_and_outcomes() {
+    let mut s = session();
+    call(&mut s, "native.checkerboard", json!({"cell":3}));
+    rectangle(&mut s);
+    let original = s.doc.composition();
+    let pixels = s.doc.layers[0].pixels.clone();
+    for (id, count) in [
+        ("selection.expand", 31),
+        ("selection.contract", 3),
+        ("selection.feather", 0),
+        ("selection.smooth", 11),
+    ] {
+        let events = s.replay_journal(false).unwrap().entries.len();
+        call(&mut s, id, json!({"radius":1}));
+        assert_eq!(s.replay_journal(false).unwrap().entries.len(), events + 1);
+        let mask = s.doc.selection().current.as_ref().unwrap().coverage();
+        if count > 0 {
+            assert_eq!(mask.iter().filter(|v| **v > 0).count(), count, "{id}");
+        } else {
+            assert!(mask.iter().any(|v| *v > 0 && *v < 255));
+        }
+        assert_eq!(s.doc.layers[0].pixels, pixels);
+        let expected = s.doc.composition();
+        let mut restored = crate::engine::Document::new(12, 8);
+        s.replay_journal(false)
+            .unwrap()
+            .state
+            .restore_document(&mut restored);
+        assert_eq!(restored.composition(), expected);
+        check(&mut s);
+        call(&mut s, "history.undo", json!({}));
+        assert_eq!(s.doc.composition(), original);
+        call(&mut s, "history.redo", json!({}));
+        assert_eq!(s.doc.composition(), expected);
+        if id == "selection.feather" {
+            let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("target/test-output/selection-edges");
+            std::fs::create_dir_all(&dir).unwrap();
+            let path = dir.join(format!("feather-{}.mcp", std::process::id()));
+            call(&mut s, "document.save", json!({"path":path}));
+            let mut reopened = session();
+            call(&mut reopened, "document.open", json!({"path":path}));
+            assert_eq!(reopened.doc.composition(), expected);
+            check(&mut reopened);
+        }
+        call(&mut s, "history.undo", json!({}));
+    }
+    let history = s.doc.history_bytes();
+    let result = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[
+            {"id":"expand","action":"selection.expand","args":{"radius":2}},
+            {"id":"contract","action":"selection.contract","args":{"radius":1}},
+            {"id":"feather","action":"selection.feather","args":{"radius":2}},
+            {"id":"smooth","action":"selection.smooth","args":{"radius":1}},
+            {"id":"fail","action":"layer.select","args":{"layer_id":99999}}
+        ]}),
+    );
+    assert_eq!(result["rolled_back"], true);
+    assert_eq!(s.doc.composition(), original);
+    assert_eq!(s.doc.history_bytes(), history);
+    check(&mut s);
+}
+#[test]
+fn edge_actions_validate_empty_masks_and_can_be_workflow_nodes_without_eager_execution() {
+    let mut s = session();
+    for id in [
+        "selection.expand",
+        "selection.contract",
+        "selection.feather",
+        "selection.smooth",
+    ] {
+        assert_eq!(
+            s.apply(Action::new(id, json!({"radius":1})))
+                .unwrap_err()
+                .code,
+            "selection_empty"
+        );
+    }
+    rectangle(&mut s);
+    let before = s.doc.composition();
+    let revision = s.revision;
+    for id in [
+        "selection.expand",
+        "selection.contract",
+        "selection.feather",
+        "selection.smooth",
+    ] {
+        for args in [
+            json!({"radius":0}),
+            json!({"radius":257}),
+            json!({"radius":1.5}),
+            json!({"radius":1,"edge":"invalid"}),
+        ] {
+            assert!(s.apply(Action::new(id, args)).is_err());
+            assert_eq!(s.doc.composition(), before);
+            assert_eq!(s.revision, revision);
+        }
+        let mut stale = Action::new(id, json!({"radius":1}));
+        stale.expected_revision = Some(0);
+        assert!(s.apply(stale).is_err());
+    }
+    let graph = json!({"version":1,"nodes":[{"id":1,"type":"action.selection.feather","position":[0,0],"parameters":{"radius":1}},{"id":2,"type":"action.selection.smooth","position":[400,0],"parameters":{"radius":1}}],"edges":[{"from":1,"output":"$exec","to":2,"input":"$exec"}]});
+    call(&mut s, "workflow.set", json!({"graph":graph}));
+    assert_eq!(s.doc.selection(), &before.selection);
+    call(
+        &mut s,
+        "workflow.run",
+        json!({"atomic":true,"dry_run":true}),
+    );
+    assert_eq!(s.doc.selection(), &before.selection);
+    assert_eq!(
+        call(&mut s, "workflow.run", json!({"atomic":true}))["ok"],
+        true
+    );
+    check(&mut s);
+    call(
+        &mut s,
+        "selection.shape",
+        json!({"kind":"rectangle","x":100,"width":2,"height":2}),
+    );
+    for id in [
+        "selection.expand",
+        "selection.contract",
+        "selection.feather",
+        "selection.smooth",
+    ] {
+        call(&mut s, id, json!({"radius":256,"edge":"zero"}));
+        assert!(s
+            .doc
+            .selection()
+            .current
+            .as_ref()
+            .unwrap()
+            .coverage()
+            .iter()
+            .all(|v| *v == 0));
+    }
+    check(&mut s);
+}
 fn selected(s: &Session) -> usize {
     s.doc
         .selection()

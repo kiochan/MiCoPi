@@ -1,0 +1,9 @@
+{"action":"canvas.new","args":{"width":320,"height":240}}
+{"action":"selection.shape","args":{"kind":"rectangle","x":50,"y":50,"width":180,"height":120}}
+{"action":"selection.expand","args":{"radius":12}}
+{"action":"selection.contract","args":{"radius":4,"edge":"zero"}}
+{"action":"selection.feather","args":{"radius":8}}
+{"action":"layer.fill_color","args":{"color":"#8066dd"}}
+{"action":"selection.smooth","args":{"radius":3}}
+{"action":"selection.deselect"}
+{"action":"replay.verify"}

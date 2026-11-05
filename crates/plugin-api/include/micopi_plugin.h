@@ -115,6 +115,12 @@ typedef struct {
     MicopiSelectionApi base;
     int32_t (*color)(const MicopiSelectionColor *, const MicopiPixels *, const MicopiCoverage *, uint8_t *, size_t);
 } MicopiSelectionApiColor;
+/* Kinds: expand/contract/feather/smooth (0..3). Radius 1..256. Edge: extend=0, zero=1. */
+typedef struct { uint32_t kind, radius, edge; } MicopiSelectionEdges;
+typedef struct {
+    MicopiSelectionApiColor base;
+    int32_t (*edges)(const MicopiSelectionEdges *, const MicopiCoverage *, uint8_t *, size_t);
+} MicopiSelectionApiEdges;
 const MicopiSelectionApi *micopi_selection_v1(void);
 typedef struct { MicopiToolOptionsApi base; uint32_t features; } MicopiToolOptionsApiExt;
 /* SDK 1.2 additive compositor extension; no existing tables change. */

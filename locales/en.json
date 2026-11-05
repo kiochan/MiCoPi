@@ -909,5 +909,10 @@
   "Selection Actions": "Selection Actions",
   "Default color tolerance for Wand, Grow and Similar.": "Default color tolerance for Wand, Grow and Similar.",
   "Match only connected pixels when starting a Wand selection.": "Match only connected pixels when starting a Wand selection.",
-  "Sample the rendered image instead of the active raw layer.": "Sample the rendered image instead of the active raw layer."
+  "Sample the rendered image instead of the active raw layer.": "Sample the rendered image instead of the active raw layer.",
+  "Expand Selection": "Expand Selection",
+  "Contract Selection": "Contract Selection",
+  "Feather Selection": "Feather Selection",
+  "Smooth Selection": "Smooth Selection",
+  "Capture Workspace": "Capture Workspace"
 }

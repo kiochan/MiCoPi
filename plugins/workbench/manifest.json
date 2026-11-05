@@ -233,6 +233,26 @@
       "id": "window.drop",
       "title": "Dock Group at Desktop Point",
       "operation": "window_drop"
+    },
+    {
+      "id": "ui.capture",
+      "title": "Capture Workspace",
+      "operation": "capture_workspace",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "queued",
+          "path"
+        ]
+      }
     }
   ],
   "panels": [],

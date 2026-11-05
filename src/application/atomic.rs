@@ -102,6 +102,10 @@ impl Operation {
                 | Self::Deselect
                 | Self::Reselect
                 | Self::InvertSelection
+                | Self::ExpandSelection
+                | Self::ContractSelection
+                | Self::FeatherSelection
+                | Self::SmoothSelection
                 | Self::SelectColor
                 | Self::GrowSelection
                 | Self::SimilarSelection

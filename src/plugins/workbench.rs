@@ -11,6 +11,24 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             .ok_or_else(|| ActionError::new("invalid_arguments", "Missing path"))
     };
     match op {
+        CaptureWorkspace => {
+            if s.runtime != "desktop" {
+                return Err(ActionError::new(
+                    "ui_unavailable",
+                    "Workspace capture requires the desktop",
+                ));
+            }
+            if s.ui_effects.len() >= 128 {
+                return Err(ActionError::new(
+                    "presentation_queue_full",
+                    "Wait for queued presentation commands before retrying",
+                ));
+            }
+            let path = path()?;
+            s.ui_effects
+                .push_back(json!({"id":"screenshot","value":path}));
+            Ok(json!({"queued":true,"path":path}))
+        }
         SettingsRead => {
             let config = crate::configuration::Settings::load(path()?)
                 .map_err(|e| ActionError::new("settings", e))?;
@@ -101,5 +119,46 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             "internal",
             "operation routed to wrong plugin",
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::application::Action;
+    #[test]
+    fn workspace_capture_is_presentation_only_and_keeps_revision_and_public_state() {
+        let mut s = Session::new(crate::plugins::Registry::bundled()).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+            .unwrap();
+        let args = json!({"path":"target/test-output/capture.png"});
+        assert_eq!(
+            s.apply(Action::new("ui.capture", args.clone()))
+                .unwrap_err()
+                .code,
+            "ui_unavailable"
+        );
+        s.runtime = "desktop";
+        let before = s.state();
+        let events = s.replay_journal(false).unwrap().entries.len();
+        assert_eq!(
+            s.apply(Action::new("ui.capture", args.clone())).unwrap()["result"]["queued"],
+            true
+        );
+        assert_eq!(s.state(), before);
+        assert_eq!(s.replay_journal(false).unwrap().entries.len(), events + 1);
+        assert_eq!(s.ui_effects.back().unwrap()["id"], "screenshot");
+        assert!(s
+            .apply(Action::new(
+                "pipeline.run",
+                json!({"atomic":true,"steps":[{"id":"capture","action":"ui.capture","args":args}]})
+            ))
+            .is_err());
+        s.ui_effects.resize(128, json!({}));
+        assert_eq!(
+            s.apply(Action::new("ui.capture", args)).unwrap_err().code,
+            "presentation_queue_full"
+        );
+        assert_eq!(s.state(), before);
     }
 }

@@ -99,6 +99,10 @@ def main():
         dict(action="native.invert", args={}),
         dict(action="selection.deselect", args={}),
         dict(action="selection.reselect", args={}),
+        dict(action="selection.expand", args=dict(radius=3)),
+        dict(action="selection.contract", args=dict(radius=2,edge="zero")),
+        dict(action="selection.feather", args=dict(radius=2)),
+        dict(action="selection.smooth", args=dict(radius=1)),
         dict(action="selection.wand", args=dict(x=40, y=40, tolerance=0, contiguous=True)),
         dict(action="selection.grow", args=dict(tolerance=8)),
         dict(action="selection.similar", args=dict(tolerance=8, sample_merged=True)),
@@ -156,8 +160,8 @@ def main():
     requests = [message("initialize", dict(protocolVersion="2025-11-25", capabilities={}, clientInfo=dict(name="smoke", version="1")), 1), message("notifications/initialized"), message("tools/list", {}, 2)]
     requests += [message("tools/call", dict(name=c["action"], arguments=c["args"]), n) for n, c in enumerate(commands, 3)]
     requests.append(message("tools/call", dict(name="canvas.state", arguments={}), 10000))
-    requests.append(message("tools/call", dict(name="canvas.snapshot", arguments={}), 100))
-    requests += [message("resources/list",{},101),message("resources/read",dict(uri="micopi://state/ai_assistant.context"),102)]
+    requests.append(message("tools/call", dict(name="canvas.snapshot", arguments={}), 40000))
+    requests += [message("resources/list",{},40101),message("resources/read",dict(uri="micopi://state/ai_assistant.context"),40102)]
     run = subprocess.run([str(cli), "mcp", "--plugins", str(plugins), "--config-dir", str(profile)], input="\n".join(json.dumps(r) for r in requests) + "\n", capture_output=True, text=True, encoding="utf-8", timeout=30)
     assert run.returncode == 0, run.stderr
     replies = [json.loads(line) for line in run.stdout.splitlines()]
@@ -170,10 +174,10 @@ def main():
     assert any(t["name"] == "native.invert" for t in tools), "Native DLL action missing from MCP tools"
     for name in ("layer.merge_down", "layer.merge_visible", "layer.flatten", "layer.stamp_visible", "selection.wand", "selection.grow", "selection.similar"):
         assert any(t["name"] == name for t in tools), f"Layer consolidation action missing from MCP tools: {name}"
-    assert any(r["uri"]=="micopi://state/ai_assistant.context" for r in next(r for r in replies if r["id"]==101)["result"]["resources"])
-    context=json.loads(next(r for r in replies if r["id"]==102)["result"]["contents"][0]["text"])
+    assert any(r["uri"]=="micopi://state/ai_assistant.context" for r in next(r for r in replies if r["id"]==40101)["result"]["resources"])
+    context=json.loads(next(r for r in replies if r["id"]==40102)["result"]["contents"][0]["text"])
     assert context["resources"]["native_paint.stats"]["ok"]
-    snapshot = next(r for r in replies if r["id"] == 100)["result"]["content"][0]
+    snapshot = next(r for r in replies if r["id"] == 40000)["result"]["content"][0]
     assert base64.b64decode(snapshot["data"]) == batch_png.read_bytes()
     (output / "mcp.png").write_bytes(base64.b64decode(snapshot["data"]))
     print("JSONL and MCP stdio: native DLL filters produce identical PNG pixels/bytes")

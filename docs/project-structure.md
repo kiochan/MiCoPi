@@ -68,6 +68,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/application/selection_sampling.rs` | Configured selection defaults, session control overrides and compact public state |
 | `src/plugins/selection.rs` | Selection schema dispatch, history publication and DLL geometry calls |
 | `plugins/painting/src/selection.rs` | Typed geometry and premultiplied selection blending kernels |
+| `plugins/painting/src/selection/edges.rs` | Exact disk morphology, fixed-point feather/smoothing and independent references |
 | `plugins/painting/src/selection/color.rs` | Immutable color sampling, connected selection and exact Grow/Similar palette kernels |
 | `plugins/canvas/selection.rs` | Cached desktop selection outline presentation |
 | `plugins/canvas/selection_gesture.rs` | Bounded marquee/lasso previews and single-action completion adapters |

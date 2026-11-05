@@ -8,6 +8,28 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
     }
     let old = s.doc.selection().clone();
     let current = match op {
+        ExpandSelection | ContractSelection | FeatherSelection | SmoothSelection => {
+            if old.current.is_none() {
+                return Err(ActionError::new(
+                    "selection_empty",
+                    "An active selection is required",
+                ));
+            }
+            let options = micopi_plugin_api::SelectionEdges {
+                kind: match op {
+                    ExpandSelection => 0,
+                    ContractSelection => 1,
+                    FeatherSelection => 2,
+                    _ => 3,
+                },
+                radius: args["radius"].as_u64().unwrap() as u32,
+                edge: if args["edge"] == "zero" { 1 } else { 0 },
+            };
+            Some(
+                super::native::selection_edges(s, &options)
+                    .map_err(|e| ActionError::new("selection_edges", e))?,
+            )
+        }
         SelectColor | GrowSelection | SimilarSelection => {
             let kind = match op {
                 SelectColor => 0,

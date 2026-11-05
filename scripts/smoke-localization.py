@@ -44,7 +44,7 @@ def main():
 
     def screenshot(name):
         path = output/name
-        call('ui.dispatch',dict(id='screenshot',value=str(path)))
+        call('ui.capture',dict(path=str(path)))
         deadline = time.monotonic()+10
         while not path.exists():
             assert time.monotonic()<deadline,'Screenshot timeout'
@@ -122,6 +122,15 @@ def main():
                 screenshot(f'{language}-{name}.png')
                 # Close the preview without applying any document operation.
                 call('ui.dispatch', dict(id='command', value='Cancel'))
+            # Dynamic action commands use the same stable identity as Keymap.
+            for action in ['selection.feather','selection.smooth']:
+                identity=2166136261
+                for byte in ('plugin.'+action).encode():
+                    identity=((identity^byte)*16777619)&0xffffffff
+                call('ui.dispatch',dict(id='command',value=dict(UiCommand=identity|0x80000000)))
+                time.sleep(.15)
+                screenshot(f'{language}-{action}.png')
+                call('ui.dispatch',dict(id='command',value='Cancel'))
             call('ui.dispatch',dict(id='painting.mode',value='fill'))
             time.sleep(.15)
             screenshot(f'{language}-fill-controls.png')

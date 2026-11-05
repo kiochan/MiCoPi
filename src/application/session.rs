@@ -469,6 +469,7 @@ impl Session {
                                 Operation::PipelineRun
                                     | Operation::WorkflowRun
                                     | Operation::Pointer
+                                    | Operation::CaptureWorkspace
                                     | Operation::ReplayExport
                                     | Operation::ReplayFrames
                                     | Operation::ReplayRecover

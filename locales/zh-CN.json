@@ -909,5 +909,10 @@
   "Selection Actions": "选区操作",
   "Default color tolerance for Wand, Grow and Similar.": "魔棒、扩大选区和选取相似颜色的默认容差。",
   "Match only connected pixels when starting a Wand selection.": "使用魔棒时只匹配相连的像素。",
-  "Sample the rendered image instead of the active raw layer.": "从合成后的图像取样，而非当前图层的原始像素。"
+  "Sample the rendered image instead of the active raw layer.": "从合成后的图像取样，而非当前图层的原始像素。",
+  "Expand Selection": "扩展选区",
+  "Contract Selection": "收缩选区",
+  "Feather Selection": "羽化选区",
+  "Smooth Selection": "平滑选区",
+  "Capture Workspace": "截取工作区"
 }

@@ -79,6 +79,59 @@ mod color_selection_tests {
         assert_eq!(form.args["contiguous"], false);
         assert_eq!(form.args["sample_merged"], true);
     }
+    #[test]
+    fn edge_parameter_forms_are_searchable_and_do_not_edit_the_selection() {
+        crate::i18n::load_test_catalogs();
+        let mut app = crate::desktop::tests::studio();
+        app.editor.register_commands();
+        let before = app.editor.session.state();
+        for (id, query) in [
+            ("selection.expand", "Expand Selection"),
+            ("selection.contract", "收缩选区"),
+            ("selection.feather", "選択範囲をぼかす"),
+            ("selection.smooth", "선택 영역 매끄럽게"),
+        ] {
+            let keys = &app.editor.settings.keys;
+            let mut palette = Palette::new(crate::ui::palette::Mode::Commands, keys);
+            palette.query(query.into(), keys);
+            assert!(palette
+                .results
+                .iter()
+                .any(|&i| keys.command(i).keywords == id));
+            app.editor.begin_plugin_command(id);
+            let form = app.editor.command_form.as_ref().unwrap();
+            assert_eq!(form.args["radius"], 4);
+            assert_eq!(form.args["edge"], "extend");
+            assert_eq!(app.editor.session.state(), before);
+            app.editor.actions.push(Action::Cancel);
+            app.run_actions(&Context::default());
+            assert!(app.editor.command_form.is_none());
+            assert_eq!(app.editor.session.state(), before);
+        }
+    }
+    #[test]
+    fn forms_bind_pending_local_view_state_but_keep_external_edits_stale() {
+        let mut app = crate::desktop::tests::studio();
+        app.editor.begin_plugin_command("selection.feather");
+        app.editor.zoom = 2.;
+        let ctx = Context::default();
+        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+            app.editor.plugin_command_window(ctx)
+        });
+        assert_eq!(
+            app.editor.command_form.as_ref().unwrap().revision,
+            app.editor.session.revision
+        );
+        app.editor.core("brush.set", json!({"radius":17}));
+        app.editor.sync_from_session();
+        let _ = ctx.run(egui::RawInput::default(), |ctx| {
+            app.editor.plugin_command_window(ctx)
+        });
+        assert_ne!(
+            app.editor.command_form.as_ref().unwrap().revision,
+            app.editor.session.revision
+        );
+    }
 }
 impl Editor {
     pub(super) fn register_commands(&mut self) {
@@ -155,6 +208,15 @@ impl Editor {
         let Some(mut form) = self.command_form.take() else {
             return;
         };
+        // Canvas fitting may settle after the command opens in this frame.
+        // Bind that pending local state before rendering the form, while keeping
+        // a revision mismatch caused by an intervening external edit stale.
+        let before_sync = self.session.revision;
+        self.push_gui_parameters();
+        self.push_gui_view();
+        if form.revision == before_sync {
+            form.revision = self.session.revision;
+        }
         let mut open = true;
         let mut run = false;
         let mut invalid = false;

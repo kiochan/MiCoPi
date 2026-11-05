@@ -909,5 +909,10 @@
   "Selection Actions": "選択範囲の操作",
   "Default color tolerance for Wand, Grow and Similar.": "自動選択・範囲拡張・類似色選択の既定の許容値。",
   "Match only connected pixels when starting a Wand selection.": "自動選択で隣接するピクセルのみを対象にします。",
-  "Sample the rendered image instead of the active raw layer.": "アクティブレイヤーの元画像ではなく結合画像を参照します。"
+  "Sample the rendered image instead of the active raw layer.": "アクティブレイヤーの元画像ではなく結合画像を参照します。",
+  "Expand Selection": "選択範囲を拡大",
+  "Contract Selection": "選択範囲を縮小",
+  "Feather Selection": "選択範囲をぼかす",
+  "Smooth Selection": "選択範囲を滑らかに",
+  "Capture Workspace": "ワークスペースを撮影"
 }

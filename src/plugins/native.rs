@@ -28,10 +28,15 @@ impl Drop for Module {
         }
     }
 }
+type SelectionTable = (
+    abi::SelectionApi,
+    Option<abi::SelectionColorFn>,
+    Option<abi::SelectionEdgesFn>,
+);
 // Read only advertised, complete optional tails; legacy prefixes remain usable.
 unsafe fn decode_selection_table(
     pointer: *const abi::SelectionApi,
-) -> Result<(abi::SelectionApi, Option<abi::SelectionColorFn>), String> {
+) -> Result<SelectionTable, String> {
     if pointer.is_null() {
         return Err("Null selection table".into());
     }
@@ -50,12 +55,15 @@ unsafe fn decode_selection_table(
     } else {
         None
     };
-    Ok((api, color))
+    let edges = if header.struct_size >= std::mem::size_of::<abi::SelectionApiEdges>() as u32 {
+        std::ptr::read_unaligned(pointer.cast::<abi::SelectionApiEdges>()).edges
+    } else {
+        None
+    };
+    Ok((api, color, edges))
 }
 impl Module {
-    unsafe fn selection_api(
-        &self,
-    ) -> Result<Option<(abi::SelectionApi, Option<abi::SelectionColorFn>)>, String> {
+    unsafe fn selection_api(&self) -> Result<Option<SelectionTable>, String> {
         #[cfg(windows)]
         {
             let address =
@@ -229,6 +237,7 @@ pub struct NativePlugin {
     tool_options: Option<(abi::ToolOptionsApi, u32)>,
     selection_mix: Option<abi::SelectionApi>,
     selection_color: Option<abi::SelectionColorFn>,
+    selection_edges: Option<abi::SelectionEdgesFn>,
     compositor: Option<abi::CompositorApi>,
     _module: Module,
 }
@@ -294,10 +303,11 @@ impl NativePlugin {
         };
         let tools = unsafe { module.tool_api()? };
         let tool_options = unsafe { module.tool_options_api()? };
-        let (selection_mix, selection_color) = match unsafe { module.selection_api()? } {
-            Some((base, color)) => (Some(base), color),
-            None => (None, None),
-        };
+        let (selection_mix, selection_color, selection_edges) =
+            match unsafe { module.selection_api()? } {
+                Some((base, color, edges)) => (Some(base), color, edges),
+                None => (None, None, None),
+            };
         if tool_options.is_some() && tools.is_none() {
             return Err("Tool options require a tool API".into());
         }
@@ -325,6 +335,7 @@ impl NativePlugin {
                 tool_options,
                 selection_mix,
                 selection_color,
+                selection_edges,
                 compositor,
                 _module: module,
             }),
@@ -559,6 +570,29 @@ pub(crate) fn selection_shape(
     }
     crate::engine::selection::Mask::new(s.doc.width, s.doc.height, output)
 }
+pub(crate) fn selection_edges(
+    s: &Session,
+    options: &abi::SelectionEdges,
+) -> Result<crate::engine::selection::Mask, String> {
+    let kernel = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.selection_edges)
+        .ok_or("Painting DLL does not support selection edges")?;
+    let mask = s
+        .doc
+        .selection()
+        .current
+        .as_ref()
+        .ok_or("An active selection is required")?;
+    let source = coverage(mask);
+    let mut output = vec![0; s.doc.width * s.doc.height];
+    if unsafe { kernel(options, &source, output.as_mut_ptr(), output.len()) } != abi::OK {
+        return Err("Selection edge processing failed".into());
+    }
+    crate::engine::selection::Mask::new(s.doc.width, s.doc.height, output)
+}
 pub(crate) fn selection_color(
     s: &mut Session,
     options: &abi::SelectionColor,
@@ -788,6 +822,130 @@ unsafe extern "C" fn edit_region(
 mod tests {
     use super::*;
     #[test]
+    fn edge_tail_is_optional_and_complete_size_checked_after_color_prefix() {
+        unsafe extern "C" fn mix(
+            _: *const abi::Coverage,
+            _: *const abi::Pixels,
+            _: *mut abi::Pixels,
+        ) -> i32 {
+            abi::OK
+        }
+        unsafe extern "C" fn edges(
+            _: *const abi::SelectionEdges,
+            _: *const abi::Coverage,
+            _: *mut u8,
+            _: usize,
+        ) -> i32 {
+            abi::OK
+        }
+        let mut table = abi::SelectionApiEdges {
+            base: abi::SelectionApiColor {
+                base: abi::SelectionApi {
+                    abi_version: 1,
+                    struct_size: std::mem::size_of::<abi::SelectionApiColor>() as u32,
+                    mix: Some(mix),
+                    rasterize: None,
+                },
+                color: None,
+            },
+            edges: Some(edges),
+        };
+        unsafe {
+            assert!(decode_selection_table(&table.base.base)
+                .unwrap()
+                .2
+                .is_none());
+            table.base.base.struct_size = std::mem::size_of::<abi::SelectionApiEdges>() as u32 - 1;
+            assert!(decode_selection_table(&table.base.base)
+                .unwrap()
+                .2
+                .is_none());
+            table.base.base.struct_size += 1;
+            assert!(decode_selection_table(&table.base.base)
+                .unwrap()
+                .2
+                .is_some());
+        }
+    }
+    #[test]
+    fn unavailable_edge_kernel_preserves_masks_pixels_revision_and_undo() {
+        let mut registry = super::super::Registry::load(
+            &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+        )
+        .unwrap();
+        Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .selection_edges = None;
+        let mut s = Session::new(registry).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+            .unwrap();
+        s.apply(Action::new("selection.all", json!({}))).unwrap();
+        let before = s.state();
+        let metadata = s.doc.composition();
+        let pixels = s.doc.layers[0].pixels.clone();
+        let history = s.doc.history_bytes();
+        for id in [
+            "selection.expand",
+            "selection.contract",
+            "selection.feather",
+            "selection.smooth",
+        ] {
+            assert_eq!(
+                s.apply(Action::new(id, json!({"radius":2})))
+                    .unwrap_err()
+                    .code,
+                "selection_edges"
+            );
+            assert_eq!(s.state(), before);
+            assert_eq!(s.doc.composition(), metadata);
+            assert_eq!(s.doc.layers[0].pixels, pixels);
+            assert_eq!(s.doc.history_bytes(), history);
+        }
+        s.apply(Action::new("history.undo", json!({}))).unwrap();
+        assert!(s.doc.selection().current.is_none());
+    }
+    #[test]
+    fn oversized_edge_result_is_rejected_before_selection_publication() {
+        unsafe extern "C" fn noise(
+            _: *const abi::SelectionEdges,
+            _: *const abi::Coverage,
+            out: *mut u8,
+            len: usize,
+        ) -> i32 {
+            let mut seed = 177u32;
+            for i in 0..len {
+                seed = seed.wrapping_mul(1664525).wrapping_add(1013904223);
+                *out.add(i) = (seed >> 24) as u8;
+            }
+            abi::OK
+        }
+        let mut registry = super::super::Registry::load(
+            &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+        )
+        .unwrap();
+        Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .selection_edges = Some(noise);
+        let mut s = Session::new(registry).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":512,"height":512})))
+            .unwrap();
+        s.apply(Action::new("selection.all", json!({}))).unwrap();
+        let state = s.state();
+        let composition = s.doc.composition();
+        let history = s.doc.history_bytes();
+        let error = s
+            .apply(Action::new("selection.feather", json!({"radius":2})))
+            .unwrap_err();
+        assert_eq!(error.code, "selection_edges");
+        assert_eq!(s.state(), state);
+        assert_eq!(s.doc.composition(), composition);
+        assert_eq!(s.doc.history_bytes(), history);
+        assert_eq!(
+            s.apply(Action::new("replay.verify", json!({}))).unwrap()["result"]["valid"],
+            true
+        );
+    }
+    #[test]
     fn selection_tables_read_only_complete_advertised_tails() {
         unsafe extern "C" fn mix(
             _: *const abi::Coverage,
@@ -817,7 +975,8 @@ mod tests {
         unsafe {
             assert!(decode_selection_table(std::ptr::null()).is_err());
             let legacy = table.base;
-            let (base, tail) = decode_selection_table(&legacy).unwrap();
+            let (base, tail, edges) = decode_selection_table(&legacy).unwrap();
+            assert!(edges.is_none());
             assert!(base.mix.is_some());
             assert!(tail.is_none());
             table.base.struct_size = std::mem::size_of::<abi::SelectionApiColor>() as u32 - 1;

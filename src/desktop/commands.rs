@@ -791,6 +791,7 @@ impl Studio {
                 }
                 Action::Cancel => {
                     self.editor.palette = None;
+                    self.editor.command_form = None;
                     self.editor.new_open = false;
                     self.editor.geometry = None;
                     self.editor.session.finish_stroke();

@@ -1,6 +1,6 @@
 # Selections
 
-Selections belong to the document, not the desktop tool. The current increment provides schema-described rectangle, ellipse and polygon geometry, combination modes, Select All/Deselect/Reselect/Invert, native painting/action clipping, persistence, undo and verified replay. Mouse/pen marquee and lasso gestures are available. Color-based selection is available through the Magic Wand tool and shared commands. Selection feathering and clipboard operations remain planned in [the editing checklist](photoshop-essentials.md).
+Selections belong to the document, not the desktop tool. The current increment provides schema-described rectangle, ellipse and polygon geometry, combination modes, Select All/Deselect/Reselect/Invert, native painting/action clipping, persistence, undo and verified replay. Mouse/pen marquee and lasso gestures are available. Color-based selection is available through the Magic Wand tool and shared commands. Native selection edge processing is available; clipboard operations remain planned in [the editing checklist](photoshop-essentials.md).
 
 ![Actual workbench with Wand controls and an existing ellipse selection](screenshots/selection.png)
 
@@ -34,6 +34,10 @@ When loading older shortcut profiles, implicit M/L/W defaults for these new sele
 | `selection.wand` | Required `x`, `y`; optional `tolerance`, `contiguous`, `sample_merged`, `mode` | Unbound; parameter form |
 | `selection.grow` | Optional `tolerance`, `sample_merged` | Unbound |
 | `selection.similar` | Optional `tolerance`, `sample_merged` | Unbound |
+| `selection.expand` | Required integer `radius`; optional `edge` | Unbound; parameter form |
+| `selection.contract` | Required integer `radius`; optional `edge` | Unbound; parameter form |
+| `selection.feather` | Required integer `radius`; optional `edge` | Unbound; parameter form |
+| `selection.smooth` | Required integer `radius`; optional `edge` | Unbound; parameter form |
 | `selection.all` | None | Ctrl+A |
 | `selection.deselect` | None | Ctrl+D |
 | `selection.reselect` | None | Ctrl+Shift+D |
@@ -71,6 +75,30 @@ The Edit menu and command search expose the four shortcuts; all bindings remain 
 All three actions are searchable, bindable and available as schema-derived workflow nodes, JSONL and MCP operations. Their selection-only history entries preserve source pixels; atomic failure rolls back the group, and replay restores recorded mask outcomes without executing the color kernel. A runnable [color-selection example](../examples/automation/color-selection.jsonl) demonstrates the commands. The W tool dispatches the same Wand action with explicit controls and the selected combination on each press. A seed outside the document is ignored. Temporary pan/zoom still takes precedence; no drawing contact or gradient is started by Wand. Tool Options exposes tolerance, contiguous matching and merged sampling, plus a Grow/Similar menu that passes the current tolerance/source controls. Shift/Alt combinations apply on press. Tool Options stores a temporary session choice in `canvas.state.ui["selection.options"]`; effective values are exposed as `canvas.state.selection_sampling`. The configured defaults live separately in `canvas.state.selection_defaults`. `toolbox.selection.options` validates all three schema-described arguments and publishes one UI effect. These desktop commands reject headless execution; direct document actions remain available with explicit arguments. Configured defaults are persisted in searchable settings, as described below.
 
 The DLL borrows active or composed pixels and allocates one output coverage buffer. Grow/Similar use an exact in-place balanced color tree (sorted lookup at tolerance zero), plus a fixed 4096-entry color memo table; there is no arbitrary palette cutoff or approximation. The reference palette uses at most four bytes per originally selected pixel, in addition to output coverage and host history/encoding costs. Highly irregular output remains subject to the existing compressed-mask bound below, and may fail without replacing the selection.
+
+## Selection edges
+
+Use the ellipsis **Selection Actions** menu in any selection tool's options, or search the registered command. Expand, Contract, Feather and Smooth open the shared parameter form. Editing or cancelling a form does not process the mask; Run Command commits one action. Pending local canvas-fit state is synchronized before presenting the form; an intervening external revision still requires Refresh Revision. The global Cancel command also closes a pending parameter form. These commands are schema-derived workflow nodes and run through the same DLL in GUI, MCP, JSONL and headless sessions.
+
+All four require an active mask. An active empty mask stays empty; no active mask is an error. `radius` is an integer from 1 to 256 document pixels (the form starts at 4). `edge` defaults to `extend`, repeating nearest canvas-edge coverage. `zero` treats everything beyond the canvas as unselected. This policy is applied at every blur pass. Extend keeps a full selection full; zero allows contraction/feathering at the document boundary.
+
+- **Expand** takes maximum coverage over the exact integer disk `dx² + dy² <= radius²`.
+- **Contract** takes minimum coverage over the same disk. Both retain fractional levels; neither substitutes a square kernel or thresholds a feathered mask.
+- **Feather** approximates a Gaussian using three separable running-sum boxes with radii `[r-1, r-1, r]`. The nominal blur scale is `r`; the box variance is `r²-r/3` per axis before boundary handling. Intermediate coverage uses 8 fractional bits and rounds each axis at that precision, then rounds once to 8-bit output. This is a documented fast approximation, not Photoshop-identical Gaussian output.
+- **Smooth** uses that fixed-point blur, then thresholds at 128/255 before final 8-bit rounding. It produces binary coverage, rounds jagged regions and can remove thin details/small islands. It does not preserve an existing feathered edge.
+
+Source pixels remain untouched. Each operation publishes one reversible mask change and one verified outcome event, rather than an event per pass/pixel. Current/previous masks, projects, atomic rollback and replay retain their existing format. Missing DLL tails, invalid arguments or an oversized compressed result fail before selection replacement. The existing 128 KiB-per-mask compressed bound can reject complex results; no approximation or silent truncation is used to make them fit.
+
+```json
+{"action":"selection.expand","args":{"radius":4}}
+{"action":"selection.contract","args":{"radius":2,"edge":"zero"}}
+{"action":"selection.feather","args":{"radius":3}}
+{"action":"selection.smooth","args":{"radius":2}}
+```
+
+A runnable [edge-processing example](../examples/automation/selection-edges.jsonl) finishes with clipped painting and verification. See [Development](development.md#selection-edge-costs) for measured costs and workspace bounds. Binary disk processing uses linear-time squared-distance transforms. Fractional disk processing is exact but costs O(pixel count × radius); large fractional masks/radii can take noticeably longer. Feather/Smooth use running sums with O(pixel count + radius × (width + height)) work. Empty/uniform cases avoid scratch allocation when their result is constant. These are cold commands on the Session thread; no processing, mask copying or serialization is added to pointer MOVE.
+
+![Actual Feather command parameter form](screenshots/selection-edges.png)
 
 ## Persistent defaults
 

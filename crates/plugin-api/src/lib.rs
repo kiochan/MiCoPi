@@ -303,6 +303,23 @@ pub struct SelectionApiColor {
     pub base: SelectionApi,
     pub color: Option<SelectionColorFn>,
 }
+/// Optional fixed-size tail after SelectionApiColor; preserve both prefixes.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct SelectionApiEdges {
+    pub base: SelectionApiColor,
+    pub edges: Option<SelectionEdgesFn>,
+}
+pub type SelectionEdgesFn =
+    unsafe extern "C" fn(*const SelectionEdges, *const Coverage, *mut u8, usize) -> i32;
+/// Kinds: 0 disk expansion, 1 disk contraction, 2 feather, 3 smooth.
+/// Radius: 1..=256. Edge: 0 extend, 1 zero coverage beyond the canvas.
+#[repr(C)]
+pub struct SelectionEdges {
+    pub kind: u32,
+    pub radius: u32,
+    pub edge: u32,
+}
 pub type SelectionColorFn = unsafe extern "C" fn(
     *const SelectionColor,
     *const Pixels,

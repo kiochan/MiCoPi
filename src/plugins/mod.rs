@@ -29,7 +29,8 @@ pub(crate) fn execute(
     use crate::application::Operation::*;
     match op {
         SelectionShape | SelectAll | Deselect | Reselect | InvertSelection | ReadSelection
-        | SelectColor | GrowSelection | SimilarSelection => selection::execute(session, op, args),
+        | SelectColor | GrowSelection | SimilarSelection | ExpandSelection | ContractSelection
+        | FeatherSelection | SmoothSelection => selection::execute(session, op, args),
         ReplayStatus | ReplayOpen | ReplayEvents | ReplayVerify | ReplayExport | ReplayLoad
         | ReplaySeek | ReplaySnapshot | ReplayFrames | ReplayRecover => {
             crate::application::replay::execute(session, op, args)
@@ -50,7 +51,9 @@ pub(crate) fn execute(
         WindowCommand | WindowState | WindowLayout | WindowCapture | WindowDrop => {
             windows::execute(session, op, args)
         }
-        SettingsRead | SettingsWrite | Ui => workbench::execute(session, op, args),
+        CaptureWorkspace | SettingsRead | SettingsWrite | Ui => {
+            workbench::execute(session, op, args)
+        }
         State | Plugins | PluginPlan | Events => system::execute(session, op, args),
         Describe => Ok(crate::application::pipeline::describe(session)),
         ContextRead => crate::application::pipeline::context(session, args),

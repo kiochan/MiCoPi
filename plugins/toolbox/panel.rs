@@ -355,24 +355,26 @@ impl Editor {
                             serde_json::to_value(options).unwrap(),
                         );
                     }
-                    ui.menu_button(RichText::new("…").size(a.icon_size), |ui| {
-                    for (id, title) in [
-                        ("selection.grow", "Grow Selection"),
-                        ("selection.similar", "Select Similar"),
-                    ] {
-                        if ui
-                            .add_enabled(
-                                editor.session.doc.selection().current.is_some(),
-                                Button::new(tr(title)),
-                            )
-                            .clicked()
-                        {
-                            editor.core(id, serde_json::json!({"tolerance":options.tolerance,"sample_merged":options.sample_merged}));
+                }
+                ui.menu_button(RichText::new("…").size(a.icon_size), |ui| {
+                    if editor.area_mode == 7 {
+                        let options=editor.session.selection_sampling();
+                        for (id,title) in [("selection.grow","Grow Selection"),("selection.similar","Select Similar")] {
+                            if ui.add_enabled(editor.session.doc.selection().current.is_some(),Button::new(tr(title))).clicked() {
+                                editor.core(id,serde_json::json!({"tolerance":options.tolerance,"sample_merged":options.sample_merged}));
+                                ui.close();
+                            }
+                        }
+                        ui.separator();
+                    }
+                    for (id,title) in [("selection.expand","Expand Selection"),("selection.contract","Contract Selection"),("selection.feather","Feather Selection"),("selection.smooth","Smooth Selection")] {
+                        if ui.add_enabled(editor.session.doc.selection().current.is_some(),Button::new(tr(title))).clicked() {
+                            editor.begin_plugin_command(id);
                             ui.close();
                         }
                     }
-                    }).response.on_hover_text(tr("Selection Actions"));
-                }
+                }).response.on_hover_text(tr("Selection Actions"));
+
                 ui.label(tr(theme::icon('\u{e312}', a.icon_size).color(c.muted)))
                     .on_hover_text(tr(if editor.area_mode == 7 {
                         "Click to select a color. Shift adds, Alt subtracts, Shift+Alt intersects."

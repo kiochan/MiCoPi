@@ -240,6 +240,118 @@
       "operation": "pipeline_run"
     },
     {
+      "id": "selection.expand",
+      "title": "Expand Selection",
+      "operation": "expand_selection",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "selection": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "can_reselect": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "active",
+              "can_reselect"
+            ]
+          }
+        },
+        "required": [
+          "selection"
+        ]
+      }
+    },
+    {
+      "id": "selection.contract",
+      "title": "Contract Selection",
+      "operation": "contract_selection",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "selection": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "can_reselect": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "active",
+              "can_reselect"
+            ]
+          }
+        },
+        "required": [
+          "selection"
+        ]
+      }
+    },
+    {
+      "id": "selection.feather",
+      "title": "Feather Selection",
+      "operation": "feather_selection",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "selection": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "can_reselect": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "active",
+              "can_reselect"
+            ]
+          }
+        },
+        "required": [
+          "selection"
+        ]
+      }
+    },
+    {
+      "id": "selection.smooth",
+      "title": "Smooth Selection",
+      "operation": "smooth_selection",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "selection": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "can_reselect": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "active",
+              "can_reselect"
+            ]
+          }
+        },
+        "required": [
+          "selection"
+        ]
+      }
+    },
+    {
       "id": "selection.wand",
       "title": "Magic Wand",
       "operation": "select_color"

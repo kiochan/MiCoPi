@@ -79,6 +79,7 @@ pub enum Operation {
     Describe,
     ContextRead,
     PipelineRun,
+    CaptureWorkspace,
     SettingsRead,
     SettingsWrite,
     State,
@@ -113,6 +114,10 @@ pub enum Operation {
     Reselect,
     InvertSelection,
     ReadSelection,
+    ExpandSelection,
+    ContractSelection,
+    FeatherSelection,
+    SmoothSelection,
     SelectColor,
     GrowSelection,
     SimilarSelection,
@@ -148,6 +153,13 @@ impl Operation {
         let number = json!({"type":"number"});
         let point = json!({"type":"object","properties":{"x":number,"y":number,"pressure":{"type":"number","minimum":0,"maximum":1},"time":{"type":"integer","minimum":0},"pen":{"type":"boolean"},"eraser":{"type":"boolean"},"tool_override":{"type":"string","enum":["brush","eraser","picker","hand","zoom"]},"view_x":number,"view_y":number},"required":["x","y"],"additionalProperties":false});
         let (props, required) = match self {
+            Self::ExpandSelection
+            | Self::ContractSelection
+            | Self::FeatherSelection
+            | Self::SmoothSelection => (
+                json!({"radius":{"type":"integer","minimum":1,"maximum":256,"default":4},"edge":{"type":"string","enum":["extend","zero"],"default":"extend"}}),
+                vec!["radius"],
+            ),
             Self::SelectColor => (
                 json!({"x":{"type":"integer","minimum":0,"maximum":4095},"y":{"type":"integer","minimum":0,"maximum":4095},"tolerance":{"type":"integer","minimum":0,"maximum":255,"default":32},"contiguous":{"type":"boolean","default":true},"sample_merged":{"type":"boolean","default":false},"mode":{"type":"string","enum":["replace","add","subtract","intersect"],"default":"replace"}}),
                 vec!["x", "y"],
@@ -218,7 +230,11 @@ impl Operation {
                 json!({"x":{"type":"integer","minimum":0,"maximum":4095},"y":{"type":"integer","minimum":0,"maximum":4095},"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096}}),
                 vec!["x", "y", "width", "height"],
             ),
-            Self::Open | Self::Save | Self::Export | Self::SettingsRead => (
+            Self::Open
+            | Self::Save
+            | Self::Export
+            | Self::SettingsRead
+            | Self::CaptureWorkspace => (
                 json!({"path":{"type":"string","minLength":1}}),
                 vec!["path"],
             ),

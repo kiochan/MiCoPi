@@ -61,7 +61,8 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 - [x] Add tolerance-based Wand, Grow and Similar commands with native active/merged sampling and shared automation contracts.
 - [x] Add direct Magic Wand activation, session-local sampling controls and a Grow/Similar menu.
 - [x] Add persisted searchable selection defaults, preview/cancel and shared profile validation.
-- [ ] Add selection edge processing and clipboard operations.
+- [x] Add native selection expansion/contraction, feathering and smoothing with shared actions/history.
+- [ ] Add clipboard operations.
 - [ ] Add selection-aware move, scale and rotate.
 - [ ] Add useful document controls: new-canvas presets, resolution/background choices, clearer dirty state and save/recovery feedback.
 
