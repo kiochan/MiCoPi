@@ -484,6 +484,15 @@ pub static COMMANDS: &[Command] = &[
         10165
     ),
     c!(
+        "canvas.trim",
+        "Trim Canvas…",
+        "Image",
+        "trim crop transparent border corner color",
+        UiCommand(10174),
+        "",
+        10174
+    ),
+    c!(
         "canvas.image_size",
         "Image Size…",
         "Image",

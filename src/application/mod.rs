@@ -51,3 +51,6 @@ mod geometry_tests;
 
 #[cfg(test)]
 mod resample_tests;
+
+#[cfg(test)]
+mod trim_tests;

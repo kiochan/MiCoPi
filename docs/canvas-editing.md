@@ -79,3 +79,31 @@ Area sampling accumulates alpha and alpha-weighted RGB, rounds only after both a
 Hidden and transparency-locked layers participate because this changes document coordinates. Names, IDs, active layer, visibility, opacity, blend/lock flags and image/workflow graphs are retained. Source filters are not baked or scaled: their parameter values remain unchanged and they render against the resampled sources. All masks/outputs are staged and validated before one structural undo entry and verified outcome event. A failed later layer, missing optional DLL capability, oversized compressed mask, atomic batch or partial journal write leaves the previous committed document/history intact. Replay restores outcomes without executing a sampler. See [the runnable example](../examples/automation/image-size.jsonl) and [native extension](native-plugins.md#optional-image-resampling-table).
 
 The shared desktop texture cache checks its own dimensions before partial uploads, including GUI Undo and equal-pixel-count quarter turns. Dimension changes rebuild the surface; ordinary drawing retains dirty-region uploads. This protects Canvas and Navigator even when a command has not performed an adapter-level state sync.
+
+## Automatic trim
+
+![Draggable trim controls beside the visible source and crop guide](screenshots/trim-canvas.png)
+
+Use **Image > Trim Canvas…** to preview removal of uniform outer margins. The command is searchable and bindable, with no default shortcut. Choose transparent pixels or the merged image's top-left/bottom-right corner color, set tolerance (0–255), then choose any nonempty set of Top/Right/Bottom/Left. The draggable dialog opens on the right to keep the central artwork visible. The outline and resulting pixel dimensions update only when parameters change. Apply commits one edit; Cancel/Escape/close leaves the document untouched. A changed document/revision or an intervening contact requires reopening the dialog.
+
+The analysis source is the **current visible merged artwork**, including opacity, blend modes and the image graph, without the display checkerboard. Hidden layers, zero-opacity content and the selection do not enlarge the sampled bounds. Applying the resulting frame crops **all raw layers**, including hidden and alpha-locked ones, and reframes both current/Reselect masks. Undo restores the original stored words, dimensions and masks. Names, IDs, active layer, opacity, blend/lock flags and image/workflow graph identities remain unchanged. Filters retain their parameters and rerender rather than being baked.
+
+Transparent mode removes alpha values at or below tolerance, independent of RGB. Corner modes compare straight RGBA against the selected corner: a pixel matches if every channel differs by at most tolerance. Two zero-alpha pixels match regardless of hidden RGB. Retain the bounding rectangle of every nonmatching pixel, then keep original edges for unchecked directions. Matching pixels inside that rectangle are retained; this does not erase a color or flood-fill a border.
+
+If all pixels match, or selected edges have no removable margin, dimensions/pixels/history remain unchanged. In particular, a uniform opaque image in corner-color mode is an all-matching result, not a claim that its artwork is transparent. MiCoPi never creates a zero-sized document. The GUI disables Apply for these no-ops; explicit automation calls still publish their audit event without adding an undo entry.
+
+| Action | Result |
+| --- | --- |
+| `canvas.trim_bounds` | Read-only `{x,y,width,height,source_width,source_height,revision,drawing,empty,would_change}` |
+| `canvas.trim` | Atomic document framing; typed `canvas.state` result |
+
+Both share optional arguments: `mode` is `transparent` (default), `top_left` or `bottom_right`; `tolerance` defaults to 0; `top`, `right`, `bottom`, `left` default to `true`, with at least one required to remain true. Bounds coordinates use current document pixels. Empty/all-matching analysis returns the original frame with `empty: true` and `would_change: false`. Analysis does not finish a provisional typed contact or increment revision; `drawing: true` identifies such a query. The mutation finishes contact and **recomputes** bounds instead of trusting a previously returned rectangle. Use the standard action envelope's expected revision for concurrency guards.
+
+```json
+{"action":"canvas.trim_bounds","args":{"mode":"transparent"}}
+{"action":"canvas.trim","args":{"mode":"top_left","tolerance":2,"top":false}}
+```
+
+The painting DLL owns the source-pixel scan. The host validates its rectangle, prepares bounded selection/frame buffers and publishes through the existing all-layer structural history. Missing callbacks, failed composition, invalid native rectangles, invalid arguments and stale revisions reject before cropping. Atomic failure restores the previous frame/history; verified replay restores recorded outcomes without rerunning the scanner or compositor. JSONL, MCP, command search and action nodes use the same registrations; editing a workflow does not trim. See [the runnable example](../examples/automation/trim.jsonl) and [native extension](native-plugins.md#optional-trim-analysis-table).
+
+Reveal All is still planned: current layer buffers are bounded by the document frame. Clipped pixels retained for undo are not live off-canvas layer content.

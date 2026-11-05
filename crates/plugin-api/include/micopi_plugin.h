@@ -174,6 +174,18 @@ typedef struct {
 #define MICOPI_RESAMPLE_AREA (1u << 2)
 typedef struct { MicopiResampleApi base; uint32_t features; } MicopiResampleApiExt;
 const MicopiResampleApi *micopi_resample_v1(void);
+/* Independent read-only trim analysis. Modes: 0 alpha <= tolerance, 1 top-left
+   RGBA, 2 bottom-right RGBA. Color matching uses max channel difference; two
+   zero-alpha colors match regardless of hidden RGB. Tolerance 0..255.
+   Sides: top=1, right=2, bottom=4, left=8; a nonzero subset is required. */
+typedef struct { uint32_t mode, tolerance, sides; } MicopiTrim;
+/* Both dimensions zero mean all pixels match; otherwise an in-bounds frame. */
+typedef struct { uint32_t x, y, width, height; } MicopiTrimBounds;
+typedef struct {
+    uint32_t abi_version, struct_size;
+    int32_t (*bounds)(const MicopiTrim *, const MicopiPixels *, MicopiTrimBounds *);
+} MicopiTrimApi;
+const MicopiTrimApi *micopi_trim_v1(void);
 #ifdef __cplusplus
 }
 #endif

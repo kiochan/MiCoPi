@@ -108,6 +108,7 @@ impl Operation {
                 | Self::ClipboardPasteInPlace
                 | Self::Stroke
                 | Self::CanvasSize
+                | Self::CanvasTrim
                 | Self::ImageSize
                 | Self::Crop
                 | Self::Undo

@@ -73,6 +73,9 @@ The `engine` directory contains shared document structures and the image graph m
 | `plugins/painting/src/resample.rs` | Rational pixel-center nearest/bilinear sampling and bounded axis plans |
 | `plugins/painting/src/resample/area.rs` | Exact shrinking footprints, per-axis linear enlargement and bounded streaming premultiplied sums |
 | `plugins/canvas/geometry.rs` | Compiled framing, crop and aspect-locked image sizing dialogs |
+| `plugins/canvas/trim.rs` | Compiled trim controls, revision guards and parameter-cached read-only bounds preview |
+| `src/plugins/trim.rs` | Shared trim options, result metadata and all-layer frame publication |
+| `plugins/painting/src/trim.rs` | Allocation-free merged-pixel trim bounds with native reference/rejection checks |
 | `src/plugins/geometry.rs` | Shared exact-geometry orchestration, staged masks/layers and lock/selection guards |
 | `plugins/painting/src/geometry.rs` | Allocation-free tiled orthogonal pixel and coverage permutations |
 | `src/engine/canvas_editing.rs` | Dimensioned framing/geometry publication and shared-buffer structural history |

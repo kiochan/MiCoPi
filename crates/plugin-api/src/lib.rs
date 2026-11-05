@@ -460,3 +460,34 @@ pub type ResamplePixelsFn =
 pub type ResampleMaskFn =
     unsafe extern "C" fn(*const Resample, *const Coverage, *mut u8, usize, u32, u32) -> i32;
 pub type ResampleEntry = unsafe extern "C" fn() -> *const ResampleApi;
+
+/// Independent read-only automatic trim analysis. No pointer survives a call.
+pub const TRIM_SYMBOL: &[u8] = b"micopi_trim_v1\0";
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct TrimApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub bounds: Option<TrimBoundsFn>,
+}
+/// Mode 0 alpha <= tolerance, 1 top-left RGBA, 2 bottom-right RGBA.
+/// Color modes match max per-channel absolute difference <= tolerance (0..255).
+/// Both zero-alpha colors match regardless of hidden RGB. Sides: top=1,
+/// right=2, bottom=4, left=8; at least one side must be selected.
+#[repr(C)]
+pub struct Trim {
+    pub mode: u32,
+    pub tolerance: u32,
+    pub sides: u32,
+}
+/// Zero width AND height means all pixels match. Otherwise an in-bounds frame.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TrimBounds {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+pub type TrimBoundsFn = unsafe extern "C" fn(*const Trim, *const Pixels, *mut TrimBounds) -> i32;
+pub type TrimEntry = unsafe extern "C" fn() -> *const TrimApi;

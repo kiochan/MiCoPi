@@ -104,6 +104,8 @@ pub enum Operation {
     State,
     New,
     CanvasSize,
+    CanvasTrim,
+    TrimBounds,
     ImageSize,
     Crop,
     Open,
@@ -252,6 +254,10 @@ impl Operation {
                 json!({"width":{"type":"integer","minimum":1,"maximum":4096,"description":"Target width; with lock_aspect use exactly one dimension."},"height":{"type":"integer","minimum":1,"maximum":4096,"description":"Target height; with lock_aspect use exactly one dimension."},"lock_aspect":{"type":"boolean","default":true,"description":"Preserve source ratio; supply exactly one dimension. When false supply both."},"method":{"type":"string","enum":["bilinear","nearest","area"],"default":"bilinear","description":"Area averages exact footprints on shrinking axes and uses bilinear on enlarging axes."}}),
                 vec![],
             ),
+            Self::CanvasTrim | Self::TrimBounds => (
+                json!({"mode":{"type":"string","enum":["transparent","top_left","bottom_right"],"default":"transparent","description":"Analyze the visible merged image; corner modes match its corner RGBA."},"tolerance":{"type":"integer","minimum":0,"maximum":255,"default":0,"description":"Removable alpha threshold, or maximum RGBA channel difference for corner modes."},"top":{"type":"boolean","default":true},"right":{"type":"boolean","default":true},"bottom":{"type":"boolean","default":true},"left":{"type":"boolean","default":true,"description":"At least one of top/right/bottom/left must be true."}}),
+                vec![],
+            ),
             Self::CanvasSize => (
                 json!({"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096},"anchor":{"type":"string","enum":["top_left","top","top_right","left","center","right","bottom_left","bottom","bottom_right"]}}),
                 vec!["width", "height"],
@@ -349,6 +355,7 @@ impl Operation {
                 | Self::Describe
                 | Self::ContextRead
                 | Self::State
+                | Self::TrimBounds
                 | Self::ReadSelection
                 | Self::ClipboardState
                 | Self::SystemClipboardState

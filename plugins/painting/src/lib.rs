@@ -5,6 +5,7 @@ mod input;
 mod raster;
 mod resample;
 mod selection;
+mod trim;
 use input::{Dynamics, Sample, Stabilizer};
 use micopi_plugin_api as abi;
 use raster::Raster;

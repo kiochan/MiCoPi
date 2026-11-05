@@ -592,6 +592,7 @@ impl Studio {
                                 serde_json::json!({"color":color,"opacity":self.editor.opacity}),
                             );
                         }
+                        10174 => self.editor.open_trim_canvas(),
                         10173 => self.editor.open_image_size(),
                         10166..=10172 => {
                             let actions = [

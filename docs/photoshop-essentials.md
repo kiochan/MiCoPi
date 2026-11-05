@@ -61,7 +61,8 @@ Acceptance: preview/cancel leaves pixels untouched; selection is visible and beh
 - [x] Add exact document 90° clockwise/counterclockwise/180° rotations and flips, preserving all layers and selection masks. Add centered active-layer quarter turns with selection/alpha-lock guards and explicit frame clipping; off-canvas storage remains future work. See [Canvas editing](canvas-editing.md#exact-rotation-and-flips).
 - [x] Add Image Size with aspect locking and measured nearest/bilinear resampling through DLL actions, menus, nodes and MCP/headless; retain masks, structural identities, undo and verified outcomes.
 - [x] Add measured area averaging for substantial downscaling, with exact footprint weights, premultiplied alpha, fractional masks and bounded streaming rows. Enlarging axes use bilinear; this is a box filter, not Photoshop bicubic/Lanczos parity.
-- [ ] Add transparent/edge-color trim and Reveal All for supported off-canvas content.
+- [x] Add transparent/corner-color trim with tolerance, selected sides, cached read-only preview and shared atomic document actions. Analyze visible merged artwork; crop every raw layer and both selection masks with undo/replay.
+- [ ] Add Reveal All after bounded off-canvas layer storage is available; clipped historical pixels are not live off-canvas content.
 - [ ] Add Move/nudge with explicit active-layer/selection targets and configurable modifier steps.
 - [ ] Add Free Transform translate, scale, rotate and flip with a reversible preview and explicit commit/cancel.
 - [ ] Add transform repeat, selection-aware transforms and subsequent skew/perspective where the data model supports them.

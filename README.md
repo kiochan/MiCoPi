@@ -14,7 +14,7 @@ The independent Tools bar and Canvas can float as native OS windows across monit
 
 Connected or whole-layer color fill with tolerance and edge controls, linear/radial gradients with repeat and reflection and inline pressure dynamics are available in the Brush panel. See [Painting tools](docs/painting-tools.md).
 
-Canvas size, exact all-layer crop, document quarter/half turns and flips preserve layer/node identities, selection masks, undo and verified replay. Active-layer quarter turns keep the canvas size and clip beyond its frame. **Image Size (Ctrl+Alt+I)** scales all layers and masks with aspect locking and nearest/bilinear/area sampling. Area averaging retains thin-line coverage during reductions. See [Canvas editing](docs/canvas-editing.md).
+Canvas size, exact all-layer crop, document quarter/half turns and flips preserve layer/node identities, selection masks, undo and verified replay. Active-layer quarter turns keep the canvas size and clip beyond its frame. **Image Size (Ctrl+Alt+I)** scales all layers and masks with aspect locking and nearest/bilinear/area sampling. Area averaging retains thin-line coverage during reductions. Trim previews transparent or corner-color margins and crops selected sides across all layers with undo. See [Canvas editing](docs/canvas-editing.md).
 
 The [unified plugin system](docs/plugin-system.md) exposes package versions, compatibility, dependencies and lifecycle status in Settings and automation. Enable/disable plans resolve dependencies before saving; activation takes effect after restart. Plugins can provide isolated language catalogs that hot-reload while the app runs.
 

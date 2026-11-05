@@ -179,11 +179,19 @@ def main():
         dict(action="canvas.image_size",args=dict(width=65,height=49,lock_aspect=False,method="area")),
         dict(action="canvas.image_size",args=dict(width=260,height=195,lock_aspect=False,method="nearest")),
     ]
+    commands += [
+        dict(action="canvas.resize",args=dict(width=280,height=215,anchor="center")),
+        dict(action="canvas.trim_bounds",args={}),
+        dict(action="canvas.trim",args={}),
+    ]
     script = output / "draw.jsonl"
     script.write_text("\n".join(json.dumps(c) for c in commands + [dict(action="canvas.export", args=dict(path=str(batch_png)))]) + "\n", encoding="utf-8")
     run = subprocess.run([str(cli), "run", str(script), "--plugins", str(plugins), "--config-dir", str(profile)], capture_output=True, text=True, encoding="utf-8", timeout=30)
     assert run.returncode == 0, run.stderr + run.stdout
     assert all(json.loads(line)["ok"] for line in run.stdout.splitlines())
+    trim_bounds=json.loads(run.stdout.splitlines()[-3])["data"]["result"]
+    expected_state=json.loads(run.stdout.splitlines()[-2])["data"]["result"]
+    assert (expected_state["width"],expected_state["height"])==(trim_bounds["width"],trim_bounds["height"])
     pipeline=json.loads(run.stdout.splitlines()[1])["data"]["result"]
     assert pipeline["ok"] and pipeline["completed"]==["context","paint","read","view"]
     assert batch_png.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
@@ -238,7 +246,7 @@ def main():
         assert call("app.describe",{})["result"]["runtime"]=="desktop"
         state = call("canvas.state", {})["result"]
         assert state["selection_defaults"] == selection_defaults
-        assert state["width"] == 260 and state["height"] == 195 and state["dirty"]
+        assert (state["width"],state["height"])==(expected_state["width"],expected_state["height"]) and state["dirty"]
         shot = call("canvas.snapshot", {})["result"]
         assert base64.b64decode(shot["data"]) == batch_png.read_bytes()
         (output / "gui-canvas.png").write_bytes(base64.b64decode(shot["data"]))

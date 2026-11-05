@@ -88,6 +88,16 @@ unsafe fn decode_resample_table(
     };
     Ok((std::ptr::read_unaligned(pointer), features))
 }
+unsafe fn decode_trim_table(pointer: *const abi::TrimApi) -> Result<abi::TrimApi, String> {
+    if pointer.is_null() {
+        return Err("Null trim table".into());
+    }
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.abi_version != 1 || header.struct_size < std::mem::size_of::<abi::TrimApi>() as u32 {
+        return Err("Incompatible trim ABI".into());
+    }
+    Ok(std::ptr::read_unaligned(pointer))
+}
 unsafe fn decode_geometry_table(
     pointer: *const abi::GeometryApi,
 ) -> Result<abi::GeometryApi, String> {
@@ -112,6 +122,22 @@ impl Module {
             }
             let entry = std::mem::transmute::<*mut c_void, abi::GeometryEntry>(address);
             decode_geometry_table(entry()).map(Some)
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(None)
+        }
+    }
+
+    unsafe fn trim_api(&self) -> Result<Option<abi::TrimApi>, String> {
+        #[cfg(windows)]
+        {
+            let address = GetProcAddress(self.handle as *mut c_void, abi::TRIM_SYMBOL.as_ptr());
+            if address.is_null() {
+                return Ok(None);
+            }
+            let entry = std::mem::transmute::<*mut c_void, abi::TrimEntry>(address);
+            decode_trim_table(entry()).map(Some)
         }
         #[cfg(not(windows))]
         {
@@ -312,6 +338,7 @@ pub struct NativePlugin {
     selection_edges: Option<abi::SelectionEdgesFn>,
     selection_transfer: Option<abi::SelectionTransferFn>,
     geometry: Option<abi::GeometryApi>,
+    trim: Option<abi::TrimApi>,
     resample: Option<abi::ResampleApi>,
     resample_features: u32,
     compositor: Option<abi::CompositorApi>,
@@ -378,6 +405,7 @@ impl NativePlugin {
             std::ptr::read_unaligned(pointer)
         };
         let geometry = unsafe { module.geometry_api()? };
+        let trim = unsafe { module.trim_api()? };
         let (resample, resample_features) = match unsafe { module.resample_api()? } {
             Some((api, features)) => (Some(api), features),
             None => (None, 0),
@@ -419,6 +447,7 @@ impl NativePlugin {
                 selection_edges,
                 selection_transfer,
                 geometry,
+                trim,
                 resample,
                 resample_features,
                 compositor,
@@ -975,6 +1004,85 @@ mod tests {
             api.abi_version = 2;
             assert!(decode_resample_table(&api).is_err());
         }
+    }
+    #[test]
+    fn trim_optional_table_and_invalid_outputs_reject_before_structural_changes() {
+        let header = abi::Header {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::Header>() as u32,
+        };
+        unsafe {
+            assert!(decode_trim_table(std::ptr::null()).is_err());
+            assert!(decode_trim_table((&header as *const abi::Header).cast()).is_err());
+        }
+        let mut api = abi::TrimApi {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::TrimApi>() as u32 - 1,
+            bounds: None,
+        };
+        unsafe {
+            assert!(decode_trim_table(&api).is_err());
+            api.struct_size += 1;
+            assert!(decode_trim_table(&api).is_ok());
+            api.abi_version = 2;
+            assert!(decode_trim_table(&api).is_err());
+        }
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins");
+        let mut registry = super::super::Registry::load(&root).unwrap();
+        Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .trim = None;
+        let mut s = Session::new(registry).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+            .unwrap();
+        let state = s.state();
+        for action in ["canvas.trim", "canvas.trim_bounds"] {
+            assert!(s
+                .apply(Action::new(action, json!({})))
+                .unwrap_err()
+                .message
+                .contains("does not support automatic trim"));
+            assert_eq!(s.state(), state);
+        }
+        s.apply(Action::new(
+            "canvas.image_size",
+            json!({"width":6,"method":"nearest"}),
+        ))
+        .unwrap();
+        assert_eq!((s.doc.width, s.doc.height), (6, 4));
+        unsafe extern "C" fn bad(
+            _: *const abi::Trim,
+            _: *const abi::Pixels,
+            out: *mut abi::TrimBounds,
+        ) -> i32 {
+            *out = abi::TrimBounds {
+                x: u32::MAX,
+                y: 0,
+                width: u32::MAX,
+                height: 1,
+            };
+            abi::OK
+        }
+        let mut registry = super::super::Registry::load(&root).unwrap();
+        Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .trim
+            .as_mut()
+            .unwrap()
+            .bounds = Some(bad);
+        let mut s = Session::new(registry).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+            .unwrap();
+        let state = s.state();
+        let history = s.doc.history_bytes();
+        assert!(s
+            .apply(Action::new("canvas.trim", json!({})))
+            .unwrap_err()
+            .message
+            .contains("invalid bounds"));
+        assert_eq!(s.state(), state);
+        assert_eq!(s.doc.history_bytes(), history);
+        assert_eq!(s.doc.layers[0].pixels, vec![0; 96]);
     }
     #[test]
     fn geometry_optional_table_checks_header_before_reading_fixed_callbacks() {
@@ -2175,4 +2283,42 @@ pub(crate) fn resample_mask(
         return Err("Native selection resample failed".into());
     }
     crate::engine::selection::Mask::new(w, h, out)
+}
+
+pub(crate) fn trim_bounds(s: &mut Session, o: &abi::Trim) -> Result<abi::TrimBounds, String> {
+    let kernel = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.trim)
+        .and_then(|api| api.bounds)
+        .ok_or("Painting DLL does not support automatic trim")?;
+    s.doc.compose();
+    if let Some(error) = &s.doc.render_error {
+        return Err(format!("Cannot analyze merged artwork: {error}"));
+    }
+    let source = abi::Pixels {
+        data: s.doc.composite.as_ptr() as *mut u32,
+        len: s.doc.composite.len(),
+        width: s.doc.width as u32,
+        height: s.doc.height as u32,
+        stride: s.doc.width as u32,
+        origin_x: 0,
+        origin_y: 0,
+    };
+    let mut out = abi::TrimBounds::default();
+    if unsafe { kernel(o, &source, &mut out) } != abi::OK {
+        return Err("Native trim analysis failed".into());
+    }
+    if out.width == 0 && out.height == 0 && out.x == 0 && out.y == 0 {
+        return Ok(out);
+    }
+    if out.width == 0
+        || out.height == 0
+        || u64::from(out.x) + u64::from(out.width) > s.doc.width as u64
+        || u64::from(out.y) + u64::from(out.height) > s.doc.height as u64
+    {
+        return Err("Native trim returned invalid bounds".into());
+    }
+    Ok(out)
 }

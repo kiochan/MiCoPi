@@ -24,6 +24,7 @@ pub(crate) mod resample;
 mod selection;
 mod system;
 mod system_clipboard;
+mod trim;
 pub(crate) mod windows;
 mod workbench;
 pub(crate) fn execute(
@@ -33,6 +34,7 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        CanvasTrim | TrimBounds => trim::execute(session, op, args),
         ImageSize => resample::execute(session, args),
         RotateCanvasClockwise
         | RotateCanvasCounterclockwise

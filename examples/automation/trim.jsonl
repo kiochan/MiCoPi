@@ -1,0 +1,14 @@
+{"action": "canvas.new", "args": {"width": 96, "height": 64}}
+{"action": "brush.set", "args": {"color": "#0077ff", "radius": 6, "stabilizer": 0}}
+{"action": "canvas.stroke", "args": {"points": [{"x": 24, "y": 24}, {"x": 72, "y": 40}]}}
+{"action": "canvas.trim_bounds", "args": {}}
+{"action": "canvas.trim", "args": {"top": false}}
+{"action": "history.undo", "args": {}}
+{"action": "canvas.trim", "args": {}}
+{"action": "history.undo", "args": {}}
+{"action": "layer.add", "args": {}}
+{"action": "layer.fill_color", "args": {"color": "#ffffff"}}
+{"action": "layer.move", "args": {"layer_id": 2, "to": 0}}
+{"action": "canvas.trim", "args": {"mode": "top_left"}}
+{"action": "replay.verify", "args": {}}
+{"action": "canvas.export", "args": {"path": "target/trim.png"}}

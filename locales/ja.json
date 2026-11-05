@@ -949,5 +949,21 @@
   "Nearest Neighbor": "ニアレストネイバー",
   "Derived image dimensions must be between 1 and 4096 pixels": "算出後の画像サイズは 1～4096 ピクセルにしてください",
   "Area (Downscale)": "面積平均（縮小）",
-  "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking.": "ニアレストは画素の境界を保持。バイリニアは滑らかに、面積平均は縮小時の細部を保ちます。"
+  "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking.": "ニアレストは画素の境界を保持。バイリニアは滑らかに、面積平均は縮小時の細部を保ちます。",
+  "Trim Canvas": "キャンバスをトリミング",
+  "Trim Canvas…": "キャンバスをトリミング…",
+  "Analyze Canvas Trim": "トリミング範囲を解析",
+  "Preview uses visible artwork. All layers are cropped; undo restores them.": "表示中の絵を基準に、全レイヤーを切り抜きます。取り消しで復元できます。",
+  "Based On": "基準",
+  "Transparent Pixels": "透明ピクセル",
+  "Top Left Pixel Color": "左上ピクセルの色",
+  "Bottom Right Pixel Color": "右下ピクセルの色",
+  "Remove pixels with alpha at or below this value.": "アルファ値がこの値以下のピクセルを除きます。",
+  "Match the corner color within this RGBA difference.": "この RGBA 差の範囲で隅の色に一致させます。",
+  "Trim Sides": "トリミングする辺",
+  "Result: {width} × {height} px": "結果：{width} × {height} px",
+  "All pixels match. The canvas stays unchanged.": "すべてのピクセルが一致しています。キャンバスは変更されません。",
+  "No removable border.": "除去できる余白がありません。",
+  "The selection does not limit trimming.": "選択範囲はトリミングを制限しません。",
+  "Choose at least one side to trim": "トリミングする辺を一つ以上選択してください"
 }

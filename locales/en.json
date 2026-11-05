@@ -949,5 +949,21 @@
   "Nearest Neighbor": "Nearest Neighbor",
   "Derived image dimensions must be between 1 and 4096 pixels": "Derived image dimensions must be between 1 and 4096 pixels",
   "Area (Downscale)": "Area (Downscale)",
-  "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking.": "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking."
+  "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking.": "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking.",
+  "Trim Canvas": "Trim Canvas",
+  "Trim Canvas…": "Trim Canvas…",
+  "Analyze Canvas Trim": "Analyze Canvas Trim",
+  "Preview uses visible artwork. All layers are cropped; undo restores them.": "Preview uses visible artwork. All layers are cropped; undo restores them.",
+  "Based On": "Based On",
+  "Transparent Pixels": "Transparent Pixels",
+  "Top Left Pixel Color": "Top Left Pixel Color",
+  "Bottom Right Pixel Color": "Bottom Right Pixel Color",
+  "Remove pixels with alpha at or below this value.": "Remove pixels with alpha at or below this value.",
+  "Match the corner color within this RGBA difference.": "Match the corner color within this RGBA difference.",
+  "Trim Sides": "Trim Sides",
+  "Result: {width} × {height} px": "Result: {width} × {height} px",
+  "All pixels match. The canvas stays unchanged.": "All pixels match. The canvas stays unchanged.",
+  "No removable border.": "No removable border.",
+  "The selection does not limit trimming.": "The selection does not limit trimming.",
+  "Choose at least one side to trim": "Choose at least one side to trim"
 }

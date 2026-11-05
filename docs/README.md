@@ -9,7 +9,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Photoshop-common Editing Plan](photoshop-essentials.md) | Independent functional adoption checklist, dependencies and acceptance checks |
 | [User Guide](user-guide.md) | Drawing, pen input, settings, shortcuts and panels |
 | [Interface Design](interface-design.md) | Visual hierarchy, configurable spacing and layout behavior |
-| [Canvas Editing](canvas-editing.md) | Anchored framing, exact crop, orthogonal rotation/flips, image resampling, all-layer history and public actions |
+| [Canvas Editing](canvas-editing.md) | Anchored framing, exact crop, orthogonal rotation/flips, image resampling/trim, all-layer history and public actions |
 | [Layer Editing](layer-editing.md) | Stable identities, structural edits, exact transforms and reference behavior |
 | [Clipboard](clipboard.md) | Internal transfers, Windows PNG/DIB adapter, limits, external effects and native verification status |
 | [Selections](selections.md) | Marquee/lasso gestures, color commands, native clipping, history and limits |

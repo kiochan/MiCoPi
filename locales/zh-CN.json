@@ -949,5 +949,21 @@
   "Nearest Neighbor": "最近邻",
   "Derived image dimensions must be between 1 and 4096 pixels": "等比计算后的尺寸必须在 1 至 4096 像素之间",
   "Area (Downscale)": "面积平均（缩小）",
-  "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking.": "最近邻保留像素边缘，双线性平滑缩放，面积平均保留缩小时的细节。"
+  "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking.": "最近邻保留像素边缘，双线性平滑缩放，面积平均保留缩小时的细节。",
+  "Trim Canvas": "修剪画布",
+  "Trim Canvas…": "修剪画布…",
+  "Analyze Canvas Trim": "分析画布修剪范围",
+  "Preview uses visible artwork. All layers are cropped; undo restores them.": "预览依据可见画面，裁剪会影响所有图层，可撤销恢复。",
+  "Based On": "依据",
+  "Transparent Pixels": "透明像素",
+  "Top Left Pixel Color": "左上角像素颜色",
+  "Bottom Right Pixel Color": "右下角像素颜色",
+  "Remove pixels with alpha at or below this value.": "移除透明度值不高于此值的像素。",
+  "Match the corner color within this RGBA difference.": "按此 RGBA 差值容差匹配角落颜色。",
+  "Trim Sides": "修剪方向",
+  "Result: {width} × {height} px": "结果：{width} × {height} 像素",
+  "All pixels match. The canvas stays unchanged.": "所有像素均匹配，画布保持不变。",
+  "No removable border.": "没有可移除的边缘。",
+  "The selection does not limit trimming.": "选区不会限制修剪范围。",
+  "Choose at least one side to trim": "请至少选择一个修剪方向"
 }

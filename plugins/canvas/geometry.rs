@@ -1,9 +1,12 @@
 //! Canvas framing controls; all commits go through public document actions.
 use super::*;
+#[path = "trim.rs"]
+mod trim;
 pub(super) struct CanvasDialog {
     identity: u64,
     source: [usize; 2],
     crop: bool,
+    trim: Option<trim::TrimDraft>,
     image_size: bool,
     lock_aspect: bool,
     width_axis: bool,
@@ -296,6 +299,7 @@ impl Editor {
             identity: self.session.doc.identity,
             source: [self.session.doc.width, self.session.doc.height],
             crop,
+            trim: None,
             image_size: false,
             lock_aspect: true,
             width_axis: true,
@@ -314,6 +318,11 @@ impl Editor {
     pub(super) fn crop_outline(&self, painter: &Painter, color: Color32) {
         if let Some(d) = &self.geometry {
             if d.crop
+                && d.trim.as_ref().is_none_or(|t| {
+                    t.revision == self.session.revision
+                        && !self.session.is_drawing()
+                        && t.has_preview()
+                })
                 && d.identity == self.session.doc.identity
                 && d.source == [self.session.doc.width, self.session.doc.height]
             {
@@ -345,6 +354,10 @@ impl Editor {
         let Some(mut d) = self.geometry.take() else {
             return;
         };
+        if d.trim.is_some() {
+            self.trim_canvas_window(ctx, d);
+            return;
+        }
         let stale = d.identity != self.session.doc.identity
             || d.source != [self.session.doc.width, self.session.doc.height];
         let mut open = true;
