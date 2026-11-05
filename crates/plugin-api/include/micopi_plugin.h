@@ -186,6 +186,16 @@ typedef struct {
     int32_t (*bounds)(const MicopiTrim *, const MicopiPixels *, MicopiTrimBounds *);
 } MicopiTrimApi;
 const MicopiTrimApi *micopi_trim_v1(void);
+/* Independent integer movement. Kind 0 whole layer (absent coverage),
+   1 selected pixels, 2 mask only. Offsets within +/-4096; excess is clipped.
+   Immutable scoped sources, disjoint outputs; mask output is dense. */
+typedef struct { uint32_t kind; int32_t dx, dy; } MicopiMove;
+typedef struct {
+    uint32_t abi_version, struct_size;
+    int32_t (*pixels)(const MicopiMove *, const MicopiPixels *, const MicopiCoverage *, MicopiPixels *);
+    int32_t (*mask)(const MicopiMove *, const MicopiCoverage *, uint8_t *, size_t);
+} MicopiMoveApi;
+const MicopiMoveApi *micopi_move_v1(void);
 #ifdef __cplusplus
 }
 #endif

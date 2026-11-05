@@ -491,3 +491,26 @@ pub struct TrimBounds {
 }
 pub type TrimBoundsFn = unsafe extern "C" fn(*const Trim, *const Pixels, *mut TrimBounds) -> i32;
 pub type TrimEntry = unsafe extern "C" fn() -> *const TrimApi;
+
+/// Optional integer movement; synchronous immutable sources and disjoint outputs.
+pub const MOVE_SYMBOL: &[u8] = b"micopi_move_v1\0";
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct MoveApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub pixels: Option<MovePixelsFn>,
+    pub mask: Option<MoveMaskFn>,
+}
+/// Kind 0 whole layer (absent coverage), 1 selected pixels, 2 mask only.
+/// Offsets are integer document pixels within +/-4096; excess is clipped.
+#[repr(C)]
+pub struct Move {
+    pub kind: u32,
+    pub dx: i32,
+    pub dy: i32,
+}
+pub type MovePixelsFn =
+    unsafe extern "C" fn(*const Move, *const Pixels, *const Coverage, *mut Pixels) -> i32;
+pub type MoveMaskFn = unsafe extern "C" fn(*const Move, *const Coverage, *mut u8, usize) -> i32;
+pub type MoveEntry = unsafe extern "C" fn() -> *const MoveApi;

@@ -38,5 +38,10 @@
     "tolerance": 32,
     "contiguous": true,
     "sample_merged": false
+  },
+  "movement": {
+    "target": "auto",
+    "step": 1,
+    "large_step": 10
   }
 }

@@ -2,6 +2,7 @@
 //! in this DLL. The host supplies only scoped pixels, history and color sampling.
 mod geometry;
 mod input;
+mod movement;
 mod raster;
 mod resample;
 mod selection;

@@ -107,3 +107,28 @@ Both share optional arguments: `mode` is `transparent` (default), `top_left` or 
 The painting DLL owns the source-pixel scan. The host validates its rectangle, prepares bounded selection/frame buffers and publishes through the existing all-layer structural history. Missing callbacks, failed composition, invalid native rectangles, invalid arguments and stale revisions reject before cropping. Atomic failure restores the previous frame/history; verified replay restores recorded outcomes without rerunning the scanner or compositor. JSONL, MCP, command search and action nodes use the same registrations; editing a workflow does not trim. See [the runnable example](../examples/automation/trim.jsonl) and [native extension](native-plugins.md#optional-trim-analysis-table).
 
 Reveal All is still planned: current layer buffers are bounded by the document frame. Clipped pixels retained for undo are not live off-canvas layer content.
+
+## Move and nudge
+
+![Independent Move Tool Options with wrapped help](screenshots/movement-options.png)
+
+Select **Move Tool (V)** in Tools. Tool Options chooses **Auto: Selection or Layer**, **Active Layer**, **Selected Pixels** or **Selection Outline**. Auto moves selected raw pixels and their current mask when a mask exists; otherwise it moves the active raw layer. A mask with no positive coverage is an error, not an implicit whole-layer move. Layer mode ignores the mask and leaves it fixed; outline mode moves only the current mask, even on hidden or transparency-locked layers. The previous Reselect mask stays in its original coordinates in all modes.
+
+Drag to preview a translated bounding outline and document-pixel offset. Source pixels remain visible until release; this is an outline preview, not a live pixel transform. Shift locks the dominant axis. Escape, focus loss, pen cancellation, opening a modal or changing the source document/revision/layer discards the gesture. Release publishes one action with an expected revision. No pixel copy, JSON serialization, DLL call or history event is produced for each MOVE sample. The existing brush/eraser pressure and stabilization path is unchanged.
+
+Arrow keys nudge by **1 document pixel** by default, or **10** with Shift. These bindings operate while Move is active and no text editor has keyboard focus; command search/direct actions remain usable independently. All bindings are configurable and new defaults yield to older explicit preferences. Search Settings for `movement` to change the target, `movement.step` or `movement.large_step` (integer 1–4096). Preview/cancel/save follows the existing settings contract. Tool Options overrides are session-local; saving changed defaults replaces the override, while unrelated settings and writes to inactive profiles preserve it. `canvas.state` exposes `movement_defaults` and effective `movement_options` separately.
+
+![Searchable movement defaults and arrow-key bindings](screenshots/movement-settings.png)
+
+| Action | Arguments |
+| --- | --- |
+| `canvas.move` | Required integer `dx`, `dy`, each within ±4096; optional `target` |
+| `canvas.nudge` | Required `direction`: `left`, `right`, `up`, `down`; optional `large` (default false) and `target` |
+
+Targets are `auto`, `layer`, `selection`, `selection_mask`; omitted target follows the effective preferences. Positive offsets move right/down. Both actions are document-atomic, schema-described and available through nodes, JSONL, MCP and headless execution, returning `canvas.state`. `toolbox.mode.move` and `toolbox.movement.options` explicitly require desktop presentation. Editing a workflow never executes movement. See [the runnable example](../examples/automation/movement.jsonl).
+
+All movement clips to the existing frame; it does not retain live off-canvas pixels. Undo restores clipped words and masks. Whole-layer movement copies raw words exactly, including hidden RGB, without baking filters. Selected movement reads original pixels and coverage immutably: remove selected coverage from source alpha with `round(alpha * (255-coverage) / 255)`, then source-over translated extracted alpha `round(alpha * coverage / 255)` onto that cleared base. Rounding is half-up; cleared zero-alpha pixels become canonical zero, and untouched unselected words retain their hidden RGB. This avoids overlap feedback or applying destination selection twice. A zero offset preserves all stored words and adds no undo entry.
+
+Pixel moves require a visible active layer. Transparency locking rejects changed alpha or changed hidden words in fully transparent pixels before publishing masks or pixels. Names, IDs, graph/filter parameters, opacity and blend flags stay unchanged. Outputs and bounded compressed masks are staged before a single tiled pixel/composition undo entry. Atomic or journal failure restores pixels, masks and history. Replay restores verified outcomes without executing the DLL; compact event context records resolved target and offsets, not per-drag samples. See [the optional native table](native-plugins.md#optional-integer-movement-table).
+
+On this test host, a release kernel-only run on 4096² pixels took 23.75 ms for whole-layer movement and 297.80 ms for fractional selected movement. These single-run measurements exclude allocation, mask encoding, host history, composition and recording; they are not frame-rate or tablet-latency promises. Kernels allocate no scratch; the host stages one pixel output (up to 64 MiB) and, when needed, one mask output (up to 16 MiB), in addition to bounded tiled history/rollback/replay costs.

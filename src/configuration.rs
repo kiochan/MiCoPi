@@ -215,6 +215,7 @@ pub struct Settings {
     pub painting: PaintingPreferences,
     pub selection: crate::application::SelectionSampling,
     pub plugins: PluginPreferences,
+    pub movement: crate::application::MovementPreferences,
     pub path: PathBuf,
     original: Value,
 }
@@ -226,6 +227,7 @@ impl Settings {
             painting: PaintingPreferences::default(),
             selection: Default::default(),
             plugins: PluginPreferences::default(),
+            movement: Default::default(),
             path,
             original: json!({"version": 1}),
         }
@@ -264,6 +266,10 @@ impl Settings {
         let selection =
             serde_json::from_value(original.get("selection").cloned().unwrap_or(json!({})))
                 .map_err(|e| format!("selection: {e}"))?;
+        let movement: crate::application::MovementPreferences =
+            serde_json::from_value(original.get("movement").cloned().unwrap_or(json!({})))
+                .map_err(|e| format!("movement: {e}"))?;
+        movement.validate()?;
         let bindings = json!({"version": 1, "keybindings": original.get("keybindings").cloned().unwrap_or(json!({}))});
         let keys = Keymap::decode(&bindings.to_string())?;
         Ok(Self {
@@ -272,6 +278,7 @@ impl Settings {
             painting,
             selection,
             plugins,
+            movement,
             path,
             original,
         })
@@ -284,8 +291,10 @@ impl Settings {
         self.keys.validate()?;
         self.painting.validate()?;
         self.plugins.validate()?;
+        self.movement.validate()?;
         let mut value = self.original.clone();
         value["version"] = json!(1);
+        value["movement"] = serde_json::to_value(self.movement).map_err(|e| e.to_string())?;
         value["selection"] = serde_json::to_value(self.selection).map_err(|e| e.to_string())?;
         value["painting"] = serde_json::to_value(&self.painting).map_err(|e| e.to_string())?;
         value["plugins"] = serde_json::to_value(&self.plugins).map_err(|e| e.to_string())?;

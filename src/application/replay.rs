@@ -142,7 +142,11 @@ impl Session {
             self.replay_error = None;
             self.replay_identity = self.doc.identity;
         }
-        let context = if success && op.is_some_and(Operation::system_clipboard_mutation) {
+        let context = if success && matches!(op, Some(Operation::MovePixels | Operation::Nudge)) {
+            Some(
+                serde_json::json!({"movement":crate::plugins::movement::context(self,op.unwrap(),args)}),
+            )
+        } else if success && op.is_some_and(Operation::system_clipboard_mutation) {
             self.system_clipboard_event.take()
         } else if success
             && matches!(

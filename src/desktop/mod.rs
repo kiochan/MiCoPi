@@ -6,6 +6,8 @@ mod brush;
 mod canvas;
 #[path = "../../plugins/canvas/geometry.rs"]
 mod canvas_geometry;
+#[path = "../../plugins/canvas/movement.rs"]
+mod canvas_movement;
 #[path = "../../plugins/canvas/selection.rs"]
 mod canvas_selection;
 #[path = "../../plugins/color/panel.rs"]
@@ -124,6 +126,7 @@ pub(super) struct Editor {
     headers: std::collections::HashMap<Panel, group_bar::HeaderLayout>,
     command_form: Option<plugin_commands::CommandForm>,
     area_mode: u8,
+    movement_gesture: Option<canvas_movement::Gesture>,
     selection_gesture: Option<selection_gesture::Gesture>,
     selection_combine: &'static str,
     area_tolerance: u32,
@@ -280,6 +283,7 @@ impl Editor {
             drawing: false,
             input_owned: false,
             area_mode: 0,
+            movement_gesture: None,
             selection_gesture: None,
             selection_combine: "replace",
             area_tolerance: 0,
@@ -319,6 +323,9 @@ impl Editor {
         editor
             .session
             .apply_selection_defaults(editor.settings.selection);
+        editor
+            .session
+            .apply_movement_defaults(editor.settings.movement);
         editor.register_commands();
         editor.session.parameters.stabilizer = editor.workspace.stabilizer;
         editor.session.parameters.pressure_size = editor.workspace.dynamics.size;
@@ -368,6 +375,7 @@ impl Editor {
         self.settings.keys.ui_hint(id).unwrap_or_default()
     }
     fn finish_stroke(&mut self) {
+        self.movement_gesture = None;
         self.selection_gesture = None;
         self.area_drag = None;
         self.area_target = None;
@@ -423,6 +431,7 @@ impl Editor {
             .map_err(|e| e.to_string())
     }
     fn select_tool(&mut self, id: &str) {
+        self.movement_gesture = None;
         self.selection_gesture = None;
         self.area_mode = 0;
         self.area_drag = None;
@@ -787,6 +796,7 @@ impl Studio {
                         Some("selection_lasso") => Some(5),
                         Some("selection_polygon") => Some(6),
                         Some("selection_wand") => Some(7),
+                        Some("move") => Some(8),
                         _ => None,
                     } {
                         self.editor.finish_stroke();
@@ -794,7 +804,7 @@ impl Studio {
                         self.editor.area_mode = mode;
                     }
                 }
-                Some("selection.options") => self.editor.finish_stroke(),
+                Some("selection.options") | Some("movement.options") => self.editor.finish_stroke(),
                 Some("selection.combine") => {
                     if let Some(mode) = match effect["value"].as_str() {
                         Some("replace") => Some("replace"),
@@ -830,12 +840,16 @@ impl Studio {
                                 }
                                 if effect["selection_changed"] == true
                                     || self.editor.session.selection_defaults != settings.selection
+                                    || self.editor.settings.movement != settings.movement
                                 {
                                     self.editor.finish_stroke();
                                 }
                                 self.editor
                                     .session
                                     .apply_selection_defaults(settings.selection);
+                                self.editor
+                                    .session
+                                    .apply_movement_defaults(settings.movement);
                                 settings.painting.apply(&mut self.editor.session.parameters);
                                 self.editor.sync_from_session();
                                 self.editor.settings = settings;
@@ -988,6 +1002,9 @@ impl Studio {
             || self.editor.geometry.is_some()
             || self.editor.command_form.is_some()
             || self.replay.open;
+        if self.editor.blocked && self.editor.movement_gesture.is_some() {
+            self.editor.finish_stroke();
+        }
         self.editor.headers.clear();
         self.draw_shell(ctx);
         let a = self.editor.settings.ui.clone();

@@ -31,6 +31,7 @@ pub(super) struct Preferences {
     pub bounds: Option<Rect>,
     pub painting_before: Option<PaintingPreferences>,
     pub selection_before: Option<crate::application::SelectionSampling>,
+    pub movement_before: Option<crate::application::MovementPreferences>,
     json_mode: bool,
     focus: bool,
     message: String,
@@ -212,6 +213,9 @@ const SETTINGS: &[Setting] = &[
         8.,
         96.
     ),
+    Setting {id:"movement.target",title:"Move Target",description:"Auto moves selected pixels when a selection exists; otherwise it moves the active layer.",keywords:"move nudge selection layer",category:Category::Painting,range:None},
+    metric!("movement.step","Nudge Step","Document pixels moved by one arrow-key command.",Painting,1.,4096.),
+    metric!("movement.large_step","Large Nudge Step","Document pixels moved by Shift plus an arrow key.",Painting,1.,4096.),
     Setting {
         id: "selection.tolerance",
         title: "Selection Tolerance",
@@ -322,6 +326,7 @@ impl Studio {
     pub(super) fn open_settings(&mut self, category: Option<Category>) {
         if !self.settings_open || self.settings_before.is_none() {
             self.preferences.selection_before = Some(self.editor.session.selection_sampling());
+            self.preferences.movement_before = Some(self.editor.session.movement_options());
             self.preferences.painting_before =
                 Some(PaintingPreferences::from(&self.editor.session.parameters));
             self.settings_before = Some(self.editor.settings.clone());
@@ -349,6 +354,14 @@ impl Studio {
                 }
             }
 
+            if let Some(movement) = self.preferences.movement_before.take() {
+                if movement != self.editor.session.movement_options() {
+                    self.editor.core(
+                        "ui.dispatch",
+                        serde_json::json!({"id":"movement.options","value":movement}),
+                    );
+                }
+            }
             if let Some(painting) = self.preferences.painting_before.take() {
                 if painting != PaintingPreferences::from(&self.editor.session.parameters) {
                     self.editor
@@ -550,21 +563,35 @@ impl Studio {
                 serde_json::from_value::<crate::application::SelectionSampling>(
                     document["selection"].clone(),
                 ),
+                serde_json::from_value::<crate::application::MovementPreferences>(
+                    document["movement"].clone(),
+                ),
             ) {
-                (Ok(mut appearance), Ok(painting), Ok(selection)) => {
+                (Ok(mut appearance), Ok(painting), Ok(selection), Ok(movement)) => {
                     normalize(&mut appearance);
-                    if appearance.validate().is_ok() && painting.validate().is_ok() {
+                    if appearance.validate().is_ok()
+                        && painting.validate().is_ok()
+                        && movement.validate().is_ok()
+                    {
                         draft.ui = appearance;
                         draft.painting = painting;
                         draft.selection = selection;
+                        draft.movement = movement;
                     }
                 }
                 _ => prefs.message = "Invalid Setting Value".into(),
             }
         }
+        let movement_changed = draft.movement != self.editor.settings.movement;
         let selection_changed = draft.selection != self.editor.settings.selection;
         let painting_changed = draft.painting != self.editor.settings.painting;
         self.editor.settings = draft;
+        if movement_changed {
+            self.editor.core(
+                "ui.dispatch",
+                serde_json::json!({"id":"movement.options","value":self.editor.settings.movement}),
+            );
+        }
         if selection_changed {
             self.editor.core("ui.dispatch", serde_json::json!({"id":"selection.options","value":self.editor.settings.selection}));
         }
@@ -584,6 +611,7 @@ impl Studio {
                 Ok(()) => {
                     self.settings_before = Some(self.editor.settings.clone());
                     prefs.selection_before = Some(self.editor.session.selection_sampling());
+                    prefs.movement_before = Some(self.editor.session.movement_options());
                     prefs.painting_before =
                         Some(PaintingPreferences::from(&self.editor.session.parameters));
                     prefs.json = self.editor.settings.encode().unwrap_or_default();
@@ -765,6 +793,21 @@ impl Studio {
                         if ui.checkbox(&mut enabled, tr("Enabled")).changed() {
                             v = serde_json::json!(enabled);
                         }
+                    } else if item.id == "movement.target" {
+                        let mut target: crate::application::MoveTarget =
+                            serde_json::from_value(v.clone()).unwrap_or_default();
+                        ComboBox::from_id_salt(item.id)
+                            .selected_text(tr(canvas_movement::target_title(target)))
+                            .show_ui(ui, |ui| {
+                                for t in canvas_movement::TARGETS {
+                                    ui.selectable_value(
+                                        &mut target,
+                                        t,
+                                        tr(canvas_movement::target_title(t)),
+                                    );
+                                }
+                            });
+                        v = serde_json::to_value(target).unwrap();
                     } else if item.id == "ui.language" {
                         let mut language = v.as_str().unwrap_or("en").to_owned();
                         ComboBox::from_id_salt("display-language")
@@ -1254,13 +1297,16 @@ mod selection_settings_tests {
         }
     }
     fn edit_tolerance(app: &mut Studio, ctx: &Context, t: f64) {
+        edit_integer(app, ctx, t, "selection.tolerance", "32", "7");
+    }
+    fn edit_integer(app: &mut Studio, ctx: &Context, t: f64, query: &str, old: &str, value: &str) {
         app.open_settings(None);
-        app.preferences.query = "selection.tolerance".into();
+        app.preferences.query = query.into();
         // Allow the settings window's first-frame position/size to settle.
         for i in 0..3 {
             frame(app, ctx, vec2(1360., 920.), vec![], t + i as f64 * 0.1);
         }
-        let p = locate(app, ctx, "32", t + 0.3);
+        let p = locate(app, ctx, old, t + 0.3);
         click(app, ctx, p, t + 0.4);
         click(app, ctx, p, t + 0.5);
         frame(
@@ -1275,7 +1321,7 @@ mod selection_settings_tests {
                     repeat: false,
                     modifiers: Modifiers::CTRL,
                 },
-                Event::Text("7".into()),
+                Event::Text(value.into()),
                 Event::Key {
                     key: Key::Enter,
                     physical_key: None,
@@ -1287,6 +1333,44 @@ mod selection_settings_tests {
             t + 0.6,
         );
         frame(app, ctx, vec2(1360., 920.), vec![], t + 0.7);
+    }
+    #[test]
+    fn movement_searchable_steps_preview_cancel_save_without_mutating_pixels() {
+        let mut app = studio();
+        let ctx = Context::default();
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+            "target/test-output/movement-settings-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        app.editor.settings = Settings::defaults(dir.join("settings.json"));
+        app.editor.session.settings_path = Some(app.editor.settings.path.clone());
+        app.editor.core("ui.dispatch",json!({"id":"movement.options","value":{"target":"selection_mask","step":3,"large_step":30}}));
+        let pixels = app.editor.session.doc.layers[0].pixels.clone();
+        edit_integer(&mut app, &ctx, 0., "movement.step", "1", "7");
+        assert_eq!(app.editor.session.movement_options().step, 7);
+        assert_eq!(app.editor.session.movement_defaults.step, 1);
+        app.cancel_settings();
+        assert_eq!(app.editor.session.movement_options().step, 3);
+        assert_eq!(
+            app.editor.session.movement_options().target,
+            crate::application::MoveTarget::SelectionMask
+        );
+        edit_integer(&mut app, &ctx, 2., "movement.step", "1", "7");
+        let p = locate(&mut app, &ctx, "Save Settings", 3.);
+        click(&mut app, &ctx, p, 3.1);
+        frame(&mut app, &ctx, vec2(1360., 920.), vec![], 3.2);
+        assert_eq!(
+            Settings::load(app.editor.settings.path.clone())
+                .unwrap()
+                .movement
+                .step,
+            7
+        );
+        assert_eq!(app.editor.session.movement_defaults.step, 7);
+        app.cancel_settings();
+        assert_eq!(app.editor.session.movement_options().step, 7);
+        assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
     }
     #[test]
     fn searchable_integer_control_previews_cancels_saves_and_preserves_other_profile_writes() {

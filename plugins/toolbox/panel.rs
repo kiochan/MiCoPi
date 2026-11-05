@@ -21,6 +21,7 @@ fn selection_mode(id: &str) -> Option<u8> {
         "selection_lasso" => Some(5),
         "selection_polygon" => Some(6),
         "selection_wand" => Some(7),
+        "move" => Some(8),
         _ => None,
     }
 }
@@ -28,6 +29,21 @@ fn selection_mode(id: &str) -> Option<u8> {
 fn selection_icon(painter: &Painter, r: Rect, mode: u8, color: Color32) {
     let stroke = Stroke::new(1.5, color);
     match mode {
+        8 => {
+            let c = r.center();
+            painter.line_segment([pos2(r.left(), c.y), pos2(r.right(), c.y)], stroke);
+            painter.line_segment([pos2(c.x, r.top()), pos2(c.x, r.bottom())], stroke);
+            for (tip, d) in [
+                (pos2(r.left(), c.y), vec2(3., 0.)),
+                (pos2(r.right(), c.y), vec2(-3., 0.)),
+                (pos2(c.x, r.top()), vec2(0., 3.)),
+                (pos2(c.x, r.bottom()), vec2(0., -3.)),
+            ] {
+                let n = vec2(-d.y, d.x) * 0.7;
+                painter.line_segment([tip + d + n, tip], stroke);
+                painter.line_segment([tip + d - n, tip], stroke);
+            }
+        }
         3 => {
             painter.rect_stroke(r, 0., stroke, StrokeKind::Inside);
         }
@@ -119,6 +135,7 @@ impl Editor {
             })
             .collect();
         for (rank, id, action, title, icon) in [
+            (0, "move", "canvas.move", "Move Tool", '\u{e3c2}'),
             (7, FILL, "layer.fill", "Flood Fill", '\u{e23a}'),
             (8, GRADIENT, "layer.gradient", "Gradient", '\u{e3e9}'),
             (
@@ -281,6 +298,10 @@ impl Editor {
                         .font(theme::strong(ui.ctx(), a.font_size)),
                 );
                 ui.separator();
+            }
+            if editor.area_mode == 8 {
+                editor.movement_options_ui(ui);
+                return;
             }
             if editor.area_mode >= 3 {
                 for (mode, title) in [

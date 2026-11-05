@@ -270,6 +270,76 @@
           }
         }
       ]
+    },
+    {
+      "id": "toolbox.mode.move",
+      "title": "Move Tool",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "painting.mode",
+            "value": "move"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "toolbox.movement.options",
+      "title": "Move Tool Options",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "layer",
+              "selection",
+              "selection_mask"
+            ]
+          },
+          "step": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "large_step": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          }
+        },
+        "required": [
+          "target",
+          "step",
+          "large_step"
+        ],
+        "additionalProperties": false
+      },
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "movement.options",
+            "value": {
+              "target": {
+                "$arg": "target"
+              },
+              "step": {
+                "$arg": "step"
+              },
+              "large_step": {
+                "$arg": "large_step"
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

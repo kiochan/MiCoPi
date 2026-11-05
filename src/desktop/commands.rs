@@ -94,10 +94,14 @@ impl Editor {
                     continue;
                 }
                 if let Some(action) = self.settings.keys.resolve(vk as usize, mod_bits(modifiers)) {
+                    if matches!(action, Action::UiCommand(10176..=10183)) && self.area_mode != 8 {
+                        continue;
+                    }
                     if !repeat
                         || matches!(
                             action,
-                            Action::SmallerBrush
+                            Action::UiCommand(10176..=10183)
+                                | Action::SmallerBrush
                                 | Action::LargerBrush
                                 | Action::SofterBrush
                                 | Action::HarderBrush
@@ -592,6 +596,14 @@ impl Studio {
                                 serde_json::json!({"color":color,"opacity":self.editor.opacity}),
                             );
                         }
+                        10175 => {
+                            self.editor.core("toolbox.mode.move", serde_json::json!({}));
+                        }
+                        10176..=10183 => {
+                            let i = id - 10176;
+                            self.editor.core("canvas.nudge",serde_json::json!({"direction":(["left","right","up","down"][(i%4) as usize]),"large":i>=4}));
+                            self.editor.sync_from_session();
+                        }
                         10174 => self.editor.open_trim_canvas(),
                         10173 => self.editor.open_image_size(),
                         10166..=10172 => {
@@ -829,7 +841,7 @@ impl Studio {
                     self.editor.command_form = None;
                     self.editor.new_open = false;
                     self.editor.geometry = None;
-                    self.editor.session.finish_stroke();
+                    self.editor.finish_stroke();
                 }
             }
         }

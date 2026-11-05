@@ -204,11 +204,16 @@ impl Editor {
             None
         };
         let q = self.document_position(p);
-        if tool_override.is_some() && self.selection_gesture.is_some() {
+        if tool_override.is_some()
+            && (self.selection_gesture.is_some() || self.movement_gesture.is_some())
+        {
             self.finish_stroke();
         }
         if self.area_mode >= 3 {
             self.pressure = pressure;
+        }
+        if tool_override.is_none() && self.movement_down(q) {
+            return;
         }
         if tool_override.is_none() && self.selection_down(q, mods, time) {
             return;
@@ -243,6 +248,9 @@ impl Editor {
         }
     }
     fn move_pointer(&mut self, p: Pos2, pressure: f32, time: u32, pen: bool, constrain: bool) {
+        if self.movement_move(self.document_position(p), constrain) {
+            return;
+        }
         if self.selection_gesture.is_some() {
             self.pressure = pressure;
             self.selection_move(self.document_position(p), constrain);
@@ -370,6 +378,7 @@ impl Editor {
                 }
                 PenPhase::Up if self.pen_active => {
                     self.move_pointer(p, self.pressure, packet.time, true, mods.shift);
+                    self.movement_release();
                     self.area_up();
                     self.selection_release();
                     if !self.polygon_pending() {
@@ -412,6 +421,10 @@ impl Editor {
                                 mods,
                             );
                         } else if !pressed {
+                            if self.movement_gesture.is_some() {
+                                self.move_pointer(pos, 1., time, false, mods.shift);
+                                self.movement_release();
+                            }
                             if self.selection_gesture.is_some() {
                                 self.move_pointer(pos, 1., time, false, mods.shift);
                                 self.selection_release();
@@ -432,7 +445,9 @@ impl Editor {
                     }
                     Event::WindowFocused(false) => self.finish_stroke(),
                     Event::PointerGone
-                        if self.selection_gesture.is_some() && !self.polygon_pending() =>
+                        if (self.selection_gesture.is_some()
+                            || self.movement_gesture.is_some())
+                            && !self.polygon_pending() =>
                     {
                         self.finish_stroke()
                     }
@@ -499,6 +514,7 @@ impl Editor {
                 Color32::WHITE,
             );
         }
+        self.movement_preview(&painter, c.accent);
         self.crop_outline(&painter, c.accent);
         self.selection_preview(&painter);
         if let Some((_, texture)) = &self.selection_texture {
@@ -520,6 +536,8 @@ impl Editor {
                     ctx.set_cursor_icon(CursorIcon::Grab);
                 } else if self.tool == Tool::Zoom || held.zoom || held.zoom_out {
                     ctx.set_cursor_icon(CursorIcon::ZoomIn);
+                } else if self.area_mode == 8 {
+                    ctx.set_cursor_icon(CursorIcon::Move);
                 } else if self.tool == Tool::Picker || held.pick || self.area_mode != 0 {
                     ctx.set_cursor_icon(CursorIcon::Crosshair);
                 } else {

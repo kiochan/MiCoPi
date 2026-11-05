@@ -63,7 +63,7 @@ Acceptance: preview/cancel leaves pixels untouched; selection is visible and beh
 - [x] Add measured area averaging for substantial downscaling, with exact footprint weights, premultiplied alpha, fractional masks and bounded streaming rows. Enlarging axes use bilinear; this is a box filter, not Photoshop bicubic/Lanczos parity.
 - [x] Add transparent/corner-color trim with tolerance, selected sides, cached read-only preview and shared atomic document actions. Analyze visible merged artwork; crop every raw layer and both selection masks with undo/replay.
 - [ ] Add Reveal All after bounded off-canvas layer storage is available; clipped historical pixels are not live off-canvas content.
-- [ ] Add Move/nudge with explicit active-layer/selection targets and configurable modifier steps.
+- [x] Add Move/nudge for active layers, selected pixels or selection outlines, with validated searchable steps, configurable V/arrow/Shift-arrow commands and a reversible outline drag. Publish one atomic pixel/mask outcome on release; clip beyond the frame and retain undo. Off-canvas storage/free transform remain planned. See [Move and nudge](canvas-editing.md#move-and-nudge).
 - [ ] Add Free Transform translate, scale, rotate and flip with a reversible preview and explicit commit/cancel.
 - [ ] Add transform repeat, selection-aware transforms and subsequent skew/perspective where the data model supports them.
 - [ ] Add new-document presets, background/resolution metadata and useful export sizing.

@@ -76,6 +76,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut session = Session::new(registry)?;
     session.settings_path = Some(settings.path.clone());
     session.apply_selection_defaults(settings.selection);
+    session.apply_movement_defaults(settings.movement);
     if settings.has_painting_preferences() {
         settings.painting.apply(&mut session.parameters);
     }

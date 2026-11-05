@@ -51,14 +51,14 @@ def main():
             time.sleep(.05)
         return path
 
-    def selection_options_capture(language, width, height):
+    def selection_options_capture(language, width, height, tool='wand'):
         result = call('window.command',dict(panel='tool-options',operation='float',x=60,y=80,width=width,height=height))
         assert result['queued']
         deadline = time.monotonic()+10
         while call('window.list',{})['last_result']['status']=='queued':
             assert time.monotonic()<deadline,'Selection options placement timeout'
             time.sleep(.05)
-        path=output/f'{language}-wand-{width}.png'
+        path=output/f'{language}-{tool}-{width}.png'
         call('window.capture',dict(panel='tool-options',path=str(path)))
         while not path.exists():
             assert time.monotonic()<deadline,'Selection options capture timeout'
@@ -112,6 +112,11 @@ def main():
             screenshot(f'{language}-workbench.png')
             for width,height in [(280,300),(1000,150)]:
                 selection_options_capture(language,width,height)
+            call('window.command',dict(panel='tool-options',operation='dock_top',target='canvas'))
+            call('toolbox.mode.move',{})
+            call('toolbox.movement.options',dict(target='selection',step=2,large_step=20))
+            for width,height in [(280,300),(1000,150)]:
+                selection_options_capture(language,width,height,'move')
             call('window.command',dict(panel='tool-options',operation='dock_top',target='canvas'))
 
             call('window.command', dict(panel='quick.panel',operation='focus'))
@@ -167,6 +172,9 @@ def main():
             time.sleep(.15)
             screenshot(f'{language}-selection-settings.png')
             assert call('canvas.state',{})['selection_defaults']==dict(tolerance=19,contiguous=False,sample_merged=True)
+            call('ui.dispatch',dict(id='settings.search',value='movement.'))
+            time.sleep(.15)
+            screenshot(f'{language}-movement-settings.png')
 
             call('ui.dispatch',dict(id='settings.search',value='plugins'))
             time.sleep(.15)

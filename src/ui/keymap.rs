@@ -484,6 +484,87 @@ pub static COMMANDS: &[Command] = &[
         10165
     ),
     c!(
+        "toolbox.mode.move",
+        "Move Tool",
+        "Tools",
+        "move drag position selected pixels",
+        UiCommand(10175),
+        "V",
+        10175
+    ),
+    c!(
+        "movement.left",
+        "Nudge Left",
+        "Move",
+        "move nudge position",
+        UiCommand(10176),
+        "Left",
+        10176
+    ),
+    c!(
+        "movement.left.large",
+        "Nudge Left by Large Step",
+        "Move",
+        "move nudge position",
+        UiCommand(10180),
+        "Shift+Left",
+        10180
+    ),
+    c!(
+        "movement.right",
+        "Nudge Right",
+        "Move",
+        "move nudge position",
+        UiCommand(10177),
+        "Right",
+        10177
+    ),
+    c!(
+        "movement.right.large",
+        "Nudge Right by Large Step",
+        "Move",
+        "move nudge position",
+        UiCommand(10181),
+        "Shift+Right",
+        10181
+    ),
+    c!(
+        "movement.up",
+        "Nudge Up",
+        "Move",
+        "move nudge position",
+        UiCommand(10178),
+        "Up",
+        10178
+    ),
+    c!(
+        "movement.up.large",
+        "Nudge Up by Large Step",
+        "Move",
+        "move nudge position",
+        UiCommand(10182),
+        "Shift+Up",
+        10182
+    ),
+    c!(
+        "movement.down",
+        "Nudge Down",
+        "Move",
+        "move nudge position",
+        UiCommand(10179),
+        "Down",
+        10179
+    ),
+    c!(
+        "movement.down.large",
+        "Nudge Down by Large Step",
+        "Move",
+        "move nudge position",
+        UiCommand(10183),
+        "Shift+Down",
+        10183
+    ),
+    c!(
         "canvas.trim",
         "Trim Canvas…",
         "Image",
@@ -1663,7 +1744,9 @@ impl Keymap {
                     command.id,
                     "layer.via_copy" | "layer.via_cut" | "canvas.image_size"
                 )
-                || command.id.starts_with("clipboard.system_"))
+                || command.id.starts_with("clipboard.system_")
+                || command.id == "toolbox.mode.move"
+                || command.id.starts_with("movement."))
                 && !explicit.contains(command.id)
             {
                 map.bindings[i].retain(|key| !reserved.contains(key));
@@ -1751,6 +1834,23 @@ mod tests {
     }
     fn index(id: &str) -> usize {
         COMMANDS.iter().position(|c| c.id == id).unwrap()
+    }
+    #[test]
+    fn movement_defaults_preserve_explicit_older_tool_and_plugin_bindings() {
+        for (id, key) in [
+            ("toolbox.mode.move", "V"),
+            ("movement.left", "Left"),
+            ("movement.right.large", "Shift+Right"),
+        ] {
+            let i = COMMANDS.iter().position(|c| c.id == id).unwrap();
+            let p = serde_json::json!({"keybindings":{"plugin.custom.older":key}}).to_string();
+            let map = Keymap::decode(&p).unwrap();
+            assert!(map.bindings[i].is_empty());
+            assert_eq!(
+                Keymap::decode(&map.encode()).unwrap().bindings,
+                map.bindings
+            );
+        }
     }
     #[test]
     fn defaults_and_all_named_keys_round_trip() {

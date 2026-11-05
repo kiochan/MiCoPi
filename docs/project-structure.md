@@ -65,6 +65,10 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/document.rs` | Pixels, composition and copy-on-write undo tiles |
 | `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
 | `src/engine/selection.rs` | Immutable coverage storage, bounded encoding and shared selection snapshots |
+| `src/application/movement_preferences.rs`, `src/application/movement_tests.rs` | Validated move targets/steps, public state and shared history/replay regressions |
+| `src/plugins/movement.rs` | Atomic movement orchestration, resolved targets, staged masks/pixels and compact context |
+| `plugins/painting/src/movement.rs` | Allocation-free integer layer/selected-pixel/mask kernels and native references |
+| `plugins/canvas/movement.rs` | Cached outline drag, source guards, cancellation and Tool Options adapter |
 | `src/application/selection_sampling.rs` | Configured selection defaults, session control overrides and compact public state |
 | `src/plugins/layer_transfer.rs` | Selection-to-layer orchestration through native extraction/placement and one host-owned undo entry |
 | `src/platform/clipboard/` | Bounded PNG/DIB image codecs, desktop resource adapter and Win32 memory/window ownership |

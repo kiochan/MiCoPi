@@ -54,3 +54,9 @@ mod resample_tests;
 
 #[cfg(test)]
 mod trim_tests;
+
+mod movement_preferences;
+pub use movement_preferences::{MoveTarget, MovementPreferences};
+
+#[cfg(test)]
+mod movement_tests;

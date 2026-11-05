@@ -88,6 +88,16 @@ unsafe fn decode_resample_table(
     };
     Ok((std::ptr::read_unaligned(pointer), features))
 }
+unsafe fn decode_move_table(pointer: *const abi::MoveApi) -> Result<abi::MoveApi, String> {
+    if pointer.is_null() {
+        return Err("Null move table".into());
+    }
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.abi_version != 1 || header.struct_size < std::mem::size_of::<abi::MoveApi>() as u32 {
+        return Err("Incompatible move ABI".into());
+    }
+    Ok(std::ptr::read_unaligned(pointer))
+}
 unsafe fn decode_trim_table(pointer: *const abi::TrimApi) -> Result<abi::TrimApi, String> {
     if pointer.is_null() {
         return Err("Null trim table".into());
@@ -138,6 +148,22 @@ impl Module {
             }
             let entry = std::mem::transmute::<*mut c_void, abi::TrimEntry>(address);
             decode_trim_table(entry()).map(Some)
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(None)
+        }
+    }
+
+    unsafe fn move_api(&self) -> Result<Option<abi::MoveApi>, String> {
+        #[cfg(windows)]
+        {
+            let address = GetProcAddress(self.handle as *mut c_void, abi::MOVE_SYMBOL.as_ptr());
+            if address.is_null() {
+                return Ok(None);
+            }
+            let entry = std::mem::transmute::<*mut c_void, abi::MoveEntry>(address);
+            decode_move_table(entry()).map(Some)
         }
         #[cfg(not(windows))]
         {
@@ -339,6 +365,7 @@ pub struct NativePlugin {
     selection_transfer: Option<abi::SelectionTransferFn>,
     geometry: Option<abi::GeometryApi>,
     trim: Option<abi::TrimApi>,
+    movement: Option<abi::MoveApi>,
     resample: Option<abi::ResampleApi>,
     resample_features: u32,
     compositor: Option<abi::CompositorApi>,
@@ -406,6 +433,7 @@ impl NativePlugin {
         };
         let geometry = unsafe { module.geometry_api()? };
         let trim = unsafe { module.trim_api()? };
+        let movement = unsafe { module.move_api()? };
         let (resample, resample_features) = match unsafe { module.resample_api()? } {
             Some((api, features)) => (Some(api), features),
             None => (None, 0),
@@ -448,6 +476,7 @@ impl NativePlugin {
                 selection_transfer,
                 geometry,
                 trim,
+                movement,
                 resample,
                 resample_features,
                 compositor,
@@ -1003,6 +1032,114 @@ mod tests {
             assert!(decode_resample_table(&api).is_ok());
             api.abi_version = 2;
             assert!(decode_resample_table(&api).is_err());
+        }
+    }
+    #[test]
+    fn movement_optional_table_and_missing_callbacks_reject_without_mutation() {
+        let header = abi::Header {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::Header>() as u32,
+        };
+        unsafe {
+            assert!(decode_move_table(std::ptr::null()).is_err());
+            assert!(decode_move_table((&header as *const abi::Header).cast()).is_err());
+        }
+        let mut api = abi::MoveApi {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::MoveApi>() as u32 - 1,
+            pixels: None,
+            mask: None,
+        };
+        unsafe {
+            assert!(decode_move_table(&api).is_err());
+            api.struct_size += 1;
+            assert!(decode_move_table(&api).is_ok());
+            api.abi_version = 2;
+            assert!(decode_move_table(&api).is_err());
+        }
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins");
+        let mut registry = super::super::Registry::load(&root).unwrap();
+        Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .movement = None;
+        let mut s = Session::new(registry).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+            .unwrap();
+        let state = s.state();
+        let history = s.doc.history_bytes();
+        assert!(s
+            .apply(Action::new("canvas.move", json!({"dx":1,"dy":0})))
+            .unwrap_err()
+            .message
+            .contains("does not support integer movement"));
+        assert_eq!(s.state(), state);
+        assert_eq!(s.doc.history_bytes(), history);
+        s.apply(Action::new("canvas.rotate_90_cw", json!({})))
+            .unwrap();
+        assert_eq!((s.doc.width, s.doc.height), (8, 12));
+    }
+    #[test]
+    fn movement_callback_failures_discard_staged_masks_and_pixels() {
+        unsafe extern "C" fn mask_ok(
+            _: *const abi::Move,
+            _: *const abi::Coverage,
+            out: *mut u8,
+            len: usize,
+        ) -> i32 {
+            std::slice::from_raw_parts_mut(out, len).fill(0);
+            abi::OK
+        }
+        unsafe extern "C" fn mask_bad(
+            _: *const abi::Move,
+            _: *const abi::Coverage,
+            _: *mut u8,
+            _: usize,
+        ) -> i32 {
+            abi::ERROR
+        }
+        unsafe extern "C" fn pixels_bad(
+            _: *const abi::Move,
+            _: *const abi::Pixels,
+            _: *const abi::Coverage,
+            _: *mut abi::Pixels,
+        ) -> i32 {
+            abi::ERROR
+        }
+        for fail_mask in [false, true] {
+            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins");
+            let mut registry = super::super::Registry::load(&root).unwrap();
+            Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+                .unwrap()
+                .movement = Some(abi::MoveApi {
+                abi_version: 1,
+                struct_size: std::mem::size_of::<abi::MoveApi>() as u32,
+                pixels: Some(pixels_bad),
+                mask: Some(if fail_mask { mask_bad } else { mask_ok }),
+            });
+            let mut s = Session::new(registry).unwrap();
+            s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+                .unwrap();
+            s.apply(Action::new("layer.fill_color", json!({"color":"#bb88dd"})))
+                .unwrap();
+            s.apply(Action::new(
+                "selection.shape",
+                json!({"kind":"rectangle","x":1,"y":1,"width":4,"height":3}),
+            ))
+            .unwrap();
+            let state = s.state();
+            let composition = s.doc.composition();
+            let pixels = s.doc.layers[0].pixels.clone();
+            let history = s.doc.history_bytes();
+            assert!(s
+                .apply(Action::new(
+                    "canvas.move",
+                    json!({"dx":2,"dy":1,"target":"selection"})
+                ))
+                .is_err());
+            assert_eq!(s.state(), state);
+            assert_eq!(s.doc.composition(), composition);
+            assert_eq!(s.doc.layers[0].pixels, pixels);
+            assert_eq!(s.doc.history_bytes(), history);
         }
     }
     #[test]
@@ -2321,4 +2458,75 @@ pub(crate) fn trim_bounds(s: &mut Session, o: &abi::Trim) -> Result<abi::TrimBou
         return Err("Native trim returned invalid bounds".into());
     }
     Ok(out)
+}
+
+pub(crate) fn move_pixels(s: &Session, o: &abi::Move) -> Result<Vec<u32>, String> {
+    let kernel = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.movement)
+        .and_then(|a| a.pixels)
+        .ok_or("Painting DLL does not support integer movement")?;
+    let pixels = &s.doc.layers[s.doc.active].pixels;
+    let source = abi::Pixels {
+        data: pixels.as_ptr() as *mut u32,
+        len: pixels.len(),
+        width: s.doc.width as u32,
+        height: s.doc.height as u32,
+        stride: s.doc.width as u32,
+        origin_x: 0,
+        origin_y: 0,
+    };
+    let mut result = vec![0; pixels.len()];
+    let mut output = abi::Pixels {
+        data: result.as_mut_ptr(),
+        len: result.len(),
+        ..source
+    };
+    let mask = if o.kind == 1 {
+        coverage(
+            s.doc
+                .selection()
+                .current
+                .as_ref()
+                .ok_or("Selected movement requires an active selection")?,
+        )
+    } else {
+        abi::Coverage {
+            data: std::ptr::null(),
+            len: 0,
+            width: 0,
+            height: 0,
+            stride: 0,
+        }
+    };
+    if unsafe { kernel(o, &source, &mask, &mut output) } != abi::OK {
+        return Err("Native pixel movement failed".into());
+    }
+    Ok(result)
+}
+pub(crate) fn move_mask(
+    s: &Session,
+    o: &abi::Move,
+) -> Result<crate::engine::selection::Mask, String> {
+    let kernel = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.movement)
+        .and_then(|a| a.mask)
+        .ok_or("Painting DLL does not support selection movement")?;
+    let mask = coverage(
+        s.doc
+            .selection()
+            .current
+            .as_ref()
+            .ok_or("Selection movement requires an active selection")?,
+    );
+    let mut result = vec![0; s.doc.width * s.doc.height];
+    if unsafe { kernel(o, &mask, result.as_mut_ptr(), result.len()) } != abi::OK {
+        return Err("Native selection movement failed".into());
+    }
+    crate::engine::selection::Mask::new(s.doc.width, s.doc.height, result)
 }

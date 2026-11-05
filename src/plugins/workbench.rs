@@ -57,7 +57,14 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                         .map_err(|e| ActionError::new("settings", e))?,
                 )?
             };
-            for key in ["ui", "keybindings", "painting", "selection", "plugins"] {
+            for key in [
+                "ui",
+                "keybindings",
+                "painting",
+                "selection",
+                "plugins",
+                "movement",
+            ] {
                 if let Some(patch) = args[key].as_object() {
                     for (name, setting) in patch {
                         value[key][name] = setting.clone();
@@ -75,6 +82,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 .is_none_or(|active| active == &path)
             {
                 s.apply_selection_defaults(updated.selection);
+                s.apply_movement_defaults(updated.movement);
             }
             s.ui_effects.push_back(
                 json!({"id":"settings.reload","value":path,"selection_changed":selection_changed}),
@@ -92,6 +100,18 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                     && args["value"]
                         .as_str()
                         .is_some_and(|v| v.starts_with("selection_")));
+            let movement_tool =
+                id == "movement.options" || (id == "painting.mode" && args["value"] == "move");
+            if movement_tool && s.runtime != "desktop" {
+                return Err(ActionError::new("ui_unavailable","Move controls require the desktop; use canvas.move or canvas.nudge for headless editing"));
+            }
+            if id == "movement.options" {
+                let p: crate::application::MovementPreferences =
+                    serde_json::from_value(args["value"].clone())
+                        .map_err(|e| ActionError::new("invalid_arguments", e.to_string()))?;
+                p.validate()
+                    .map_err(|e| ActionError::new("invalid_arguments", e))?;
+            }
             if selection_tool && s.runtime != "desktop" {
                 return Err(ActionError::new("ui_unavailable","Selection gesture tools require the desktop; use selection.shape for headless editing"));
             }

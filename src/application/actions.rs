@@ -104,6 +104,8 @@ pub enum Operation {
     State,
     New,
     CanvasSize,
+    MovePixels,
+    Nudge,
     CanvasTrim,
     TrimBounds,
     ImageSize,
@@ -258,6 +260,14 @@ impl Operation {
                 json!({"mode":{"type":"string","enum":["transparent","top_left","bottom_right"],"default":"transparent","description":"Analyze the visible merged image; corner modes match its corner RGBA."},"tolerance":{"type":"integer","minimum":0,"maximum":255,"default":0,"description":"Removable alpha threshold, or maximum RGBA channel difference for corner modes."},"top":{"type":"boolean","default":true},"right":{"type":"boolean","default":true},"bottom":{"type":"boolean","default":true},"left":{"type":"boolean","default":true,"description":"At least one of top/right/bottom/left must be true."}}),
                 vec![],
             ),
+            Self::MovePixels => (
+                json!({"dx":{"type":"integer","minimum":-4096,"maximum":4096},"dy":{"type":"integer","minimum":-4096,"maximum":4096},"target":{"type":"string","enum":["auto","layer","selection","selection_mask"],"description":"Defaults to movement preferences; auto moves selected pixels when a selection exists, otherwise the active layer."}}),
+                vec!["dx", "dy"],
+            ),
+            Self::Nudge => (
+                json!({"direction":{"type":"string","enum":["left","right","up","down"]},"large":{"type":"boolean","default":false},"target":{"type":"string","enum":["auto","layer","selection","selection_mask"]}}),
+                vec!["direction"],
+            ),
             Self::CanvasSize => (
                 json!({"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096},"anchor":{"type":"string","enum":["top_left","top","top_right","left","center","right","bottom_left","bottom","bottom_right"]}}),
                 vec!["width", "height"],
@@ -275,7 +285,7 @@ impl Operation {
                 vec!["path"],
             ),
             Self::SettingsWrite => (
-                json!({"path":{"type":"string","minLength":1},"ui":{"type":"object"},"keybindings":{"type":"object"},"painting":{"type":"object"},"selection":{"type":"object"},"plugins":{"type":"object"},"document":{"type":"object"}}),
+                json!({"path":{"type":"string","minLength":1},"ui":{"type":"object"},"keybindings":{"type":"object"},"painting":{"type":"object"},"selection":{"type":"object"},"movement":{"type":"object"},"plugins":{"type":"object"},"document":{"type":"object"}}),
                 vec!["path"],
             ),
             Self::SelectTool => (json!({"tool":{"type":"string"}}), vec!["tool"]),

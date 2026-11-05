@@ -16,6 +16,8 @@ Connected or whole-layer color fill with tolerance and edge controls, linear/rad
 
 Canvas size, exact all-layer crop, document quarter/half turns and flips preserve layer/node identities, selection masks, undo and verified replay. Active-layer quarter turns keep the canvas size and clip beyond its frame. **Image Size (Ctrl+Alt+I)** scales all layers and masks with aspect locking and nearest/bilinear/area sampling. Area averaging retains thin-line coverage during reductions. Trim previews transparent or corner-color margins and crops selected sides across all layers with undo. See [Canvas editing](docs/canvas-editing.md).
 
+**Move (V)** drags an outline and commits on release. Move the active layer, selected pixels or only the selection outline; arrow/Shift-arrow steps are configurable in searchable Settings. Off-frame pixels are clipped and restored by undo. Actions also run through nodes, MCP and headless. See [Move and nudge](docs/canvas-editing.md#move-and-nudge).
+
 The [unified plugin system](docs/plugin-system.md) exposes package versions, compatibility, dependencies and lifecycle status in Settings and automation. Enable/disable plans resolve dependencies before saving; activation takes effect after restart. Plugins can provide isolated language catalogs that hot-reload while the app runs.
 
 ## Why MiCoPi

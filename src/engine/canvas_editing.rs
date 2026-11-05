@@ -53,6 +53,51 @@ impl Document {
         self.commit_composition(before, Some(LayerChange::Canvas(Arc::new(saved))));
         Ok(())
     }
+    /// Publish staged pixels and selection under one tiled history entry.
+    pub(crate) fn apply_movement(
+        &mut self,
+        pixels: Option<&[u32]>,
+        selection: crate::engine::selection::SelectionState,
+    ) -> Result<(), String> {
+        selection.validate(self.width, self.height)?;
+        if let Some(p) = pixels {
+            if p.len() != self.width * self.height {
+                return Err("Invalid movement pixel count".into());
+            }
+            if self.alpha_locked(self.active)
+                && self.layers[self.active]
+                    .pixels
+                    .iter()
+                    .zip(p)
+                    .any(|(a, b)| a >> 24 != b >> 24 || a >> 24 == 0 && a != b)
+            {
+                return Err("Movement would change locked layer transparency".into());
+            }
+        }
+        let selection_changed = self.selection != selection;
+        if !selection_changed && pixels.is_none_or(|p| p == self.layers[self.active].pixels) {
+            return Ok(());
+        }
+        self.finish();
+        let before = self.composition();
+        self.stroke = Some(if selection_changed {
+            Self::composition_edit(before, None, self.active)
+        } else {
+            Edit {
+                layer_change: None,
+                layer: self.active,
+                tiles: BTreeMap::new(),
+                composition: None,
+                metadata_bytes: 0,
+            }
+        });
+        if let Some(p) = pixels {
+            self.write_region(0, 0, self.width, self.height, p);
+        }
+        self.selection = selection;
+        self.finish();
+        Ok(())
+    }
     /// Preserve document coordinates within a new frame. Positive offsets move content right/down.
     pub fn reframe(&mut self, width: usize, height: usize, dx: i32, dy: i32) -> Result<(), String> {
         if width == 0

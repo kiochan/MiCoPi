@@ -19,6 +19,7 @@ mod document;
 mod geometry;
 mod layer_transfer;
 mod layers;
+pub(crate) mod movement;
 mod painting;
 pub(crate) mod resample;
 mod selection;
@@ -34,6 +35,7 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        MovePixels | Nudge => movement::execute(session, op, args),
         CanvasTrim | TrimBounds => trim::execute(session, op, args),
         ImageSize => resample::execute(session, args),
         RotateCanvasClockwise
