@@ -1107,5 +1107,17 @@
   "Plan PNG Export": "PNG 書き出しを計画",
   "Preview PNG Export": "PNG 書き出しをプレビュー",
   "PNG Export Options": "PNG 書き出しオプション",
-  "Inspect Default PNG Export": "既定の PNG 書き出しを確認"
+  "Inspect Default PNG Export": "既定の PNG 書き出しを確認",
+  "Units": "単位",
+  "Pixel Dimensions": "ピクセル寸法",
+  "In physical units, resolution determines the pixel count.": "物理単位では、解像度によってピクセル数が決まります。",
+  "Physical dimensions round to whole pixels.": "物理寸法は整数のピクセルに丸めます。",
+  "Enter valid dimensions before switching units.": "有効な寸法を入力してから単位を切り替えてください。",
+  "Plan New Canvas": "新規キャンバスを計画",
+  "Dimensions must be finite and positive": "寸法は有限の正の数で指定してください。",
+  "Pixel dimensions must be integers": "ピクセル寸法は整数で指定してください。",
+  "Derived dimensions must be between 1 and 4096 pixels": "計算後の寸法は 1～4096 ピクセルにしてください。",
+  "Physical dimensions require known density or an explicit resolution": "物理寸法には既知の密度または解像度の指定が必要です。",
+  "Resolution cannot be null": "解像度を空にはできません。",
+  "Resolution must be an integer between 1 and 2400 PPI": "解像度は 1～2400 PPI の整数で指定してください。"
 }

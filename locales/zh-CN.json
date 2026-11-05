@@ -1107,5 +1107,17 @@
   "Plan PNG Export": "规划 PNG 导出",
   "Preview PNG Export": "预览 PNG 导出",
   "PNG Export Options": "PNG 导出选项",
-  "Inspect Default PNG Export": "查看默认 PNG 导出"
+  "Inspect Default PNG Export": "查看默认 PNG 导出",
+  "Units": "单位",
+  "Pixel Dimensions": "像素尺寸",
+  "In physical units, resolution determines the pixel count.": "使用物理单位时，分辨率决定像素数量。",
+  "Physical dimensions round to whole pixels.": "物理尺寸会四舍五入到整数像素。",
+  "Enter valid dimensions before switching units.": "请先输入有效尺寸，再切换单位。",
+  "Plan New Canvas": "规划新建画布",
+  "Dimensions must be finite and positive": "尺寸必须是有限正数。",
+  "Pixel dimensions must be integers": "像素尺寸必须是整数。",
+  "Derived dimensions must be between 1 and 4096 pixels": "计算后的尺寸必须在 1 至 4096 像素之间。",
+  "Physical dimensions require known density or an explicit resolution": "使用物理尺寸需要已知密度，或指定分辨率。",
+  "Resolution cannot be null": "分辨率不能为空。",
+  "Resolution must be an integer between 1 and 2400 PPI": "分辨率必须是 1 至 2400 PPI 之间的整数。"
 }

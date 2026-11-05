@@ -1,5 +1,8 @@
 //! Cold output sizing shared by desktop forms, action schemas and automation.
-use crate::application::ActionError;
+use crate::application::{
+    units::{rounded_pixels, Unit},
+    ActionError,
+};
 use crate::engine::document_info::Info;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -22,16 +25,6 @@ impl Method {
             },
         }
     }
-}
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-enum Unit {
-    #[default]
-    #[serde(rename = "px")]
-    Pixels,
-    #[serde(rename = "mm")]
-    Millimeters,
-    #[serde(rename = "in")]
-    Inches,
 }
 #[derive(Debug, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -78,18 +71,6 @@ impl Plan {
 fn invalid(message: impl Into<String>) -> ActionError {
     ActionError::new("invalid_export_size", message)
 }
-fn rounded_pixels(value: f64) -> Result<usize, ActionError> {
-    if !value.is_finite() || value <= 0. {
-        return Err(invalid("Output dimensions must be finite and positive"));
-    }
-    let rounded = value.round();
-    if !(1.0..=4096.0).contains(&rounded) {
-        return Err(invalid(
-            "Derived output dimensions must be between 1 and 4096 pixels",
-        ));
-    }
-    Ok(rounded as usize)
-}
 pub(crate) fn plan(source: [usize; 2], mut info: Info, args: &Value) -> Result<Plan, ActionError> {
     if source.iter().any(|v| !(1..=4096).contains(v)) {
         return Err(invalid("Invalid output source dimensions"));
@@ -125,8 +106,8 @@ pub(crate) fn plan(source: [usize; 2], mut info: Info, args: &Value) -> Result<P
             ));
         }
         [
-            rounded_pixels(source[0] as f64 * scale / 100.)?,
-            rounded_pixels(source[1] as f64 * scale / 100.)?,
+            rounded_pixels(source[0] as f64 * scale / 100.).map_err(invalid)?,
+            rounded_pixels(source[1] as f64 * scale / 100.).map_err(invalid)?,
         ]
     } else if p.width.is_none() && p.height.is_none() {
         if p.unit != Unit::Pixels {
@@ -140,15 +121,13 @@ pub(crate) fn plan(source: [usize; 2], mut info: Info, args: &Value) -> Result<P
             _ => None,
         };
         let convert = |number: Option<f64>, axis: usize| -> Result<Option<usize>, ActionError> {
-            number.map(|v| {
-                if !v.is_finite() || v<=0. {return Err(invalid("Output dimensions must be finite and positive"));}
-                let pixels=match p.unit {
-                    Unit::Pixels=>{if v.fract()!=0. {return Err(invalid("Pixel output dimensions must be integers"));}v},
-                    Unit::Millimeters=>v/25.4*ppi.ok_or_else(||invalid("Physical output dimensions require known density or an explicit output resolution"))?[axis],
-                    Unit::Inches=>v*ppi.ok_or_else(||invalid("Physical output dimensions require known density or an explicit output resolution"))?[axis],
-                };
-                rounded_pixels(pixels)
-            }).transpose()
+            number
+                .map(|v| {
+                    p.unit
+                        .to_pixels(v, ppi.map(|axes| axes[axis]))
+                        .map_err(invalid)
+                })
+                .transpose()
         };
         crate::plugins::resample::dimensions(
             source,

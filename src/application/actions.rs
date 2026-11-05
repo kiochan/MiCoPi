@@ -103,6 +103,7 @@ pub enum Operation {
     SettingsWrite,
     State,
     New,
+    NewPlan,
     DocumentInfo,
     DocumentResolution,
     CanvasSize,
@@ -187,6 +188,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if matches!(self, Self::New | Self::NewPlan) {
+            return super::creation::schema();
+        }
         if matches!(
             self,
             Self::Export | Self::ExportPlan | Self::ExportPreview | Self::Render
@@ -268,10 +272,6 @@ impl Operation {
             Self::DocumentResolution => (
                 json!({"resolution_ppi":{"type":"integer","minimum":1,"maximum":2400,"description":"Square pixels per inch; replaces imported PNG density without resampling. Writes physical density even for an explicit 72 PPI."}}),
                 vec!["resolution_ppi"],
-            ),
-            Self::New => (
-                json!({"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096},"resolution_ppi":{"type":"integer","minimum":1,"maximum":2400,"default":72},"background":{"type":"string","default":"transparent","description":"transparent or #RRGGBB; initializes editable pixels on the first layer."}}),
-                vec!["width", "height"],
             ),
             Self::ImageSize => (
                 json!({"width":{"type":"integer","minimum":1,"maximum":4096,"description":"Target width; with lock_aspect use exactly one dimension."},"height":{"type":"integer","minimum":1,"maximum":4096,"description":"Target height; with lock_aspect use exactly one dimension."},"lock_aspect":{"type":"boolean","default":true,"description":"Preserve source ratio; supply exactly one dimension. When false supply both."},"method":{"type":"string","enum":["bilinear","nearest","area"],"default":"bilinear","description":"Area averages exact footprints on shrinking axes and uses bilinear on enlarging axes."}}),
@@ -399,6 +399,7 @@ impl Operation {
                 | Self::Describe
                 | Self::ContextRead
                 | Self::State
+                | Self::NewPlan
                 | Self::DocumentInfo
                 | Self::TrimBounds
                 | Self::TransformState

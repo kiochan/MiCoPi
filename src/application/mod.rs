@@ -2,6 +2,7 @@
 mod actions;
 mod atomic;
 pub mod codec;
+pub(crate) mod creation;
 pub mod pipeline;
 pub(crate) mod png_io;
 pub mod replay;
@@ -82,3 +83,6 @@ mod png_density_tests;
 #[cfg(test)]
 mod export_tests;
 pub(crate) mod output_size;
+#[cfg(test)]
+mod physical_creation_tests;
+pub(crate) mod units;

@@ -1107,5 +1107,17 @@
   "Plan PNG Export": "PNG 내보내기 계획",
   "Preview PNG Export": "PNG 내보내기 미리보기",
   "PNG Export Options": "PNG 내보내기 옵션",
-  "Inspect Default PNG Export": "기본 PNG 내보내기 확인"
+  "Inspect Default PNG Export": "기본 PNG 내보내기 확인",
+  "Units": "단위",
+  "Pixel Dimensions": "픽셀 크기",
+  "In physical units, resolution determines the pixel count.": "실제 단위에서는 해상도에 따라 픽셀 수가 정해집니다.",
+  "Physical dimensions round to whole pixels.": "실제 크기는 정수 픽셀로 반올림됩니다.",
+  "Enter valid dimensions before switching units.": "올바른 크기를 입력한 뒤 단위를 바꾸세요.",
+  "Plan New Canvas": "새 캔버스 계획",
+  "Dimensions must be finite and positive": "크기는 유한한 양수여야 합니다.",
+  "Pixel dimensions must be integers": "픽셀 크기는 정수여야 합니다.",
+  "Derived dimensions must be between 1 and 4096 pixels": "계산된 크기는 1~4096픽셀이어야 합니다.",
+  "Physical dimensions require known density or an explicit resolution": "실제 크기를 사용하려면 밀도가 알려져 있거나 해상도를 지정해야 합니다.",
+  "Resolution cannot be null": "해상도는 비어 있을 수 없습니다.",
+  "Resolution must be an integer between 1 and 2400 PPI": "해상도는 1~2400 PPI의 정수여야 합니다."
 }

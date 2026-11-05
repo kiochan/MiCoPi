@@ -13,6 +13,8 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 
 [Document setup](automation/document-setup.jsonl) creates an editable background, changes physical resolution without resampling and verifies replay.
 
+[Physical creation](automation/physical-creation.jsonl) plans A4 without allocating it, creates a small millimeter-sized page and exports a pressure stroke with verified outcomes. Create `target/example-output/` first.
+
 [PNG density](automation/png-density.jsonl) compares implicit defaults and explicit physical resolution through snapshots without resampling pixels.
 
 [Export sizing](automation/export-sizing.jsonl) plans and writes a composed PNG without resizing the document. Create `target/example-output/` first.

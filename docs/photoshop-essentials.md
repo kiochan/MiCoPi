@@ -72,7 +72,8 @@ Acceptance: preview/cancel leaves pixels untouched; selection is visible and beh
 - [x] Add validated central new-document presets, background initialization and persistent physical-resolution metadata, with a revision-guarded dialog, shared schemas/state/nodes, undo and verified replay. See [Document Setup](document-setup.md).
 - [x] Preserve exact PNG density axes/units through import, export, projects and recorded-state PNG output, with bounded strict chunk validation, explicit unknown physical sizes and document-rotation axis semantics. See [PNG Density](png-density.md).
 - [x] Add read-only PNG output plans, pixel/physical/percentage export sizing, density overrides and explicit cached desktop previews without changing source layers/history. Bind successful external files to compact event digests and share actions/nodes/MCP/headless execution. See [PNG Export Sizing](export-sizing.md).
-- [ ] Add editable physical-unit inputs to New Canvas and Image Size.
+- [x] Add shared read-only creation plans and editable New Canvas pixel/millimeter/inch dimensions, with bounded rounding and explicit density intent. Preserve canonical pixel presets, legacy defaults and the existing lifecycle rollback/replay contract.
+- [ ] Add editable physical-unit inputs to Image Size.
 
 Acceptance: coordinate units, pivots, bounds, resampling and clipping are specified; right-angle operations retain exact stored pixels; preview never publishes provisional outcomes; structural identities, graph references, undo and replay remain valid.
 

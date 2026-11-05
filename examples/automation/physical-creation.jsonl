@@ -1,0 +1,7 @@
+{"action":"canvas.new.plan","args":{"width":210,"height":297,"unit":"mm","resolution_ppi":300}}
+{"action":"canvas.new","args":{"width":25.4,"height":12.7,"unit":"mm","resolution_ppi":150,"background":"#FFF9EF"}}
+{"action":"brush.set","args":{"color":"#994477","radius":4,"stabilizer":0.35,"pressure_size":true,"pressure_opacity":true}}
+{"action":"canvas.stroke","args":{"points":[{"x":10,"y":60,"pressure":0.2,"pen":true,"time":0},{"x":70,"y":16,"pressure":1,"pen":true,"time":40},{"x":138,"y":60,"pressure":0.4,"pen":true,"time":80}]}}
+{"action":"canvas.info","args":{}}
+{"action":"canvas.export","args":{"path":"target/example-output/physical-creation.png"}}
+{"action":"replay.verify","args":{}}

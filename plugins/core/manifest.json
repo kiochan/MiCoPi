@@ -293,6 +293,139 @@
       "operation": "new"
     },
     {
+      "id": "canvas.new.plan",
+      "title": "Plan New Canvas",
+      "operation": "new_plan",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "document_info": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "resolution_ppi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2400,
+                "description": "Editable nominal scalar; inspect per-axis PPI for exact imported metric density. Setting this replaces imported density."
+              },
+              "initial_background": {
+                "type": "string",
+                "description": "Creation fill intent, not a permanent compositing background."
+              },
+              "width_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_explicit": {
+                "type": "boolean",
+                "description": "An explicit document resolution also writes PNG density at 72 PPI."
+              },
+              "png_density": {
+                "type": "object",
+                "properties": {
+                  "xppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "yppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "meter",
+                      "unspecified"
+                    ]
+                  }
+                },
+                "required": [
+                  "xppu",
+                  "yppu",
+                  "unit"
+                ],
+                "additionalProperties": false,
+                "description": "Exact imported PNG pHYs. Zero axes or unspecified units have no known physical size."
+              },
+              "physical_size_known": {
+                "type": "boolean"
+              },
+              "resolution_source": {
+                "type": "string",
+                "enum": [
+                  "png",
+                  "document"
+                ]
+              },
+              "resolution_ppi_x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_ppi_y": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "width",
+              "height",
+              "resolution_ppi",
+              "initial_background",
+              "physical_size_known",
+              "resolution_source"
+            ]
+          },
+          "estimated_initial_pixel_bytes": {
+            "type": "integer",
+            "minimum": 8,
+            "maximum": 134217728
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "width",
+          "height",
+          "document_info",
+          "estimated_initial_pixel_bytes",
+          "revision",
+          "drawing"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "canvas.info",
       "title": "Inspect Document Properties",
       "operation": "document_info",

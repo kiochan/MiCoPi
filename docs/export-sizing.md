@@ -38,7 +38,7 @@ With neither dimensions nor scale, output retains the source pixel dimensions. E
 {"action":"canvas.export","args":{"path":"target/example-output/page.png","width":100,"unit":"mm","resolution_ppi":300,"method":"area"}}
 ```
 
-Create the example output directory before running the [automation example](../examples/automation/export-sizing.jsonl). The separate [PNG density contract](png-density.md) explains unknown units, raw axes and integer PNG quantization. JPEG/WebP export, color management and physical-unit inputs for New Canvas/Image Size remain planned.
+Create the example output directory before running the [automation example](../examples/automation/export-sizing.jsonl). The separate [PNG density contract](png-density.md) explains unknown units, raw axes and integer PNG quantization. JPEG/WebP export, color management and physical-unit inputs for Image Size remain planned.
 
 ## Source and performance
 

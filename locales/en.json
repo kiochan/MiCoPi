@@ -1107,5 +1107,17 @@
   "Plan PNG Export": "Plan PNG Export",
   "Preview PNG Export": "Preview PNG Export",
   "PNG Export Options": "PNG Export Options",
-  "Inspect Default PNG Export": "Inspect Default PNG Export"
+  "Inspect Default PNG Export": "Inspect Default PNG Export",
+  "Units": "Units",
+  "Pixel Dimensions": "Pixel Dimensions",
+  "In physical units, resolution determines the pixel count.": "In physical units, resolution determines the pixel count.",
+  "Physical dimensions round to whole pixels.": "Physical dimensions round to whole pixels.",
+  "Enter valid dimensions before switching units.": "Enter valid dimensions before switching units.",
+  "Plan New Canvas": "Plan New Canvas",
+  "Dimensions must be finite and positive": "Dimensions must be finite and positive",
+  "Pixel dimensions must be integers": "Pixel dimensions must be integers",
+  "Derived dimensions must be between 1 and 4096 pixels": "Derived dimensions must be between 1 and 4096 pixels",
+  "Physical dimensions require known density or an explicit resolution": "Physical dimensions require known density or an explicit resolution",
+  "Resolution cannot be null": "Resolution cannot be null",
+  "Resolution must be an integer between 1 and 2400 PPI": "Resolution must be an integer between 1 and 2400 PPI"
 }

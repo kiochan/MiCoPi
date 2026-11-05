@@ -78,6 +78,8 @@ Document transactions and provisional pen contacts use replay state plus shared 
 
 PNG export sizing uses pure unit/aspect plans and a cached native sampler on the composed frame. Previews remain read-only; file export stages its PNG before replacement and binds a compact artifact digest to its external-effect event. It does not resize source layers or add document undo. See [PNG Export Sizing](export-sizing.md).
 
+New Canvas and PNG export share cold unit conversion with bounded positive half-up rounding. Creation plans validate dimensions, density and background without allocating pixels; the mutating New action uses the same plan before the existing document/journal lifecycle replacement. Physical-unit creation records explicit square density; legacy pixel defaults remain omitted. Desktop presets retain canonical pixels and PPI. See [Document Setup](document-setup.md).
+
 ## Stable layer editing
 
 Optional composition metadata stores document-scoped layer IDs, custom names and the next ID. Legacy projects receive deterministic IDs when opened. IDs persist across save, undo and reorder; committed undo does not reuse allocated IDs. Atomic failure restores the allocator with the document checkpoint. Image graphs retain their index-based wire format. New documents use validated linked stacks: structural edits rebuild branches through stable IDs, preserving per-layer filters; duplication copies filters and deletion removes the corresponding branch. Linked blend modes stay synchronized with layer properties. Legacy/free graphs keep explicit wiring and reject deletion of referenced layers, including disabled sources. See [Image Node Editor](node-editor.md).

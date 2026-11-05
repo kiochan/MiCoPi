@@ -12,7 +12,7 @@ These are actual application captures, not interface mockups. Current images com
 | [Canvas trim](trim-canvas.png) | Cached trim preview, selected sides and resulting dimensions beside visible artwork |
 | [PNG density](png-density.png) | Imported unequal density and the explicit metadata-only resolution replacement contract |
 | [PNG export sizing](export-sizing.png) | Source-preserving output dimensions, sampling, density and explicit preview controls |
-| [New canvas](new-canvas.png) | Configurable preset, editable background and physical-resolution creation controls |
+| [New canvas](new-canvas.png) | Configurable preset, unit selector, resolved pixel size, editable background and physical-resolution controls |
 | [Image size](image-size.png) | Actual aspect-locked image sizing dialog with native sampling choices |
 | [Canvas quarter turn](canvas-quarter-turn.png) | Actual clockwise document rotation, transformed selection and navigator preview |
 | [Session clipboard](clipboard.png) | Actual shared paste parameter form; coordinates are optional and execution is explicit |
@@ -51,7 +51,7 @@ Older screenshots live in [archive](archive/README.md) for historical reference.
 
 `free-transform-perspective.png` was reviewed from the English Release `scripts/smoke-localization.py` capture on 2026-11-05, alongside Chinese, Japanese and Korean captures. It shows a selected-pixel projective draft with four numeric corner rows. The control frame and idle preview remain provisional; the same smoke run confirms that Cancel preserves PNG bytes and project/workflow state.
 
-`new-canvas.png` comes from the English Release capture in `scripts/smoke-document-setup.py`. The same isolated check captures Chinese, Japanese and Korean dialogs while verifying unchanged document info and PNG pixels on cancellation.
+`new-canvas.png` is the English final Release capture from `scripts/smoke-physical-creation.py` on 2026-11-05; all four language captures were reviewed. It shows the unit selector, resolved pixel/physical size and pixel-buffer estimate. The same isolated check verifies physical creation across transports, while opening and canceling the dialog preserve document info and PNG pixels. Short-view and CJK regression checks retain visible Create/Cancel controls after resizing.
 
 `png-density.png` is the English final Release capture from `scripts/smoke-png-density.py`; all four language captures were reviewed. Its generated color fixture is opened by signature, and cancellation preserves exact density and artwork PNG bytes.
 

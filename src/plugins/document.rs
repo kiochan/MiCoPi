@@ -61,24 +61,15 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 .map_err(|e| ActionError::new("document_info", e))?;
             Ok(s.doc.info().state(s.doc.width, s.doc.height))
         }
+        NewPlan => {
+            let plan = crate::application::creation::plan(&args)?;
+            Ok(plan.state(s.revision, s.is_drawing()))
+        }
         New => {
             require_idle(s)?;
-            let info = crate::engine::document_info::Info {
-                resolution_explicit: args.get("resolution_ppi").is_some(),
-                png_density: None,
-                resolution_ppi: args["resolution_ppi"].as_f64().unwrap_or(72.) as u32,
-                initial_background: crate::engine::document_info::Info::parse_background(
-                    args["background"].as_str().unwrap_or("transparent"),
-                )
-                .map_err(|e| ActionError::new("invalid_arguments", e))?,
-            };
-            info.validate()
-                .map_err(|e| ActionError::new("invalid_arguments", e))?;
-            s.doc = Document::new(
-                args["width"].as_f64().unwrap() as usize,
-                args["height"].as_f64().unwrap() as usize,
-            );
-            s.doc.initialize_info(info);
+            let plan = crate::application::creation::plan(&args)?;
+            s.doc = Document::new(plan.width, plan.height);
+            s.doc.initialize_info(plan.info);
             s.file = None;
             s.doc.renderer = s.registry.renderer();
             if let Some(graph) = s.workflow_stack.first() {

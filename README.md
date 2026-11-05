@@ -20,7 +20,7 @@ Canvas size, exact all-layer crop, document quarter/half turns and flips preserv
 
 **Free Transform (Ctrl+T)** supports numeric and mouse/pen move, scale, skew, rotation, flips and pivots, with cancellable cached pixel previews and one undo/event. The same native action runs through nodes, MCP and headless. Pixels outside the current frame clip; **Ctrl+Shift+T** repeats the saved matrix; **Ctrl+Alt+Shift+T** creates a transformed copy. Recipes persist with projects, undo and replay. Edge diamonds adjust skew; perspective corner editing maps a convex quadrilateral with the same undo, repeat and replay contracts. See [Free Transform](docs/canvas-editing.md#free-transform).
 
-**New Canvas (Ctrl+N)** offers configurable illustration, square, A4 and B5 presets, editable background pixels and physical resolution. Resolution metadata persists with projects, undo and replay; it does not resample pixels. See [Document Setup](docs/document-setup.md).
+**New Canvas (Ctrl+N)** offers configurable illustration, square, A4 and B5 presets, editable background pixels, pixel/millimeter/inch dimensions and physical resolution. A shared read-only plan resolves the raster before creation. Resolution metadata persists with projects, undo and replay; it does not resample pixels. See [Document Setup](docs/document-setup.md).
 
 The [unified plugin system](docs/plugin-system.md) exposes package versions, compatibility, dependencies and lifecycle status in Settings and automation. Enable/disable plans resolve dependencies before saving; activation takes effect after restart. Plugins can provide isolated language catalogs that hot-reload while the app runs.
 
