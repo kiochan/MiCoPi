@@ -335,9 +335,20 @@ impl Document {
         self.document_info = info;
         self.layers[0].pixels.fill(info.initial_background);
     }
+    /// Install validated image-import metadata without changing decoded pixels/history.
+    pub(crate) fn set_import_info(
+        &mut self,
+        info: super::document_info::Info,
+    ) -> Result<(), String> {
+        info.validate()?;
+        self.document_info = info;
+        Ok(())
+    }
     pub(crate) fn set_resolution(&mut self, resolution_ppi: u32) -> Result<(), String> {
         let mut info = self.document_info;
         info.resolution_ppi = resolution_ppi;
+        info.resolution_explicit = true;
+        info.png_density = None;
         info.validate()?;
         if info == self.document_info {
             return Ok(());

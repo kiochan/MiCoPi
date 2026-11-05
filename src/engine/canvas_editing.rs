@@ -75,6 +75,18 @@ impl Document {
         pixels: Vec<Vec<u32>>,
         selection: crate::engine::selection::SelectionState,
     ) -> Result<(), String> {
+        self.replace_geometry_with_info(width, height, pixels, selection, self.document_info)
+    }
+    /// Quarter turns also exchange physical axes, including square uniform canvases.
+    pub(crate) fn replace_geometry_with_info(
+        &mut self,
+        width: usize,
+        height: usize,
+        pixels: Vec<Vec<u32>>,
+        selection: crate::engine::selection::SelectionState,
+        info: crate::engine::document_info::Info,
+    ) -> Result<(), String> {
+        info.validate()?;
         if width == 0
             || height == 0
             || width > MAX_SIDE
@@ -89,6 +101,7 @@ impl Document {
         if width == self.width
             && height == self.height
             && self.selection == selection
+            && self.document_info == info
             && pixels.iter().zip(&self.layers).all(|(p, l)| *p == l.pixels)
         {
             return Ok(());
@@ -111,6 +124,7 @@ impl Document {
             layers: std::mem::replace(&mut self.layers, layers),
         };
         self.last_transform = None;
+        self.document_info = info;
         self.width = width;
         self.height = height;
         self.selection = selection;

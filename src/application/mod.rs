@@ -3,6 +3,7 @@ mod actions;
 mod atomic;
 pub mod codec;
 pub mod pipeline;
+pub(crate) mod png_io;
 pub mod replay;
 mod selection_sampling;
 mod session;
@@ -72,3 +73,8 @@ mod perspective_tests;
 
 #[cfg(test)]
 mod document_setup_tests;
+
+#[cfg(test)]
+mod geometry_density_tests;
+#[cfg(test)]
+mod png_density_tests;

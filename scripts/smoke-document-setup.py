@@ -1,7 +1,7 @@
 """Document setup parity, metadata history and isolated four-language dialog captures.
 
-Density-aware image import/export is outside this check: resolution is project
-metadata and must leave PNG pixels unchanged. Only test-created processes close.
+Resolution changes PNG density metadata while preserving decoded pixels.
+Only test-created processes close.
 """
 import argparse
 import base64
@@ -10,6 +10,8 @@ from pathlib import Path
 import shutil
 import subprocess
 import time
+
+from png_checks import density, pixels
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -75,7 +77,10 @@ def validate(values):
     assert values[14]['valid'], values[14]
     before = base64.b64decode(values[4]['data'])
     after = base64.b64decode(values[15]['data'])
-    assert before == after, 'Resolution metadata must not resample pixels'
+    assert pixels(before) == pixels(after), 'Resolution metadata must not resample pixels'
+    assert density(before) == (12598, 12598, 1), 'Expected rounded 320 PPI density'
+    assert density(after) == (25197, 25197, 1), 'Expected rounded 640 PPI density'
+    assert before != after, 'Resolution changes the exported density chunk'
     return after
 
 

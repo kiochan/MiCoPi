@@ -1068,5 +1068,10 @@
   "Resolution must be between 1 and 2400 pixels per inch": "해상도는 인치당 1~2400픽셀이어야 합니다",
   "Finish the current contact before changing document setup": "문서 설정을 변경하기 전에 현재 스트로크를 마치세요",
   "Inspect Document Properties": "문서 속성 확인",
-  "Set Document Resolution": "문서 해상도 설정"
+  "Set Document Resolution": "문서 해상도 설정",
+  "Imported PNG Density": "가져온 PNG 밀도",
+  "pixels per meter": "픽셀/미터",
+  "pixels per unspecified unit": "픽셀/단위 미지정",
+  "Applying resolution replaces imported density with square metric pixels. No pixels are resampled.": "해상도를 적용하면 가져온 밀도가 가로와 세로가 같은 물리 밀도로 바뀝니다. 픽셀은 리샘플링하지 않습니다.",
+  "Physical size is unknown for this PNG density.": "이 PNG 밀도의 실제 크기는 알 수 없습니다."
 }

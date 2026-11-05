@@ -73,3 +73,5 @@ The default `plugins/replay/manifest.json` exposes the host-owned recorder as sc
 ```
 
 `src/engine/replay.rs` owns storage and verification; `src/application/replay.rs` owns action boundaries and persistence; `plugins/replay/panel.rs` owns presentation. `scripts/smoke-replay.py` verifies PNG parity, bounded frame export, project persistence and MCP playback without drawing/compositor DLLs.
+
+PNG output retains [document density](png-density.md) from the selected recorded state, including non-square axes and unspecified units. Live and replay snapshots share the encoder. Default absent density retains the legacy byte path; explicitly changing resolution can change PNG metadata bytes while decoded pixels stay identical. This does not execute native plugin commands during playback.

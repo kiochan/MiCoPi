@@ -1068,5 +1068,10 @@
   "Resolution must be between 1 and 2400 pixels per inch": "分辨率必须为每英寸 1 到 2400 像素",
   "Finish the current contact before changing document setup": "请先结束当前笔触，再更改文档设置",
   "Inspect Document Properties": "查看文档属性",
-  "Set Document Resolution": "设置文档分辨率"
+  "Set Document Resolution": "设置文档分辨率",
+  "Imported PNG Density": "导入的 PNG 密度",
+  "pixels per meter": "像素/米",
+  "pixels per unspecified unit": "像素/未知单位",
+  "Applying resolution replaces imported density with square metric pixels. No pixels are resampled.": "应用分辨率会将导入密度替换为横纵相同的物理密度，不会重采样像素。",
+  "Physical size is unknown for this PNG density.": "此 PNG 密度的物理尺寸未知。"
 }

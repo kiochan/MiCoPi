@@ -1068,5 +1068,10 @@
   "Resolution must be between 1 and 2400 pixels per inch": "Resolution must be between 1 and 2400 pixels per inch",
   "Finish the current contact before changing document setup": "Finish the current contact before changing document setup",
   "Inspect Document Properties": "Inspect Document Properties",
-  "Set Document Resolution": "Set Document Resolution"
+  "Set Document Resolution": "Set Document Resolution",
+  "Imported PNG Density": "Imported PNG Density",
+  "pixels per meter": "pixels per meter",
+  "pixels per unspecified unit": "pixels per unspecified unit",
+  "Applying resolution replaces imported density with square metric pixels. No pixels are resampled.": "Applying resolution replaces imported density with square metric pixels. No pixels are resampled.",
+  "Physical size is unknown for this PNG density.": "Physical size is unknown for this PNG density."
 }

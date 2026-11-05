@@ -13,6 +13,8 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 
 [Document setup](automation/document-setup.jsonl) creates an editable background, changes physical resolution without resampling and verifies replay.
 
+[PNG density](automation/png-density.jsonl) compares implicit defaults and explicit physical resolution through snapshots without resampling pixels.
+
 ## Automation
 
 | File | Demonstrates |

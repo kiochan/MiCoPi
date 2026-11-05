@@ -24,6 +24,8 @@ Canvas size, exact all-layer crop, document quarter/half turns and flips preserv
 
 The [unified plugin system](docs/plugin-system.md) exposes package versions, compatibility, dependencies and lifecycle status in Settings and automation. Enable/disable plans resolve dependencies before saving; activation takes effect after restart. Plugins can provide isolated language catalogs that hot-reload while the app runs.
 
+[PNG density](docs/png-density.md) preserves exact X/Y counts and units through import/export, projects and replay PNG output. Unknown physical sizes stay explicit; setting resolution replaces imported density without resampling.
+
 ## Why MiCoPi
 
 **Painting first. Plugins carry behavior. One execution core serves artists and automation.**

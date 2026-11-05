@@ -64,6 +64,8 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         New => {
             require_idle(s)?;
             let info = crate::engine::document_info::Info {
+                resolution_explicit: args.get("resolution_ppi").is_some(),
+                png_density: None,
                 resolution_ppi: args["resolution_ppi"].as_f64().unwrap_or(72.) as u32,
                 initial_background: crate::engine::document_info::Info::parse_background(
                     args["background"].as_str().unwrap_or("transparent"),

@@ -306,6 +306,14 @@ impl Editor {
             .resizable(true)
             .show(ctx, |ui| {
                 ui.weak(&form.action);
+                if definition.operation == Some(crate::application::Operation::DocumentResolution) {
+                    if let Some(density) = self.session.doc.info().png_density {
+                        ui.label(format!("{}: {} × {} {}",localize("Imported PNG Density"),density.xppu,density.yppu,
+                            localize(if density.unit == crate::engine::document_info::DensityUnit::Meter {"pixels per meter"} else {"pixels per unspecified unit"})));
+                        ui.weak(tr("Applying resolution replaces imported density with square metric pixels. No pixels are resampled."));
+                        if !density.metric() { ui.weak(tr("Physical size is unknown for this PNG density.")); }
+                    }
+                }
                 ScrollArea::vertical()
                     .max_height(ctx.content_rect().height() * 0.55)
                     .show(ui, |ui| {

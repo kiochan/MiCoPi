@@ -1,0 +1,10 @@
+{"action":"canvas.new","args":{"width":96,"height":64,"background":"#F8EFE0"}}
+{"action":"canvas.info","args":{}}
+{"action":"canvas.snapshot","args":{}}
+{"action":"canvas.resolution","args":{"resolution_ppi":72}}
+{"action":"canvas.snapshot","args":{}}
+{"action":"canvas.resolution","args":{"resolution_ppi":300}}
+{"action":"canvas.info","args":{}}
+{"action":"history.undo","args":{}}
+{"action":"canvas.snapshot","args":{}}
+{"action":"replay.verify","args":{}}

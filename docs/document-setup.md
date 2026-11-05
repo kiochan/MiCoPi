@@ -6,7 +6,7 @@
 
 All canvases remain bounded to 1–4096 pixels per side. Resolution is an integer from 1–2400 pixels per inch (PPI); the legacy default is 72. A4 uses 2480 × 3508 at 300 PPI and B5 uses 2150 × 3035 at 300 PPI. Pixel dimensions are rounded practical sizes, so their computed millimeters are approximate. Presets do not bypass image bounds.
 
-The background initializes actual editable pixels on the first ordinary layer. It is not a locked Photoshop Background layer or a permanent display/compositing color. Erasing those pixels can reveal transparency. `initial_background` records the creation choice; later edits do not change that provenance. Imported images and older projects use transparent creation provenance and 72 PPI by default; this does not imply that their existing pixels are transparent.
+The background initializes actual editable pixels on the first ordinary layer. It is not a locked Photoshop Background layer or a permanent display/compositing color. Erasing those pixels can reveal transparency. `initial_background` records the creation choice; later edits do not change that provenance. Imports without PNG density and older projects use transparent creation provenance and 72 PPI by default; this does not imply that their existing pixels are transparent.
 
 ## Central preferences
 
@@ -31,8 +31,8 @@ There must be 1–32 presets, unique valid IDs, a default ID present in that lis
 | Contract | Behavior |
 | --- | --- |
 | `canvas.new` | Required `width`, `height`; optional `resolution_ppi` (72), `background` (`transparent`). Replaces the document and its undo history, clears its file target and resets view. This lifecycle boundary is excluded from atomic document groups. |
-| `canvas.info` | Read-only width/height, `resolution_ppi`, `initial_background`, `width_mm`, `height_mm`; also available as `canvas.state.document_info`. |
-| `canvas.resolution` | Required `resolution_ppi`. Metadata-only change with one undo/outcome; it never resamples pixels, masks or image nodes. |
+| `canvas.info` | Read-only width/height, resolution and creation provenance, exact optional PNG density and known physical dimensions; also available as `canvas.state.document_info`. |
+| `canvas.resolution` | Required `resolution_ppi`. Metadata-only change with one undo/outcome; replaces imported density with square metric pixels without resampling. |
 | `core.document_info` | Public plugin state and schema-derived workflow node for document properties. |
 
 For example, create a white page, then change its physical interpretation without resizing it:
@@ -53,4 +53,4 @@ New canvases start a separate recording with a genesis and creation outcome, rat
 
 ## Explicit boundaries
 
-Resolution currently describes the native document/project only. PNG import/export does not yet preserve density chunks, and there is no ICC/color-space or print-layout claim. Export scaling, density interchange and editable physical-unit inputs remain planned. **Image Size** resamples actual pixels; changing document resolution does not. Presets and this dialog add no native DLL dependency or per-pen-MOVE lookup, serialization or raster work.
+[PNG density](png-density.md) now round-trips exact axes/units through import/export, snapshots and recorded-state PNG output. Unknown units or zero axes have no known physical size. There is no ICC/color-space or print-layout claim. Export scaling and editable physical-unit inputs remain planned. **Image Size** resamples actual pixels; changing document resolution does not. Presets and this dialog add no native DLL dependency or per-pen-MOVE lookup, serialization or raster work.

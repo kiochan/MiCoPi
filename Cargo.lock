@@ -1187,6 +1187,7 @@ dependencies = [
  "flate2",
  "image",
  "micopi-plugin-api",
+ "png",
  "raw-window-handle",
  "serde",
  "serde_json",

@@ -76,7 +76,13 @@ fn run(s: &mut Session, op: Operation) -> Result<(), String> {
         .iter()
         .map(|l| super::native::geometry_pixels(s, &options, &l.pixels, sw, sh, w, h))
         .collect::<Result<Vec<_>, _>>()?;
-    s.doc.replace_geometry(w, h, pixels, selection)
+    let info = if kind <= 1 {
+        s.doc.info().rotated_quarter()
+    } else {
+        s.doc.info()
+    };
+    s.doc
+        .replace_geometry_with_info(w, h, pixels, selection, info)
 }
 pub(crate) fn execute(s: &mut Session, op: Operation) -> ActionResult {
     run(s, op).map_err(|e| ActionError::new("geometry", e))?;

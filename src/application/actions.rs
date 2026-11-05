@@ -257,7 +257,7 @@ impl Operation {
                 vec!["steps"],
             ),
             Self::DocumentResolution => (
-                json!({"resolution_ppi":{"type":"integer","minimum":1,"maximum":2400,"description":"Physical pixels per inch; changes metadata only, without resampling."}}),
+                json!({"resolution_ppi":{"type":"integer","minimum":1,"maximum":2400,"description":"Square pixels per inch; replaces imported PNG density without resampling. Writes physical density even for an explicit 72 PPI."}}),
                 vec!["resolution_ppi"],
             ),
             Self::New => (

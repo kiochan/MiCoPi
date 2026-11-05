@@ -127,3 +127,7 @@ The trim compatibility run used isolated matching manifest sets: the preceding p
 ## Document-setup checks
 
 Run `python scripts/smoke-document-setup.py --cli <built-cli> --gui <built-desktop>` after a host rebuild. It compares JSONL/MCP/desktop PNG bytes, verifies metadata-only resolution undo/redo, atomic rollback, schema-derived state/action nodes, saved projects and outcome replay, and captures New Canvas in four languages. Use `--skip-gui` for the transport-only subset. Captures stay in `target/test-output/document-setup-smoke/`; promote only reviewed application captures. Library regressions also inject a partial append into a staged new-document journal and confirm the old recording, pixels and undo history survive. No physical tablet claim follows from its synthetic pen fixture.
+
+## PNG-density checks
+
+Run `python scripts/smoke-png-density.py --cli <built-cli> --gui <built-desktop>` for signature-based input, exact asymmetric/unknown/zero density, cross-transport PNG parity, project and plugin-independent recording restoration, malformed late-chunk rejection and four-language resolution forms. `scripts/smoke-document-setup.py` now compares decoded pixels across differing resolutions while checking the expected density chunks. Run `png_io_cost` as an ignored Release library test to measure its deterministic cold encode/scan/decode workload. See [PNG Density](png-density.md) for supported limits and costs.

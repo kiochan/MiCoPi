@@ -436,22 +436,14 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     }
 }
 pub fn png(state: &State) -> Result<Vec<u8>, ActionError> {
-    use image::ImageEncoder;
-    let mut rgba = Vec::with_capacity(state.metadata.width * state.metadata.height * 4);
-    for p in state.pixels() {
-        rgba.extend_from_slice(&[(p >> 16) as u8, (p >> 8) as u8, p as u8, (p >> 24) as u8]);
-    }
-    let mut bytes = vec![];
-    image::codecs::png::PngEncoder::new(&mut bytes)
-        .write_image(
-            &rgba,
-            state.metadata.width as u32,
-            state.metadata.height as u32,
-            image::ExtendedColorType::Rgba8,
-        )
-        .map_err(|e| ActionError::new("png", e.to_string()))?;
-    Ok(bytes)
+    super::png_io::encode(
+        state.metadata.width,
+        state.metadata.height,
+        state.pixels(),
+        state.metadata.composition.document_info.export_density(),
+    )
 }
+
 pub fn read_embedded(doc: &mut crate::engine::Document) -> Result<Option<Journal>, ActionError> {
     if let Some(bytes) = doc.replay_data.take() {
         if bytes.len() > MAX_ARCHIVE {

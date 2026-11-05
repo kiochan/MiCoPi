@@ -1068,5 +1068,10 @@
   "Resolution must be between 1 and 2400 pixels per inch": "解像度は1〜2400ピクセル/インチで指定してください",
   "Finish the current contact before changing document setup": "ドキュメント設定を変更する前に現在のストロークを終了してください",
   "Inspect Document Properties": "ドキュメントのプロパティを表示",
-  "Set Document Resolution": "ドキュメントの解像度を設定"
+  "Set Document Resolution": "ドキュメントの解像度を設定",
+  "Imported PNG Density": "読み込んだ PNG 密度",
+  "pixels per meter": "ピクセル/メートル",
+  "pixels per unspecified unit": "ピクセル/単位未指定",
+  "Applying resolution replaces imported density with square metric pixels. No pixels are resampled.": "解像度を適用すると、読み込んだ密度を縦横同じ物理密度に置き換えます。ピクセルは再サンプリングしません。",
+  "Physical size is unknown for this PNG density.": "この PNG 密度の物理サイズは不明です。"
 }
