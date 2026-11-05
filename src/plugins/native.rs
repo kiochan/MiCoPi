@@ -28,8 +28,34 @@ impl Drop for Module {
         }
     }
 }
+// Read only advertised, complete optional tails; legacy prefixes remain usable.
+unsafe fn decode_selection_table(
+    pointer: *const abi::SelectionApi,
+) -> Result<(abi::SelectionApi, Option<abi::SelectionColorFn>), String> {
+    if pointer.is_null() {
+        return Err("Null selection table".into());
+    }
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.abi_version != 1
+        || header.struct_size < std::mem::size_of::<abi::SelectionApi>() as u32
+    {
+        return Err("Incompatible selection ABI".into());
+    }
+    let api = std::ptr::read_unaligned(pointer);
+    if api.mix.is_none() {
+        return Err("Missing selection mixing callback".into());
+    }
+    let color = if header.struct_size >= std::mem::size_of::<abi::SelectionApiColor>() as u32 {
+        std::ptr::read_unaligned(pointer.cast::<abi::SelectionApiColor>()).color
+    } else {
+        None
+    };
+    Ok((api, color))
+}
 impl Module {
-    unsafe fn selection_api(&self) -> Result<Option<abi::SelectionApi>, String> {
+    unsafe fn selection_api(
+        &self,
+    ) -> Result<Option<(abi::SelectionApi, Option<abi::SelectionColorFn>)>, String> {
         #[cfg(windows)]
         {
             let address =
@@ -38,21 +64,7 @@ impl Module {
                 return Ok(None);
             }
             let entry = std::mem::transmute::<*mut c_void, abi::SelectionEntry>(address);
-            let pointer = entry();
-            if pointer.is_null() {
-                return Err("Null selection table".into());
-            }
-            let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
-            if header.abi_version != 1
-                || header.struct_size < std::mem::size_of::<abi::SelectionApi>() as u32
-            {
-                return Err("Incompatible selection ABI".into());
-            }
-            let api = std::ptr::read_unaligned(pointer);
-            if api.mix.is_none() {
-                return Err("Missing selection mixing callback".into());
-            }
-            Ok(Some(api))
+            decode_selection_table(entry()).map(Some)
         }
         #[cfg(not(windows))]
         {
@@ -216,6 +228,7 @@ pub struct NativePlugin {
     tools: Option<abi::ToolApi>,
     tool_options: Option<(abi::ToolOptionsApi, u32)>,
     selection_mix: Option<abi::SelectionApi>,
+    selection_color: Option<abi::SelectionColorFn>,
     compositor: Option<abi::CompositorApi>,
     _module: Module,
 }
@@ -281,7 +294,10 @@ impl NativePlugin {
         };
         let tools = unsafe { module.tool_api()? };
         let tool_options = unsafe { module.tool_options_api()? };
-        let selection_mix = unsafe { module.selection_api()? };
+        let (selection_mix, selection_color) = match unsafe { module.selection_api()? } {
+            Some((base, color)) => (Some(base), color),
+            None => (None, None),
+        };
         if tool_options.is_some() && tools.is_none() {
             return Err("Tool options require a tool API".into());
         }
@@ -308,6 +324,7 @@ impl NativePlugin {
                 tools,
                 tool_options,
                 selection_mix,
+                selection_color,
                 compositor,
                 _module: module,
             }),
@@ -542,6 +559,59 @@ pub(crate) fn selection_shape(
     }
     crate::engine::selection::Mask::new(s.doc.width, s.doc.height, output)
 }
+pub(crate) fn selection_color(
+    s: &mut Session,
+    options: &abi::SelectionColor,
+    merged: bool,
+) -> Result<crate::engine::selection::Mask, String> {
+    let kernel = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.selection_color)
+        .ok_or("Painting DLL does not support color selection")?;
+    if merged {
+        s.doc.compose();
+        if let Some(error) = &s.doc.render_error {
+            return Err(error.clone());
+        }
+    }
+    let pixels = if merged {
+        &s.doc.composite
+    } else {
+        &s.doc.layers[s.doc.active].pixels
+    };
+    let source = abi::Pixels {
+        data: pixels.as_ptr() as *mut u32,
+        len: pixels.len(),
+        width: s.doc.width as u32,
+        height: s.doc.height as u32,
+        stride: s.doc.width as u32,
+        origin_x: 0,
+        origin_y: 0,
+    };
+    let previous = s
+        .doc
+        .selection()
+        .current
+        .as_ref()
+        .map(coverage)
+        .unwrap_or_default();
+    let mut output = vec![0; s.doc.width * s.doc.height];
+    if unsafe {
+        kernel(
+            options,
+            &source,
+            &previous,
+            output.as_mut_ptr(),
+            output.len(),
+        )
+    } != abi::OK
+    {
+        return Err("Color selection failed".into());
+    }
+    crate::engine::selection::Mask::new(s.doc.width, s.doc.height, output)
+}
 /// Cold action boundary: blend scratch output using the independent painting DLL.
 /// Typed tool MOVE uses its frozen mask directly and never enters this function.
 pub(crate) fn clip_region(
@@ -717,6 +787,89 @@ unsafe extern "C" fn edit_region(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn selection_tables_read_only_complete_advertised_tails() {
+        unsafe extern "C" fn mix(
+            _: *const abi::Coverage,
+            _: *const abi::Pixels,
+            _: *mut abi::Pixels,
+        ) -> i32 {
+            abi::OK
+        }
+        unsafe extern "C" fn color(
+            _: *const abi::SelectionColor,
+            _: *const abi::Pixels,
+            _: *const abi::Coverage,
+            _: *mut u8,
+            _: usize,
+        ) -> i32 {
+            abi::OK
+        }
+        let mut table = abi::SelectionApiColor {
+            base: abi::SelectionApi {
+                abi_version: 1,
+                struct_size: std::mem::size_of::<abi::SelectionApi>() as u32,
+                mix: Some(mix),
+                rasterize: None,
+            },
+            color: Some(color),
+        };
+        unsafe {
+            assert!(decode_selection_table(std::ptr::null()).is_err());
+            let legacy = table.base;
+            let (base, tail) = decode_selection_table(&legacy).unwrap();
+            assert!(base.mix.is_some());
+            assert!(tail.is_none());
+            table.base.struct_size = std::mem::size_of::<abi::SelectionApiColor>() as u32 - 1;
+            assert!(decode_selection_table(&table.base).unwrap().1.is_none());
+            table.base.struct_size += 1;
+            assert!(decode_selection_table(&table.base).unwrap().1.is_some());
+            table.base.abi_version = 2;
+            assert!(decode_selection_table(&table.base).is_err());
+            table.base.abi_version = 1;
+            table.base.mix = None;
+            assert!(decode_selection_table(&table.base).is_err());
+            table.base.struct_size = std::mem::size_of::<abi::Header>() as u32;
+            assert!(decode_selection_table(&table.base).is_err());
+        }
+    }
+    #[test]
+    fn unavailable_color_selection_preserves_document_and_records_failed_attempts() {
+        let mut registry = super::super::Registry::load(
+            &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+        )
+        .unwrap();
+        Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .selection_color = None;
+        let mut s = Session::new(registry).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+            .unwrap();
+        s.apply(Action::new("selection.all", json!({}))).unwrap();
+        let metadata = s.doc.composition();
+        let pixels = s.doc.layers[0].pixels.clone();
+        let state = s.state();
+        let mut journal = s.replay_journal(false).unwrap().entries.len();
+        for (id, args) in [
+            ("selection.wand", json!({"x":0,"y":0})),
+            ("selection.grow", json!({})),
+            ("selection.similar", json!({})),
+        ] {
+            assert!(s.apply(Action::new(id, args)).is_err());
+            assert_eq!(s.state(), state);
+            assert_eq!(s.doc.composition(), metadata);
+            assert_eq!(s.doc.layers[0].pixels, pixels);
+            // Failed attempts are journaled, while their document outcome is unchanged.
+            journal += 1;
+            assert_eq!(s.replay_journal(false).unwrap().entries.len(), journal);
+            assert_eq!(
+                s.apply(Action::new("replay.verify", json!({}))).unwrap()["result"]["valid"],
+                true
+            );
+        }
+        s.apply(Action::new("history.undo", json!({}))).unwrap();
+        assert!(s.doc.selection().current.is_none());
+    }
     #[test]
     fn action_selection_snapshot_remains_alive_across_nested_document_changes() {
         use crate::engine::selection::{Mask, SelectionState};

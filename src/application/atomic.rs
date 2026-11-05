@@ -102,6 +102,9 @@ impl Operation {
                 | Self::Deselect
                 | Self::Reselect
                 | Self::InvertSelection
+                | Self::SelectColor
+                | Self::GrowSelection
+                | Self::SimilarSelection
                 | Self::GraphSet
                 | Self::WorkflowSet
                 | Self::WorkflowPatch

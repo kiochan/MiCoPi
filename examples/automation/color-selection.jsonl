@@ -1,0 +1,8 @@
+{"action":"canvas.new","args":{"width":320,"height":240}}
+{"action":"native.checkerboard","args":{"cell":32}}
+{"action":"selection.wand","args":{"x":10,"y":10,"tolerance":0,"contiguous":true}}
+{"action":"selection.grow","args":{"tolerance":8}}
+{"action":"selection.similar","args":{"tolerance":8,"sample_merged":true}}
+{"action":"native.invert"}
+{"action":"selection.deselect"}
+{"action":"replay.verify"}

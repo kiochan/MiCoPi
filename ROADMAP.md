@@ -58,6 +58,8 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 - [ ] Make structural and multi-layer edits reliably undoable; define optional undo grouping separately from transaction rollback.
 - [x] Add bounded selection persistence, native shape/combine commands, PS selection shortcuts and drawing/action output clipping.
 - [x] Add direct rectangle/ellipse marquee and freehand/polygonal lasso gestures, reversible previews and connected-fill selection traversal.
+- [x] Add tolerance-based Wand, Grow and Similar commands with native active/merged sampling and shared automation contracts.
+- [ ] Add direct Magic Wand activation/sampling controls, selection edge processing and clipboard operations.
 - [ ] Add selection-aware move, scale and rotate.
 - [ ] Add useful document controls: new-canvas presets, resolution/background choices, clearer dirty state and save/recovery feedback.
 

@@ -1,4 +1,4 @@
-//! Selection actions exercise the staged native geometry, clipping and tool DLL.
+//! Selection actions exercise the staged native geometry/color, clipping and tool DLL.
 use super::editing_tests::{call, check, session};
 use super::*;
 use serde_json::json;
@@ -8,6 +8,190 @@ fn rectangle(s: &mut Session) {
         "selection.shape",
         json!({"kind":"rectangle","x":3,"y":2,"width":5,"height":3}),
     );
+}
+fn selected(s: &Session) -> usize {
+    s.doc
+        .selection()
+        .current
+        .as_ref()
+        .unwrap()
+        .coverage()
+        .iter()
+        .filter(|v| **v > 0)
+        .count()
+}
+#[test]
+fn color_actions_become_validated_workflow_nodes_without_running_on_edit() {
+    let mut s = session();
+    call(&mut s, "native.checkerboard", json!({"cell":3}));
+    let graph = json!({"version":1,"nodes":[
+        {"id":1,"type":"action.selection.wand","position":[0,0],"parameters":{"x":0,"y":0,"tolerance":0}},
+        {"id":2,"type":"action.selection.grow","position":[400,0],"parameters":{"tolerance":0}},
+        {"id":3,"type":"action.selection.similar","position":[800,0],"parameters":{"tolerance":0}}
+    ],"edges":[{"from":1,"output":"$exec","to":2,"input":"$exec"},{"from":2,"output":"$exec","to":3,"input":"$exec"}]});
+    call(&mut s, "workflow.set", json!({"graph":graph}));
+    assert!(s.doc.selection().current.is_none());
+    let before = s.doc.composition();
+    call(
+        &mut s,
+        "workflow.run",
+        json!({"dry_run":true,"atomic":true}),
+    );
+    assert_eq!(s.doc.composition(), before);
+    assert_eq!(
+        call(&mut s, "workflow.run", json!({"atomic":true}))["ok"],
+        true
+    );
+    assert_eq!(selected(&s), 48);
+    check(&mut s);
+}
+#[test]
+fn color_selection_uses_active_or_merged_pixels_and_restores_verified_outcomes() {
+    let mut s = session();
+    call(&mut s, "layer.fill_color", json!({"color":"#ffffff"}));
+    call(
+        &mut s,
+        "selection.shape",
+        json!({"kind":"rectangle","width":6,"height":8}),
+    );
+    call(&mut s, "layer.fill_color", json!({"color":"#000000"}));
+    call(&mut s, "selection.deselect", json!({}));
+    call(&mut s, "layer.add", json!({}));
+    call(&mut s, "layer.fill_color", json!({"color":"#0000ff80"}));
+    let pixels = s
+        .doc
+        .layers
+        .iter()
+        .map(|l| l.pixels.clone())
+        .collect::<Vec<_>>();
+    let before = s.doc.composition();
+    call(&mut s, "selection.wand", json!({"x":1,"y":1,"tolerance":0}));
+    assert_eq!(selected(&s), 96);
+    call(
+        &mut s,
+        "selection.wand",
+        json!({"x":1,"y":1,"tolerance":0,"sample_merged":true}),
+    );
+    assert_eq!(selected(&s), 48);
+    let expected = s.doc.composition();
+    check(&mut s);
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(selected(&s), 96);
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(s.doc.composition(), before);
+    call(&mut s, "history.redo", json!({}));
+    call(&mut s, "history.redo", json!({}));
+    assert_eq!(s.doc.composition(), expected);
+    let revision = s.revision;
+    let mut stale = Action::new("selection.wand", json!({"x":0,"y":0}));
+    stale.expected_revision = Some(revision - 1);
+    assert!(s.apply(stale).is_err());
+    for (id, args) in [
+        ("selection.wand", json!({"x":12,"y":0})),
+        ("selection.wand", json!({"x":0,"y":0,"tolerance":256})),
+        ("selection.grow", json!({"tolerance":-1})),
+        ("selection.similar", json!({"sample_merged":1})),
+    ] {
+        assert!(s.apply(Action::new(id, args)).is_err());
+        assert_eq!(s.doc.composition(), expected);
+        assert_eq!(s.revision, revision);
+    }
+    let result = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[{"id":"color","action":"selection.wand","args":{"x":1,"y":1}},{"id":"fail","action":"layer.select","args":{"layer_id":99999}}]}),
+    );
+    assert_eq!(result["rolled_back"], true);
+    assert_eq!(s.doc.composition(), expected);
+    assert_eq!(
+        s.doc
+            .layers
+            .iter()
+            .map(|l| l.pixels.clone())
+            .collect::<Vec<_>>(),
+        pixels
+    );
+    let folder =
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target/test-output/selection");
+    std::fs::create_dir_all(&folder).unwrap();
+    let path = folder.join(format!("color-{}.mcp", std::process::id()));
+    call(&mut s, "document.save", json!({"path":path}));
+    let mut reopened = session();
+    call(&mut reopened, "document.open", json!({"path":path}));
+    assert_eq!(reopened.doc.composition(), expected);
+    check(&mut reopened);
+    // Restore recorded masks into a document without a renderer or tool DLL.
+    let journal = s.replay_journal(false).unwrap();
+    let mut replayed = crate::engine::Document::new(12, 8);
+    journal.state.restore_document(&mut replayed);
+    assert_eq!(replayed.composition(), expected);
+    assert_eq!(
+        replayed
+            .layers
+            .iter()
+            .map(|l| l.pixels.clone())
+            .collect::<Vec<_>>(),
+        pixels
+    );
+    check(&mut s);
+}
+#[test]
+fn grow_and_similar_expand_the_original_palette_and_rollback_as_one_group() {
+    let mut s = session();
+    call(&mut s, "native.checkerboard", json!({"cell":3}));
+    call(
+        &mut s,
+        "selection.shape",
+        json!({"kind":"rectangle","x":0,"y":0,"width":1,"height":1}),
+    );
+    let before = s.doc.composition();
+    call(&mut s, "selection.grow", json!({"tolerance":0}));
+    assert_eq!(selected(&s), 9);
+    call(&mut s, "selection.similar", json!({"tolerance":0}));
+    assert_eq!(selected(&s), 48);
+    let expected = s.doc.composition();
+    for _ in 0..2 {
+        call(&mut s, "history.undo", json!({}));
+    }
+    assert_eq!(s.doc.composition(), before);
+    let result = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[{"id":"grow","action":"selection.grow","args":{"tolerance":0}},{"id":"similar","action":"selection.similar","args":{"tolerance":0}},{"id":"fail","action":"layer.select","args":{"layer_id":99999}}]}),
+    );
+    assert_eq!(result["rolled_back"], true);
+    assert_eq!(s.doc.composition(), before);
+    let result = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[{"id":"grow","action":"selection.grow","args":{"tolerance":0}},{"id":"similar","action":"selection.similar","args":{"tolerance":0}}]}),
+    );
+    assert_eq!(result["ok"], true);
+    assert_eq!(s.doc.composition(), expected);
+    check(&mut s);
+    // Atomic execution groups replay outcomes, preserving per-action undo.
+    for _ in 0..2 {
+        call(&mut s, "history.undo", json!({}));
+    }
+    assert_eq!(s.doc.composition(), before);
+    call(&mut s, "selection.deselect", json!({}));
+    let before = s.state();
+    for id in ["selection.grow", "selection.similar"] {
+        assert_eq!(
+            s.apply(Action::new(id, json!({}))).unwrap_err().code,
+            "selection_empty"
+        );
+        assert_eq!(s.state(), before);
+    }
+    call(
+        &mut s,
+        "selection.shape",
+        json!({"kind":"rectangle","x":100,"width":2,"height":2}),
+    );
+    for id in ["selection.grow", "selection.similar"] {
+        assert!(s.apply(Action::new(id, json!({}))).is_err());
+    }
+    check(&mut s);
 }
 fn outside_unchanged(s: &Session, before: &[u32]) {
     let mask = s.doc.selection().current.as_ref().unwrap().coverage();

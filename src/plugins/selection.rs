@@ -1,4 +1,4 @@
-//! Host validation/history for selection commands; the DLL owns geometry kernels.
+//! Host validation/history for selection commands; the DLL owns geometry/color kernels.
 use crate::application::{ActionError, ActionResult, Operation, Session};
 use serde_json::Value;
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
@@ -8,6 +8,58 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
     }
     let old = s.doc.selection().clone();
     let current = match op {
+        SelectColor | GrowSelection | SimilarSelection => {
+            let kind = match op {
+                SelectColor => 0,
+                GrowSelection => 1,
+                _ => 2,
+            };
+            let x = args["x"].as_u64().unwrap_or(0) as u32;
+            let y = args["y"].as_u64().unwrap_or(0) as u32;
+            if kind == 0 && (x as usize >= s.doc.width || y as usize >= s.doc.height) {
+                return Err(ActionError::new(
+                    "invalid_arguments",
+                    "Color selection seed is outside the canvas",
+                ));
+            }
+            if kind > 0
+                && old
+                    .current
+                    .as_ref()
+                    .is_none_or(|m| !m.coverage().iter().any(|v| *v > 0))
+            {
+                return Err(ActionError::new(
+                    "selection_empty",
+                    "Grow and Similar require a nonempty selection",
+                ));
+            }
+            let options = micopi_plugin_api::SelectionColor {
+                kind,
+                mode: if kind > 0 {
+                    1
+                } else {
+                    match args["mode"].as_str().unwrap_or("replace") {
+                        "add" => 1,
+                        "subtract" => 2,
+                        "intersect" => 3,
+                        _ => 0,
+                    }
+                },
+                x,
+                y,
+                tolerance: args["tolerance"].as_u64().unwrap_or(32) as u32,
+                contiguous: args["contiguous"].as_bool().unwrap_or(true) as u32,
+            };
+            s.finish_stroke();
+            Some(
+                super::native::selection_color(
+                    s,
+                    &options,
+                    args["sample_merged"].as_bool().unwrap_or(false),
+                )
+                .map_err(|e| ActionError::new("selection_color", e))?,
+            )
+        }
         Deselect => None,
         Reselect => Some(old.previous.clone().ok_or_else(|| {
             ActionError::new("selection_empty", "No previous selection to restore")

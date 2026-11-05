@@ -67,6 +67,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/selection.rs` | Immutable coverage storage, bounded encoding and shared selection snapshots |
 | `src/plugins/selection.rs` | Selection schema dispatch, history publication and DLL geometry calls |
 | `plugins/painting/src/selection.rs` | Typed geometry and premultiplied selection blending kernels |
+| `plugins/painting/src/selection/color.rs` | Immutable color sampling, connected selection and exact Grow/Similar palette kernels |
 | `plugins/canvas/selection.rs` | Cached desktop selection outline presentation |
 | `plugins/canvas/selection_gesture.rs` | Bounded marquee/lasso previews and single-action completion adapters |
 | `src/engine/linked_graph.rs` | Validated layer-stack topology, per-layer filter branches and metadata-only synchronization |

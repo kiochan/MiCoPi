@@ -94,6 +94,10 @@ def main():
         dict(action="native.invert", args={}),
         dict(action="selection.deselect", args={}),
         dict(action="selection.reselect", args={}),
+        dict(action="selection.wand", args=dict(x=40, y=40, tolerance=0, contiguous=True)),
+        dict(action="selection.grow", args=dict(tolerance=8)),
+        dict(action="selection.similar", args=dict(tolerance=8, sample_merged=True)),
+        dict(action="selection.wand", args=dict(x=40, y=40, tolerance=32, contiguous=False, sample_merged=True, mode="add")),
         dict(action="selection.all", args={}),
         dict(action="selection.read", args={}),
         dict(action="selection.deselect", args={}),
@@ -155,7 +159,7 @@ def main():
     tools = next(r for r in replies if r["id"] == 2)["result"]["tools"]
     assert any(t["name"] == "quick.blue_stroke" for t in tools), "Custom plugin missing from MCP tools"
     assert any(t["name"] == "native.invert" for t in tools), "Native DLL action missing from MCP tools"
-    for name in ("layer.merge_down", "layer.merge_visible", "layer.flatten", "layer.stamp_visible"):
+    for name in ("layer.merge_down", "layer.merge_visible", "layer.flatten", "layer.stamp_visible", "selection.wand", "selection.grow", "selection.similar"):
         assert any(t["name"] == name for t in tools), f"Layer consolidation action missing from MCP tools: {name}"
     assert any(r["uri"]=="micopi://state/ai_assistant.context" for r in next(r for r in replies if r["id"]==101)["result"]["resources"])
     context=json.loads(next(r for r in replies if r["id"]==102)["result"]["contents"][0]["text"])

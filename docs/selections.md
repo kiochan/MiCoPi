@@ -1,6 +1,6 @@
 # Selections
 
-Selections belong to the document, not the desktop tool. The current increment provides schema-described rectangle, ellipse and polygon geometry, combination modes, Select All/Deselect/Reselect/Invert, native painting/action clipping, persistence, undo and verified replay. Mouse/pen marquee and lasso gestures are available. Selection feathering, Magic Wand and clipboard operations remain planned in [the editing checklist](photoshop-essentials.md).
+Selections belong to the document, not the desktop tool. The current increment provides schema-described rectangle, ellipse and polygon geometry, combination modes, Select All/Deselect/Reselect/Invert, native painting/action clipping, persistence, undo and verified replay. Mouse/pen marquee and lasso gestures are available. Color-based selection is available through shared commands and parameter forms in command search. A direct Magic Wand canvas tool, selection feathering and clipboard operations remain planned in [the editing checklist](photoshop-essentials.md).
 
 ![Actual workbench with a command-generated ellipse selection](screenshots/selection.png)
 
@@ -30,6 +30,9 @@ When loading older shortcut profiles, implicit defaults for these new selection 
 | Action | Arguments | Default shortcut |
 | --- | --- | --- |
 | `selection.shape` | `kind`: `rectangle`, `ellipse` or `polygon`; optional `mode` | Unbound; parameter form in command search |
+| `selection.wand` | Required `x`, `y`; optional `tolerance`, `contiguous`, `sample_merged`, `mode` | Unbound; parameter form |
+| `selection.grow` | Optional `tolerance`, `sample_merged` | Unbound |
+| `selection.similar` | Optional `tolerance`, `sample_merged` | Unbound |
 | `selection.all` | None | Ctrl+A |
 | `selection.deselect` | None | Ctrl+D |
 | `selection.reselect` | None | Ctrl+Shift+D |
@@ -49,6 +52,24 @@ The Edit menu and command search expose the four shortcuts; all bindings remain 
 {"action":"native.invert"}
 {"action":"selection.deselect"}
 ```
+
+## Color selection
+
+`selection.wand` samples a document-pixel seed on the active raw layer by default. `sample_merged: true` samples the rendered image, including visible layers, blend modes and image-graph filters; it fails before selection publication if composition fails. It never changes source pixels. `contiguous: true` (default) uses four-neighbor connectivity; false matches across the whole canvas. Existing selection coverage does not restrict sampling or connectivity: `mode` combines the generated mask with the current selection afterward.
+
+`tolerance` is an integer from 0 to 255, default 32. Matching requires every straight RGBA channel to differ by at most that value. Fully transparent pixels normalize to zero so hidden RGB does not separate transparent areas. Alpha is part of the comparison. This is an exact channel-distance contract, not perceptual or ICC-aware matching. Newly selected pixels have binary coverage; antialiased edges are not generated in this increment.
+
+`selection.grow` expands to matching four-connected regions reachable from any originally selected pixel. `selection.similar` selects matching pixels anywhere in the image. Both compare against all colors under the **original positive selection coverage**, using the same tolerance/source options. They do not repeatedly add new reference colors while traversing a gradient. Existing positive fractional coverage remains unchanged; newly included pixels receive 255. Both require a nonempty active selection and fail otherwise. Grow uses connectivity regardless of Wand's `contiguous` option.
+
+```json
+{"action":"selection.wand","args":{"x":20,"y":30,"tolerance":16,"sample_merged":true}}
+{"action":"selection.grow","args":{"tolerance":16,"sample_merged":true}}
+{"action":"selection.similar","args":{"tolerance":16,"sample_merged":true}}
+```
+
+All three actions are searchable, bindable and available as schema-derived workflow nodes, JSONL and MCP operations. Their selection-only history entries preserve source pixels; atomic failure rolls back the group, and replay restores recorded mask outcomes without executing the color kernel. A runnable [color-selection example](../examples/automation/color-selection.jsonl) demonstrates the commands. Direct W activation and sampling controls in Tool Options are the next UI increment; the parameter forms already execute the shared actions.
+
+The DLL borrows active or composed pixels and allocates one output coverage buffer. Grow/Similar use an exact in-place balanced color tree (sorted lookup at tolerance zero), plus a fixed 4096-entry color memo table; there is no arbitrary palette cutoff or approximation. The reference palette uses at most four bytes per originally selected pixel, in addition to output coverage and host history/encoding costs. Highly irregular output remains subject to the existing compressed-mask bound below, and may fail without replacing the selection.
 
 ## Editing and compatibility
 

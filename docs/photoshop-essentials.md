@@ -39,12 +39,12 @@ Acceptance: source buffers and metadata return on undo; redo restores the merged
 
 ### P2 — Selection and clipboard foundation
 
-In progress: bounded storage, geometry/combine commands, Select All/Deselect/Reselect/Invert, native drawing/action clipping, selection-aware fill connectivity and a cached static outline are implemented. Direct marquee/lasso gestures and reversible previews are implemented; Magic Wand, selection edge processing and clipboard remain pending. See [Selections](selections.md).
+In progress: bounded storage, geometry/combine commands, Select All/Deselect/Reselect/Invert, native drawing/action clipping, selection-aware fill connectivity and a cached static outline are implemented. Direct marquee/lasso gestures and reversible previews are implemented. Color-selection commands now provide tolerance-based Wand, connected/global matching and Grow/Similar through command parameter forms, workflow nodes and automation; direct Wand activation/sampling controls, selection edge processing and clipboard remain pending. See [Selections](selections.md).
 
 - [x] Add bounded document selection data, persistence, undo, atomic rollback and outcome replay.
 - [x] Add rectangular/elliptical marquees, freehand/polygonal lassos and replace/add/subtract/intersect modes.
 - [x] Add Select All, Deselect, Reselect and Invert with PS-style configurable bindings.
-- [ ] Add tolerance-based Magic Wand, connected/global color matching and Grow/Similar.
+- [ ] Finish direct Magic Wand activation and sampling controls; tolerance-based Wand, connected/global matching and Grow/Similar commands are implemented.
 - [ ] Add selection feather, expansion/contraction and smoothing.
 - [x] Clip brush, eraser, clear, fill, gradient and applicable direct filters to the selection through a cached typed path (including the connected-fill traversal contract below).
 - [x] Restrict connected fill traversal to selected coverage so excluded pixels cannot bridge separate selected islands, including expansion/feathering.

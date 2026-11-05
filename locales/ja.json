@@ -895,5 +895,8 @@
   "Polygon selection is limited to 4096 points": "多角形選択は最大 4096 頂点です",
   "Add": "追加",
   "Subtract": "削除",
-  "Intersect": "共通部分"
+  "Intersect": "共通部分",
+  "Magic Wand": "自動選択",
+  "Grow Selection": "選択範囲を拡張",
+  "Select Similar": "類似色を選択"
 }

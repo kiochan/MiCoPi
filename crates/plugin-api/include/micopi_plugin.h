@@ -108,6 +108,13 @@ typedef struct {
     int32_t (*mix)(const MicopiCoverage *, const MicopiPixels *, MicopiPixels *);
     int32_t (*rasterize)(const MicopiSelectionShape *, const MicopiCoverage *, uint8_t *, size_t, uint32_t, uint32_t);
 } MicopiSelectionApi;
+typedef struct {
+    uint32_t kind, mode, x, y, tolerance, contiguous;
+} MicopiSelectionColor;
+typedef struct {
+    MicopiSelectionApi base;
+    int32_t (*color)(const MicopiSelectionColor *, const MicopiPixels *, const MicopiCoverage *, uint8_t *, size_t);
+} MicopiSelectionApiColor;
 const MicopiSelectionApi *micopi_selection_v1(void);
 typedef struct { MicopiToolOptionsApi base; uint32_t features; } MicopiToolOptionsApiExt;
 /* SDK 1.2 additive compositor extension; no existing tables change. */

@@ -296,6 +296,31 @@ pub struct SelectionShape {
     pub count: usize,
 }
 pub type SelectionEntry = unsafe extern "C" fn() -> *const SelectionApi;
+/// Optional tail; the SelectionApi prefix and its function layouts stay unchanged.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct SelectionApiColor {
+    pub base: SelectionApi,
+    pub color: Option<SelectionColorFn>,
+}
+pub type SelectionColorFn = unsafe extern "C" fn(
+    *const SelectionColor,
+    *const Pixels,
+    *const Coverage,
+    *mut u8,
+    usize,
+) -> i32;
+/// Kinds: 0 seeded color selection, 1 Grow, 2 Similar. Modes match SelectionShape;
+/// Grow/Similar require mode 1 and preserve existing positive coverage.
+#[repr(C)]
+pub struct SelectionColor {
+    pub kind: u32,
+    pub mode: u32,
+    pub x: u32,
+    pub y: u32,
+    pub tolerance: u32,
+    pub contiguous: u32,
+}
 #[repr(C)]
 pub struct ToolOptionsApiExt {
     pub base: ToolOptionsApi,

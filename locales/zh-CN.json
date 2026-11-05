@@ -895,5 +895,8 @@
   "Polygon selection is limited to 4096 points": "多边形选区最多支持 4096 个顶点",
   "Add": "添加",
   "Subtract": "减去",
-  "Intersect": "相交"
+  "Intersect": "相交",
+  "Magic Wand": "魔棒",
+  "Grow Selection": "扩大选区",
+  "Select Similar": "选取相似颜色"
 }

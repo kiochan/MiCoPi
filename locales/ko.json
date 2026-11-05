@@ -895,5 +895,8 @@
   "Polygon selection is limited to 4096 points": "다각형 선택은 최대 4096개의 꼭짓점을 지원합니다",
   "Add": "추가",
   "Subtract": "빼기",
-  "Intersect": "교차"
+  "Intersect": "교차",
+  "Magic Wand": "자동 선택",
+  "Grow Selection": "선택 영역 확대",
+  "Select Similar": "유사 색상 선택"
 }

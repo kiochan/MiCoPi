@@ -113,6 +113,9 @@ pub enum Operation {
     Reselect,
     InvertSelection,
     ReadSelection,
+    SelectColor,
+    GrowSelection,
+    SimilarSelection,
     Pick,
     View,
     Ui,
@@ -145,6 +148,14 @@ impl Operation {
         let number = json!({"type":"number"});
         let point = json!({"type":"object","properties":{"x":number,"y":number,"pressure":{"type":"number","minimum":0,"maximum":1},"time":{"type":"integer","minimum":0},"pen":{"type":"boolean"},"eraser":{"type":"boolean"},"tool_override":{"type":"string","enum":["brush","eraser","picker","hand","zoom"]},"view_x":number,"view_y":number},"required":["x","y"],"additionalProperties":false});
         let (props, required) = match self {
+            Self::SelectColor => (
+                json!({"x":{"type":"integer","minimum":0,"maximum":4095},"y":{"type":"integer","minimum":0,"maximum":4095},"tolerance":{"type":"integer","minimum":0,"maximum":255,"default":32},"contiguous":{"type":"boolean","default":true},"sample_merged":{"type":"boolean","default":false},"mode":{"type":"string","enum":["replace","add","subtract","intersect"],"default":"replace"}}),
+                vec!["x", "y"],
+            ),
+            Self::GrowSelection | Self::SimilarSelection => (
+                json!({"tolerance":{"type":"integer","minimum":0,"maximum":255,"default":32},"sample_merged":{"type":"boolean","default":false}}),
+                vec![],
+            ),
             Self::SelectionShape => (
                 json!({"kind":{"type":"string","enum":["rectangle","ellipse","polygon"]},"mode":{"type":"string","enum":["replace","add","subtract","intersect"]},"x":{"type":"number","minimum":-16384,"maximum":16384},"y":{"type":"number","minimum":-16384,"maximum":16384},"width":{"type":"number","minimum":0,"maximum":16384},"height":{"type":"number","minimum":0,"maximum":16384},"points":{"type":"array","minItems":3,"maxItems":4096,"items":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-16384,"maximum":16384}}}}),
                 vec!["kind"],

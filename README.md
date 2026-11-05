@@ -48,6 +48,8 @@ Current limits: one document per session; no Wintab, clipboard, free transforms,
 
 Schema-described rectangle, ellipse and polygon [selections](docs/selections.md) support combinations, native drawing/action clipping, undo and replay. The Tools strip offers rectangle/ellipse marquees and freehand/polygonal lassos with reversible previews. PS-style selection shortcuts are configurable; clipboard tools remain planned.
 
+Tolerance-based Wand, Grow and Similar color-selection commands are available through command parameter forms and automation; a direct Wand canvas tool remains planned.
+
 ## Build and run
 
 Requires Rust 1.88+, Visual Studio C++ Build Tools and the Windows SDK.

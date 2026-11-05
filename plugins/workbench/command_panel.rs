@@ -9,6 +9,65 @@ pub(super) struct CommandForm {
     revision: u64,
     message: String,
 }
+#[cfg(test)]
+mod color_selection_tests {
+    use super::*;
+    #[test]
+    fn color_commands_have_searchable_translations_and_nonexecuting_parameter_forms() {
+        crate::i18n::load_test_catalogs();
+        let mut app = crate::desktop::tests::studio();
+        app.editor.register_commands();
+        let before = app.editor.session.state();
+        for (action, queries) in [
+            (
+                "selection.wand",
+                ["Magic Wand", "魔棒", "自動選択", "자동 선택"],
+            ),
+            (
+                "selection.grow",
+                [
+                    "Grow Selection",
+                    "扩大选区",
+                    "選択範囲を拡張",
+                    "선택 영역 확대",
+                ],
+            ),
+            (
+                "selection.similar",
+                [
+                    "Select Similar",
+                    "选取相似颜色",
+                    "類似色を選択",
+                    "유사 색상 선택",
+                ],
+            ),
+        ] {
+            let keys = &app.editor.settings.keys;
+            let mut palette = Palette::new(crate::ui::palette::Mode::Commands, keys);
+            for query in queries {
+                palette.query(query.into(), keys);
+                assert!(
+                    palette
+                        .results
+                        .iter()
+                        .any(|&i| keys.command(i).keywords == action),
+                    "{action}: {query}"
+                );
+            }
+            app.editor.begin_plugin_command(action);
+            let form = app.editor.command_form.as_ref().unwrap();
+            assert_eq!(form.action, action);
+            assert_eq!(form.args["tolerance"], 32);
+            assert_eq!(form.args["sample_merged"], false);
+            if action == "selection.wand" {
+                assert_eq!(form.args["contiguous"], true);
+                assert_eq!(form.args["x"], 0);
+                assert_eq!(form.args["y"], 0);
+            }
+            assert_eq!(app.editor.session.state(), before);
+        }
+    }
+}
 impl Editor {
     pub(super) fn register_commands(&mut self) {
         let actions = self

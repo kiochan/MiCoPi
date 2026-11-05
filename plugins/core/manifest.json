@@ -202,6 +202,21 @@
       "operation": "pipeline_run"
     },
     {
+      "id": "selection.wand",
+      "title": "Magic Wand",
+      "operation": "select_color"
+    },
+    {
+      "id": "selection.grow",
+      "title": "Grow Selection",
+      "operation": "grow_selection"
+    },
+    {
+      "id": "selection.similar",
+      "title": "Select Similar",
+      "operation": "similar_selection"
+    },
+    {
       "id": "selection.shape",
       "title": "Select Shape",
       "operation": "selection_shape"

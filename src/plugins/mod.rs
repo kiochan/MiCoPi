@@ -28,9 +28,8 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
-        SelectionShape | SelectAll | Deselect | Reselect | InvertSelection | ReadSelection => {
-            selection::execute(session, op, args)
-        }
+        SelectionShape | SelectAll | Deselect | Reselect | InvertSelection | ReadSelection
+        | SelectColor | GrowSelection | SimilarSelection => selection::execute(session, op, args),
         ReplayStatus | ReplayOpen | ReplayEvents | ReplayVerify | ReplayExport | ReplayLoad
         | ReplaySeek | ReplaySnapshot | ReplayFrames | ReplayRecover => {
             crate::application::replay::execute(session, op, args)
