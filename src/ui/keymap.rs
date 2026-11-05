@@ -484,6 +484,69 @@ pub static COMMANDS: &[Command] = &[
         10165
     ),
     c!(
+        "canvas.rotate_90_cw",
+        "Rotate Canvas 90° Clockwise",
+        "Image",
+        "rotate flip exact geometry",
+        UiCommand(10166),
+        "",
+        10166
+    ),
+    c!(
+        "canvas.rotate_90_ccw",
+        "Rotate Canvas 90° Counterclockwise",
+        "Image",
+        "rotate flip exact geometry",
+        UiCommand(10167),
+        "",
+        10167
+    ),
+    c!(
+        "canvas.rotate_180",
+        "Rotate Canvas 180°",
+        "Image",
+        "rotate flip exact geometry",
+        UiCommand(10168),
+        "",
+        10168
+    ),
+    c!(
+        "canvas.flip_horizontal",
+        "Flip Canvas Horizontally",
+        "Image",
+        "rotate flip exact geometry",
+        UiCommand(10169),
+        "",
+        10169
+    ),
+    c!(
+        "canvas.flip_vertical",
+        "Flip Canvas Vertically",
+        "Image",
+        "rotate flip exact geometry",
+        UiCommand(10170),
+        "",
+        10170
+    ),
+    c!(
+        "layer.rotate_90_cw",
+        "Rotate Layer 90° Clockwise",
+        "Layers",
+        "rotate flip exact geometry",
+        UiCommand(10171),
+        "",
+        10171
+    ),
+    c!(
+        "layer.rotate_90_ccw",
+        "Rotate Layer 90° Counterclockwise",
+        "Layers",
+        "rotate flip exact geometry",
+        UiCommand(10172),
+        "",
+        10172
+    ),
+    c!(
         "layer.via_copy",
         "Layer via Copy",
         "Layers",

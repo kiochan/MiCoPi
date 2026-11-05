@@ -94,7 +94,14 @@ impl Operation {
     pub(crate) fn document_atomic(self) -> bool {
         matches!(
             self,
-            Self::ClipboardCopy
+            Self::RotateCanvasClockwise
+                | Self::RotateCanvasCounterclockwise
+                | Self::RotateCanvasHalf
+                | Self::FlipCanvasHorizontal
+                | Self::FlipCanvasVertical
+                | Self::RotateLayerClockwise
+                | Self::RotateLayerCounterclockwise
+                | Self::ClipboardCopy
                 | Self::ClipboardCopyMerged
                 | Self::ClipboardCut
                 | Self::ClipboardPaste

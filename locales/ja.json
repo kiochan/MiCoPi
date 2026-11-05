@@ -932,5 +932,12 @@
   "Clipboard updated; optional formats were unavailable": "クリップボードを更新しました。一部の補助形式は利用できません",
   "Image copied to clipboard": "画像をクリップボードにコピーしました",
   "Selected pixels cut to clipboard": "選択したピクセルをクリップボードに切り取りました",
-  "Image pasted": "画像を貼り付けました"
+  "Image pasted": "画像を貼り付けました",
+  "Rotate Canvas 90° Clockwise": "キャンバスを時計回りに90°回転",
+  "Rotate Canvas 90° Counterclockwise": "キャンバスを反時計回りに90°回転",
+  "Rotate Canvas 180°": "キャンバスを180°回転",
+  "Flip Canvas Horizontally": "キャンバスを左右反転",
+  "Flip Canvas Vertically": "キャンバスを上下反転",
+  "Rotate Layer 90° Clockwise": "レイヤーを時計回りに90°回転",
+  "Rotate Layer 90° Counterclockwise": "レイヤーを反時計回りに90°回転"
 }

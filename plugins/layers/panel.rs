@@ -136,6 +136,8 @@ impl Editor {
             ("layer.flip_horizontal", "Flip Layer Horizontally"),
             ("layer.flip_vertical", "Flip Layer Vertically"),
             ("layer.rotate_180", "Rotate Layer 180°"),
+            ("layer.rotate_90_cw", "Rotate Layer 90° Clockwise"),
+            ("layer.rotate_90_ccw", "Rotate Layer 90° Counterclockwise"),
         ] {
             if ui
                 .add_enabled(

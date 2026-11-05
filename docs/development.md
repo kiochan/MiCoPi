@@ -99,3 +99,7 @@ Binary transforms use one u32 image workspace (64 MiB at 4096²) plus dimension-
 ### System clipboard verification
 
 Default clipboard tests use pure codecs and an in-memory external-resource adapter. Real Win32 writes are confined to the ignored, station-guarded fixture launched by `scripts/smoke-system-clipboard.py --test-binary <library-test-exe>`; see [Clipboard](clipboard.md#safe-native-fixture). The localization smoke queries only format availability and never reads or replaces clipboard image data. If Windows denies private window-station creation, report the native roundtrip as unverified instead of running destructive tests against WinSta0.
+
+## Exact geometry costs
+
+Run `cargo test --release --locked -p micopi-painting-tools exact_geometry_cost -- --ignored --nocapture` with the portable target/environment arguments above when needed. On 2026-11-05 this development environment measured a clockwise quarter turn at 7.2 ms for 1024×1024 and 178.1 ms for 4096×4096. These are single-run kernel observations with preallocated source/output buffers and no native scratch allocation. They exclude host allocation, selection compression, structural history, journal commit, composition and GUI presentation; they are not pen-latency or cross-machine guarantees. No geometry callback runs on pen MOVE.

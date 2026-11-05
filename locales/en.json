@@ -932,5 +932,12 @@
   "Clipboard updated; optional formats were unavailable": "Clipboard updated; optional formats were unavailable",
   "Image copied to clipboard": "Image copied to clipboard",
   "Selected pixels cut to clipboard": "Selected pixels cut to clipboard",
-  "Image pasted": "Image pasted"
+  "Image pasted": "Image pasted",
+  "Rotate Canvas 90° Clockwise": "Rotate Canvas 90° Clockwise",
+  "Rotate Canvas 90° Counterclockwise": "Rotate Canvas 90° Counterclockwise",
+  "Rotate Canvas 180°": "Rotate Canvas 180°",
+  "Flip Canvas Horizontally": "Flip Canvas Horizontally",
+  "Flip Canvas Vertically": "Flip Canvas Vertically",
+  "Rotate Layer 90° Clockwise": "Rotate Layer 90° Clockwise",
+  "Rotate Layer 90° Counterclockwise": "Rotate Layer 90° Counterclockwise"
 }

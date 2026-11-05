@@ -53,6 +53,7 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 - [x] Add connected fill with tolerance, linear/radial gradient gestures and inline pressure controls through shared native actions.
 - [x] Add whole-layer color matching, fill expansion/contraction and feathering, repeated/reflected gradients, transparency locking and layer color fills.
 - [x] Add anchored canvas resizing and exact all-layer crop with dimension-aware history, atomic rollback and outcome replay.
+- [x] Add DLL document quarter/half turns and flips, preserving layer identities and fractional selection masks; centered layer quarter turns explicitly clip to the current frame.
 - [x] Add layer Merge Down, Merge Visible, Stamp Visible and transparent-canvas flattening with explicit graph/lock contracts, undo, atomic rollback and verified replay.
 - [ ] Add layer groups with explicit reference and history behavior.
 - [ ] Make structural and multi-layer edits reliably undoable; define optional undo grouping separately from transaction rollback.

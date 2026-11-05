@@ -17,7 +17,7 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 | Drawing | Native DLL tools, pressure, stabilization, spacing, pressure curve, size/shape cursor | Rich tips/dynamics and additional painting tools |
 | Layers | Stable IDs, rename/duplicate/reorder/delete, opacity, visibility, alpha lock, merge/flatten/stamp | Masks, clipping, groups and multi-selection |
 | Selection/editing | Document masks, gestures, color matching, edge processing, selected painting and internal transfers | System clipboard and selection transforms |
-| Geometry | Anchored canvas size, exact crop, layer flips/180°/offset | Image resampling, quarter turns and free transform |
+| Geometry | Anchored canvas size, exact crop, global orthogonal geometry and centered layer quarter turns | Image resampling, off-canvas storage and free transform |
 | Composition | Linked layer/filter/blend graphs and explicit free graphs | More adjustments, filters and mask-aware composition |
 | Files | PNG/JPEG/BMP import, PNG export, projects and verified replay | Rich export and layered interchange |
 | Workspace | Independent/docked/tabbed windows, Tools/Options, searchable settings and shortcuts | Guides, snapping, view rotation and multiple documents |
@@ -58,7 +58,7 @@ Acceptance: preview/cancel leaves pixels untouched; selection is visible and beh
 
 ### P3 — Geometry, move and transform
 
-- [ ] Add exact image/layer 90° clockwise/counterclockwise rotations and document flips.
+- [x] Add exact document 90° clockwise/counterclockwise/180° rotations and flips, preserving all layers and selection masks. Add centered active-layer quarter turns with selection/alpha-lock guards and explicit frame clipping; off-canvas storage remains future work. See [Canvas editing](canvas-editing.md#exact-rotation-and-flips).
 - [ ] Add Image Size with aspect locking and nearest/bilinear resampling, followed by a measured higher-quality sampler.
 - [ ] Add transparent/edge-color trim and Reveal All for supported off-canvas content.
 - [ ] Add Move/nudge with explicit active-layer/selection targets and configurable modifier steps.

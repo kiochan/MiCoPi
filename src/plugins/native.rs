@@ -69,7 +69,37 @@ unsafe fn decode_selection_table(
     };
     Ok((api, color, edges, transfer))
 }
+unsafe fn decode_geometry_table(
+    pointer: *const abi::GeometryApi,
+) -> Result<abi::GeometryApi, String> {
+    if pointer.is_null() {
+        return Err("Null geometry table".into());
+    }
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.abi_version != 1
+        || header.struct_size < std::mem::size_of::<abi::GeometryApi>() as u32
+    {
+        return Err("Incompatible geometry ABI".into());
+    }
+    Ok(std::ptr::read_unaligned(pointer))
+}
 impl Module {
+    unsafe fn geometry_api(&self) -> Result<Option<abi::GeometryApi>, String> {
+        #[cfg(windows)]
+        {
+            let address = GetProcAddress(self.handle as *mut c_void, abi::GEOMETRY_SYMBOL.as_ptr());
+            if address.is_null() {
+                return Ok(None);
+            }
+            let entry = std::mem::transmute::<*mut c_void, abi::GeometryEntry>(address);
+            decode_geometry_table(entry()).map(Some)
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(None)
+        }
+    }
+
     unsafe fn selection_api(&self) -> Result<Option<SelectionTable>, String> {
         #[cfg(windows)]
         {
@@ -246,6 +276,7 @@ pub struct NativePlugin {
     selection_color: Option<abi::SelectionColorFn>,
     selection_edges: Option<abi::SelectionEdgesFn>,
     selection_transfer: Option<abi::SelectionTransferFn>,
+    geometry: Option<abi::GeometryApi>,
     compositor: Option<abi::CompositorApi>,
     _module: Module,
 }
@@ -309,6 +340,7 @@ impl NativePlugin {
             }
             std::ptr::read_unaligned(pointer)
         };
+        let geometry = unsafe { module.geometry_api()? };
         let tools = unsafe { module.tool_api()? };
         let tool_options = unsafe { module.tool_options_api()? };
         let (selection_mix, selection_color, selection_edges, selection_transfer) =
@@ -345,6 +377,7 @@ impl NativePlugin {
                 selection_color,
                 selection_edges,
                 selection_transfer,
+                geometry,
                 compositor,
                 _module: module,
             }),
@@ -875,6 +908,96 @@ mod tests {
                 .2
                 .is_some());
         }
+    }
+    #[test]
+    fn geometry_optional_table_checks_header_before_reading_fixed_callbacks() {
+        let header = abi::Header {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::Header>() as u32,
+        };
+        unsafe {
+            assert!(decode_geometry_table(std::ptr::null()).is_err());
+            assert!(decode_geometry_table((&header as *const abi::Header).cast()).is_err());
+        }
+        let mut api = abi::GeometryApi {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::GeometryApi>() as u32 - 1,
+            pixels: None,
+            mask: None,
+        };
+        unsafe {
+            assert!(decode_geometry_table(&api).is_err());
+            api.struct_size += 1;
+            assert!(decode_geometry_table(&api).is_ok());
+            api.abi_version = 2;
+            assert!(decode_geometry_table(&api).is_err());
+        }
+    }
+    #[test]
+    fn missing_geometry_and_oversized_mask_results_leave_document_untouched() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins");
+        let mut registry = super::super::Registry::load(&root).unwrap();
+        Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .geometry = None;
+        let mut s = Session::new(registry).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+            .unwrap();
+        let state = s.state();
+        let history = s.doc.history_bytes();
+        for id in [
+            "canvas.rotate_90_cw",
+            "canvas.rotate_90_ccw",
+            "canvas.rotate_180",
+            "canvas.flip_horizontal",
+            "canvas.flip_vertical",
+            "layer.rotate_90_cw",
+            "layer.rotate_90_ccw",
+        ] {
+            assert_eq!(
+                s.apply(Action::new(id, json!({}))).unwrap_err().code,
+                "geometry"
+            );
+            assert_eq!(s.state(), state);
+            assert_eq!(s.doc.history_bytes(), history);
+        }
+        unsafe extern "C" fn noise(
+            _: *const abi::Geometry,
+            _: *const abi::Coverage,
+            p: *mut u8,
+            len: usize,
+            _: u32,
+            _: u32,
+        ) -> i32 {
+            let mut seed = 17u32;
+            for i in 0..len {
+                seed ^= seed << 13;
+                seed ^= seed >> 17;
+                seed ^= seed << 5;
+                *p.add(i) = seed as u8;
+            }
+            abi::OK
+        }
+        let mut registry = super::super::Registry::load(&root).unwrap();
+        Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .geometry
+            .as_mut()
+            .unwrap()
+            .mask = Some(noise);
+        let mut s = Session::new(registry).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":512,"height":512})))
+            .unwrap();
+        s.apply(Action::new("selection.all", json!({}))).unwrap();
+        let state = s.state();
+        let composition = s.doc.composition();
+        let history = s.doc.history_bytes();
+        assert!(s
+            .apply(Action::new("canvas.rotate_90_cw", json!({})))
+            .is_err());
+        assert_eq!(s.state(), state);
+        assert_eq!(s.doc.composition(), composition);
+        assert_eq!(s.doc.history_bytes(), history);
     }
     #[test]
     fn transfer_tail_is_optional_and_unsupported_operations_do_not_mutate() {
@@ -1752,4 +1875,66 @@ pub(crate) fn transfer(
         return Err("Native pixel transfer failed".into());
     }
     Ok(())
+}
+
+pub(crate) fn geometry_pixels(
+    s: &Session,
+    o: &abi::Geometry,
+    source: &[u32],
+    sw: usize,
+    sh: usize,
+    w: usize,
+    h: usize,
+) -> Result<Vec<u32>, String> {
+    let kernel = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.geometry)
+        .and_then(|api| api.pixels)
+        .ok_or("Painting DLL does not support exact geometry")?;
+    let src = abi::Pixels {
+        data: source.as_ptr() as *mut u32,
+        len: source.len(),
+        width: sw as u32,
+        height: sh as u32,
+        stride: sw as u32,
+        origin_x: 0,
+        origin_y: 0,
+    };
+    let mut out = vec![0; w * h];
+    let mut dst = abi::Pixels {
+        data: out.as_mut_ptr(),
+        len: out.len(),
+        width: w as u32,
+        height: h as u32,
+        stride: w as u32,
+        origin_x: 0,
+        origin_y: 0,
+    };
+    if unsafe { kernel(o, &src, &mut dst) } != abi::OK {
+        return Err("Native pixel geometry failed".into());
+    }
+    Ok(out)
+}
+pub(crate) fn geometry_mask(
+    s: &Session,
+    o: &abi::Geometry,
+    mask: &crate::engine::selection::Mask,
+    w: usize,
+    h: usize,
+) -> Result<crate::engine::selection::Mask, String> {
+    let kernel = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.geometry)
+        .and_then(|api| api.mask)
+        .ok_or("Painting DLL does not support selection geometry")?;
+    let mut out = vec![0; w * h];
+    let src = coverage(mask);
+    if unsafe { kernel(o, &src, out.as_mut_ptr(), out.len(), w as u32, h as u32) } != abi::OK {
+        return Err("Native selection geometry failed".into());
+    }
+    crate::engine::selection::Mask::new(w, h, out)
 }

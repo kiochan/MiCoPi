@@ -932,5 +932,12 @@
   "Clipboard updated; optional formats were unavailable": "剪贴板已更新；部分可选格式不可用",
   "Image copied to clipboard": "图片已复制到剪贴板",
   "Selected pixels cut to clipboard": "选区像素已剪切到剪贴板",
-  "Image pasted": "图片已粘贴"
+  "Image pasted": "图片已粘贴",
+  "Rotate Canvas 90° Clockwise": "顺时针旋转画布 90°",
+  "Rotate Canvas 90° Counterclockwise": "逆时针旋转画布 90°",
+  "Rotate Canvas 180°": "旋转画布 180°",
+  "Flip Canvas Horizontally": "水平翻转画布",
+  "Flip Canvas Vertically": "垂直翻转画布",
+  "Rotate Layer 90° Clockwise": "顺时针旋转图层 90°",
+  "Rotate Layer 90° Counterclockwise": "逆时针旋转图层 90°"
 }

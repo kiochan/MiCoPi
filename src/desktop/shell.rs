@@ -84,6 +84,14 @@ impl Studio {
                                     ],
                                 ),
                                 (
+                                    "Image",
+                                    vec![
+                                        (10144,"Canvas Size…"),(10145,"Crop Canvas…"),
+                                        (10166,"Rotate Canvas 90° Clockwise"),(10167,"Rotate Canvas 90° Counterclockwise"),
+                                        (10168,"Rotate Canvas 180°"),(10169,"Flip Canvas Horizontally"),(10170,"Flip Canvas Vertically"),
+                                    ],
+                                ),
+                                (
                                     "View",
                                     vec![
                                         (40, "Fit to Window"),
@@ -107,41 +115,22 @@ impl Studio {
                                 ),
                             ] {
                                 ui.menu_button(tr(title), |ui| {
-                                    ui.set_min_width(300.);
-                                    for (id, label) in entries {
-                                        let (r, response) = ui.allocate_exact_size(
-                                            vec2(ui.available_width(), a.control_height + 6.),
-                                            Sense::click(),
-                                        );
-                                        if response.hovered() {
-                                            ui.painter().rect_filled(r, a.corner_radius, c.raised);
-                                        }
-                                        ui.painter().text(
-                                            pos2(r.left() + 16., r.center().y),
-                                            Align2::CENTER_CENTER,
-                                            localize(theme::action_icon(id).to_string()),
-                                            FontId::new(17., FontFamily::Name("Material".into())),
-                                            c.muted,
-                                        );
-                                        ui.painter().text(
-                                            pos2(r.left() + 36., r.center().y),
-                                            Align2::LEFT_CENTER,
-                                            localize(label),
-                                            FontId::proportional(a.font_size),
-                                            c.text,
-                                        );
-                                        let keys = self.editor.label(id);
-                                        if !keys.is_empty() {
-                                            ui.scope_builder(
-                                                UiBuilder::new()
-                                                    .max_rect(Rect::from_min_max(
-                                                        pos2(r.left() + 154., r.top()),
-                                                        r.max,
-                                                    ))
-                                                    .layout(Layout::left_to_right(Align::Center)),
-                                                |ui| theme::keycaps(ui, &keys),
-                                            );
-                                        }
+                                    ui.set_min_width(a.control_height*10.);
+                                    for (id,label) in entries {
+                                        let background=ui.painter().add(Shape::Noop);
+                                        let row=ui.horizontal(|ui|{
+                                            ui.set_min_height(a.control_height+6.);
+                                            ui.style_mut().wrap_mode=Some(egui::TextWrapMode::Extend);
+                                            ui.add_space(a.item_spacing);
+                                            ui.label(theme::icon(theme::action_icon(id),17.));
+                                            ui.label(tr(label));
+                                            let keys=self.editor.label(id);
+                                            if !keys.is_empty(){ui.add_space(a.item_spacing);theme::keycaps(ui,&keys);}
+                                            ui.add_space(a.item_spacing);
+                                        });
+                                        let r=row.response.rect;
+                                        let response=ui.interact(r,ui.make_persistent_id(("menu-command",id)),Sense::click());
+                                        if response.hovered(){ui.painter().set(background,Shape::rect_filled(r,a.corner_radius,c.raised));}
                                         if response.clicked() {
                                             self.editor.actions.push(Action::UiCommand(id));
                                             ui.close();

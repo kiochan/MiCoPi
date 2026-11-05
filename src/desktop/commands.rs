@@ -592,6 +592,19 @@ impl Studio {
                                 serde_json::json!({"color":color,"opacity":self.editor.opacity}),
                             );
                         }
+                        10166..=10172 => {
+                            let actions = [
+                                "canvas.rotate_90_cw",
+                                "canvas.rotate_90_ccw",
+                                "canvas.rotate_180",
+                                "canvas.flip_horizontal",
+                                "canvas.flip_vertical",
+                                "layer.rotate_90_cw",
+                                "layer.rotate_90_ccw",
+                            ];
+                            self.editor
+                                .core(actions[(id - 10166) as usize], serde_json::json!({}));
+                        }
                         10161..=10165 => {
                             let action = match id {
                                 10161 => "clipboard.system_copy",

@@ -45,3 +45,6 @@ mod layer_transfer_tests;
 
 #[cfg(test)]
 mod system_clipboard_tests;
+
+#[cfg(test)]
+mod geometry_tests;

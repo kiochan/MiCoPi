@@ -1105,3 +1105,75 @@ fn selection_commands_update_cached_overlay_without_mutating_artwork() {
         .all(|v| *v == 0));
     assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
 }
+
+#[test]
+fn image_menu_long_titles_and_keycaps_fit_without_executing_geometry() {
+    fn texts(shape: &Shape, out: &mut Vec<(String, Rect)>) {
+        match shape {
+            Shape::Text(t) => out.push((
+                t.galley.text().into(),
+                t.galley.rect.translate(t.pos.to_vec2()),
+            )),
+            Shape::Vec(v) => v.iter().for_each(|s| texts(s, out)),
+            _ => {}
+        }
+    }
+    for size in [vec2(960., 680.), vec2(1700., 1150.)] {
+        let mut app = studio();
+        app.editor.settings.keys = crate::ui::keymap::Keymap::decode(
+            r#"{"keybindings":{"canvas.rotate_90_ccw":"Ctrl+Alt+Shift+F12"}}"#,
+        )
+        .unwrap();
+        let original = app.editor.session.doc.composition();
+        let ctx = Context::default();
+        frame(&mut app, &ctx, size, vec![], 0.);
+        let out = frame(&mut app, &ctx, size, vec![], 1.);
+        let mut labels = vec![];
+        for s in &out.shapes {
+            texts(&s.shape, &mut labels);
+        }
+        let point = labels
+            .iter()
+            .find(|(s, _)| s == "Image")
+            .unwrap()
+            .1
+            .center();
+        frame(&mut app, &ctx, size, vec![Event::PointerMoved(point)], 1.5);
+        for (time, pressed) in [(2., true), (2.05, false)] {
+            frame(
+                &mut app,
+                &ctx,
+                size,
+                vec![
+                    Event::PointerMoved(point),
+                    Event::PointerButton {
+                        pos: point,
+                        button: PointerButton::Primary,
+                        pressed,
+                        modifiers: Modifiers::NONE,
+                    },
+                ],
+                time,
+            );
+        }
+        frame(&mut app, &ctx, size, vec![], 4.);
+        let out = frame(&mut app, &ctx, size, vec![], 5.);
+        labels.clear();
+        for s in &out.shapes {
+            texts(&s.shape, &mut labels);
+        }
+        let title = labels
+            .iter()
+            .find(|(s, _)| s == "Rotate Canvas 90° Counterclockwise")
+            .expect("Image popup title")
+            .1;
+        let key = labels
+            .iter()
+            .find(|(s, r)| s == "F12" && (r.center().y - title.center().y).abs() < 15.)
+            .expect("custom keycap")
+            .1;
+        assert!(title.right() < key.left());
+        assert!(key.right() < size.x);
+        assert_eq!(app.editor.session.doc.composition(), original);
+    }
+}

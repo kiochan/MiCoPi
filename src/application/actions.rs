@@ -56,6 +56,13 @@ pub type ActionResult = Result<Value, ActionError>;
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Operation {
+    RotateCanvasClockwise,
+    RotateCanvasCounterclockwise,
+    RotateCanvasHalf,
+    FlipCanvasHorizontal,
+    FlipCanvasVertical,
+    RotateLayerClockwise,
+    RotateLayerCounterclockwise,
     SystemClipboardCopy,
     SystemClipboardCopyMerged,
     SystemClipboardCut,

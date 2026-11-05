@@ -932,5 +932,12 @@
   "Clipboard updated; optional formats were unavailable": "클립보드를 업데이트했습니다. 일부 보조 형식은 사용할 수 없습니다",
   "Image copied to clipboard": "이미지를 클립보드에 복사했습니다",
   "Selected pixels cut to clipboard": "선택한 픽셀을 클립보드로 잘라냈습니다",
-  "Image pasted": "이미지를 붙여넣었습니다"
+  "Image pasted": "이미지를 붙여넣었습니다",
+  "Rotate Canvas 90° Clockwise": "캔버스 시계 방향으로 90° 회전",
+  "Rotate Canvas 90° Counterclockwise": "캔버스 반시계 방향으로 90° 회전",
+  "Rotate Canvas 180°": "캔버스 180° 회전",
+  "Flip Canvas Horizontally": "캔버스 좌우 뒤집기",
+  "Flip Canvas Vertically": "캔버스 상하 뒤집기",
+  "Rotate Layer 90° Clockwise": "레이어 시계 방향으로 90° 회전",
+  "Rotate Layer 90° Counterclockwise": "레이어 반시계 방향으로 90° 회전"
 }

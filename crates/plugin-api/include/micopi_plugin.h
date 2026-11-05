@@ -149,6 +149,17 @@ typedef struct {
                       uint32_t, uint32_t, MicopiPixels *);
 } MicopiCompositorApi;
 const MicopiCompositorApi *micopi_compositor_v1(void);
+/* Independent optional exact geometry table, with immutable source and disjoint
+   output. Local origins are zero; dimensions/stride are bounded to 4096.
+   Kinds: 0 CW, 1 CCW, 2 half turn, 3 flip horizontal, 4 flip vertical.
+   x/y are signed output offsets within +/-4096. Uncovered pixels become zero. */
+typedef struct { uint32_t kind; int32_t x, y; } MicopiGeometry;
+typedef struct {
+    uint32_t abi_version, struct_size;
+    int32_t (*pixels)(const MicopiGeometry *, const MicopiPixels *, MicopiPixels *);
+    int32_t (*mask)(const MicopiGeometry *, const MicopiCoverage *, uint8_t *, size_t, uint32_t, uint32_t);
+} MicopiGeometryApi;
+const MicopiGeometryApi *micopi_geometry_v1(void);
 #ifdef __cplusplus
 }
 #endif

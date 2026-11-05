@@ -1,0 +1,13 @@
+{"action": "canvas.new", "args": {"width": 96, "height": 64}}
+{"action": "native.checkerboard", "args": {"cell": 8}}
+{"action": "selection.shape", "args": {"kind": "rectangle", "x": 8, "y": 8, "width": 40, "height": 24}}
+{"action": "canvas.rotate_90_cw", "args": {}}
+{"action": "canvas.rotate_90_ccw", "args": {}}
+{"action": "canvas.rotate_180", "args": {}}
+{"action": "canvas.flip_horizontal", "args": {}}
+{"action": "canvas.flip_vertical", "args": {}}
+{"action": "layer.rotate_90_cw", "args": {}}
+{"action": "history.undo", "args": {}}
+{"action": "layer.rotate_90_ccw", "args": {}}
+{"action": "replay.verify", "args": {}}
+{"action": "canvas.export", "args": {"path": "target/geometry.png"}}

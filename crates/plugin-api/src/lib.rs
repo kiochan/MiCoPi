@@ -405,3 +405,28 @@ pub struct CompositorApi {
     >,
 }
 pub type CompositorEntry = unsafe extern "C" fn() -> *const CompositorApi;
+
+/// Independent optional exact geometry extension. Existing selection/tool tables are unchanged.
+pub const GEOMETRY_SYMBOL: &[u8] = b"micopi_geometry_v1\0";
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct GeometryApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub pixels: Option<GeometryPixelsFn>,
+    pub mask: Option<GeometryMaskFn>,
+}
+/// Kinds: 0 clockwise quarter turn, 1 counterclockwise, 2 half turn,
+/// 3 horizontal flip, 4 vertical flip. Offsets are signed destination pixels,
+/// bounded to +/-4096. Uncovered target pixels become zero; excess is clipped.
+#[repr(C)]
+pub struct Geometry {
+    pub kind: u32,
+    pub x: i32,
+    pub y: i32,
+}
+pub type GeometryPixelsFn =
+    unsafe extern "C" fn(*const Geometry, *const Pixels, *mut Pixels) -> i32;
+pub type GeometryMaskFn =
+    unsafe extern "C" fn(*const Geometry, *const Coverage, *mut u8, usize, u32, u32) -> i32;
+pub type GeometryEntry = unsafe extern "C" fn() -> *const GeometryApi;

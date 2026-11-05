@@ -69,6 +69,9 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/plugins/layer_transfer.rs` | Selection-to-layer orchestration through native extraction/placement and one host-owned undo entry |
 | `src/platform/clipboard/` | Bounded PNG/DIB image codecs, desktop resource adapter and Win32 memory/window ownership |
 | `src/plugins/system_clipboard.rs` | Explicit system transfers, verified origin hints, public state and external-effect audit context |
+| `src/plugins/geometry.rs` | Shared exact-geometry orchestration, staged masks/layers and lock/selection guards |
+| `plugins/painting/src/geometry.rs` | Allocation-free tiled orthogonal pixel and coverage permutations |
+| `src/engine/canvas_editing.rs` | Dimensioned framing/geometry publication and shared-buffer structural history |
 | `src/plugins/clipboard.rs` | Bounded Session clipboard ownership, transfer actions and public summaries |
 | `plugins/painting/src/selection/transfer.rs` | Allocation-free native extraction and clipped placement kernels |
 | `src/plugins/selection.rs` | Selection schema dispatch, history publication and DLL geometry calls |

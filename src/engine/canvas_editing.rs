@@ -1,6 +1,58 @@
 //! Integer canvas framing: copy retained rows, without sampling or color processing.
 use super::*;
 impl Document {
+    /// Publish fully staged structural geometry, moving original buffers into undo.
+    pub(crate) fn replace_geometry(
+        &mut self,
+        width: usize,
+        height: usize,
+        pixels: Vec<Vec<u32>>,
+        selection: crate::engine::selection::SelectionState,
+    ) -> Result<(), String> {
+        if width == 0
+            || height == 0
+            || width > MAX_SIDE
+            || height > MAX_SIDE
+            || width * height * self.layers.len() > 64 * 1024 * 1024
+            || pixels.len() != self.layers.len()
+            || pixels.iter().any(|p| p.len() != width * height)
+        {
+            return Err("Invalid staged geometry dimensions".into());
+        }
+        selection.validate(width, height)?;
+        if width == self.width
+            && height == self.height
+            && self.selection == selection
+            && pixels.iter().zip(&self.layers).all(|(p, l)| *p == l.pixels)
+        {
+            return Ok(());
+        }
+        self.finish();
+        let before = self.composition();
+        let layers = pixels
+            .into_iter()
+            .zip(&self.layers)
+            .map(|(pixels, old)| Layer {
+                pixels,
+                visible: old.visible,
+                opacity: old.opacity,
+                mode: old.mode,
+            })
+            .collect();
+        let saved = CanvasState {
+            width: self.width,
+            height: self.height,
+            layers: std::mem::replace(&mut self.layers, layers),
+        };
+        self.width = width;
+        self.height = height;
+        self.selection = selection;
+        self.composite = vec![0; width * height];
+        self.replay_tiles.clear();
+        self.track_layer_order();
+        self.commit_composition(before, Some(LayerChange::Canvas(Arc::new(saved))));
+        Ok(())
+    }
     /// Preserve document coordinates within a new frame. Positive offsets move content right/down.
     pub fn reframe(&mut self, width: usize, height: usize, dx: i32, dy: i32) -> Result<(), String> {
         if width == 0

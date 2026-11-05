@@ -16,6 +16,7 @@ pub fn panel_key(id: &str) -> u32 {
 pub(crate) mod clipboard;
 mod compositing;
 mod document;
+mod geometry;
 mod layer_transfer;
 mod layers;
 mod painting;
@@ -31,6 +32,13 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        RotateCanvasClockwise
+        | RotateCanvasCounterclockwise
+        | RotateCanvasHalf
+        | FlipCanvasHorizontal
+        | FlipCanvasVertical
+        | RotateLayerClockwise
+        | RotateLayerCounterclockwise => geometry::execute(session, op),
         SystemClipboardCopy
         | SystemClipboardCopyMerged
         | SystemClipboardCut

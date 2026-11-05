@@ -166,6 +166,14 @@ def main():
         dict(action="history.undo", args={}),
         dict(action="history.redo", args={}),
     ]
+    commands += [dict(action=action,args={}) for action in [
+        "canvas.rotate_90_cw", "canvas.flip_horizontal", "canvas.rotate_180",
+        "canvas.rotate_90_ccw", "canvas.flip_vertical",
+    ]]
+    commands.append(dict(action="layer.set",args=dict(alpha_locked=False)))
+    commands += [dict(action=action,args={}) for action in [
+        "layer.rotate_90_cw", "history.undo", "layer.rotate_90_ccw", "history.undo",
+    ]]
     script = output / "draw.jsonl"
     script.write_text("\n".join(json.dumps(c) for c in commands + [dict(action="canvas.export", args=dict(path=str(batch_png)))]) + "\n", encoding="utf-8")
     run = subprocess.run([str(cli), "run", str(script), "--plugins", str(plugins), "--config-dir", str(profile)], capture_output=True, text=True, encoding="utf-8", timeout=30)
