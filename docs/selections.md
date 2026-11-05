@@ -56,9 +56,9 @@ The Edit menu and command search expose the four shortcuts; all bindings remain 
 
 ## Color selection
 
-`selection.wand` samples a document-pixel seed on the active raw layer by default. `sample_merged: true` samples the rendered image, including visible layers, blend modes and image-graph filters; it fails before selection publication if composition fails. It never changes source pixels. `contiguous: true` (default) uses four-neighbor connectivity; false matches across the whole canvas. Existing selection coverage does not restrict sampling or connectivity: `mode` combines the generated mask with the current selection afterward.
+`selection.wand` samples a document-pixel seed on the active raw layer in a new profile. `sample_merged: true` samples the rendered image, including visible layers, blend modes and image-graph filters; it fails before selection publication if composition fails. It never changes source pixels. `contiguous: true` (factory default) uses four-neighbor connectivity; false matches across the whole canvas. Existing selection coverage does not restrict sampling or connectivity: `mode` combines the generated mask with the current selection afterward.
 
-`tolerance` is an integer from 0 to 255, default 32. Matching requires every straight RGBA channel to differ by at most that value. Fully transparent pixels normalize to zero so hidden RGB does not separate transparent areas. Alpha is part of the comparison. This is an exact channel-distance contract, not perceptual or ICC-aware matching. Newly selected pixels have binary coverage; antialiased edges are not generated in this increment.
+`tolerance` is an integer from 0 to 255, 32 in a new profile. Omitted values use the configured selection defaults; explicit action arguments take precedence. Matching requires every straight RGBA channel to differ by at most that value. Fully transparent pixels normalize to zero so hidden RGB does not separate transparent areas. Alpha is part of the comparison. This is an exact channel-distance contract, not perceptual or ICC-aware matching. Newly selected pixels have binary coverage; antialiased edges are not generated in this increment.
 
 `selection.grow` expands to matching four-connected regions reachable from any originally selected pixel. `selection.similar` selects matching pixels anywhere in the image. Both compare against all colors under the **original positive selection coverage**, using the same tolerance/source options. They do not repeatedly add new reference colors while traversing a gradient. Existing positive fractional coverage remains unchanged; newly included pixels receive 255. Both require a nonempty active selection and fail otherwise. Grow uses connectivity regardless of Wand's `contiguous` option.
 
@@ -68,9 +68,31 @@ The Edit menu and command search expose the four shortcuts; all bindings remain 
 {"action":"selection.similar","args":{"tolerance":16,"sample_merged":true}}
 ```
 
-All three actions are searchable, bindable and available as schema-derived workflow nodes, JSONL and MCP operations. Their selection-only history entries preserve source pixels; atomic failure rolls back the group, and replay restores recorded mask outcomes without executing the color kernel. A runnable [color-selection example](../examples/automation/color-selection.jsonl) demonstrates the commands. The W tool dispatches the same Wand action with explicit controls and the selected combination on each press. A seed outside the document is ignored. Temporary pan/zoom still takes precedence; no drawing contact or gradient is started by Wand. Tool Options exposes tolerance, contiguous matching and merged sampling, plus a Grow/Similar menu that passes the current tolerance/source controls. Shift/Alt combinations apply on press. These controls are currently session-local, with effective values exposed as `canvas.state.selection_sampling`; `canvas.state.ui["selection.options"]` stores an explicit choice. `toolbox.selection.options` validates all three schema-described arguments and publishes one UI effect. These desktop commands reject headless execution; direct document actions remain available with explicit arguments. Persisted settings defaults for these controls remain planned.
+All three actions are searchable, bindable and available as schema-derived workflow nodes, JSONL and MCP operations. Their selection-only history entries preserve source pixels; atomic failure rolls back the group, and replay restores recorded mask outcomes without executing the color kernel. A runnable [color-selection example](../examples/automation/color-selection.jsonl) demonstrates the commands. The W tool dispatches the same Wand action with explicit controls and the selected combination on each press. A seed outside the document is ignored. Temporary pan/zoom still takes precedence; no drawing contact or gradient is started by Wand. Tool Options exposes tolerance, contiguous matching and merged sampling, plus a Grow/Similar menu that passes the current tolerance/source controls. Shift/Alt combinations apply on press. Tool Options stores a temporary session choice in `canvas.state.ui["selection.options"]`; effective values are exposed as `canvas.state.selection_sampling`. The configured defaults live separately in `canvas.state.selection_defaults`. `toolbox.selection.options` validates all three schema-described arguments and publishes one UI effect. These desktop commands reject headless execution; direct document actions remain available with explicit arguments. Configured defaults are persisted in searchable settings, as described below.
 
 The DLL borrows active or composed pixels and allocates one output coverage buffer. Grow/Similar use an exact in-place balanced color tree (sorted lookup at tolerance zero), plus a fixed 4096-entry color memo table; there is no arbitrary palette cutoff or approximation. The reference palette uses at most four bytes per originally selected pixel, in addition to output coverage and host history/encoding costs. Highly irregular output remains subject to the existing compressed-mask bound below, and may fail without replacing the selection.
+
+## Persistent defaults
+
+Open Settings with **Ctrl+,** and search `selection.`. Tolerance, connected matching and merged sampling appear in the same searchable settings center as appearance, painting and shortcuts. Individual resets, `@modified`, JSON validation, live preview, cancel and Save Settings apply to these fields. The [settings example](../examples/config/settings.json) and [schema](reference/settings.schema.json) include:
+
+```json
+"selection": {
+  "tolerance": 32,
+  "contiguous": true,
+  "sample_merged": false
+}
+```
+
+Tolerance must be an integer from 0 to 255; both flags must be booleans. Invalid values or failed file writes retain the previous file and runtime defaults. Saving preserves other supported settings and unknown root fields. Desktop and CLI/MCP sessions load these defaults from their configured profile. `settings.read` and `settings.update` expose the same validated section. Writes to another profile do not activate it in an already configured session; embedded sessions without a profile apply successful writes directly.
+
+Wand's omitted tolerance/contiguous/source arguments use the configured defaults; Grow/Similar use the configured tolerance/source defaults. Temporary Tool Options changes do not alter those automation defaults. GUI clicks pass explicit current controls, and command parameter forms initialize their visible fields from configured defaults. Existing workflow literal parameters remain explicit values; omitted arguments inherit defaults when the workflow executes.
+
+Changing selection defaults resets the old temporary control override. Saving an unrelated setting preserves it. Cancelling settings restores the tool controls that were active before preview, including a temporary choice different from the saved defaults. A successful update of the active profile changes runtime defaults in the same action; presentation reload follows through the existing GUI effect queue. No defaults are loaded or serialized on pointer MOVE.
+
+Preferences are runtime configuration, separate from document undo. Recorded selection outcomes remain verifiable even if a profile changes: replay restores stored masks/pixels without reloading settings or re-executing a DLL/action.
+
+![Searchable selection defaults in the actual application](screenshots/selection-settings.png)
 
 ## Editing and compatibility
 

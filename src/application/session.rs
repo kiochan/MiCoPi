@@ -225,6 +225,8 @@ pub struct Session {
     pub view: View,
     pub revision: u64,
     pub ui: Value,
+    pub selection_defaults: super::SelectionSampling,
+    pub settings_path: Option<PathBuf>,
     pub ui_effects: VecDeque<Value>,
     pub(crate) stroke: crate::plugins::tools::StrokeEngine,
     pub(crate) events: VecDeque<Event>,
@@ -286,6 +288,8 @@ impl Session {
             view: View::default(),
             revision: 0,
             ui: json!({}),
+            selection_defaults: Default::default(),
+            settings_path: None,
             ui_effects: VecDeque::new(),
             stroke: Default::default(),
             events: VecDeque::with_capacity(512),
@@ -308,7 +312,7 @@ impl Session {
         let mut parameters = json!(self.parameters);
         parameters["spacing"] = json!(self.parameters.spacing);
         parameters["minimum_opacity"] = json!(self.parameters.minimum_opacity);
-        json!({"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"id":self.doc.layer_id(index),"name":self.doc.layer_name(index),"alpha_locked":self.doc.alpha_locked(index),"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
+        json!({"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"id":self.doc.layer_id(index),"name":self.doc.layer_name(index),"alpha_locked":self.doc.alpha_locked(index),"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
     }
     pub fn apply(&mut self, action: Action) -> ActionResult {
         let pointer_action = self

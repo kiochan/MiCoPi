@@ -311,6 +311,10 @@ impl Editor {
             new_open: false,
             geometry: None,
         };
+        editor.session.settings_path = Some(editor.settings.path.clone());
+        editor
+            .session
+            .apply_selection_defaults(editor.settings.selection);
         editor.register_commands();
         editor.session.parameters.stabilizer = editor.workspace.stabilizer;
         editor.session.parameters.pressure_size = editor.workspace.dynamics.size;
@@ -791,10 +795,20 @@ impl Studio {
                             Ok(settings) => {
                                 if self.settings_open {
                                     self.settings_before = Some(settings.clone());
+                                    self.preferences.selection_before = Some(settings.selection);
+                                    self.editor.core("ui.dispatch", serde_json::json!({"id":"selection.options","value":settings.selection}));
                                     self.preferences.painting_before =
                                         Some(settings.painting.clone());
                                     self.preferences.json = settings.encode().unwrap_or_default();
                                 }
+                                if effect["selection_changed"] == true
+                                    || self.editor.session.selection_defaults != settings.selection
+                                {
+                                    self.editor.finish_stroke();
+                                }
+                                self.editor
+                                    .session
+                                    .apply_selection_defaults(settings.selection);
                                 settings.painting.apply(&mut self.editor.session.parameters);
                                 self.editor.sync_from_session();
                                 self.editor.settings = settings;

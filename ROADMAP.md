@@ -60,7 +60,8 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 - [x] Add direct rectangle/ellipse marquee and freehand/polygonal lasso gestures, reversible previews and connected-fill selection traversal.
 - [x] Add tolerance-based Wand, Grow and Similar commands with native active/merged sampling and shared automation contracts.
 - [x] Add direct Magic Wand activation, session-local sampling controls and a Grow/Similar menu.
-- [ ] Add persisted selection defaults, selection edge processing and clipboard operations.
+- [x] Add persisted searchable selection defaults, preview/cancel and shared profile validation.
+- [ ] Add selection edge processing and clipboard operations.
 - [ ] Add selection-aware move, scale and rotate.
 - [ ] Add useful document controls: new-canvas presets, resolution/background choices, clearer dirty state and save/recovery feedback.
 

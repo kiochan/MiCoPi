@@ -66,6 +66,18 @@ mod color_selection_tests {
             }
             assert_eq!(app.editor.session.state(), before);
         }
+        app.editor
+            .session
+            .apply_selection_defaults(crate::application::SelectionSampling {
+                tolerance: 7,
+                contiguous: false,
+                sample_merged: true,
+            });
+        app.editor.begin_plugin_command("selection.wand");
+        let form = app.editor.command_form.as_ref().unwrap();
+        assert_eq!(form.args["tolerance"], 7);
+        assert_eq!(form.args["contiguous"], false);
+        assert_eq!(form.args["sample_merged"], true);
     }
 }
 impl Editor {
@@ -88,7 +100,27 @@ impl Editor {
         let Some(def) = self.session.registry.actions.get(action) else {
             return;
         };
-        let schema = def.schema();
+        let mut schema = def.schema();
+        if matches!(
+            def.operation,
+            Some(
+                crate::application::Operation::SelectColor
+                    | crate::application::Operation::GrowSelection
+                    | crate::application::Operation::SimilarSelection
+            )
+        ) {
+            // Parameter forms show current configured defaults; running a form
+            // then submits visible, explicit values, just like a saved workflow.
+            for (key, value) in serde_json::to_value(self.session.selection_defaults)
+                .unwrap()
+                .as_object()
+                .unwrap()
+            {
+                if let Some(property) = schema["properties"].get_mut(key) {
+                    property["default"] = value.clone();
+                }
+            }
+        }
         if !def.is_read_only()
             && schema["type"] == "object"
             && schema["properties"]

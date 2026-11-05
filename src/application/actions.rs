@@ -223,7 +223,7 @@ impl Operation {
                 vec!["path"],
             ),
             Self::SettingsWrite => (
-                json!({"path":{"type":"string","minLength":1},"ui":{"type":"object"},"keybindings":{"type":"object"},"painting":{"type":"object"},"plugins":{"type":"object"},"document":{"type":"object"}}),
+                json!({"path":{"type":"string","minLength":1},"ui":{"type":"object"},"keybindings":{"type":"object"},"painting":{"type":"object"},"selection":{"type":"object"},"plugins":{"type":"object"},"document":{"type":"object"}}),
                 vec!["path"],
             ),
             Self::SelectTool => (json!({"tool":{"type":"string"}}), vec!["tool"]),

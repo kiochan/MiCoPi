@@ -906,5 +906,8 @@
   "Click to select a color. Shift adds, Alt subtracts, Shift+Alt intersects.": "点击选择颜色。Shift 添加，Alt 减去，Shift+Alt 相交。",
   "Tolerance": "容差",
   "Contiguous": "连续区域",
-  "Selection Actions": "选区操作"
+  "Selection Actions": "选区操作",
+  "Default color tolerance for Wand, Grow and Similar.": "魔棒、扩大选区和选取相似颜色的默认容差。",
+  "Match only connected pixels when starting a Wand selection.": "使用魔棒时只匹配相连的像素。",
+  "Sample the rendered image instead of the active raw layer.": "从合成后的图像取样，而非当前图层的原始像素。"
 }

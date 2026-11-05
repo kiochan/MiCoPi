@@ -30,6 +30,7 @@ pub(super) struct Preferences {
     pub json: String,
     pub bounds: Option<Rect>,
     pub painting_before: Option<PaintingPreferences>,
+    pub selection_before: Option<crate::application::SelectionSampling>,
     json_mode: bool,
     focus: bool,
     message: String,
@@ -212,6 +213,30 @@ const SETTINGS: &[Setting] = &[
         96.
     ),
     Setting {
+        id: "selection.tolerance",
+        title: "Selection Tolerance",
+        description: "Default color tolerance for Wand, Grow and Similar.",
+        keywords: "selection wand sampling tolerance",
+        category: Category::Painting,
+        range: Some((0., 255.)),
+    },
+    Setting {
+        id: "selection.contiguous",
+        title: "Contiguous Selection",
+        description: "Match only connected pixels when starting a Wand selection.",
+        keywords: "selection wand sampling tolerance",
+        category: Category::Painting,
+        range: None,
+    },
+    Setting {
+        id: "selection.sample_merged",
+        title: "Sample Merged",
+        description: "Sample the rendered image instead of the active raw layer.",
+        keywords: "selection wand sampling tolerance",
+        category: Category::Painting,
+        range: None,
+    },
+    Setting {
         id: "painting.stabilizer",
         title: "Brush Stabilizer",
         description: "0 disables stabilization; 1 is strongest. Applies to future strokes.",
@@ -296,6 +321,7 @@ fn normalize(a: &mut Appearance) {
 impl Studio {
     pub(super) fn open_settings(&mut self, category: Option<Category>) {
         if !self.settings_open || self.settings_before.is_none() {
+            self.preferences.selection_before = Some(self.editor.session.selection_sampling());
             self.preferences.painting_before =
                 Some(PaintingPreferences::from(&self.editor.session.parameters));
             self.settings_before = Some(self.editor.settings.clone());
@@ -314,6 +340,15 @@ impl Studio {
     pub(super) fn cancel_settings(&mut self) {
         if let Some(before) = self.settings_before.take() {
             self.editor.settings = before;
+            if let Some(selection) = self.preferences.selection_before.take() {
+                if selection != self.editor.session.selection_sampling() {
+                    self.editor.core(
+                        "ui.dispatch",
+                        serde_json::json!({"id":"selection.options","value":selection}),
+                    );
+                }
+            }
+
             if let Some(painting) = self.preferences.painting_before.take() {
                 if painting != PaintingPreferences::from(&self.editor.session.parameters) {
                     self.editor
@@ -512,19 +547,27 @@ impl Studio {
             match (
                 serde_json::from_value::<Appearance>(document["ui"].clone()),
                 serde_json::from_value::<PaintingPreferences>(document["painting"].clone()),
+                serde_json::from_value::<crate::application::SelectionSampling>(
+                    document["selection"].clone(),
+                ),
             ) {
-                (Ok(mut appearance), Ok(painting)) => {
+                (Ok(mut appearance), Ok(painting), Ok(selection)) => {
                     normalize(&mut appearance);
                     if appearance.validate().is_ok() && painting.validate().is_ok() {
                         draft.ui = appearance;
                         draft.painting = painting;
+                        draft.selection = selection;
                     }
                 }
                 _ => prefs.message = "Invalid Setting Value".into(),
             }
         }
+        let selection_changed = draft.selection != self.editor.settings.selection;
         let painting_changed = draft.painting != self.editor.settings.painting;
         self.editor.settings = draft;
+        if selection_changed {
+            self.editor.core("ui.dispatch", serde_json::json!({"id":"selection.options","value":self.editor.settings.selection}));
+        }
         if painting_changed {
             self.editor.core(
                 "brush.set",
@@ -540,6 +583,7 @@ impl Studio {
             match self.editor.save_settings() {
                 Ok(()) => {
                     self.settings_before = Some(self.editor.settings.clone());
+                    prefs.selection_before = Some(self.editor.session.selection_sampling());
                     prefs.painting_before =
                         Some(PaintingPreferences::from(&self.editor.session.parameters));
                     prefs.json = self.editor.settings.encode().unwrap_or_default();
@@ -711,7 +755,11 @@ impl Studio {
                             .add(DragValue::new(&mut number).range(low..=high).speed(step))
                             .changed()
                         {
-                            v = serde_json::json!(number);
+                            v = if v.is_u64() {
+                                serde_json::json!(number as u64)
+                            } else {
+                                serde_json::json!(number)
+                            };
                         }
                     } else if let Some(mut enabled) = v.as_bool() {
                         if ui.checkbox(&mut enabled, tr("Enabled")).changed() {
@@ -1162,4 +1210,131 @@ mod tests {
 }
 fn defaults_ui(defaults: &serde_json::Value) -> Appearance {
     serde_json::from_value(defaults["ui"].clone()).unwrap_or_default()
+}
+
+#[cfg(test)]
+mod selection_settings_tests {
+    use super::*;
+    use crate::desktop::tests::{frame, studio};
+    use serde_json::json;
+    fn text_rect(shape: &Shape, text: &str) -> Option<Rect> {
+        match shape {
+            Shape::Text(t) if t.galley.text() == text => {
+                Some(Rect::from_min_size(t.pos, t.galley.size()))
+            }
+            Shape::Vec(v) => v.iter().find_map(|s| text_rect(s, text)),
+            _ => None,
+        }
+    }
+    fn locate(app: &mut Studio, ctx: &Context, text: &str, time: f64) -> Pos2 {
+        let out = frame(app, ctx, vec2(1360., 920.), vec![], time);
+        out.shapes
+            .iter()
+            .find_map(|s| text_rect(&s.shape, text))
+            .unwrap_or_else(|| panic!("Missing control: {text}"))
+            .center()
+    }
+    fn click(app: &mut Studio, ctx: &Context, p: Pos2, t: f64) {
+        for (i, pressed) in [true, false].into_iter().enumerate() {
+            frame(
+                app,
+                ctx,
+                vec2(1360., 920.),
+                vec![
+                    Event::PointerMoved(p),
+                    Event::PointerButton {
+                        pos: p,
+                        button: PointerButton::Primary,
+                        pressed,
+                        modifiers: Modifiers::NONE,
+                    },
+                ],
+                t + i as f64 * 0.01,
+            );
+        }
+    }
+    fn edit_tolerance(app: &mut Studio, ctx: &Context, t: f64) {
+        app.open_settings(None);
+        app.preferences.query = "selection.tolerance".into();
+        // Allow the settings window's first-frame position/size to settle.
+        for i in 0..3 {
+            frame(app, ctx, vec2(1360., 920.), vec![], t + i as f64 * 0.1);
+        }
+        let p = locate(app, ctx, "32", t + 0.3);
+        click(app, ctx, p, t + 0.4);
+        click(app, ctx, p, t + 0.5);
+        frame(
+            app,
+            ctx,
+            vec2(1360., 920.),
+            vec![
+                Event::Key {
+                    key: Key::A,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Modifiers::CTRL,
+                },
+                Event::Text("7".into()),
+                Event::Key {
+                    key: Key::Enter,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Modifiers::NONE,
+                },
+            ],
+            t + 0.6,
+        );
+        frame(app, ctx, vec2(1360., 920.), vec![], t + 0.7);
+    }
+    #[test]
+    fn searchable_integer_control_previews_cancels_saves_and_preserves_other_profile_writes() {
+        let mut app = studio();
+        let ctx = Context::default();
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+            "target/test-output/selection-settings-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        app.editor.settings = Settings::defaults(dir.join("settings.json"));
+        app.editor.session.settings_path = Some(app.editor.settings.path.clone());
+        app.editor.core("ui.dispatch",json!({"id":"selection.options","value":{"tolerance":99,"contiguous":false,"sample_merged":true}}));
+        let pixels = app.editor.session.doc.layers[0].pixels.clone();
+        edit_tolerance(&mut app, &ctx, 0.);
+        assert_eq!(app.editor.settings.selection.tolerance, 7);
+        assert_eq!(app.editor.session.selection_sampling().tolerance, 7);
+        assert_eq!(app.editor.session.selection_defaults.tolerance, 32);
+        app.cancel_settings();
+        assert_eq!(app.editor.session.selection_sampling().tolerance, 99);
+        assert_eq!(app.editor.settings.selection.tolerance, 32);
+        edit_tolerance(&mut app, &ctx, 2.);
+        let save = locate(&mut app, &ctx, "Save Settings", 3.);
+        click(&mut app, &ctx, save, 3.1);
+        frame(&mut app, &ctx, vec2(1360., 920.), vec![], 3.2);
+        assert_eq!(
+            Settings::load(app.editor.settings.path.clone())
+                .unwrap()
+                .selection
+                .tolerance,
+            7
+        );
+        assert_eq!(app.editor.session.selection_defaults.tolerance, 7);
+        app.cancel_settings();
+        let other = dir.join("other.json");
+        app.editor.core(
+            "settings.update",
+            json!({"path":other,"selection":{"tolerance":13}}),
+        );
+        app.consume_ui_effects(&ctx);
+        assert_eq!(app.editor.session.selection_defaults.tolerance, 7);
+        assert_eq!(app.editor.session.selection_sampling().tolerance, 7);
+        let active = app.editor.settings.path.clone();
+        app.editor.core(
+            "settings.update",
+            json!({"path":active,"selection":{"tolerance":9}}),
+        );
+        assert_eq!(app.editor.session.selection_defaults.tolerance, 9);
+        assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+    }
 }

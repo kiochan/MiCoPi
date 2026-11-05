@@ -213,6 +213,7 @@ pub struct Settings {
     pub ui: Appearance,
     pub keys: Keymap,
     pub painting: PaintingPreferences,
+    pub selection: crate::application::SelectionSampling,
     pub plugins: PluginPreferences,
     pub path: PathBuf,
     original: Value,
@@ -223,6 +224,7 @@ impl Settings {
             ui: Appearance::default(),
             keys: Keymap::default(),
             painting: PaintingPreferences::default(),
+            selection: Default::default(),
             plugins: PluginPreferences::default(),
             path,
             original: json!({"version": 1}),
@@ -259,12 +261,16 @@ impl Settings {
             serde_json::from_value(original.get("plugins").cloned().unwrap_or(json!({})))
                 .map_err(|e| e.to_string())?;
         plugins.validate()?;
+        let selection =
+            serde_json::from_value(original.get("selection").cloned().unwrap_or(json!({})))
+                .map_err(|e| format!("selection: {e}"))?;
         let bindings = json!({"version": 1, "keybindings": original.get("keybindings").cloned().unwrap_or(json!({}))});
         let keys = Keymap::decode(&bindings.to_string())?;
         Ok(Self {
             ui,
             keys,
             painting,
+            selection,
             plugins,
             path,
             original,
@@ -280,6 +286,7 @@ impl Settings {
         self.plugins.validate()?;
         let mut value = self.original.clone();
         value["version"] = json!(1);
+        value["selection"] = serde_json::to_value(self.selection).map_err(|e| e.to_string())?;
         value["painting"] = serde_json::to_value(&self.painting).map_err(|e| e.to_string())?;
         value["plugins"] = serde_json::to_value(&self.plugins).map_err(|e| e.to_string())?;
         value["ui"] = serde_json::to_value(&self.ui).map_err(|e| e.to_string())?;
@@ -301,6 +308,32 @@ pub fn atomic_write(path: &Path, text: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn selection_preferences_are_typed_and_preserve_existing_profile_content() {
+        let old = Settings::decode(
+            r#"{"custom":{"keep":42},"keybindings":{"file.save":"Ctrl+F12"}}"#,
+            PathBuf::new(),
+        )
+        .unwrap();
+        assert_eq!(old.selection, Default::default());
+        let mut value: Value = serde_json::from_str(&old.encode().unwrap()).unwrap();
+        value["selection"] = json!({"tolerance":7,"contiguous":false,"sample_merged":true});
+        let changed = Settings::decode(&value.to_string(), PathBuf::new()).unwrap();
+        let roundtrip: Value = serde_json::from_str(&changed.encode().unwrap()).unwrap();
+        assert_eq!(roundtrip["selection"], value["selection"]);
+        assert_eq!(roundtrip["custom"], json!({"keep":42}));
+        assert_eq!(roundtrip["keybindings"], value["keybindings"]);
+        for bad in [
+            json!({"tolerance":256}),
+            json!({"tolerance":1.5}),
+            json!({"tolerance":-1}),
+            json!({"contiguous":1}),
+            json!({"unknown":true}),
+        ] {
+            value["selection"] = bad;
+            assert!(Settings::decode(&value.to_string(), PathBuf::new()).is_err());
+        }
+    }
     #[test]
     fn language_defaults_validation_and_roundtrip_preserve_other_settings() {
         assert_eq!(

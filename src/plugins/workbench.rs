@@ -39,7 +39,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                         .map_err(|e| ActionError::new("settings", e))?,
                 )?
             };
-            for key in ["ui", "keybindings", "painting", "plugins"] {
+            for key in ["ui", "keybindings", "painting", "selection", "plugins"] {
                 if let Some(patch) = args[key].as_object() {
                     for (name, setting) in patch {
                         value[key][name] = setting.clone();
@@ -51,8 +51,16 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             updated
                 .save()
                 .map_err(|e| ActionError::new("settings", e))?;
-            s.ui_effects
-                .push_back(json!({"id":"settings.reload","value":path}));
+            let selection_changed = s.selection_defaults != updated.selection;
+            if s.settings_path
+                .as_ref()
+                .is_none_or(|active| active == &path)
+            {
+                s.apply_selection_defaults(updated.selection);
+            }
+            s.ui_effects.push_back(
+                json!({"id":"settings.reload","value":path,"selection_changed":selection_changed}),
+            );
             while s.ui_effects.len() > 128 {
                 s.ui_effects.pop_front();
             }

@@ -33,5 +33,10 @@
   },
   "ui": {
     "language": "en"
+  },
+  "selection": {
+    "tolerance": 32,
+    "contiguous": true,
+    "sample_merged": false
   }
 }

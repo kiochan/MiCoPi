@@ -47,15 +47,22 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 },
                 x,
                 y,
-                tolerance: args["tolerance"].as_u64().unwrap_or(32) as u32,
-                contiguous: args["contiguous"].as_bool().unwrap_or(true) as u32,
+                tolerance: args["tolerance"]
+                    .as_u64()
+                    .unwrap_or(s.selection_defaults.tolerance as u64)
+                    as u32,
+                contiguous: args["contiguous"]
+                    .as_bool()
+                    .unwrap_or(s.selection_defaults.contiguous) as u32,
             };
             s.finish_stroke();
             Some(
                 super::native::selection_color(
                     s,
                     &options,
-                    args["sample_merged"].as_bool().unwrap_or(false),
+                    args["sample_merged"]
+                        .as_bool()
+                        .unwrap_or(s.selection_defaults.sample_merged),
                 )
                 .map_err(|e| ActionError::new("selection_color", e))?,
             )

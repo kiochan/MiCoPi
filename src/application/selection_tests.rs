@@ -21,6 +21,73 @@ fn selected(s: &Session) -> usize {
         .count()
 }
 #[test]
+fn saved_defaults_drive_omitted_arguments_but_explicit_arguments_and_ui_overrides_remain_distinct()
+{
+    let mut s = session();
+    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("target/test-output/selection-defaults");
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join(format!("settings-{}.json", std::process::id()));
+    call(
+        &mut s,
+        "settings.update",
+        json!({"path":path,"selection":{"tolerance":0,"contiguous":false,"sample_merged":false}}),
+    );
+    call(&mut s, "native.checkerboard", json!({"cell":3}));
+    call(&mut s, "selection.wand", json!({"x":0,"y":0}));
+    assert_eq!(selected(&s), 48);
+    call(
+        &mut s,
+        "selection.wand",
+        json!({"x":0,"y":0,"contiguous":true}),
+    );
+    assert_eq!(selected(&s), 9);
+    s.runtime = "desktop";
+    call(
+        &mut s,
+        "toolbox.selection.options",
+        json!({"tolerance":255,"contiguous":true,"sample_merged":true}),
+    );
+    let controls = s.selection_sampling();
+    assert_eq!(s.selection_defaults.tolerance, 0);
+    call(&mut s, "selection.wand", json!({"x":0,"y":0}));
+    assert_eq!(selected(&s), 48);
+    call(
+        &mut s,
+        "settings.update",
+        json!({"path":path,"ui":{"panel_padding":9}}),
+    );
+    assert_eq!(s.selection_sampling(), controls);
+    let bytes = std::fs::read(&path).unwrap();
+    let defaults = s.selection_defaults;
+    assert!(s
+        .apply(Action::new(
+            "settings.update",
+            json!({"path":path,"selection":{"tolerance":256}})
+        ))
+        .is_err());
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    assert_eq!(s.selection_defaults, defaults);
+    s.runtime = "headless";
+    let bad_path = dir.join("missing/subdirectory/settings.json");
+    assert!(s
+        .apply(Action::new(
+            "settings.update",
+            json!({"path":bad_path,"selection":{"tolerance":255}})
+        ))
+        .is_err());
+    assert_eq!(s.selection_defaults, defaults);
+    call(
+        &mut s,
+        "settings.update",
+        json!({"path":path,"selection":{"tolerance":255,"contiguous":true}}),
+    );
+    assert_eq!(s.selection_sampling(), s.selection_defaults);
+    call(&mut s, "selection.wand", json!({"x":0,"y":0}));
+    assert_eq!(selected(&s), 96);
+    check(&mut s);
+}
+#[test]
 fn color_actions_become_validated_workflow_nodes_without_running_on_edit() {
     let mut s = session();
     call(&mut s, "native.checkerboard", json!({"cell":3}));

@@ -74,6 +74,8 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("plugin {}: {}", d.path.display(), d.error);
     }
     let mut session = Session::new(registry)?;
+    session.settings_path = Some(settings.path.clone());
+    session.apply_selection_defaults(settings.selection);
     if settings.has_painting_preferences() {
         settings.painting.apply(&mut session.parameters);
     }

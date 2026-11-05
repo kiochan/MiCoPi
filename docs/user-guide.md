@@ -16,6 +16,8 @@ All settings share one searchable window. Search by localized name, English sett
 
 The JSON view edits the complete `settings.json`. Validate before applying or saving; invalid syntax, ranges or shortcut conflicts leave the file intact. Unknown root fields are preserved. JSON comments are not supported.
 
+Search `selection.` to configure Wand/Grow/Similar defaults. Preview and cancel restore current tool controls; Save Settings persists the defaults. Temporary Tool Options choices remain separate from automation defaults. See [Selections](selections.md).
+
 Settings live in `settings.json`; dock layout is saved separately in `workspace.egui.json`. Plugin manifests remain under `plugins/`. The older INI configuration is retained for legacy painting preferences, not as the primary desktop layout format.
 
 ## Pen and brush

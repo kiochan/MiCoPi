@@ -1,4 +1,4 @@
-//! Session-local selection controls; document commands receive explicit options.
+//! Configured selection defaults and explicit session-local desktop controls.
 use super::Session;
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
@@ -18,8 +18,19 @@ impl Default for SelectionSampling {
     }
 }
 impl Session {
+    /// Preference changes reset the old override; unrelated settings preserve it.
+    pub fn apply_selection_defaults(&mut self, defaults: SelectionSampling) {
+        if self.selection_defaults != defaults {
+            self.selection_defaults = defaults;
+            if let Some(ui) = self.ui.as_object_mut() {
+                ui.remove("selection.options");
+            }
+        }
+    }
+
     pub fn selection_sampling(&self) -> SelectionSampling {
-        serde_json::from_value(self.ui["selection.options"].clone()).unwrap_or_default()
+        serde_json::from_value(self.ui["selection.options"].clone())
+            .unwrap_or(self.selection_defaults)
     }
 }
 #[cfg(test)]

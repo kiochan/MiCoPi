@@ -95,6 +95,7 @@ def main():
         expected = base64.b64decode(call('canvas.snapshot',{})['data'])
         graph=dict(version=1,nodes=[dict(id=1,type='native_paint.statistics',position=[0,0],parameters={}),dict(id=2,type='action.native.checkerboard',position=[460,0],parameters={})],edges=[dict(**{'from':1},output='calls',to=2,input='cell')])
         call('workflow.set',dict(graph=graph))
+        call('settings.update',dict(path=str(settings),selection=dict(tolerance=19,contiguous=False,sample_merged=True)))
         call('ui.dispatch',dict(id='painting.mode',value='gradient'))
         for language in ['en','zh-CN','ja','ko']:
             call('settings.update',dict(path=str(settings),ui=dict(language=language)))
@@ -128,6 +129,11 @@ def main():
             call('ui.dispatch',dict(id='settings.search',value='ui.language'))
             time.sleep(.25)
             screenshot(f'{language}-settings.png')
+            call('ui.dispatch',dict(id='settings.search',value='selection.'))
+            time.sleep(.15)
+            screenshot(f'{language}-selection-settings.png')
+            assert call('canvas.state',{})['selection_defaults']==dict(tolerance=19,contiguous=False,sample_merged=True)
+
             call('ui.dispatch',dict(id='settings.search',value='plugins'))
             time.sleep(.15)
             screenshot(f'{language}-plugins.png')

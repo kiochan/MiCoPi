@@ -38,6 +38,11 @@ def main():
     shutil.copytree(ROOT / "examples/plugins/quick-tools", plugins / "quick-tools")
     profile = output / "profile"
     profile.mkdir()
+    selection_defaults=dict(tolerance=0,contiguous=False,sample_merged=False)
+    (profile/'settings.json').write_text(json.dumps(dict(version=1,selection=selection_defaults)),encoding='utf-8')
+    startup_state=subprocess.run([str(cli),'call','canvas.state','{}','--plugins',str(plugins),'--config-dir',str(profile)],capture_output=True,text=True,encoding='utf-8',check=True)
+    assert json.loads(startup_state.stdout)['result']['selection_defaults']==selection_defaults
+
     commands = [
         dict(action="canvas.new", args=dict(width=256, height=192)),
         dict(action="pipeline.run", args=dict(steps=[
@@ -150,12 +155,16 @@ def main():
     assert batch_png.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
     requests = [message("initialize", dict(protocolVersion="2025-11-25", capabilities={}, clientInfo=dict(name="smoke", version="1")), 1), message("notifications/initialized"), message("tools/list", {}, 2)]
     requests += [message("tools/call", dict(name=c["action"], arguments=c["args"]), n) for n, c in enumerate(commands, 3)]
+    requests.append(message("tools/call", dict(name="canvas.state", arguments={}), 10000))
     requests.append(message("tools/call", dict(name="canvas.snapshot", arguments={}), 100))
     requests += [message("resources/list",{},101),message("resources/read",dict(uri="micopi://state/ai_assistant.context"),102)]
     run = subprocess.run([str(cli), "mcp", "--plugins", str(plugins), "--config-dir", str(profile)], input="\n".join(json.dumps(r) for r in requests) + "\n", capture_output=True, text=True, encoding="utf-8", timeout=30)
     assert run.returncode == 0, run.stderr
     replies = [json.loads(line) for line in run.stdout.splitlines()]
     assert all("error" not in r and not r.get("result", {}).get("isError") for r in replies), replies
+    defaults_reply=next(r for r in replies if r['id']==10000)['result']
+    defaults_state=defaults_reply.get('structuredContent') or json.loads(defaults_reply['content'][0]['text'])
+    assert defaults_state['result']['selection_defaults']==selection_defaults
     tools = next(r for r in replies if r["id"] == 2)["result"]["tools"]
     assert any(t["name"] == "quick.blue_stroke" for t in tools), "Custom plugin missing from MCP tools"
     assert any(t["name"] == "native.invert" for t in tools), "Native DLL action missing from MCP tools"
@@ -194,6 +203,7 @@ def main():
                 assert result["result"].get("ok",True), result
         assert call("app.describe",{})["result"]["runtime"]=="desktop"
         state = call("canvas.state", {})["result"]
+        assert state["selection_defaults"] == selection_defaults
         assert state["width"] == 260 and state["height"] == 195 and state["dirty"]
         shot = call("canvas.snapshot", {})["result"]
         assert base64.b64decode(shot["data"]) == batch_png.read_bytes()
