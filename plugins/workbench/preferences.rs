@@ -566,17 +566,22 @@ impl Studio {
                 serde_json::from_value::<crate::application::MovementPreferences>(
                     document["movement"].clone(),
                 ),
+                serde_json::from_value::<crate::configuration::NewCanvasPreferences>(
+                    document["new_canvas"].clone(),
+                ),
             ) {
-                (Ok(mut appearance), Ok(painting), Ok(selection), Ok(movement)) => {
+                (Ok(mut appearance), Ok(painting), Ok(selection), Ok(movement), Ok(new_canvas)) => {
                     normalize(&mut appearance);
                     if appearance.validate().is_ok()
                         && painting.validate().is_ok()
                         && movement.validate().is_ok()
+                        && new_canvas.validate().is_ok()
                     {
                         draft.ui = appearance;
                         draft.painting = painting;
                         draft.selection = selection;
                         draft.movement = movement;
+                        draft.new_canvas = new_canvas;
                     }
                 }
                 _ => prefs.message = "Invalid Setting Value".into(),
@@ -866,6 +871,54 @@ impl Studio {
                 ui.separator();
                 ui.add_space(8.);
             });
+        }
+        let presets_modified = document["new_canvas"] != defaults["new_canvas"];
+        if matches!(prefs.category, Category::All | Category::Painting)
+            && matches(
+                &prefs.query,
+                &format!(
+                    "new_canvas.default_preset new_canvas.presets document paper background resolution {} {} {}",
+                    crate::i18n::search_text("New Canvas Presets"),
+                    crate::i18n::search_text("Choose the starting preset. Presets affect new documents only."),
+                    draft.new_canvas.presets.iter().map(|p| format!("{} {}", p.id, p.name)).collect::<Vec<_>>().join(" ")
+                ),
+                presets_modified,
+            )
+        {
+            count += 1;
+            ui.strong(tr("New Canvas Presets"));
+            ui.weak(tr("Choose the starting preset. Presets affect new documents only."));
+            ui.monospace("new_canvas.default_preset · new_canvas.presets");
+            let mut presets = draft.new_canvas.clone();
+            ui.horizontal_wrapped(|ui| {
+                ui.label(tr("Default Preset"));
+                ComboBox::from_id_salt("new-canvas-default-preset")
+                    .selected_text(presets.selected().map(canvas_new_document::preset_title).unwrap_or_default())
+                    .show_ui(ui, |ui| {
+                        for preset in &presets.presets {
+                            ui.selectable_value(
+                                &mut presets.default_preset,
+                                preset.id.clone(),
+                                canvas_new_document::preset_title(preset),
+                            );
+                        }
+                    });
+                if presets_modified && ui.small_button(tr("Reset")).clicked() {
+                    presets = Default::default();
+                }
+            });
+            for preset in &presets.presets {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(canvas_new_document::preset_title(preset));
+                    ui.weak(format!("{} × {} px · {} PPI",preset.width,preset.height,preset.resolution_ppi));
+                    ui.weak(if preset.background == "transparent" { localize("Transparent").into_owned() } else {preset.background.clone()});
+                });
+            }
+            ui.weak(tr("Edit preset names, dimensions, resolution and backgrounds in JSON settings."));
+            document["new_canvas"] = serde_json::to_value(presets).unwrap();
+            ui.add_space(draft.ui.section_spacing);
+            ui.separator();
+            ui.add_space(draft.ui.item_spacing);
         }
         if matches!(prefs.category, Category::All | Category::Layout)
             && matches(
@@ -1298,6 +1351,92 @@ mod selection_settings_tests {
     }
     fn edit_tolerance(app: &mut Studio, ctx: &Context, t: f64) {
         edit_integer(app, ctx, t, "selection.tolerance", "32", "7");
+    }
+    #[test]
+    fn new_canvas_search_default_preview_cancel_save_keeps_artwork_and_custom_names() {
+        let mut app = studio();
+        let ctx = Context::default();
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+            "target/test-output/new-canvas-settings-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        app.editor.settings = Settings::defaults(dir.join("settings.json"));
+        app.editor.settings.new_canvas.presets[3].name = "私の原稿".into();
+        for i in 0..3 {
+            frame(
+                &mut app,
+                &ctx,
+                vec2(1360., 920.),
+                vec![],
+                -1. + i as f64 * 0.1,
+            );
+        }
+        let revision = app.editor.session.revision;
+        let composition = app.editor.session.doc.composition();
+        let info = app.editor.session.doc.info();
+        let dimensions = (
+            app.editor.session.doc.width,
+            app.editor.session.doc.height,
+            app.editor.session.doc.active,
+            app.editor.session.doc.dirty,
+        );
+        let history = app.editor.session.doc.history_bytes();
+        let pixels = app.editor.session.doc.layers[0].pixels.clone();
+        for pass in 0..2 {
+            let t = pass as f64 * 10.;
+            app.open_settings(None);
+            app.preferences.query = "new_canvas.presets".into();
+            for i in 0..3 {
+                frame(
+                    &mut app,
+                    &ctx,
+                    vec2(1360., 920.),
+                    vec![],
+                    t + i as f64 * 0.1,
+                );
+            }
+            let p = locate(&mut app, &ctx, "Illustration", t + 0.3);
+            click(&mut app, &ctx, p, t + 0.4);
+            let out = frame(&mut app, &ctx, vec2(1360., 920.), vec![], t + 0.5);
+            let p = out
+                .shapes
+                .iter()
+                .rev()
+                .find_map(|s| text_rect(&s.shape, "Square"))
+                .expect("Square choice in the preset popup")
+                .center();
+            click(&mut app, &ctx, p, t + 0.6);
+            assert_eq!(app.editor.settings.new_canvas.default_preset, "square");
+            assert_eq!(app.editor.session.revision, revision);
+            if pass == 1 {
+                let p = locate(&mut app, &ctx, "Save Settings", t + 0.8);
+                click(&mut app, &ctx, p, t + 0.9);
+                let stored = Settings::load(app.editor.settings.path.clone()).unwrap();
+                assert_eq!(stored.new_canvas.default_preset, "square");
+                assert_eq!(stored.new_canvas.presets[3].name, "私の原稿");
+            }
+            app.cancel_settings();
+            assert_eq!(
+                app.editor.settings.new_canvas.default_preset,
+                if pass == 0 { "illustration" } else { "square" }
+            );
+            assert_eq!(app.editor.settings.new_canvas.presets[3].name, "私の原稿");
+            assert_eq!(app.editor.session.revision, revision + pass);
+            assert_eq!(app.editor.session.doc.composition(), composition);
+            assert_eq!(app.editor.session.doc.info(), info);
+            assert_eq!(
+                (
+                    app.editor.session.doc.width,
+                    app.editor.session.doc.height,
+                    app.editor.session.doc.active,
+                    app.editor.session.doc.dirty
+                ),
+                dimensions
+            );
+            assert_eq!(app.editor.session.doc.history_bytes(), history);
+            assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+        }
     }
     fn edit_integer(app: &mut Studio, ctx: &Context, t: f64, query: &str, old: &str, value: &str) {
         app.open_settings(None);

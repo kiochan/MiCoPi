@@ -60,6 +60,8 @@ MICOPI03 projects save layer pixels, blend properties, image/workflow metadata a
 
 Project headers are recognized independently of the filename extension; renamed projects retain their save path when opened. Layer creation is a structural undo entry that restores the previous active layer and invalidates the old redo branch.
 
+Document resolution and initial-background provenance are bounded composition metadata, shared by history, projects and verified replay. Defaults are omitted from legacy serialization. New-canvas replacement is an explicit lifecycle boundary with journal-failure recovery; metadata-only resolution changes use ordinary atomic history. Central presets and the compiled Canvas creation dialog do not change document state until a revision-guarded Create. See [Document Setup](document-setup.md).
+
 `settings.json` contains appearance, language, keybindings, painting/selection/movement defaults and plugin preferences. Saving validates ranges/conflicts, preserves unknown root fields and atomically replaces the file. Dock trees and floating rectangles are kept in `workspace.egui.json`; new plugin panels are reconciled without reopening previously closed panels.
 
 Localization is applied at presentation boundaries. English metadata, machine IDs, schemas, file paths and documents stay independent of display language. Only English is embedded; external Chinese, Japanese and Korean JSON catalogs hot-reload through a bounded background watcher and immutable UI snapshots. Existing Windows CJK fonts provide glyph fallback without a bundled font pack. See [Localization](localization.md) for file precedence, validation and fallback behavior.

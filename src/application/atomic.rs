@@ -94,7 +94,8 @@ impl Operation {
     pub(crate) fn document_atomic(self) -> bool {
         matches!(
             self,
-            Self::RotateCanvasClockwise
+            Self::DocumentResolution
+                | Self::RotateCanvasClockwise
                 | Self::RotateCanvasCounterclockwise
                 | Self::RotateCanvasHalf
                 | Self::FlipCanvasHorizontal

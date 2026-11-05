@@ -69,7 +69,8 @@ Acceptance: preview/cancel leaves pixels untouched; selection is visible and beh
 - [x] Add persisted, undoable document-space transform repeat and selected/whole-layer copy-repeat, shared by configurable PS commands, public state, nodes, MCP and headless.
 - [x] Add bounded ordered local X/Y skew with numeric controls, reversible mouse/pen edge handles, skew-aware scaling and the existing native matrix/repeat/history contracts.
 - [x] Add bounded finite convex perspective through an independent native sampler, interactive four-corner/edge previews, persistent world homographies and shared atomic/node/MCP/headless contracts. Preserve old affine/recording prefixes; explicitly reject crossed, degenerate and horizon-crossing source bounds.
-- [ ] Add new-document presets, background/resolution metadata and useful export sizing.
+- [x] Add validated central new-document presets, background initialization and persistent physical-resolution metadata, with a revision-guarded dialog, shared schemas/state/nodes, undo and verified replay. See [Document Setup](document-setup.md).
+- [ ] Preserve physical density in PNG interchange, add editable physical-unit dimensions and useful export sizing.
 
 Acceptance: coordinate units, pivots, bounds, resampling and clipping are specified; right-angle operations retain exact stored pixels; preview never publishes provisional outcomes; structural identities, graph references, undo and replay remain valid.
 

@@ -322,7 +322,7 @@ impl Session {
         let mut parameters = json!(self.parameters);
         parameters["spacing"] = json!(self.parameters.spacing);
         parameters["minimum_opacity"] = json!(self.parameters.minimum_opacity);
-        json!({"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"id":self.doc.layer_id(index),"name":self.doc.layer_name(index),"alpha_locked":self.doc.alpha_locked(index),"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"last_transform":crate::plugins::affine::repeat_state(self),"movement_defaults":self.movement_defaults,"movement_options":self.movement_options(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
+        json!({"document_info":self.doc.info().state(self.doc.width,self.doc.height),"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":self.doc.layers.iter().enumerate().map(|(index,l)|json!({"index":index,"id":self.doc.layer_id(index),"name":self.doc.layer_name(index),"alpha_locked":self.doc.alpha_locked(index),"visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode})).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"last_transform":crate::plugins::affine::repeat_state(self),"movement_defaults":self.movement_defaults,"movement_options":self.movement_options(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
     }
     pub fn apply(&mut self, action: Action) -> ActionResult {
         let pointer_action = self
@@ -435,6 +435,7 @@ impl Session {
                 && !self.stroke.active()
                 && (atomic_group
                     || self.registry.actions[&id].is_document_atomic()
+                    || op == Some(Operation::New)
                     || op.is_some_and(Operation::system_clipboard_mutation))
             {
                 Some(super::atomic::Checkpoint::capture(self))

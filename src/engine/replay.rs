@@ -613,6 +613,10 @@ impl Journal {
     pub(crate) fn fail_next_write_after(&mut self, bytes: usize) {
         self.fail_after = Some(bytes);
     }
+    #[cfg(test)]
+    pub(crate) fn transfer_pending_write_fault(&mut self, replacement: &mut Self) {
+        replacement.fail_after = self.fail_after.take();
+    }
     fn storage() -> Result<(File, PathBuf), ActionError> {
         static NEXT: AtomicU64 = AtomicU64::new(0);
         let directory = std::env::temp_dir().join("MiCoPi-replay");

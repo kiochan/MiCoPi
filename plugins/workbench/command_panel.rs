@@ -132,6 +132,71 @@ mod color_selection_tests {
             app.editor.session.revision
         );
     }
+    #[test]
+    fn resolution_form_uses_current_metadata_and_four_language_search_without_execution() {
+        crate::i18n::load_test_catalogs();
+        let mut app = crate::desktop::tests::studio();
+        app.editor.register_commands();
+        for query in [
+            "Set Document Resolution",
+            "设置文档分辨率",
+            "ドキュメントの解像度を設定",
+            "문서 해상도 설정",
+        ] {
+            let keys = &app.editor.settings.keys;
+            let mut palette = Palette::new(crate::ui::palette::Mode::Commands, keys);
+            palette.query(query.into(), keys);
+            assert!(
+                palette
+                    .results
+                    .iter()
+                    .any(|&i| keys.command(i).keywords == "canvas.resolution"),
+                "{query}"
+            );
+        }
+        assert!(app.editor.core(
+            "canvas.new",
+            json!({"width":12,"height":8,"resolution_ppi":300})
+        ));
+        for resolution in [300, 72, 600] {
+            assert!(app
+                .editor
+                .core("canvas.resolution", json!({"resolution_ppi":resolution})));
+            let before = app.editor.session.state();
+            let pixels = app.editor.session.doc.layers[0].pixels.clone();
+            let events = app
+                .editor
+                .session
+                .replay_journal(false)
+                .unwrap()
+                .entries
+                .len();
+            app.editor.begin_plugin_command("canvas.resolution");
+            let form = app.editor.command_form.as_mut().unwrap();
+            assert_eq!(form.action, "canvas.resolution");
+            assert_eq!(form.args["resolution_ppi"], resolution);
+            assert_eq!(
+                form.schema["properties"]["resolution_ppi"]["default"],
+                resolution
+            );
+            form.args["resolution_ppi"] = json!(1200);
+            assert_eq!(app.editor.session.state(), before);
+            assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+            assert_eq!(
+                app.editor
+                    .session
+                    .replay_journal(false)
+                    .unwrap()
+                    .entries
+                    .len(),
+                events
+            );
+            app.editor.actions.push(Action::Cancel);
+            app.run_actions(&Context::default());
+            assert!(app.editor.command_form.is_none());
+            assert_eq!(app.editor.session.state(), before);
+        }
+    }
 }
 impl Editor {
     pub(super) fn register_commands(&mut self) {
@@ -154,6 +219,13 @@ impl Editor {
             return;
         };
         let mut schema = def.schema();
+        if matches!(
+            def.operation,
+            Some(crate::application::Operation::DocumentResolution)
+        ) {
+            schema["properties"]["resolution_ppi"]["default"] =
+                json!(self.session.doc.info().resolution_ppi);
+        }
         if matches!(
             def.operation,
             Some(

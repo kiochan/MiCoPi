@@ -117,6 +117,13 @@ impl Studio {
                                     ],
                                 ),
                             ] {
+                                let mut entries = entries;
+                                if title == "Image" {
+                                    if let Some(command) = self.editor.settings.keys.commands()
+                                        .find(|c| c.keywords == "canvas.resolution") {
+                                        entries.insert(1, (command.ui, "Set Document Resolution"));
+                                    }
+                                }
                                 ui.menu_button(tr(title), |ui| {
                                     ui.set_min_width(a.control_height*10.);
                                     for (id,label) in entries {
@@ -241,50 +248,5 @@ impl Studio {
                     self.editor.open_palette(Mode::Commands);
                 }
             });
-    }
-    pub(super) fn new_document_window(&mut self, ctx: &Context) {
-        if !self.editor.new_open {
-            return;
-        }
-        let mut open = true;
-        let mut create = false;
-        Window::new(tr("New Canvas"))
-            .open(&mut open)
-            .collapsible(false)
-            .resizable(false)
-            .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
-            .show(ctx, |ui| {
-                ui.weak(tr("Transparent background · Up to 4096 × 4096 pixels"));
-                ui.add_space(12.);
-                Grid::new("new-size").num_columns(2).show(ui, |ui| {
-                    ui.label(tr("Width"));
-                    ui.add(
-                        DragValue::new(&mut self.editor.new_width)
-                            .range(1..=4096)
-                            .suffix(" px"),
-                    );
-                    ui.end_row();
-                    ui.label(tr("Height"));
-                    ui.add(
-                        DragValue::new(&mut self.editor.new_height)
-                            .range(1..=4096)
-                            .suffix(" px"),
-                    );
-                    ui.end_row();
-                });
-                ui.add_space(12.);
-                if ui.button(tr("Create Canvas")).clicked() {
-                    create = true;
-                }
-            });
-        if create {
-            self.editor.core(
-                "canvas.new",
-                serde_json::json!({"width":self.editor.new_width,"height":self.editor.new_height}),
-            );
-            self.editor.sync_from_session();
-            open = false;
-        }
-        self.editor.new_open = open;
     }
 }

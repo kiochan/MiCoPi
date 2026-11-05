@@ -69,3 +69,6 @@ mod transform_repeat_tests;
 
 #[cfg(test)]
 mod perspective_tests;
+
+#[cfg(test)]
+mod document_setup_tests;

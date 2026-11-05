@@ -103,6 +103,8 @@ pub enum Operation {
     SettingsWrite,
     State,
     New,
+    DocumentInfo,
+    DocumentResolution,
     CanvasSize,
     MovePixels,
     TransformPixels,
@@ -254,8 +256,12 @@ impl Operation {
                 json!({"steps":{"type":"array","minItems":1,"maxItems":128,"items":{"type":"object","properties":{"id":{"type":"string"},"action":{"type":"string"},"args":{},"output_schema":{"type":"object"}},"required":["id","action"],"additionalProperties":false}},"dry_run":{"type":"boolean"},"atomic":{"type":"boolean"},"expected_revision":{"type":"integer","minimum":0}}),
                 vec!["steps"],
             ),
+            Self::DocumentResolution => (
+                json!({"resolution_ppi":{"type":"integer","minimum":1,"maximum":2400,"description":"Physical pixels per inch; changes metadata only, without resampling."}}),
+                vec!["resolution_ppi"],
+            ),
             Self::New => (
-                json!({"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096}}),
+                json!({"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096},"resolution_ppi":{"type":"integer","minimum":1,"maximum":2400,"default":72},"background":{"type":"string","default":"transparent","description":"transparent or #RRGGBB; initializes editable pixels on the first layer."}}),
                 vec!["width", "height"],
             ),
             Self::ImageSize => (
@@ -304,7 +310,7 @@ impl Operation {
                 vec!["path"],
             ),
             Self::SettingsWrite => (
-                json!({"path":{"type":"string","minLength":1},"ui":{"type":"object"},"keybindings":{"type":"object"},"painting":{"type":"object"},"selection":{"type":"object"},"movement":{"type":"object"},"plugins":{"type":"object"},"document":{"type":"object"}}),
+                json!({"path":{"type":"string","minLength":1},"ui":{"type":"object"},"keybindings":{"type":"object"},"painting":{"type":"object"},"selection":{"type":"object"},"movement":{"type":"object"},"new_canvas":{"type":"object"},"plugins":{"type":"object"},"document":{"type":"object"}}),
                 vec!["path"],
             ),
             Self::SelectTool => (json!({"tool":{"type":"string"}}), vec!["tool"]),
@@ -384,6 +390,7 @@ impl Operation {
                 | Self::Describe
                 | Self::ContextRead
                 | Self::State
+                | Self::DocumentInfo
                 | Self::TrimBounds
                 | Self::TransformState
                 | Self::TransformPlan

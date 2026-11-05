@@ -287,6 +287,71 @@
           "default": 10
         }
       }
+    },
+    "new_canvas": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "New-document preferences only; loading settings never edits artwork. Omitted fields use built-in defaults. Runtime requires unique preset IDs and a default_preset matching an entry.",
+      "properties": {
+        "default_preset": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 96,
+          "pattern": "^[a-z0-9._-]+$",
+          "default": "illustration"
+        },
+        "presets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "description": "Custom display names are preserved as user content; names are bounded to 128 UTF-8 bytes and cannot contain control characters. IDs must be unique.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "width",
+              "height",
+              "resolution_ppi",
+              "background"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 96,
+                "pattern": "^[a-z0-9._-]+$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^(?!\\s*$)[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "resolution_ppi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2400
+              },
+              "background": {
+                "type": "string",
+                "pattern": "^(transparent|#[0-9a-fA-F]{6})$"
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

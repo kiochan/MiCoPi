@@ -3,6 +3,8 @@ use crate::{platform::replace_file, ui::keymap::Keymap};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
+mod canvas;
+pub use canvas::{CanvasPreset, NewCanvasPreferences};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -216,6 +218,7 @@ pub struct Settings {
     pub selection: crate::application::SelectionSampling,
     pub plugins: PluginPreferences,
     pub movement: crate::application::MovementPreferences,
+    pub new_canvas: NewCanvasPreferences,
     pub path: PathBuf,
     original: Value,
 }
@@ -228,6 +231,7 @@ impl Settings {
             selection: Default::default(),
             plugins: PluginPreferences::default(),
             movement: Default::default(),
+            new_canvas: Default::default(),
             path,
             original: json!({"version": 1}),
         }
@@ -270,6 +274,10 @@ impl Settings {
             serde_json::from_value(original.get("movement").cloned().unwrap_or(json!({})))
                 .map_err(|e| format!("movement: {e}"))?;
         movement.validate()?;
+        let new_canvas: NewCanvasPreferences =
+            serde_json::from_value(original.get("new_canvas").cloned().unwrap_or(json!({})))
+                .map_err(|e| format!("new_canvas: {e}"))?;
+        new_canvas.validate()?;
         let bindings = json!({"version": 1, "keybindings": original.get("keybindings").cloned().unwrap_or(json!({}))});
         let keys = Keymap::decode(&bindings.to_string())?;
         Ok(Self {
@@ -279,6 +287,7 @@ impl Settings {
             selection,
             plugins,
             movement,
+            new_canvas,
             path,
             original,
         })
@@ -292,9 +301,11 @@ impl Settings {
         self.painting.validate()?;
         self.plugins.validate()?;
         self.movement.validate()?;
+        self.new_canvas.validate()?;
         let mut value = self.original.clone();
         value["version"] = json!(1);
         value["movement"] = serde_json::to_value(self.movement).map_err(|e| e.to_string())?;
+        value["new_canvas"] = serde_json::to_value(&self.new_canvas).map_err(|e| e.to_string())?;
         value["selection"] = serde_json::to_value(self.selection).map_err(|e| e.to_string())?;
         value["painting"] = serde_json::to_value(&self.painting).map_err(|e| e.to_string())?;
         value["plugins"] = serde_json::to_value(&self.plugins).map_err(|e| e.to_string())?;

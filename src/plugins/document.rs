@@ -53,12 +53,30 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 .map_err(|e| ActionError::new("canvas_size", e))?;
             Ok(s.state())
         }
+        DocumentInfo => Ok(s.doc.info().state(s.doc.width, s.doc.height)),
+        DocumentResolution => {
+            require_idle(s)?;
+            s.doc
+                .set_resolution(args["resolution_ppi"].as_f64().unwrap() as u32)
+                .map_err(|e| ActionError::new("document_info", e))?;
+            Ok(s.doc.info().state(s.doc.width, s.doc.height))
+        }
         New => {
-            s.finish_stroke();
+            require_idle(s)?;
+            let info = crate::engine::document_info::Info {
+                resolution_ppi: args["resolution_ppi"].as_f64().unwrap_or(72.) as u32,
+                initial_background: crate::engine::document_info::Info::parse_background(
+                    args["background"].as_str().unwrap_or("transparent"),
+                )
+                .map_err(|e| ActionError::new("invalid_arguments", e))?,
+            };
+            info.validate()
+                .map_err(|e| ActionError::new("invalid_arguments", e))?;
             s.doc = Document::new(
                 args["width"].as_f64().unwrap() as usize,
                 args["height"].as_f64().unwrap() as usize,
             );
+            s.doc.initialize_info(info);
             s.file = None;
             s.doc.renderer = s.registry.renderer();
             if let Some(graph) = s.workflow_stack.first() {
@@ -138,4 +156,14 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             "operation routed to wrong plugin",
         )),
     }
+}
+
+fn require_idle(s: &Session) -> Result<(), ActionError> {
+    if s.stroke.active() || s.pointer_checkpoint.is_some() {
+        return Err(ActionError::new(
+            "stroke_active",
+            "Finish the current contact before changing document setup",
+        ));
+    }
+    Ok(())
 }

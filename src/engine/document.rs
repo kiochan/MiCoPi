@@ -9,6 +9,11 @@ use std::{
 };
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Composition {
+    #[serde(
+        default,
+        skip_serializing_if = "super::document_info::Info::is_default"
+    )]
+    pub document_info: super::document_info::Info,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_transform: Option<super::transform::Recipe>,
     pub graph: Graph,
@@ -41,6 +46,7 @@ pub struct LayerMetadata {
 }
 impl Composition {
     pub fn validate_layer_metadata(&self) -> Result<(), String> {
+        self.document_info.validate()?;
         if let Some(recipe) = self.last_transform {
             recipe.validate()?;
         }
@@ -166,6 +172,7 @@ pub struct Brush {
     pub erase: bool,
 }
 pub struct Document {
+    document_info: super::document_info::Info,
     last_transform: Option<super::transform::Recipe>,
     selection: super::selection::SelectionState,
     layer_metadata: Vec<LayerMetadata>,
@@ -250,6 +257,7 @@ impl Document {
         let graph = Graph::linked_from_layers(&layers);
         let plan = graph.compile(1).unwrap();
         Self {
+            document_info: Default::default(),
             last_transform: None,
             layer_metadata: vec![LayerMetadata {
                 id: 1,
@@ -305,6 +313,7 @@ impl Document {
     }
     pub fn composition(&self) -> Composition {
         Composition {
+            document_info: self.document_info,
             last_transform: self.last_transform,
             selection: self.selection.clone(),
             layer_metadata: self.layer_metadata.clone(),
@@ -317,6 +326,27 @@ impl Document {
                 .map(|l| (l.visible, l.opacity, l.mode))
                 .collect(),
         }
+    }
+    pub fn info(&self) -> super::document_info::Info {
+        self.document_info
+    }
+    /// Initialize only a newly allocated document, without an intermediate undo.
+    pub(crate) fn initialize_info(&mut self, info: super::document_info::Info) {
+        self.document_info = info;
+        self.layers[0].pixels.fill(info.initial_background);
+    }
+    pub(crate) fn set_resolution(&mut self, resolution_ppi: u32) -> Result<(), String> {
+        let mut info = self.document_info;
+        info.resolution_ppi = resolution_ppi;
+        info.validate()?;
+        if info == self.document_info {
+            return Ok(());
+        }
+        self.finish();
+        let before = self.composition();
+        self.document_info = info;
+        self.commit_composition(before, None);
+        Ok(())
     }
     pub fn last_transform(&self) -> Option<super::transform::Recipe> {
         self.last_transform
@@ -340,6 +370,7 @@ impl Document {
         Ok(())
     }
     pub(crate) fn restore_composition(&mut self, state: Composition) {
+        self.document_info = state.document_info;
         self.last_transform = state.last_transform;
         self.selection = state.selection;
         self.layer_metadata = if state.layer_metadata.is_empty() {
@@ -380,6 +411,7 @@ impl Document {
             metadata_bytes: before.graph.nodes.len() * 160
                 + before.selection.memory_bytes()
                 + std::mem::size_of_val(&before.last_transform)
+                + std::mem::size_of_val(&before.document_info)
                 + before.graph.edges.len() * 16
                 + before.workflow.bytes()
                 + before.layers.len() * 8
@@ -908,6 +940,7 @@ impl Document {
             e.metadata_bytes = state.graph.nodes.len() * 160
                 + state.selection.memory_bytes()
                 + std::mem::size_of_val(&state.last_transform)
+                + std::mem::size_of_val(&state.document_info)
                 + state.graph.edges.len() * 16
                 + state.workflow.bytes()
                 + state.layers.len() * 8

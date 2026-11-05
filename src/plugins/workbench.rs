@@ -64,6 +64,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 "selection",
                 "plugins",
                 "movement",
+                "new_canvas",
             ] {
                 if let Some(patch) = args[key].as_object() {
                     for (name, setting) in patch {
@@ -155,6 +156,70 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
 mod tests {
     use super::*;
     use crate::application::Action;
+    #[test]
+    fn new_canvas_settings_patch_roundtrip_and_invalid_patch_preserve_profile_and_artwork() {
+        let registry = crate::plugins::Registry::bundled();
+        assert!(
+            registry.actions.contains_key("settings.update"),
+            "{:?}",
+            registry.diagnostics
+        );
+        let mut s = Session::new(registry).unwrap();
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+            "target/test-output/new-canvas-profile-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.json");
+        std::fs::write(&path, r#"{"extension":{"keep":42},"ui":{"language":"en"}}"#).unwrap();
+        let revision = s.revision;
+        let composition = s.doc.composition();
+        let info = s.doc.info();
+        let dimensions = (s.doc.width, s.doc.height, s.doc.active, s.doc.dirty);
+        let history = s.doc.history_bytes();
+        let pixels = s.doc.layers[0].pixels.clone();
+        s.apply(Action::new(
+            "settings.update",
+            json!({"path":path,"new_canvas":{"default_preset":"a4"}}),
+        ))
+        .unwrap();
+        let read = s
+            .apply(Action::new("settings.read", json!({"path":path})))
+            .unwrap();
+        assert_eq!(read["result"]["new_canvas"]["default_preset"], "a4");
+        assert_eq!(
+            read["result"]["new_canvas"]["presets"]
+                .as_array()
+                .unwrap()
+                .len(),
+            4
+        );
+        assert_eq!(read["result"]["extension"]["keep"], 42);
+        assert_eq!(s.revision, revision + 1);
+        let original = std::fs::read(&path).unwrap();
+        for invalid in [
+            json!({"default_preset":"missing"}),
+            json!({"presets":[]}),
+            json!({"typo":true}),
+        ] {
+            assert!(s
+                .apply(Action::new(
+                    "settings.update",
+                    json!({"path":path,"new_canvas":invalid})
+                ))
+                .is_err());
+            assert_eq!(std::fs::read(&path).unwrap(), original);
+            assert_eq!(s.revision, revision + 1);
+        }
+        assert_eq!(s.doc.composition(), composition);
+        assert_eq!(s.doc.info(), info);
+        assert_eq!(
+            (s.doc.width, s.doc.height, s.doc.active, s.doc.dirty),
+            dimensions
+        );
+        assert_eq!(s.doc.history_bytes(), history);
+        assert_eq!(s.doc.layers[0].pixels, pixels);
+    }
     #[test]
     fn workspace_capture_is_presentation_only_and_keeps_revision_and_public_state() {
         let mut s = Session::new(crate::plugins::Registry::bundled()).unwrap();

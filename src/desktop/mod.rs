@@ -8,6 +8,8 @@ mod canvas;
 mod canvas_geometry;
 #[path = "../../plugins/canvas/movement.rs"]
 mod canvas_movement;
+#[path = "../../plugins/canvas/new_document.rs"]
+mod canvas_new_document;
 #[path = "../../plugins/canvas/selection.rs"]
 mod canvas_selection;
 #[path = "../../plugins/canvas/transform.rs"]
@@ -187,8 +189,7 @@ pub(super) struct Editor {
     opacity_input: OpacityInput,
     native: Option<Native>,
     blocked: bool,
-    new_width: usize,
-    new_height: usize,
+    new_canvas: Option<canvas_new_document::NewCanvasDraft>,
     new_open: bool,
     geometry: Option<canvas_geometry::CanvasDialog>,
 }
@@ -318,8 +319,7 @@ impl Editor {
             opacity_input: OpacityInput::default(),
             native,
             blocked: false,
-            new_width: 1200,
-            new_height: 900,
+            new_canvas: None,
             new_open: false,
             geometry: None,
         };
@@ -389,10 +389,17 @@ impl Editor {
         self.input_owned = false;
     }
     fn core(&mut self, id: &str, args: serde_json::Value) -> bool {
-        match self
-            .session
-            .apply(crate::application::Action::new(id, args))
-        {
+        self.core_at_revision(id, args, None)
+    }
+    fn core_at_revision(
+        &mut self,
+        id: &str,
+        args: serde_json::Value,
+        expected_revision: Option<u64>,
+    ) -> bool {
+        let mut action = crate::application::Action::new(id, args);
+        action.expected_revision = expected_revision;
+        match self.session.apply(action) {
             Ok(value) => {
                 let message = match id {
                     "clipboard.system_copy" | "clipboard.system_copy_merged" => {
@@ -474,7 +481,16 @@ impl Editor {
             fit: self.fit,
         };
         if self.session.view != view {
-            self.core("view.set", serde_json::to_value(view).unwrap());
+            let before = self.session.revision;
+            if self.core("view.set", serde_json::to_value(view).unwrap()) {
+                if let Some(draft) = self.new_canvas.as_mut() {
+                    draft.accept_local_view(
+                        self.session.doc.identity,
+                        before,
+                        self.session.revision,
+                    );
+                }
+            }
         }
     }
     fn sync_from_session(&mut self) {

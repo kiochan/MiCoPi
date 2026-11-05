@@ -73,7 +73,8 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 - [x] Add Windows PNG/DIB clipboard commands and configurable PS bindings, with explicit external-resource semantics.
 - [ ] Verify native and cross-application clipboard roundtrips; private window-station creation is denied on the current test host.
 - [ ] Add selection-aware move, scale and rotate.
-- [ ] Add useful document controls: new-canvas presets, resolution/background choices, clearer dirty state and save/recovery feedback.
+- [x] Add central new-canvas presets, background choices and document-resolution metadata with revision-guarded creation and shared history/project/replay contracts.
+- [ ] Preserve PNG physical density and add useful export sizing; improve dirty-state and save/recovery feedback.
 
 **Acceptance:** an artist can create, select, transform and organize a small illustration, save/reopen it, undo/redo its structural edits and replay the same visible results. GUI, MCP and headless actions produce matching pixels for shared fixtures. Graph references remain valid after layer changes.
 

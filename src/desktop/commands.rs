@@ -779,7 +779,7 @@ impl Studio {
                 }
                 Action::New => {
                     if self.editor.confirm_discard() {
-                        self.editor.new_open = true;
+                        self.editor.open_new_canvas();
                     }
                 }
                 Action::Open => self.editor.open_document(),

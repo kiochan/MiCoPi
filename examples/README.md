@@ -11,6 +11,8 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 .\dist\micopi-cli.exe run examples/automation/draw.jsonl
 ```
 
+[Document setup](automation/document-setup.jsonl) creates an editable background, changes physical resolution without resampling and verifies replay.
+
 ## Automation
 
 | File | Demonstrates |

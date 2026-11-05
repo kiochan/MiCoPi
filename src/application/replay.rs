@@ -137,7 +137,7 @@ impl Session {
             self.journal = Some(journal);
             self.replay_identity = self.doc.identity;
             self.replay_error = None;
-        } else if self.replay_identity != self.doc.identity {
+        } else if self.replay_identity != self.doc.identity && op != Some(Operation::New) {
             self.journal = None;
             self.replay_error = None;
             self.replay_identity = self.doc.identity;
@@ -180,6 +180,23 @@ impl Session {
             depth: self.execution_depth,
             context,
         };
+        if success && op == Some(Operation::New) {
+            // Publish a new document recording only after its genesis and action
+            // are durable; retain the old recording for the caller's rollback.
+            let meta = self.replay_metadata();
+            let mut replacement =
+                Journal::new(&mut self.doc, meta.clone(), self.registry.describe())?;
+            #[cfg(test)]
+            if let Some(old) = self.journal.as_mut() {
+                old.transfer_pending_write_fault(&mut replacement);
+            }
+            let prepared = replacement.prepare(&mut self.doc, meta, source, true, None)?;
+            replacement.commit(prepared)?;
+            self.journal = Some(replacement);
+            self.replay_identity = self.doc.identity;
+            self.replay_error = None;
+            return Ok(());
+        }
         if let Some((path, old_file, old_dirty, old_revision)) = self.pending_save.take() {
             // A saved project is a full verification boundary, including callers of
             // the public engine API which may have written pixel storage directly.
