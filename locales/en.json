@@ -1020,5 +1020,8 @@
   "Apply Free Transform": "Apply Free Transform",
   "Repeat Last Transform": "Repeat Last Transform",
   "Repeat Transform with Copy": "Repeat Transform with Copy",
-  "Inspect Last Transform": "Inspect Last Transform"
+  "Inspect Last Transform": "Inspect Last Transform",
+  "Skew": "Skew",
+  "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.": "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.",
+  "Combined transform exceeds affine limits": "Combined transform exceeds affine limits"
 }

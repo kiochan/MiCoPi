@@ -17,7 +17,7 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 | Drawing | Native DLL tools, pressure, stabilization, spacing, pressure curve, size/shape cursor | Rich tips/dynamics and additional painting tools |
 | Layers | Stable IDs, rename/duplicate/reorder/delete, opacity, visibility, alpha lock, merge/flatten/stamp | Masks, clipping, groups and multi-selection |
 | Selection/editing | Document masks, gestures, color matching, edge processing, selected painting and internal transfers | System clipboard and selection transforms |
-| Geometry | Anchored canvas size, exact crop, global orthogonal geometry and centered layer quarter turns | Off-canvas storage and skew/perspective |
+| Geometry | Anchored framing/crop, orthogonal geometry, Image Size/Trim, Move and affine Free Transform/repeat/skew | Off-canvas storage and perspective |
 | Composition | Linked layer/filter/blend graphs and explicit free graphs | More adjustments, filters and mask-aware composition |
 | Files | PNG/JPEG/BMP import, PNG export, projects and verified replay | Rich export and layered interchange |
 | Workspace | Independent/docked/tabbed windows, Tools/Options, searchable settings and shortcuts | Guides, snapping, view rotation and multiple documents |
@@ -67,7 +67,8 @@ Acceptance: preview/cancel leaves pixels untouched; selection is visible and beh
 - [x] Add native Free Transform translation, scale, clockwise rotation and flips, with explicit pivots, nearest/bilinear sampling, mouse/pen handles, reversible idle raster previews and apply/cancel. Retain atomic undo/replay and clip to the current frame. See [Free Transform](canvas-editing.md#free-transform).
 - [x] Transform selected raw content and its current mask together, or transform only the selection outline; preserve the previous Reselect mask.
 - [x] Add persisted, undoable document-space transform repeat and selected/whole-layer copy-repeat, shared by configurable PS commands, public state, nodes, MCP and headless.
-- [ ] Add skew/perspective with explicit parameter/history contracts.
+- [x] Add bounded ordered local X/Y skew with numeric controls, reversible mouse/pen edge handles, skew-aware scaling and the existing native matrix/repeat/history contracts.
+- [ ] Add perspective with finite invertible homographies, native sampling, interactive four-corner previews, portable repeat recipes and shared atomic/node/MCP/headless contracts.
 - [ ] Add new-document presets, background/resolution metadata and useful export sizing.
 
 Acceptance: coordinate units, pivots, bounds, resampling and clipping are specified; right-angle operations retain exact stored pixels; preview never publishes provisional outcomes; structural identities, graph references, undo and replay remain valid.

@@ -402,6 +402,8 @@ fn relocating_or_recentering_the_pivot_preserves_the_current_forward_mapping() {
     let bounds = [0, 0, 32, 24];
     let p = Parameters {
         angle: 35.,
+        skew_x: 18.,
+        skew_y: -22.,
         scale_x: 0.8,
         scale_y: 1.2,
         translate_x: 4.,
@@ -428,14 +430,24 @@ fn transform_dialog_stays_inside_narrow_short_and_resized_viewports() {
     let ctx = Context::default();
     app.editor.open_transform();
     for size in [vec2(1360., 920.), vec2(700., 500.), vec2(1700., 1000.)] {
+        let mut output = None;
         for _ in 0..3 {
-            let _ = ctx.run(
+            output = Some(ctx.run(
                 RawInput {
                     screen_rect: Some(Rect::from_min_size(Pos2::ZERO, size)),
                     ..Default::default()
                 },
                 |ctx| app.editor.transform_window(ctx),
-            );
+            ));
+        }
+        let output = output.unwrap();
+        for label in ["Apply", "Cancel"] {
+            let p = output
+                .shapes
+                .iter()
+                .find_map(|s| locate(&s.shape, label))
+                .unwrap_or_else(|| panic!("{label} is hidden at {size:?}"));
+            assert!(p.x >= 0. && p.y >= 0. && p.x <= size.x && p.y <= size.y);
         }
         let rect = ctx
             .memory(|m| m.area_rect(Id::new("free-transform")))
@@ -463,4 +475,183 @@ fn transform_invalid_target_can_switch_back_to_cached_valid_layer_bounds() {
     frame(&mut app, &ctx, size, vec![], 2.);
     assert!(app.editor.transform.as_ref().unwrap().bounds_valid);
     assert!(app.editor.transform.as_ref().unwrap().error.is_empty());
+}
+
+#[test]
+fn skew_edge_projection_and_corner_inverse_respect_rotations_flips_and_custom_pivots() {
+    let bounds = [4, 4, 20, 16];
+    let p = Parameters {
+        angle: 33.,
+        skew_x: 20.,
+        skew_y: -18.,
+        scale_x: 1.3,
+        scale_y: 0.7,
+        flip_x: true,
+        pivot_x: Some(8.),
+        pivot_y: Some(7.),
+        ..Default::default()
+    };
+    let q = quad(p, bounds).unwrap();
+    for i in 0..4 {
+        let mut wanted = p;
+        if i % 2 == 0 {
+            wanted.skew_x += 5.;
+        } else {
+            wanted.skew_y += 7.;
+        }
+        let delta = edge(quad(wanted, bounds).unwrap(), i) - edge(q, i);
+        let result = skew_drag(p, bounds, i, delta, false).unwrap();
+        assert!((result.skew_x - wanted.skew_x).abs() < 1e-4, "edge {i}");
+        assert!((result.skew_y - wanted.skew_y).abs() < 1e-4, "edge {i}");
+        let snap = skew_drag(p, bounds, i, delta, true).unwrap();
+        let angle = if i % 2 == 0 { snap.skew_x } else { snap.skew_y };
+        assert!((angle / 5. - (angle / 5.).round()).abs() < 1e-10);
+    }
+    let (m, pivot) = p.matrix(bounds).unwrap();
+    for point in [[4., 4.], [20., 16.]] {
+        let v = [
+            m[0] * (point[0] - pivot[0]) + m[1] * (point[1] - pivot[1]),
+            m[3] * (point[0] - pivot[0]) + m[4] * (point[1] - pivot[1]),
+        ];
+        let local = p.unskew(v);
+        assert!((local[0] + p.scale_x * (point[0] - pivot[0])).abs() < 1e-10);
+        assert!((local[1] - p.scale_y * (point[1] - pivot[1])).abs() < 1e-10);
+    }
+}
+
+#[test]
+fn skew_mouse_and_pen_edge_handles_only_publish_after_apply() {
+    use crate::platform::windows::desktop_bridge::{PenPhase, PenSample};
+    let size = vec2(1360., 920.);
+    for pen in [false, true] {
+        for i in 0..4 {
+            let mut app = app();
+            let ctx = Context::default();
+            for n in 0..3 {
+                frame(&mut app, &ctx, size, vec![], n as f64);
+            }
+            app.editor.open_transform();
+            frame(&mut app, &ctx, size, vec![], 3.);
+            let d = app.editor.transform.as_ref().unwrap();
+            let original = app.editor.session.doc.layers[0].pixels.clone();
+            let count = app
+                .editor
+                .session
+                .replay_journal(false)
+                .unwrap()
+                .entries
+                .len();
+            let start = edge(quad(d.params, d.bounds).unwrap(), i);
+            let mut wanted = d.params;
+            if i % 2 == 0 {
+                wanted.skew_x = 20.;
+            } else {
+                wanted.skew_y = 20.;
+            }
+            let end = edge(quad(wanted, d.bounds).unwrap(), i);
+            let screen = |p: Pos2| app.editor.image_rect.min + p.to_vec2() * app.editor.zoom;
+            let (start, end) = (screen(start), screen(end));
+            let out = frame(&mut app, &ctx, size, vec![Event::PointerMoved(start)], 3.1);
+            assert_eq!(out.platform_output.cursor_icon, CursorIcon::Move);
+            for (n, (phase, p)) in [(0, start), (1, end), (2, end)].into_iter().enumerate() {
+                let events = if pen {
+                    let ppp = ctx.pixels_per_point();
+                    app.editor.packets = vec![PenSample {
+                        phase: match phase {
+                            0 => PenPhase::Down,
+                            1 => PenPhase::Move,
+                            _ => PenPhase::Up,
+                        },
+                        x: p.x * ppp,
+                        y: p.y * ppp,
+                        pressure: 0.5,
+                        eraser: false,
+                        time: 4000 + n as u32 * 20,
+                    }];
+                    vec![]
+                } else if phase == 1 {
+                    vec![Event::PointerMoved(p)]
+                } else {
+                    vec![Event::PointerButton {
+                        pos: p,
+                        button: PointerButton::Primary,
+                        pressed: phase == 0,
+                        modifiers: Modifiers::NONE,
+                    }]
+                };
+                frame(&mut app, &ctx, size, events, 4. + n as f64 * 0.02);
+                if phase == 0 {
+                    assert!(
+                        matches!(app.editor.transform.as_ref().unwrap().drag.as_ref().map(|d|d.handle),Some(Handle::Skew(n)) if n==i)
+                    );
+                }
+            }
+            let params = app.editor.transform.as_ref().unwrap().params;
+            assert!((params.skew_x - wanted.skew_x).abs() < 1e-4);
+            assert!((params.skew_y - wanted.skew_y).abs() < 1e-4);
+            assert_eq!(app.editor.session.doc.layers[0].pixels, original);
+            if !pen && i == 1 {
+                let d = app.editor.transform.as_ref().unwrap();
+                let q = quad(d.params, d.bounds).unwrap();
+                let center = q[0] + (q[2] - q[0]) * 0.5;
+                let start = app.editor.image_rect.min + q[2].to_vec2() * app.editor.zoom;
+                let end = app.editor.image_rect.min
+                    + (center + (q[2] - center) * 0.8).to_vec2() * app.editor.zoom;
+                for (phase, p) in [(0, start), (1, end), (2, end)] {
+                    let event = if phase == 1 {
+                        Event::PointerMoved(p)
+                    } else {
+                        Event::PointerButton {
+                            pos: p,
+                            button: PointerButton::Primary,
+                            pressed: phase == 0,
+                            modifiers: Modifiers::NONE,
+                        }
+                    };
+                    frame(&mut app, &ctx, size, vec![event], 4.1 + phase as f64 * 0.02);
+                }
+                let p = app.editor.transform.as_ref().unwrap().params;
+                assert!((p.scale_x - 0.8).abs() < 1e-4 && (p.scale_y - 0.8).abs() < 1e-4);
+                assert!((p.skew_y - 20.).abs() < 1e-4);
+            }
+            assert_eq!(
+                app.editor
+                    .session
+                    .replay_journal(false)
+                    .unwrap()
+                    .entries
+                    .len(),
+                count
+            );
+            app.editor.transform.as_mut().unwrap().changed =
+                Instant::now() - Duration::from_millis(200);
+            let out = frame(&mut app, &ctx, size, vec![], 4.2);
+            assert!(app.editor.transform_texture().is_some());
+            if !pen && i == 0 {
+                let button = out
+                    .shapes
+                    .iter()
+                    .find_map(|s| locate(&s.shape, "Apply"))
+                    .unwrap();
+                click(&mut app, &ctx, button, 4.3);
+                assert!(app.editor.transform.is_none());
+                assert_eq!(
+                    app.editor
+                        .session
+                        .replay_journal(false)
+                        .unwrap()
+                        .entries
+                        .len(),
+                    count + 1
+                );
+                app.editor.core("history.undo", json!({}));
+                assert_eq!(app.editor.session.doc.layers[0].pixels, original);
+            } else {
+                app.editor.actions.push(Action::Cancel);
+                app.run_actions(&ctx);
+                assert!(app.editor.transform.is_none());
+                assert_eq!(app.editor.session.doc.layers[0].pixels, original);
+            }
+        }
+    }
 }

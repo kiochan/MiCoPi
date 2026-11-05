@@ -37,7 +37,7 @@ impl Recipe {
             || [c, f].iter().any(|v| v.abs() > 4_194_304.)
             || (a * e - b * d).abs() < 1e-8
         {
-            return Err("Invalid saved transform matrix".into());
+            return Err("Combined transform exceeds affine limits".into());
         }
         Ok(())
     }

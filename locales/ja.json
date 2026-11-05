@@ -1020,5 +1020,8 @@
   "Apply Free Transform": "自由変形を適用",
   "Repeat Last Transform": "前回の変形を繰り返す",
   "Repeat Transform with Copy": "複製して変形を繰り返す",
-  "Inspect Last Transform": "前回の変形を確認"
+  "Inspect Last Transform": "前回の変形を確認",
+  "Skew": "ゆがみ",
+  "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.": "辺のひし形をドラッグしてゆがめます。Shift で 5 度刻みに調整します。",
+  "Combined transform exceeds affine limits": "変形の組み合わせがアフィン変換の上限を超えています"
 }

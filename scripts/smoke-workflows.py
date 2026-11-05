@@ -31,9 +31,10 @@ def main():
             dict(x=24, y=130, pen=True, pressure=.2, time=10),
             dict(x=90, y=80, pen=True, pressure=1., time=40),
             dict(x=220, y=130, pen=True, pressure=.4, time=80)])),
+        dict(id=6, type='action.canvas.transform', position=[2100,0], parameters=dict(target='layer',skew_x=18,skew_y=-9,scale_x=.85,scale_y=.85)),
     ], edges=[dict(**{'from':1}, output='width', to=2, input='width'),
               dict(**{'from':1}, output='height', to=2, input='height')])
-    graph['edges'] += [dict(**{'from':i}, output='$exec', to=i+1, input='$exec') for i in range(2, 5)]
+    graph['edges'] += [dict(**{'from':i}, output='$exec', to=i+1, input='$exec') for i in range(2, 6)]
     for node in graph['nodes']:
         node.setdefault('parameters', {})
     commands = [dict(action='canvas.new', args=dict(width=256, height=192)),
@@ -47,7 +48,7 @@ def main():
     assert p.returncode == 0, p.stderr+p.stdout
     records = [json.loads(line) for line in p.stdout.splitlines()]
     assert all(r['ok'] for r in records), records
-    assert records[4]['data']['result']['completed_nodes'] == [1, 2, 3, 4, 5]
+    assert records[4]['data']['result']['completed_nodes'] == [1, 2, 3, 4, 5, 6]
     expected = (output/'batch.png').read_bytes()
     requests = [dict(jsonrpc='2.0', id=1, method='initialize', params=dict(protocolVersion='2025-11-25')),
                 dict(jsonrpc='2.0', method='notifications/initialized')]

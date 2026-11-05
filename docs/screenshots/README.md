@@ -7,6 +7,7 @@ These are actual application captures, not interface mockups. Current images com
 | [Atomic workflow](atomic-workflow.png) | Default atomic execution control in the plugin node editor |
 | [Verified replay](replay.png) | Event timeline and read-only recorded outcome preview |
 | [Selection to layer](selection-to-layer.png) | Actual selected-pixel layer extraction, with the source preserved and the new layer active |
+| [Free Transform skew](free-transform-skew.png) | Native idle skew preview, edge diamonds, ordered X/Y controls and fixed Apply/Cancel actions |
 | [Canvas trim](trim-canvas.png) | Cached trim preview, selected sides and resulting dimensions beside visible artwork |
 | [Image size](image-size.png) | Actual aspect-locked image sizing dialog with native sampling choices |
 | [Canvas quarter turn](canvas-quarter-turn.png) | Actual clockwise document rotation, transformed selection and navigator preview |
@@ -39,3 +40,6 @@ Older screenshots live in [archive](archive/README.md) for historical reference.
 `image-size.png` was reviewed from the English `scripts/smoke-localization.py` capture on 2026-11-05, alongside its Japanese capture. It shows the real Image Size dialog with nearest/bilinear/area guidance; the default remains bilinear. Opening/editing the form does not execute a resample. The smoke check also applies area reduction and restores through GUI Undo.
 
 `trim-canvas.png` was reviewed from the English `scripts/smoke-localization.py` capture on 2026-11-05, alongside its Japanese capture. The draggable controls leave the central artwork visible and retain configured outer spacing. The source frame remains 320×256 while the read-only preview proposes 256×192; Cancel preserves the document.
+
+
+`free-transform-skew.png` was reviewed from the English `scripts/smoke-localization.py` Release capture on 2026-11-05, alongside Chinese, Japanese and Korean captures. It shows combined scale, rotation and X/Y skew of selected raw pixels with a transformed selection preview. The committed snapshot remains unchanged until Apply; parameter controls scroll separately from Apply/Cancel in short viewports.

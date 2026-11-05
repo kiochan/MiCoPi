@@ -15,6 +15,10 @@ pub(crate) struct Parameters {
     pub scale_x: f64,
     pub scale_y: f64,
     pub angle: f64,
+    #[serde(skip_serializing_if = "zero")]
+    pub skew_x: f64,
+    #[serde(skip_serializing_if = "zero")]
+    pub skew_y: f64,
     pub flip_x: bool,
     pub flip_y: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -32,6 +36,8 @@ impl Default for Parameters {
             scale_x: 1.,
             scale_y: 1.,
             angle: 0.,
+            skew_x: 0.,
+            skew_y: 0.,
             flip_x: false,
             flip_y: false,
             pivot_x: None,
@@ -39,6 +45,9 @@ impl Default for Parameters {
             method: Method::Bilinear,
         }
     }
+}
+fn zero(v: &f64) -> bool {
+    *v == 0.
 }
 impl Parameters {
     pub(crate) fn matrix(&self, bounds: [usize; 4]) -> Result<([f64; 6], [f64; 2]), String> {
@@ -48,6 +57,8 @@ impl Parameters {
             self.scale_x,
             self.scale_y,
             self.angle,
+            self.skew_x,
+            self.skew_y,
         ]
         .iter()
         .all(|v| v.is_finite())
@@ -56,6 +67,8 @@ impl Parameters {
             || !(0.01..=100.).contains(&self.scale_x)
             || !(0.01..=100.).contains(&self.scale_y)
             || self.angle.abs() > 360.
+            || self.skew_x.abs() > 80.
+            || self.skew_y.abs() > 80.
             || self.pivot_x.is_some() != self.pivot_y.is_some()
             || [self.pivot_x, self.pivot_y]
                 .iter()
@@ -79,18 +92,44 @@ impl Parameters {
         };
         let sx = self.scale_x * if self.flip_x { -1. } else { 1. };
         let sy = self.scale_y * if self.flip_y { -1. } else { 1. };
-        let (a, b, d, e) = (cos * sx, -sin * sy, sin * sx, cos * sy);
-        Ok((
-            [
-                a,
-                b,
-                pivot[0] + self.translate_x - a * pivot[0] - b * pivot[1],
-                d,
-                e,
-                pivot[1] + self.translate_y - d * pivot[0] - e * pivot[1],
-            ],
-            pivot,
-        ))
+        // Local scale/flip, horizontal shear, vertical shear, then rotation.
+        let (hx, hy) = self.shears();
+        let (a, b, d, e) = (
+            (cos - sin * hy) * sx,
+            (cos * hx - sin * (1. + hx * hy)) * sy,
+            (sin + cos * hy) * sx,
+            (sin * hx + cos * (1. + hx * hy)) * sy,
+        );
+        let matrix = [
+            a,
+            b,
+            pivot[0] + self.translate_x - a * pivot[0] - b * pivot[1],
+            d,
+            e,
+            pivot[1] + self.translate_y - d * pivot[0] - e * pivot[1],
+        ];
+        Recipe {
+            matrix,
+            target: Target::Layer,
+            method: self.method,
+        }
+        .validate()?;
+        Ok((matrix, pivot))
+    }
+    pub(crate) fn shears(&self) -> (f64, f64) {
+        (
+            self.skew_x.to_radians().tan(),
+            self.skew_y.to_radians().tan(),
+        )
+    }
+    /// Undo local rotation/shears without dividing out scale or flips.
+    #[cfg(feature = "desktop")]
+    pub(crate) fn unskew(&self, v: [f64; 2]) -> [f64; 2] {
+        let (sin, cos) = self.angle.to_radians().sin_cos();
+        let (hx, hy) = self.shears();
+        let x = cos * v[0] + sin * v[1];
+        let y = -sin * v[0] + cos * v[1] - hy * x;
+        [x - hx * y, y]
     }
 }
 pub(crate) struct Plan {

@@ -595,7 +595,7 @@ pub static COMMANDS: &[Command] = &[
         "canvas.transform.open",
         "Free Transform…",
         "Edit",
-        "transform scale rotate flip pivot",
+        "transform scale rotate skew shear flip pivot",
         UiCommand(10184),
         "Ctrl+T",
         10184

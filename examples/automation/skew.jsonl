@@ -1,0 +1,9 @@
+{"action":"canvas.new","args":{"width":128,"height":96}}
+{"action":"native.checkerboard","args":{"cell":8}}
+{"action":"selection.shape","args":{"kind":"rectangle","x":24,"y":20,"width":64,"height":48}}
+{"action":"canvas.transform.plan","args":{"skew_x":24,"skew_y":-12,"angle":15}}
+{"action":"canvas.transform","args":{"skew_x":24,"skew_y":-12,"angle":15}}
+{"action":"canvas.transform.repeat_copy","args":{}}
+{"action":"replay.verify","args":{}}
+{"action":"history.undo","args":{}}
+{"action":"history.undo","args":{}}

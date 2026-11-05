@@ -169,9 +169,13 @@ def main():
             assert call('canvas.state',{})['revision']==revision
             time.sleep(.5)
             screenshot(f'{language}-free-transform.png')
+            call('canvas.transform.configure',dict(parameters=dict(target='selection',translate_x=12,translate_y=-4,scale_x=.8,scale_y=.8,angle=17,skew_x=24,skew_y=-12)))
+            assert call('canvas.state',{})['revision']==revision
+            time.sleep(.5)
+            screenshot(f'{language}-skew-transform.png')
             assert base64.b64decode(call('canvas.snapshot',{})['data'])==expected
             call('ui.dispatch',dict(id='command',value='Cancel'))
-            call('canvas.transform',dict(target='selection',translate_x=12,translate_y=-4,scale_x=.8,scale_y=.8,angle=17))
+            call('canvas.transform',dict(target='selection',translate_x=12,translate_y=-4,scale_x=.8,scale_y=.8,angle=17,skew_x=24,skew_y=-12))
             assert call('canvas.transform.state',{})['available']
             layer_count=len(call('canvas.state',{})['layers'])
             call('ui.dispatch',dict(id='command',value=dict(UiCommand=10186)))

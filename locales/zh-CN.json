@@ -1020,5 +1020,8 @@
   "Apply Free Transform": "应用自由变换",
   "Repeat Last Transform": "重复上次变换",
   "Repeat Transform with Copy": "复制并重复变换",
-  "Inspect Last Transform": "查看上次变换"
+  "Inspect Last Transform": "查看上次变换",
+  "Skew": "斜切",
+  "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.": "拖动边中点的菱形进行斜切。按住 Shift 以 5° 步进。",
+  "Combined transform exceeds affine limits": "组合变换超出了仿射变换的限制"
 }

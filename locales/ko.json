@@ -1020,5 +1020,8 @@
   "Apply Free Transform": "자유 변형 적용",
   "Repeat Last Transform": "마지막 변형 반복",
   "Repeat Transform with Copy": "복제하여 변형 반복",
-  "Inspect Last Transform": "마지막 변형 확인"
+  "Inspect Last Transform": "마지막 변형 확인",
+  "Skew": "기울이기",
+  "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.": "가장자리 마름모를 드래그하여 기울입니다. Shift를 누르면 5도씩 조절합니다.",
+  "Combined transform exceeds affine limits": "변형 조합이 아핀 변환 한도를 초과합니다"
 }

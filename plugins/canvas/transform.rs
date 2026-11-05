@@ -26,6 +26,7 @@ pub(super) struct Draft {
 enum Handle {
     Move,
     Corner(usize),
+    Skew(usize),
     Rotate,
     Pivot,
 }
@@ -33,6 +34,57 @@ struct Drag {
     handle: Handle,
     start: Pos2,
     params: Parameters,
+}
+fn edge(q: [Pos2; 4], i: usize) -> Pos2 {
+    q[i] + (q[(i + 1) % 4] - q[i]) * 0.5
+}
+/// Project the pointer delta onto the local shear direction, preserving scale/pivot.
+fn skew_drag(
+    p: Parameters,
+    bounds: [usize; 4],
+    i: usize,
+    delta: Vec2,
+    snap: bool,
+) -> Option<Parameters> {
+    let (_, pivot) = p.matrix(bounds).ok()?;
+    let (sin, cos) = p.angle.to_radians().sin_cos();
+    let local = [
+        cos * delta.x as f64 + sin * delta.y as f64,
+        -sin * delta.x as f64 + cos * delta.y as f64,
+    ];
+    let (hx, hy) = p.shears();
+    let sx = p.scale_x * if p.flip_x { -1. } else { 1. };
+    let sy = p.scale_y * if p.flip_y { -1. } else { 1. };
+    let mut next = p;
+    let (angle, value) = if i % 2 == 0 {
+        let y = if i == 0 { bounds[1] } else { bounds[3] } as f64;
+        let den = (y - pivot[1]) * sy;
+        if den.abs() < 1e-6 {
+            return None;
+        }
+        (
+            &mut next.skew_x,
+            (hx + (local[0] + hy * local[1]) / ((1. + hy * hy) * den))
+                .atan()
+                .to_degrees(),
+        )
+    } else {
+        let x = if i == 1 { bounds[2] } else { bounds[0] } as f64;
+        let y = (bounds[1] + bounds[3]) as f64 / 2.;
+        let den = sx * (x - pivot[0]) + hx * sy * (y - pivot[1]);
+        if den.abs() < 1e-6 {
+            return None;
+        }
+        (&mut next.skew_y, (hy + local[1] / den).atan().to_degrees())
+    };
+    *angle = (if snap {
+        (value / 5.).round() * 5.
+    } else {
+        value
+    })
+    .clamp(-80., 80.);
+    next.matrix(bounds).ok()?;
+    Some(next)
 }
 fn quad(p: Parameters, b: [usize; 4]) -> Option<[Pos2; 4]> {
     let (m, _) = p.matrix(b).ok()?;
@@ -226,6 +278,10 @@ impl Editor {
                     .position(|v| v.distance(q) * self.zoom < size * 0.5)
                 {
                     Some(Handle::Corner(i))
+                } else if let Some(i) =
+                    (0..4).find(|i| edge(corners, *i).distance(q) * self.zoom < size * 0.4)
+                {
+                    Some(Handle::Skew(i))
                 } else if d
                     .rotate_point(self.zoom, size)
                     .is_some_and(|v| v.distance(q) * self.zoom < size * 0.5)
@@ -291,6 +347,13 @@ impl Editor {
                             }
                             p.angle = (angle + 180.).rem_euclid(360.) - 180.;
                         }
+                        Handle::Skew(i) => {
+                            if let Some(next) =
+                                skew_drag(drag.params, d.bounds, i, q - drag.start, mods.shift)
+                            {
+                                p = next;
+                            }
+                        }
                         Handle::Corner(i) => {
                             let corner = [
                                 [d.bounds[0], d.bounds[1]],
@@ -298,13 +361,9 @@ impl Editor {
                                 [d.bounds[2], d.bounds[3]],
                                 [d.bounds[0], d.bounds[3]],
                             ][i];
-                            let (sin, cos) = p.angle.to_radians().sin_cos();
                             let v = q - center;
                             let den = [corner[0] as f64 - pivot[0], corner[1] as f64 - pivot[1]];
-                            let local = [
-                                cos * v.x as f64 + sin * v.y as f64,
-                                -sin * v.x as f64 + cos * v.y as f64,
-                            ];
+                            let local = p.unskew([v.x as f64, v.y as f64]);
                             if den[0].abs() > 1e-6 {
                                 let s = local[0] / den[0];
                                 p.scale_x = s.abs().clamp(0.01, 100.);
@@ -334,7 +393,9 @@ impl Editor {
                             }
                         }
                     }
-                    d.params = p;
+                    if p.matrix(d.bounds).is_ok() {
+                        d.params = p;
+                    }
                 }
                 if phase == 2 {
                     d.drag = None;
@@ -361,6 +422,10 @@ impl Editor {
                         .any(|c| c.distance(q) * self.zoom < size * 0.5)
                 }) {
                     CursorIcon::ResizeNwSe
+                } else if quad(d.params, d.bounds).is_some_and(|corners| {
+                    (0..4).any(|i| edge(corners, i).distance(q) * self.zoom < size * 0.4)
+                }) {
+                    CursorIcon::Move
                 } else if d
                     .rotate_point(self.zoom, size)
                     .is_some_and(|r| r.distance(q) * self.zoom < size * 0.5)
@@ -405,6 +470,19 @@ impl Editor {
                 1.,
                 color,
             );
+        }
+        for i in 0..4 {
+            let p = screen(edge(q, i));
+            painter.add(Shape::convex_polygon(
+                vec![
+                    p - vec2(0., size),
+                    p + vec2(size, 0.),
+                    p + vec2(0., size),
+                    p - vec2(size, 0.),
+                ],
+                color,
+                Stroke::NONE,
+            ));
         }
         if let Some(r) = d.rotate_point(self.zoom, self.settings.ui.icon_size) {
             painter.line_segment(
@@ -452,7 +530,6 @@ impl Editor {
             .open(&mut open)
             .collapsible(false)
             .resizable(false)
-            .vscroll(true)
             .max_height(
                 (ctx.content_rect().height()
                     - a.outer_padding * 2.
@@ -467,177 +544,218 @@ impl Editor {
                 ctx.content_rect().center().y - a.control_height * 9.,
             ))
             .show(ctx, |ui| {
-                ui.label(tr(
-                    "Drag inside to move, corners to scale, or the round handle to rotate.",
-                ));
-                ui.weak(tr(
-                    "Shift constrains movement or snaps rotation to 15 degrees.",
-                ));
-                ui.weak(tr(
-                    "Drag the crosshair to move the pivot without moving the artwork.",
-                ));
-                ui.add_space(a.item_spacing);
-                let mut target = d.params.target.unwrap();
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(tr("Target"));
-                    ComboBox::from_id_salt("transform-target")
-                        .selected_text(tr(canvas_movement::target_title(target)))
-                        .show_ui(ui, |ui| {
-                            for t in canvas_movement::TARGETS {
-                                if t != MoveTarget::Auto {
-                                    ui.selectable_value(
-                                        &mut target,
-                                        t,
-                                        tr(canvas_movement::target_title(t)),
-                                    );
-                                }
-                            }
-                        });
-                });
-                d.params.target = Some(target);
-                if target != d.bounds_target {
-                    d.bounds_target = target;
-                    match affine::source_bounds(&self.session, target) {
-                        Ok(b) => {
-                            d.bounds = b;
-                            d.bounds_valid = true;
-                            d.error.clear();
-                        }
-                        Err(e) => {
-                            d.error = e;
-                            d.bounds_valid = false;
-                        }
-                    }
-                }
-                Grid::new("transform-values")
-                    .spacing(vec2(a.item_spacing * 2., a.item_spacing))
+                let mut allowed = false;
+                ScrollArea::vertical()
+                    .id_salt("transform-controls")
+                    .max_height(
+                        (ctx.content_rect().height()
+                            - a.outer_padding * 2.
+                            - frame.total_margin().sum().y
+                            - a.title_height
+                            - a.control_height
+                            - a.item_spacing * 2.)
+                            .max(a.control_height * 2.),
+                    )
                     .show(ui, |ui| {
-                        for (label, x, y) in [(
-                            "Translate",
-                            &mut d.params.translate_x,
-                            &mut d.params.translate_y,
-                        )] {
-                            ui.label(tr(label));
-                            ui.label("X");
-                            ui.add(DragValue::new(x).speed(1.).range(-8192. ..=8192.));
-                            ui.label("Y");
-                            ui.add(DragValue::new(y).speed(1.).range(-8192. ..=8192.));
-                            ui.end_row();
-                        }
-                        let old = [d.params.scale_x, d.params.scale_y];
-                        let mut scale = [old[0] * 100., old[1] * 100.];
-                        ui.label(tr("Scale"));
-                        ui.label("X");
-                        let x = ui.add(
-                            DragValue::new(&mut scale[0])
-                                .speed(1.)
-                                .range(1. ..=10000.)
-                                .suffix("%"),
-                        );
-                        ui.label("Y");
-                        let y = ui.add(
-                            DragValue::new(&mut scale[1])
-                                .speed(1.)
-                                .range(1. ..=10000.)
-                                .suffix("%"),
-                        );
-                        ui.end_row();
-                        if d.locked {
-                            if x.changed() {
-                                scale[1] = scale[0] * old[1] / old[0];
-                            } else if y.changed() {
-                                scale[0] = scale[1] * old[0] / old[1];
-                            }
-                        }
-                        d.params.scale_x = scale[0] / 100.;
-                        d.params.scale_y = scale[1] / 100.;
-                        ui.label(tr("Angle"));
-                        ui.add(
-                            DragValue::new(&mut d.params.angle)
-                                .speed(1.)
-                                .range(-360. ..=360.)
-                                .suffix("°"),
-                        );
-                        ui.end_row();
-                        let pivot = d
-                            .params
-                            .matrix(d.bounds)
-                            .map(|(_, p)| p)
-                            .unwrap_or([0., 0.]);
-                        let (mut px, mut py) = (pivot[0], pivot[1]);
-                        ui.label(tr("Pivot"));
-                        ui.label("X");
-                        let x = ui.add(DragValue::new(&mut px).speed(0.5).range(-8192. ..=8192.));
-                        ui.label("Y");
-                        let y = ui.add(DragValue::new(&mut py).speed(0.5).range(-8192. ..=8192.));
-                        ui.end_row();
-                        if x.changed() || y.changed() {
-                            if let Some(next) = relocate_pivot(d.params, d.bounds, Some([px, py])) {
-                                d.params = next;
-                                d.attempt = None;
-                                if d.bounds_valid {
+                        ui.label(tr(
+                            "Drag inside to move, corners to scale, or the round handle to rotate.",
+                        ));
+                        ui.weak(tr(
+                            "Shift constrains movement or snaps rotation to 15 degrees.",
+                        ));
+                        ui.weak(tr(
+                            "Drag the crosshair to move the pivot without moving the artwork.",
+                        ));
+                        ui.weak(tr(
+                            "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.",
+                        ));
+                        ui.add_space(a.item_spacing);
+                        let mut target = d.params.target.unwrap();
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(tr("Target"));
+                            ComboBox::from_id_salt("transform-target")
+                                .selected_text(tr(canvas_movement::target_title(target)))
+                                .show_ui(ui, |ui| {
+                                    for t in canvas_movement::TARGETS {
+                                        if t != MoveTarget::Auto {
+                                            ui.selectable_value(
+                                                &mut target,
+                                                t,
+                                                tr(canvas_movement::target_title(t)),
+                                            );
+                                        }
+                                    }
+                                });
+                        });
+                        d.params.target = Some(target);
+                        if target != d.bounds_target {
+                            d.bounds_target = target;
+                            match affine::source_bounds(&self.session, target) {
+                                Ok(b) => {
+                                    d.bounds = b;
+                                    d.bounds_valid = true;
                                     d.error.clear();
                                 }
-                            } else {
-                                d.error = "Pivot change exceeds transform limits".into();
+                                Err(e) => {
+                                    d.error = e;
+                                    d.bounds_valid = false;
+                                }
                             }
                         }
-                    });
-                ui.horizontal_wrapped(|ui| {
-                    ui.checkbox(&mut d.locked, tr("Lock Aspect Ratio"));
-                    ui.checkbox(&mut d.params.flip_x, tr("Flip Horizontal"));
-                    ui.checkbox(&mut d.params.flip_y, tr("Flip Vertical"));
-                    if ui.button(tr("Center Pivot")).clicked() {
-                        if let Some(next) = relocate_pivot(d.params, d.bounds, None) {
-                            d.params = next;
-                            d.attempt = None;
-                            if d.bounds_valid {
-                                d.error.clear();
+                        Grid::new("transform-values")
+                            .spacing(vec2(a.item_spacing * 2., a.item_spacing))
+                            .show(ui, |ui| {
+                                for (label, x, y) in [(
+                                    "Translate",
+                                    &mut d.params.translate_x,
+                                    &mut d.params.translate_y,
+                                )] {
+                                    ui.label(tr(label));
+                                    ui.label("X");
+                                    ui.add(DragValue::new(x).speed(1.).range(-8192. ..=8192.));
+                                    ui.label("Y");
+                                    ui.add(DragValue::new(y).speed(1.).range(-8192. ..=8192.));
+                                    ui.end_row();
+                                }
+                                let old = [d.params.scale_x, d.params.scale_y];
+                                let mut scale = [old[0] * 100., old[1] * 100.];
+                                ui.label(tr("Scale"));
+                                ui.label("X");
+                                let x = ui.add(
+                                    DragValue::new(&mut scale[0])
+                                        .speed(1.)
+                                        .range(1. ..=10000.)
+                                        .suffix("%"),
+                                );
+                                ui.label("Y");
+                                let y = ui.add(
+                                    DragValue::new(&mut scale[1])
+                                        .speed(1.)
+                                        .range(1. ..=10000.)
+                                        .suffix("%"),
+                                );
+                                ui.end_row();
+                                if d.locked {
+                                    if x.changed() {
+                                        scale[1] = scale[0] * old[1] / old[0];
+                                    } else if y.changed() {
+                                        scale[0] = scale[1] * old[0] / old[1];
+                                    }
+                                }
+                                d.params.scale_x = scale[0] / 100.;
+                                d.params.scale_y = scale[1] / 100.;
+                                ui.label(tr("Skew"));
+                                ui.label("X");
+                                ui.add(
+                                    DragValue::new(&mut d.params.skew_x)
+                                        .speed(0.5)
+                                        .range(-80. ..=80.)
+                                        .suffix("°"),
+                                );
+                                ui.label("Y");
+                                ui.add(
+                                    DragValue::new(&mut d.params.skew_y)
+                                        .speed(0.5)
+                                        .range(-80. ..=80.)
+                                        .suffix("°"),
+                                );
+                                ui.end_row();
+                                ui.label(tr("Angle"));
+                                ui.add(
+                                    DragValue::new(&mut d.params.angle)
+                                        .speed(1.)
+                                        .range(-360. ..=360.)
+                                        .suffix("°"),
+                                );
+                                ui.end_row();
+                                let pivot = d
+                                    .params
+                                    .matrix(d.bounds)
+                                    .map(|(_, p)| p)
+                                    .unwrap_or([0., 0.]);
+                                let (mut px, mut py) = (pivot[0], pivot[1]);
+                                ui.label(tr("Pivot"));
+                                ui.label("X");
+                                let x = ui
+                                    .add(DragValue::new(&mut px).speed(0.5).range(-8192. ..=8192.));
+                                ui.label("Y");
+                                let y = ui
+                                    .add(DragValue::new(&mut py).speed(0.5).range(-8192. ..=8192.));
+                                ui.end_row();
+                                if x.changed() || y.changed() {
+                                    if let Some(next) =
+                                        relocate_pivot(d.params, d.bounds, Some([px, py]))
+                                    {
+                                        d.params = next;
+                                        d.attempt = None;
+                                        if d.bounds_valid {
+                                            d.error.clear();
+                                        }
+                                    } else {
+                                        d.error = "Pivot change exceeds transform limits".into();
+                                    }
+                                }
+                            });
+                        ui.horizontal_wrapped(|ui| {
+                            ui.checkbox(&mut d.locked, tr("Lock Aspect Ratio"));
+                            ui.checkbox(&mut d.params.flip_x, tr("Flip Horizontal"));
+                            ui.checkbox(&mut d.params.flip_y, tr("Flip Vertical"));
+                            if ui.button(tr("Center Pivot")).clicked() {
+                                if let Some(next) = relocate_pivot(d.params, d.bounds, None) {
+                                    d.params = next;
+                                    d.attempt = None;
+                                    if d.bounds_valid {
+                                        d.error.clear();
+                                    }
+                                } else {
+                                    d.error = "Pivot change exceeds transform limits".into();
+                                }
                             }
-                        } else {
-                            d.error = "Pivot change exceeds transform limits".into();
-                        }
-                    }
-                });
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(tr("Sampling"));
-                    ComboBox::from_id_salt("transform-method")
-                        .selected_text(tr(if d.params.method == Method::Nearest {
-                            "Nearest Neighbor"
-                        } else {
-                            "Bilinear"
-                        }))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(
-                                &mut d.params.method,
-                                Method::Nearest,
-                                tr("Nearest Neighbor"),
-                            );
-                            ui.selectable_value(
-                                &mut d.params.method,
-                                Method::Bilinear,
-                                tr("Bilinear"),
-                            );
                         });
-                    ui.checkbox(&mut d.preview, tr("Preview"));
-                });
-                ui.weak(tr(
-                    "Pixels beyond the canvas are clipped. Undo restores them.",
-                ));
-                if stale {
-                    ui.colored_label(c.accent, tr("Document changed; reopen Free Transform."));
-                }
-                let matrix = d.params.matrix(d.bounds);
-                if let Err(e) = &matrix {
-                    ui.colored_label(c.accent, tr(e));
-                }
-                if !d.error.is_empty() {
-                    ui.colored_label(c.accent, tr(&d.error));
-                }
-                let allowed = !stale
-                    && d.bounds_valid
-                    && d.error.is_empty()
-                    && matrix.is_ok_and(|(m, _)| m != [1., 0., 0., 0., 1., 0.]);
+                        ui.horizontal_wrapped(|ui| {
+                            ui.label(tr("Sampling"));
+                            ComboBox::from_id_salt("transform-method")
+                                .selected_text(tr(if d.params.method == Method::Nearest {
+                                    "Nearest Neighbor"
+                                } else {
+                                    "Bilinear"
+                                }))
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(
+                                        &mut d.params.method,
+                                        Method::Nearest,
+                                        tr("Nearest Neighbor"),
+                                    );
+                                    ui.selectable_value(
+                                        &mut d.params.method,
+                                        Method::Bilinear,
+                                        tr("Bilinear"),
+                                    );
+                                });
+                            ui.checkbox(&mut d.preview, tr("Preview"));
+                        });
+                        ui.weak(tr(
+                            "Pixels beyond the canvas are clipped. Undo restores them.",
+                        ));
+                        if stale {
+                            ui.colored_label(
+                                c.accent,
+                                tr("Document changed; reopen Free Transform."),
+                            );
+                        }
+                        let matrix = d.params.matrix(d.bounds);
+                        if let Err(e) = &matrix {
+                            ui.colored_label(c.accent, tr(e));
+                        }
+                        if !d.error.is_empty() {
+                            ui.colored_label(c.accent, tr(&d.error));
+                        }
+                        allowed = !stale
+                            && d.bounds_valid
+                            && d.error.is_empty()
+                            && matrix.is_ok_and(|(m, _)| m != [1., 0., 0., 0., 1., 0.]);
+                    });
+                ui.add_space(a.item_spacing);
                 ui.horizontal(|ui| {
                     if ui.button(tr("Cancel")).clicked() {
                         cancel = true;

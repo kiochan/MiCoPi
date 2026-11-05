@@ -303,6 +303,9 @@ mod tests {
             [0., -1., 5., 1., 0., 0.],
             [-1., 0., 5., 0., 1., 0.],
             [0., 1., 0., -1., 0., 5.],
+            [1., 1., -0.5, 0., 1., 0.],
+            [1., 0., 0., 1., 1., -0.5],
+            [1., 1., -0.5, 1., 2., -1.],
         ] {
             let mut expected = vec![0; stride * h];
             let mut expected_mask = vec![0; w * h];
@@ -388,6 +391,48 @@ mod tests {
             abi::OK
         );
         assert_eq!(result, [128, 128]);
+    }
+    #[test]
+    fn fractional_shear_matches_hand_calculated_premultiplied_rows_and_mask() {
+        let mut source = [
+            0xff445566, 0xff778899, 0xffaabbcc, 0xffff0000, 0x8000ff00, 0x000000ff, 0xff112233,
+            0x7f445566, 0xffaabbcc,
+        ];
+        let original = source;
+        let mut out = [0; 9];
+        // Row zero has no shift, row one shifts half a pixel, row two one pixel.
+        let o = abi::Affine {
+            kind: 0,
+            method: 1,
+            matrix: [1., 0.5, -0.25, 0., 1., 0.],
+        };
+        assert_eq!(
+            unsafe {
+                pixels(
+                    &o,
+                    &view(&mut source, 3, 3, 3),
+                    &absent(),
+                    &mut view(&mut out, 3, 3, 3),
+                )
+            },
+            abi::OK
+        );
+        assert_eq!(
+            out,
+            [
+                0xff445566, 0xff778899, 0xffaabbcc, 0x80ff0000, 0xc0aa5500, 0x4000ff00, 0,
+                0xff112233, 0x7f445566
+            ]
+        );
+        let bytes = [7, 255, 23, 255, 128, 0, 32, 64, 128];
+        let c = coverage(&bytes, 3, 3, 3);
+        let mut mask_out = [0; 9];
+        assert_eq!(
+            unsafe { mask(&abi::Affine { kind: 2, ..o }, &c, mask_out.as_mut_ptr(), 9) },
+            abi::OK
+        );
+        assert_eq!(mask_out, [7, 255, 23, 128, 192, 64, 0, 32, 64]);
+        assert_eq!(source, original);
     }
     #[test]
     fn selected_affine_translation_matches_original_clear_and_paste_without_feedback() {
