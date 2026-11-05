@@ -42,3 +42,6 @@ mod clipboard_tests;
 
 #[cfg(test)]
 mod layer_transfer_tests;
+
+#[cfg(test)]
+mod system_clipboard_tests;

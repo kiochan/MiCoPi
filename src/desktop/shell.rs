@@ -62,6 +62,11 @@ impl Studio {
                                     vec![
                                         (5, "Undo"),
                                         (6, "Redo"),
+                                        (10161, "Copy"),
+                                        (10162, "Copy Merged"),
+                                        (10163, "Cut"),
+                                        (10164, "Paste"),
+                                        (10165, "Paste in Place"),
                                         (10144, "Canvas Size…"),
                                         (10145, "Crop Canvas…"),
                                         (42, "New Layer"),

@@ -84,3 +84,7 @@ Clear **Contiguous Fill** to recolor matching pixels across the current layer. G
 
 Enable **Lock Layer Transparency** in Layers to recolor painted pixels while retaining their alpha. Use the layer menu or **Alt+Backspace** / **Ctrl+Backspace** for foreground/background fills. These fills respect brush opacity and the layer transparency lock.
 See [Plugin Windows](plugin-windows.md) for the independent control bar, floating canvas, window commands and workspace migration.
+
+### Windows image clipboard
+
+Copy, Copy Merged, Cut, Paste and Paste in Place are registered desktop commands in Edit and command search, with configurable Ctrl+C/Shift+C/X/V/Shift+V bindings. Focused text fields keep their ordinary text shortcuts. Headless scripts retain separate Session clipboard commands. Windows codec and failure-path tests pass, but native/cross-application roundtrip verification remains pending because this test host cannot create the isolated window station. See [Clipboard](clipboard.md) for formats, ownership, limits and safe test instructions.

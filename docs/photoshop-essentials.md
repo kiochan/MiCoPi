@@ -39,7 +39,7 @@ Acceptance: source buffers and metadata return on undo; redo restores the merged
 
 ### P2 — Selection and clipboard foundation
 
-Implemented: bounded masks, geometry/combinations, marquee/lasso gestures, color matching, persistent sampling defaults, native edge processing, selected painting/actions and cached outlines. Undo, rollback and outcome replay share the document contracts. Internal copy/cut/paste and public clipboard state are now implemented; system clipboard integration remains pending. See [Selections](selections.md).
+Implemented: bounded masks, geometry/combinations, marquee/lasso gestures, color matching, persistent sampling defaults, native edge processing, selected painting/actions and cached outlines. Undo, rollback and outcome replay share the document contracts. Internal copy/cut/paste and public clipboard state are now implemented; the Windows adapter is implemented, with native interoperability verification still pending. See [Selections](selections.md).
 
 - [x] Add bounded document selection data, persistence, undo, atomic rollback and outcome replay.
 - [x] Add rectangular/elliptical marquees, freehand/polygonal lassos and replace/add/subtract/intersect modes.
@@ -51,7 +51,8 @@ Implemented: bounded masks, geometry/combinations, marquee/lasso gestures, color
 - [x] Restrict connected fill traversal to selected coverage so excluded pixels cannot bridge separate selected islands, including expansion/feathering.
 - [x] Add internal copy, copy merged, cut, centered paste and paste in place with bounded public state, atomic rollback and verified document outcomes. See [Session clipboard](clipboard.md).
 - [x] Add Layer via Copy/Cut with selection-aware Ctrl+J/Ctrl+Shift+J, one structural/tiled undo, native transfers and unchanged clipboards. Preserve explicit older bindings.
-- [ ] Add an explicit desktop system-clipboard adapter and PS default clipboard bindings.
+- [x] Add an explicit Windows image clipboard adapter, bounded PNG/DIB codecs, local checkpoints, external-effect declarations and configurable PS bindings.
+- [ ] Verify isolated native PNG/DIBV5/DIB roundtrips and cross-application clipboard interoperability on an unrestricted Windows host. This host denies private window-station creation; codec/memory-adapter tests and format-availability queries do not close this gate.
 
 Acceptance: preview/cancel leaves pixels untouched; selection is visible and behaves identically through mouse, pen and actions; the mask is cached at contact boundaries rather than serialized/rebuilt per MOVE; overlapping selection modes and empty/full selections are tested; clipboard payloads have dimension/memory bounds and explicit external-effect semantics.
 

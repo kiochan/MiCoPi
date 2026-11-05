@@ -592,6 +592,16 @@ impl Studio {
                                 serde_json::json!({"color":color,"opacity":self.editor.opacity}),
                             );
                         }
+                        10161..=10165 => {
+                            let action = match id {
+                                10161 => "clipboard.system_copy",
+                                10162 => "clipboard.system_copy_merged",
+                                10163 => "clipboard.system_cut",
+                                10164 => "clipboard.system_paste",
+                                _ => "clipboard.system_paste_in_place",
+                            };
+                            self.editor.core(action, serde_json::json!({}));
+                        }
                         10159 | 10160 => {
                             self.editor.core(
                                 if id == 10159 {

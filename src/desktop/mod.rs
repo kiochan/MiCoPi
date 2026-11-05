@@ -229,6 +229,10 @@ impl Editor {
             crate::application::Session::new(crate::plugins::Registry::bundled()).unwrap()
         });
         session.runtime = "desktop";
+        session.system_clipboard = native
+            .as_ref()
+            .filter(|n| n.window_id() != 0)
+            .map(|n| crate::platform::clipboard::for_window(n.window_id() as isize));
         let plugin_nodes = session.registry.node_catalog();
         #[cfg(not(test))]
         let locales = {
@@ -377,7 +381,30 @@ impl Editor {
             .session
             .apply(crate::application::Action::new(id, args))
         {
-            Ok(_) => true,
+            Ok(value) => {
+                let message = match id {
+                    "clipboard.system_copy" | "clipboard.system_copy_merged" => {
+                        Some("Image copied to clipboard")
+                    }
+                    "clipboard.system_cut" => Some("Selected pixels cut to clipboard"),
+                    "clipboard.system_paste" | "clipboard.system_paste_in_place" => {
+                        Some("Image pasted")
+                    }
+                    _ => None,
+                };
+                if let Some(message) = message {
+                    // Store English source messages so language/catalog changes
+                    // apply at the existing status presentation boundary.
+                    self.status = message.to_owned();
+                    if value["result"]["system"]["warnings"]
+                        .as_array()
+                        .is_some_and(|v| !v.is_empty())
+                    {
+                        self.status = "Clipboard updated; optional formats were unavailable".into();
+                    }
+                }
+                true
+            }
             Err(e) => {
                 self.status = e.to_string();
                 false
@@ -1434,4 +1461,52 @@ pub fn run() -> eframe::Result {
         options,
         Box::new(|cc| Ok(Box::new(Studio::new(cc)))),
     )
+}
+
+#[cfg(test)]
+mod clipboard_presentation_tests {
+    use super::*;
+    struct PartialClipboard;
+    impl crate::platform::clipboard::SystemClipboard for PartialClipboard {
+        fn status(&self) -> Result<serde_json::Value, String> {
+            unreachable!()
+        }
+        fn read(&self) -> Result<crate::platform::clipboard::ReadImage, String> {
+            unreachable!()
+        }
+        fn write(
+            &self,
+            _: &crate::platform::clipboard::View<'_>,
+            _: &[u8],
+        ) -> Result<serde_json::Value, String> {
+            Ok(
+                serde_json::json!({"scope":"windows","png":true,"dibv5":false,"origin_metadata":false,"warnings":["fixture fallback unavailable"]}),
+            )
+        }
+    }
+    #[test]
+    fn successful_primary_copy_surfaces_optional_publication_warnings() {
+        let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target/test-output/clipboard-presentation/settings.json");
+        let mut editor = Editor::new(path, None);
+        editor.session.registry = crate::plugins::Registry::load(
+            &std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+        )
+        .unwrap();
+        editor.session.system_clipboard = Some(Box::new(PartialClipboard));
+        assert!(editor.core("canvas.new", serde_json::json!({"width":2,"height":2})));
+        assert!(editor.core("clipboard.system_copy", serde_json::json!({})));
+        assert!(editor.session.clipboard.is_some());
+        assert_eq!(
+            editor.status,
+            "Clipboard updated; optional formats were unavailable"
+        );
+        let journal = editor.session.replay_journal(false).unwrap();
+        let last = journal.entries.len() - 1;
+        let event = journal.events(last, 1).unwrap();
+        assert_eq!(
+            event["events"][0]["source"]["context"]["system"]["publication"]["warnings"][0],
+            "fixture fallback unavailable"
+        );
+    }
 }

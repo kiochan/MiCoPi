@@ -198,6 +198,8 @@ pub struct Event {
     pub event: EventKind,
 }
 pub struct Session {
+    pub(crate) system_clipboard: Option<Box<dyn crate::platform::clipboard::SystemClipboard>>,
+    pub(crate) system_clipboard_event: Option<Value>,
     pub(crate) clipboard: Option<std::sync::Arc<crate::plugins::clipboard::Payload>>,
     pub(crate) pointer_checkpoint: Option<(
         super::atomic::Checkpoint,
@@ -292,6 +294,8 @@ impl Session {
             selection_defaults: Default::default(),
             settings_path: None,
             clipboard: None,
+            system_clipboard: None,
+            system_clipboard_event: None,
             ui_effects: VecDeque::new(),
             stroke: Default::default(),
             events: VecDeque::with_capacity(512),
@@ -413,13 +417,21 @@ impl Session {
                     "Finish the current contact before starting an atomic group",
                 ));
             }
+            if op.is_some_and(Operation::system_clipboard_mutation)
+                && self.runtime == "desktop"
+                && self.system_clipboard.is_some()
+            {
+                self.finish_stroke();
+            }
             if recording {
                 self.replay_boundary()?;
             }
             let mut checkpoint = if recording
                 && self.atomic_depth == 0
                 && !self.stroke.active()
-                && (atomic_group || self.registry.actions[&id].is_document_atomic())
+                && (atomic_group
+                    || self.registry.actions[&id].is_document_atomic()
+                    || op.is_some_and(Operation::system_clipboard_mutation))
             {
                 Some(super::atomic::Checkpoint::capture(self))
             } else {

@@ -922,5 +922,15 @@
   "Paste session clipboard centered": "세션 클립보드를 가운데에 붙여넣기",
   "Paste session clipboard in place": "세션 클립보드를 제자리에 붙여넣기",
   "Layer via Copy": "복사한 영역으로 레이어 만들기",
-  "Layer via Cut": "잘라낸 영역으로 레이어 만들기"
+  "Layer via Cut": "잘라낸 영역으로 레이어 만들기",
+  "Copy": "복사",
+  "Copy Merged": "병합하여 복사",
+  "Cut": "잘라내기",
+  "Paste": "붙여넣기",
+  "Paste in Place": "제자리에 붙여넣기",
+  "Inspect System Clipboard": "시스템 클립보드 확인",
+  "Clipboard updated; optional formats were unavailable": "클립보드를 업데이트했습니다. 일부 보조 형식은 사용할 수 없습니다",
+  "Image copied to clipboard": "이미지를 클립보드에 복사했습니다",
+  "Selected pixels cut to clipboard": "선택한 픽셀을 클립보드로 잘라냈습니다",
+  "Image pasted": "이미지를 붙여넣었습니다"
 }

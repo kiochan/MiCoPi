@@ -922,5 +922,15 @@
   "Paste session clipboard centered": "セッションのクリップボードを中央に貼り付け",
   "Paste session clipboard in place": "セッションのクリップボードを元の位置に貼り付け",
   "Layer via Copy": "選択範囲をコピーしてレイヤー作成",
-  "Layer via Cut": "選択範囲を切り取ってレイヤー作成"
+  "Layer via Cut": "選択範囲を切り取ってレイヤー作成",
+  "Copy": "コピー",
+  "Copy Merged": "結合部分をコピー",
+  "Cut": "切り取り",
+  "Paste": "貼り付け",
+  "Paste in Place": "同じ位置に貼り付け",
+  "Inspect System Clipboard": "システムクリップボードを確認",
+  "Clipboard updated; optional formats were unavailable": "クリップボードを更新しました。一部の補助形式は利用できません",
+  "Image copied to clipboard": "画像をクリップボードにコピーしました",
+  "Selected pixels cut to clipboard": "選択したピクセルをクリップボードに切り取りました",
+  "Image pasted": "画像を貼り付けました"
 }

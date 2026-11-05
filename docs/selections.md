@@ -1,6 +1,6 @@
 # Selections
 
-Selections belong to the document, not the desktop tool. The current increment provides schema-described rectangle, ellipse and polygon geometry, combination modes, Select All/Deselect/Reselect/Invert, native painting/action clipping, persistence, undo and verified replay. Mouse/pen marquee and lasso gestures are available. Color-based selection is available through the Magic Wand tool and shared commands. Native selection edge processing is available; [Session clipboard](clipboard.md) copy/cut/paste is available. [Layer via Copy/Cut](layer-editing.md#layer-via-copy-and-cut) is also available. System clipboard integration remains planned in [the editing checklist](photoshop-essentials.md).
+Selections belong to the document, not the desktop tool. The current increment provides schema-described rectangle, ellipse and polygon geometry, combination modes, Select All/Deselect/Reselect/Invert, native painting/action clipping, persistence, undo and verified replay. Mouse/pen marquee and lasso gestures are available. Color-based selection is available through the Magic Wand tool and shared commands. Native selection edge processing is available; [Session clipboard](clipboard.md) copy/cut/paste is available. [Layer via Copy/Cut](layer-editing.md#layer-via-copy-and-cut) is also available. The Windows clipboard adapter is implemented, with native interoperability verification pending in [the editing checklist](photoshop-essentials.md).
 
 ![Actual workbench with Wand controls and an existing ellipse selection](screenshots/selection.png)
 

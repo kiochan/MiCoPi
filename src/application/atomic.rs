@@ -80,6 +80,17 @@ impl Checkpoint {
     }
 }
 impl Operation {
+    pub(crate) fn system_clipboard_mutation(self) -> bool {
+        matches!(
+            self,
+            Self::SystemClipboardCopy
+                | Self::SystemClipboardCopyMerged
+                | Self::SystemClipboardCut
+                | Self::SystemClipboardPaste
+                | Self::SystemClipboardPasteInPlace
+        )
+    }
+
     pub(crate) fn document_atomic(self) -> bool {
         matches!(
             self,

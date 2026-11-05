@@ -21,6 +21,7 @@ mod layers;
 mod painting;
 mod selection;
 mod system;
+mod system_clipboard;
 pub(crate) mod windows;
 mod workbench;
 pub(crate) fn execute(
@@ -30,6 +31,12 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        SystemClipboardCopy
+        | SystemClipboardCopyMerged
+        | SystemClipboardCut
+        | SystemClipboardPaste
+        | SystemClipboardPasteInPlace
+        | SystemClipboardState => system_clipboard::execute(session, op),
         LayerViaCopy | LayerViaCut => layer_transfer::execute(session, op),
         ClipboardCopy
         | ClipboardCopyMerged

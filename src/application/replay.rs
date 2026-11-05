@@ -142,7 +142,9 @@ impl Session {
             self.replay_error = None;
             self.replay_identity = self.doc.identity;
         }
-        let context = if success
+        let context = if success && op.is_some_and(Operation::system_clipboard_mutation) {
+            self.system_clipboard_event.take()
+        } else if success
             && matches!(
                 op,
                 Some(
@@ -152,7 +154,8 @@ impl Session {
                         | Operation::ClipboardPaste
                         | Operation::ClipboardPasteInPlace
                 )
-            ) {
+            )
+        {
             Some(serde_json::json!({"clipboard": crate::plugins::clipboard::state(self)}))
         } else {
             None

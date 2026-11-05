@@ -44,9 +44,9 @@ Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadma
 
 Layers support renaming, reordering, deletion and selection-aware **Layer via Copy (Ctrl+J)** / **Layer via Cut (Ctrl+Shift+J)**. Without a selection, Ctrl+J duplicates the whole layer. Layers also support Merge Down (**Ctrl+E**), Merge Visible (**Ctrl+Shift+E**), Stamp Visible (**Ctrl+Alt+Shift+E**) and transparent-canvas flattening. Exact flips, 180° rotation and integer offsets are also available. See [Layer editing](docs/layer-editing.md).
 
-Current limits: one document per session; no Wintab, system clipboard, free transforms, layer groups or watercolor engine. Native plugin DLLs execute inside the host process.
+Current limits: one document per session; no Wintab, free transforms, layer groups or watercolor engine. Native plugin DLLs execute inside the host process.
 
-Schema-described rectangle, ellipse and polygon [selections](docs/selections.md) support combinations, native drawing/action clipping, undo and replay. The Tools strip offers rectangle/ellipse marquees and freehand/polygonal lassos with reversible previews. PS-style selection shortcuts are configurable; [Session clipboard](docs/clipboard.md) copy/cut/paste commands are available; Windows clipboard integration remains planned.
+Schema-described rectangle, ellipse and polygon [selections](docs/selections.md) support combinations, native drawing/action clipping, undo and replay. The Tools strip offers rectangle/ellipse marquees and freehand/polygonal lassos with reversible previews. PS-style selection shortcuts are configurable; [Session clipboard](docs/clipboard.md) copy/cut/paste commands are available; Windows PNG/DIB clipboard commands and PS copy/cut/paste bindings are implemented; native roundtrip interoperability validation remains pending on this restricted test host.
 
 Magic Wand (**W**) offers tolerance, contiguous and merged sampling controls, plus Grow/Similar. The same color-selection commands are available through parameter forms and automation. Selection defaults are configurable in the searchable settings center and `settings.json`. Selections also provide exact disk expansion/contraction, feathering and smoothing through native actions.
 

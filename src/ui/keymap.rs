@@ -439,6 +439,51 @@ pub static COMMANDS: &[Command] = &[
         42
     ),
     c!(
+        "clipboard.system_copy",
+        "Copy",
+        "Edit",
+        "copy clipboard selection",
+        UiCommand(10161),
+        "Ctrl+C",
+        10161
+    ),
+    c!(
+        "clipboard.system_copy_merged",
+        "Copy Merged",
+        "Edit",
+        "copy merged clipboard",
+        UiCommand(10162),
+        "Ctrl+Shift+C",
+        10162
+    ),
+    c!(
+        "clipboard.system_cut",
+        "Cut",
+        "Edit",
+        "cut clipboard selection",
+        UiCommand(10163),
+        "Ctrl+X",
+        10163
+    ),
+    c!(
+        "clipboard.system_paste",
+        "Paste",
+        "Edit",
+        "paste clipboard image",
+        UiCommand(10164),
+        "Ctrl+V",
+        10164
+    ),
+    c!(
+        "clipboard.system_paste_in_place",
+        "Paste in Place",
+        "Edit",
+        "paste clipboard original position",
+        UiCommand(10165),
+        "Ctrl+Shift+V",
+        10165
+    ),
+    c!(
         "layer.via_copy",
         "Layer via Copy",
         "Layers",
@@ -1533,7 +1578,8 @@ impl Keymap {
             .collect();
         for (i, command) in COMMANDS.iter().enumerate() {
             if (command.id.starts_with("toolbox.mode.selection_")
-                || matches!(command.id, "layer.via_copy" | "layer.via_cut"))
+                || matches!(command.id, "layer.via_copy" | "layer.via_cut")
+                || command.id.starts_with("clipboard.system_"))
                 && !explicit.contains(command.id)
             {
                 map.bindings[i].retain(|key| !reserved.contains(key));
@@ -1816,5 +1862,28 @@ mod tests {
             vec![Chord::parse("Ctrl+Alt+J").unwrap()]
         );
         assert!(map.bindings[cut].is_empty());
+    }
+    #[test]
+    fn system_clipboard_defaults_yield_to_explicit_older_bindings() {
+        for (id, key) in [
+            ("clipboard.system_copy", "Ctrl+C"),
+            ("clipboard.system_copy_merged", "Ctrl+Shift+C"),
+            ("clipboard.system_cut", "Ctrl+X"),
+            ("clipboard.system_paste", "Ctrl+V"),
+            ("clipboard.system_paste_in_place", "Ctrl+Shift+V"),
+        ] {
+            let index = COMMANDS.iter().position(|c| c.id == id).unwrap();
+            assert_eq!(
+                Keymap::default().bindings[index],
+                vec![Chord::parse(key).unwrap()]
+            );
+            let text = serde_json::json!({"keybindings":{"plugin.custom.tool":[key]}}).to_string();
+            let map = Keymap::decode(&text).unwrap();
+            assert!(map.bindings[index].is_empty());
+            assert_eq!(
+                Keymap::decode(&map.encode()).unwrap().bindings,
+                map.bindings
+            );
+        }
     }
 }

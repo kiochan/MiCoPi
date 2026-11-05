@@ -914,6 +914,415 @@
           "layers"
         ]
       }
+    },
+    {
+      "id": "clipboard.system_copy",
+      "title": "Copy",
+      "operation": "system_clipboard_copy",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "clipboard": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "width": {
+                "type": "integer"
+              },
+              "height": {
+                "type": "integer"
+              },
+              "origin": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "source_size": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "available",
+              "scope"
+            ]
+          },
+          "system": {
+            "type": "object",
+            "properties": {
+              "scope": {
+                "type": "string"
+              },
+              "png": {
+                "type": "boolean"
+              },
+              "dibv5": {
+                "type": "boolean"
+              },
+              "origin_metadata": {
+                "type": "boolean"
+              },
+              "warnings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "scope",
+              "png",
+              "dibv5",
+              "origin_metadata",
+              "warnings"
+            ]
+          }
+        },
+        "required": [
+          "clipboard",
+          "system"
+        ]
+      }
+    },
+    {
+      "id": "clipboard.system_copy_merged",
+      "title": "Copy Merged",
+      "operation": "system_clipboard_copy_merged",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "clipboard": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "width": {
+                "type": "integer"
+              },
+              "height": {
+                "type": "integer"
+              },
+              "origin": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "source_size": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "available",
+              "scope"
+            ]
+          },
+          "system": {
+            "type": "object",
+            "properties": {
+              "scope": {
+                "type": "string"
+              },
+              "png": {
+                "type": "boolean"
+              },
+              "dibv5": {
+                "type": "boolean"
+              },
+              "origin_metadata": {
+                "type": "boolean"
+              },
+              "warnings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "scope",
+              "png",
+              "dibv5",
+              "origin_metadata",
+              "warnings"
+            ]
+          }
+        },
+        "required": [
+          "clipboard",
+          "system"
+        ]
+      }
+    },
+    {
+      "id": "clipboard.system_cut",
+      "title": "Cut",
+      "operation": "system_clipboard_cut",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "clipboard": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "width": {
+                "type": "integer"
+              },
+              "height": {
+                "type": "integer"
+              },
+              "origin": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "source_size": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "available",
+              "scope"
+            ]
+          },
+          "system": {
+            "type": "object",
+            "properties": {
+              "scope": {
+                "type": "string"
+              },
+              "png": {
+                "type": "boolean"
+              },
+              "dibv5": {
+                "type": "boolean"
+              },
+              "origin_metadata": {
+                "type": "boolean"
+              },
+              "warnings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "scope",
+              "png",
+              "dibv5",
+              "origin_metadata",
+              "warnings"
+            ]
+          }
+        },
+        "required": [
+          "clipboard",
+          "system"
+        ]
+      }
+    },
+    {
+      "id": "clipboard.system_paste",
+      "title": "Paste",
+      "operation": "system_clipboard_paste",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "clipboard": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "width": {
+                "type": "integer"
+              },
+              "height": {
+                "type": "integer"
+              },
+              "origin": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "source_size": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "available",
+              "scope"
+            ]
+          },
+          "x": {
+            "type": "integer"
+          },
+          "y": {
+            "type": "integer"
+          },
+          "layer_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "clipboard",
+          "x",
+          "y",
+          "layer_id"
+        ]
+      }
+    },
+    {
+      "id": "clipboard.system_paste_in_place",
+      "title": "Paste in Place",
+      "operation": "system_clipboard_paste_in_place",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "clipboard": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "scope": {
+                "type": "string"
+              },
+              "width": {
+                "type": "integer"
+              },
+              "height": {
+                "type": "integer"
+              },
+              "origin": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "source_size": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "bytes": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "available",
+              "scope"
+            ]
+          },
+          "x": {
+            "type": "integer"
+          },
+          "y": {
+            "type": "integer"
+          },
+          "layer_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "clipboard",
+          "x",
+          "y",
+          "layer_id"
+        ]
+      }
+    },
+    {
+      "id": "clipboard.system_state",
+      "title": "Inspect System Clipboard",
+      "operation": "system_clipboard_state",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "png": {
+            "type": "boolean"
+          },
+          "dibv5": {
+            "type": "boolean"
+          },
+          "dib": {
+            "type": "boolean"
+          },
+          "scope": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "available",
+          "png",
+          "dibv5",
+          "dib",
+          "scope"
+        ]
+      }
     }
   ],
   "states": [
@@ -957,6 +1366,38 @@
         },
         "required": [
           "available",
+          "scope"
+        ]
+      }
+    },
+    {
+      "id": "core.system_clipboard",
+      "title": "Inspect System Clipboard",
+      "action": "clipboard.system_state",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "png": {
+            "type": "boolean"
+          },
+          "dibv5": {
+            "type": "boolean"
+          },
+          "dib": {
+            "type": "boolean"
+          },
+          "scope": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "available",
+          "png",
+          "dibv5",
+          "dib",
           "scope"
         ]
       }

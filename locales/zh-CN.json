@@ -922,5 +922,15 @@
   "Paste session clipboard centered": "居中粘贴会话剪贴板",
   "Paste session clipboard in place": "原位粘贴会话剪贴板",
   "Layer via Copy": "通过拷贝新建图层",
-  "Layer via Cut": "通过剪切新建图层"
+  "Layer via Cut": "通过剪切新建图层",
+  "Copy": "复制",
+  "Copy Merged": "复制合成内容",
+  "Cut": "剪切",
+  "Paste": "粘贴",
+  "Paste in Place": "原位粘贴",
+  "Inspect System Clipboard": "查看系统剪贴板",
+  "Clipboard updated; optional formats were unavailable": "剪贴板已更新；部分可选格式不可用",
+  "Image copied to clipboard": "图片已复制到剪贴板",
+  "Selected pixels cut to clipboard": "选区像素已剪切到剪贴板",
+  "Image pasted": "图片已粘贴"
 }

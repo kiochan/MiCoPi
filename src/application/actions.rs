@@ -56,6 +56,12 @@ pub type ActionResult = Result<Value, ActionError>;
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Operation {
+    SystemClipboardCopy,
+    SystemClipboardCopyMerged,
+    SystemClipboardCut,
+    SystemClipboardPaste,
+    SystemClipboardPasteInPlace,
+    SystemClipboardState,
     ClipboardCopy,
     ClipboardCopyMerged,
     ClipboardCut,
@@ -333,6 +339,7 @@ impl Operation {
                 | Self::State
                 | Self::ReadSelection
                 | Self::ClipboardState
+                | Self::SystemClipboardState
                 | Self::Plugins
                 | Self::PluginPlan
                 | Self::Events

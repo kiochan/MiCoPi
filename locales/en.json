@@ -922,5 +922,15 @@
   "Paste session clipboard centered": "Paste session clipboard centered",
   "Paste session clipboard in place": "Paste session clipboard in place",
   "Layer via Copy": "Layer via Copy",
-  "Layer via Cut": "Layer via Cut"
+  "Layer via Cut": "Layer via Cut",
+  "Copy": "Copy",
+  "Copy Merged": "Copy Merged",
+  "Cut": "Cut",
+  "Paste": "Paste",
+  "Paste in Place": "Paste in Place",
+  "Inspect System Clipboard": "Inspect System Clipboard",
+  "Clipboard updated; optional formats were unavailable": "Clipboard updated; optional formats were unavailable",
+  "Image copied to clipboard": "Image copied to clipboard",
+  "Selected pixels cut to clipboard": "Selected pixels cut to clipboard",
+  "Image pasted": "Image pasted"
 }

@@ -69,6 +69,8 @@ def main():
         while not endpoint.exists():
             assert process.poll() is None and time.monotonic()<deadline,'GUI startup failed'
             time.sleep(.05)
+        # Availability flags only: do not read or write the interactive clipboard.
+        assert call('clipboard.system_state',{})['scope']=='windows'
         inventory = call('plugins.list', {})
         quick = next(p for p in inventory['packages'] if p['id']=='quick')
         assert quick['status']=='loaded' and 'locales' in quick['capabilities']
