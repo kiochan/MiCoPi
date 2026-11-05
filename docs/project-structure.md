@@ -66,6 +66,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
 | `src/engine/selection.rs` | Immutable coverage storage, bounded encoding and shared selection snapshots |
 | `src/application/selection_sampling.rs` | Configured selection defaults, session control overrides and compact public state |
+| `src/plugins/layer_transfer.rs` | Selection-to-layer orchestration through native extraction/placement and one host-owned undo entry |
 | `src/plugins/clipboard.rs` | Bounded Session clipboard ownership, transfer actions and public summaries |
 | `plugins/painting/src/selection/transfer.rs` | Allocation-free native extraction and clipped placement kernels |
 | `src/plugins/selection.rs` | Selection schema dispatch, history publication and DLL geometry calls |

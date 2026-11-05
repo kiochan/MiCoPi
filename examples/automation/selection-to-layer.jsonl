@@ -1,0 +1,10 @@
+{"action":"canvas.new","args":{"width":128,"height":96}}
+{"action":"native.checkerboard","args":{"cell":16}}
+{"action":"selection.shape","args":{"kind":"ellipse","x":16,"y":16,"width":48,"height":48}}
+{"action":"layer.via_copy","args":{}}
+{"action":"history.undo","args":{}}
+{"action":"layer.via_cut","args":{}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}
+{"action":"clipboard.state","args":{}}
+{"action":"replay.verify","args":{}}

@@ -46,3 +46,5 @@ Its `locales/` directory demonstrates Chinese, Japanese and Korean plugin transl
 The INI files under [legacy](legacy/README.md) describe earlier workspaces. The current desktop uses `settings.json` and `workspace.egui.json`; do not copy the old INI files over current JSON settings.
 
 [Session clipboard](automation/clipboard.jsonl) demonstrates internal copy/merged copy, cut, centered/explicit paste, undo and replay verification. It does not access the system clipboard.
+
+[Selection to layer](automation/selection-to-layer.jsonl) demonstrates native Layer via Copy/Cut, single-entry undo/redo and unchanged clipboard state.

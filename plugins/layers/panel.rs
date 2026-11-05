@@ -38,6 +38,34 @@ impl Editor {
             }
         }
         ui.separator();
+        for (command, title, enabled) in [
+            ("layer.via_copy", "Layer via Copy", count < 16),
+            (
+                "layer.via_cut",
+                "Layer via Cut",
+                count < 16
+                    && self.session.doc.selection().current.is_some()
+                    && !self.session.doc.alpha_locked(index),
+            ),
+        ] {
+            if ui
+                .add_enabled(
+                    enabled && self.session.registry.actions.contains_key(command),
+                    Button::new(tr(title)),
+                )
+                .clicked()
+            {
+                action = Some(Action::new(
+                    "pipeline.run",
+                    serde_json::json!({"atomic":true,"steps":[
+                        {"id":"select","action":"layer.select","args":{"layer_id":id}},
+                        {"id":"transfer","action":command,"args":{}}
+                    ]}),
+                ));
+                ui.close();
+            }
+        }
+        ui.separator();
         for (command, title, args, enabled) in [
             (
                 "layer.merge_down",

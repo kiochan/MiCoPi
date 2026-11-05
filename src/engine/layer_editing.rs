@@ -128,6 +128,14 @@ impl Document {
     }
     /// Insert exact pixels above the active layer as one structural undo entry.
     pub fn insert_pixels(&mut self, pixels: Vec<u32>) -> Result<(), String> {
+        self.insert_transferred_pixels(pixels, None)
+    }
+    /// Optional source replacement and layer insertion share one tiled history entry.
+    pub(crate) fn insert_transferred_pixels(
+        &mut self,
+        pixels: Vec<u32>,
+        cut: Option<([usize; 4], &[u32])>,
+    ) -> Result<(), String> {
         if pixels.len() != self.width * self.height
             || self.layers.len() >= MAX_LAYERS
             || pixels.len() * (self.layers.len() + 1) > 64 * 1024 * 1024
@@ -137,6 +145,19 @@ impl Document {
         }
         if self.graph.enabled && !self.graph.linked {
             return Err("Link the layer stack before inserting pasted pixels".into());
+        }
+        if let Some(([x, y, w, h], source)) = cut {
+            if self.alpha_locked(self.active) {
+                return Err("Cannot cut an alpha-locked layer".into());
+            }
+            if w == 0
+                || h == 0
+                || x.checked_add(w).is_none_or(|v| v > self.width)
+                || y.checked_add(h).is_none_or(|v| v > self.height)
+                || w.checked_mul(h) != Some(source.len())
+            {
+                return Err("Invalid source replacement region".into());
+            }
         }
         let index = self.active + 1;
         let mut metadata = self.layer_metadata.clone();
@@ -153,6 +174,18 @@ impl Document {
         self.finish();
         let before = self.composition();
         let active = self.active;
+        self.stroke = Some(Self::composition_edit(
+            before,
+            Some(LayerChange::Toggle {
+                index,
+                active,
+                removed: None,
+            }),
+            active,
+        ));
+        if let Some(([x, y, w, h], source)) = cut {
+            self.write_region(x, y, w, h, source);
+        }
         self.layers.insert(
             index,
             Layer {
@@ -171,14 +204,9 @@ impl Document {
             self.selection.previous = self.selection.current.take();
         }
         self.track_layer_order();
-        self.commit_composition(
-            before,
-            Some(LayerChange::Toggle {
-                index,
-                active,
-                removed: None,
-            }),
-        );
+        self.finish();
+        self.render_error = None;
+        self.invalidate();
         Ok(())
     }
 

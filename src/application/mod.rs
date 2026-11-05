@@ -39,3 +39,6 @@ mod workflow_tests;
 
 #[cfg(test)]
 mod clipboard_tests;
+
+#[cfg(test)]
+mod layer_transfer_tests;

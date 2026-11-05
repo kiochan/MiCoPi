@@ -105,6 +105,8 @@ pub enum Operation {
     AddLayer,
     RenameLayer,
     DuplicateLayer,
+    LayerViaCopy,
+    LayerViaCut,
     MoveLayer,
     DeleteLayer,
     MergeDown,

@@ -592,6 +592,16 @@ impl Studio {
                                 serde_json::json!({"color":color,"opacity":self.editor.opacity}),
                             );
                         }
+                        10159 | 10160 => {
+                            self.editor.core(
+                                if id == 10159 {
+                                    "layer.via_copy"
+                                } else {
+                                    "layer.via_cut"
+                                },
+                                serde_json::json!({}),
+                            );
+                        }
                         10140 => {
                             self.editor.core("layer.duplicate", serde_json::json!({}));
                         }

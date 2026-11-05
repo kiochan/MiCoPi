@@ -64,7 +64,7 @@ Current omissions include clipboard, free transforms, layer groups, Wintab, mult
 
 ## Organize and transform layers
 
-Use **Layer Actions** or right-click a layer to duplicate, move up/down, delete, flip or rotate it. **Ctrl+J** duplicates the current layer. Edit **Layer Name** and press Enter or leave the field to commit; Escape cancels. **Offset Layer** accepts signed integer X/Y offsets; positive X moves right and positive Y moves down. Exposed pixels become transparent and pixels outside the canvas are discarded. Undo restores them. See [Layer editing](layer-editing.md) for action schemas, reference rules and limits.
+Use **Layer Actions** or right-click a layer to duplicate, move up/down, delete, flip or rotate it. **Ctrl+J** copies the active selection to a new layer, or duplicates the whole layer when no selection is active. **Ctrl+Shift+J** cuts selected pixels to a new layer in one undo step; the clipboard stays unchanged. Explicit older shortcut preferences are retained. Edit **Layer Name** and press Enter or leave the field to commit; Escape cancels. **Offset Layer** accepts signed integer X/Y offsets; positive X moves right and positive Y moves down. Exposed pixels become transparent and pixels outside the canvas are discarded. Undo restores them. See [Layer editing](layer-editing.md) for action schemas, reference rules and limits.
 
 ## Canvas size and crop
 

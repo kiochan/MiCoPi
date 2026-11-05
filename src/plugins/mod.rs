@@ -16,6 +16,7 @@ pub fn panel_key(id: &str) -> u32 {
 pub(crate) mod clipboard;
 mod compositing;
 mod document;
+mod layer_transfer;
 mod layers;
 mod painting;
 mod selection;
@@ -29,6 +30,7 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        LayerViaCopy | LayerViaCut => layer_transfer::execute(session, op),
         ClipboardCopy
         | ClipboardCopyMerged
         | ClipboardCut

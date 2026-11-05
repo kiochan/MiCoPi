@@ -920,5 +920,7 @@
   "Cut selection to session clipboard": "選択範囲をセッションのクリップボードに切り取り",
   "Inspect session clipboard": "セッションのクリップボードを確認",
   "Paste session clipboard centered": "セッションのクリップボードを中央に貼り付け",
-  "Paste session clipboard in place": "セッションのクリップボードを元の位置に貼り付け"
+  "Paste session clipboard in place": "セッションのクリップボードを元の位置に貼り付け",
+  "Layer via Copy": "選択範囲をコピーしてレイヤー作成",
+  "Layer via Cut": "選択範囲を切り取ってレイヤー作成"
 }

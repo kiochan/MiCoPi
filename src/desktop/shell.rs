@@ -65,6 +65,8 @@ impl Studio {
                                         (10144, "Canvas Size…"),
                                         (10145, "Crop Canvas…"),
                                         (42, "New Layer"),
+                                        (10159, "Layer via Copy"),
+                                        (10160, "Layer via Cut"),
                                         (43, "Clear Current Layer…"),
                                         (10146, "Merge Down"),
                                         (10147, "Merge Visible"),

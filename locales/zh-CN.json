@@ -920,5 +920,7 @@
   "Cut selection to session clipboard": "剪切选区到会话剪贴板",
   "Inspect session clipboard": "查看会话剪贴板",
   "Paste session clipboard centered": "居中粘贴会话剪贴板",
-  "Paste session clipboard in place": "原位粘贴会话剪贴板"
+  "Paste session clipboard in place": "原位粘贴会话剪贴板",
+  "Layer via Copy": "通过拷贝新建图层",
+  "Layer via Cut": "通过剪切新建图层"
 }

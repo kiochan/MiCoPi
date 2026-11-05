@@ -4,7 +4,7 @@ The first editing increment draws on [PhotoCraft](https://github.com/storytold/p
 
 ## Desktop
 
-The Layers panel provides an editable **Layer Name**, **Layer Actions** menu and per-row context menus. **Ctrl+J** duplicates the current layer directly above its source. Up means toward the top of the visible stack. Reordering preserves the active layer by identity. A duplicated layer becomes active; deleting the active layer selects its nearest remaining neighbor. Custom names are document content and stay unchanged when the UI language changes.
+The Layers panel provides an editable **Layer Name**, **Layer Actions** menu and per-row context menus. **Ctrl+J** runs Layer via Copy: an active selection is extracted into a new layer; without a selection it duplicates the current layer. **Ctrl+Shift+J** runs Layer via Cut. The explicit Duplicate Layer command remains a whole-layer operation. Up means toward the top of the visible stack. Reordering preserves the active layer by identity. A duplicated layer becomes active; deleting the active layer selects its nearest remaining neighbor. Custom names are document content and stay unchanged when the UI language changes.
 
 Flips, 180° rotation and offsets operate on the selected visible layer's full canvas-sized pixel buffer. Hidden layers must be made visible before a pixel edit, following the existing plugin edit contract. Offsets are signed integer pixels: positive X is right, positive Y is down. Exposed areas become transparent; out-of-bounds pixels are discarded and can be restored with undo. These operations do not resample colors. The native painting plugin must be enabled for pixel transforms.
 
@@ -15,7 +15,9 @@ Flips, 180° rotation and offsets operate on the selected visible layer's full c
 | Action | Arguments |
 | --- | --- |
 | `layer.rename` | `name`, optional `layer_id` or `index` |
-| `layer.duplicate` | optional `layer_id` or `index` |
+| `layer.duplicate` | optional `layer_id` or `index`; always the whole layer |
+| `layer.via_copy` | no arguments; active selection, or whole active layer |
+| `layer.via_cut` | no arguments; active selection required |
 | `layer.move` | `to` (zero-based destination), optional `layer_id` or `index` |
 | `layer.delete` | optional `layer_id` or `index` |
 | `layer.select`, `layer.set` | accept `layer_id` alongside the existing `index` selector |
@@ -40,7 +42,7 @@ The final layer cannot be deleted. Existing limits remain 16 layers, 4096 pixels
 
 ## Scope and verification
 
-Implemented layer editing covers stable identities, rename/duplicate/reorder/delete, consolidation and exact pixel transforms. Canvas resize/crop has a separate [geometry contract](canvas-editing.md). Clipboard, masks, arbitrary rotation/scaling, groups and PSD interchange remain future work in the [roadmap](../ROADMAP.md). PhotoCraft's GPU/web frontend and wider module architecture are not adopted.
+Implemented layer editing covers stable identities, rename/duplicate/reorder/delete, consolidation and exact pixel transforms. Canvas resize/crop has a separate [geometry contract](canvas-editing.md). Windows system clipboard, masks, arbitrary rotation/scaling, groups and PSD interchange remain future work in the [roadmap](../ROADMAP.md). PhotoCraft's GPU/web frontend and wider module architecture are not adopted.
 
 Regression coverage checks graph remapping, undo/redo pixels, stable ID allocation, failed atomic groups, saved projects, old verified journals and new replay frame parity. Native transform tests compare asymmetric images and overlapping translations with an independent out-of-place oracle. Buffer pointer checks verify reorder and ordinary delete/undo reuse pixel allocations; atomic checkpoints may share removed undo buffers and can require a copy on restoration.
 
@@ -72,3 +74,21 @@ The supported contracts are explicit:
 - Stamp keeps sources visible. On a transparent canvas, displaying the stamped composite above its sources can increase opacity; hide the sources when a single baked appearance is desired.
 
 Missing compositors, failed renders, invalid IDs, unsupported graph/blend combinations and layer/pixel limits fail before layer replacement. The existing native ABI and project/replay formats are unchanged.
+
+## Layer via Copy and Cut
+
+![Selected pixels copied to an independent normal layer](screenshots/selection-to-layer.png)
+
+`layer.via_copy` and `layer.via_cut` take no arguments and target the active layer. They are registered document-atomic operations with the same typed state result as `canvas.state`. Command search, configurable shortcuts, the Edit menu, Layers actions/context menus, action workflow nodes, MCP and headless JSONL share these handlers. The context menu selects its target by stable layer ID inside an atomic pipeline. Editing a workflow never executes the transfer.
+
+With an active selection, Copy extracts raw selected pixels into a visible, unlocked, full-opacity normal layer directly above the source. Cut also clears selected coverage from the source. It does not sample layer visibility, opacity, blend mode or filter results; the source's properties/filter branch remain unchanged. Selection coverage multiplies copied straight alpha once, and source clearing uses the existing native selection blend once. Excluded pixels preserve exact source storage; fractional edges retain the defined selection blend behavior. The new layer has no copied filter branch. These are pixel extraction operations, not a promise that cutting fractional edges into two overlapping layers preserves the original composite under every blend mode.
+
+An active all-zero mask rejects the operation. An all-transparent source is valid and creates an explicit blank selected layer. Cut rejects an alpha-locked source. Copy may read it, creating an unlocked result. Both commands deselect after extraction, retaining the old mask for Reselect. They leave the Session and Windows clipboards unchanged.
+
+Without an active selection, Copy uses the existing whole-layer duplicate primitive, including source name, lock, visibility, opacity, blend mode and copied linked filter branch. Cut requires an active selection. Enabled free image graphs reject selected extraction because a new layer would need explicit wiring; linked graphs synchronize the new normal layer while preserving existing source/filter identities.
+
+All selected transfer buffers and the prospective graph are validated before modifying pixels. Native extraction/placement reuse the size-checked transfer ABI; Cut reuses its cropped scratch buffer for the native clear result. The host records changed source tiles, layer insertion and deselection in **one history entry**. Undo restores both source and structure; redo reapplies both. No intermediate clear edit is pushed or pruned. Existing document/layer/graph/history limits apply, and no additional work is added to pointer MOVE. Pressure/stabilization contacts finish through the existing typed path before sampling source pixels.
+
+Atomic failures and journal-write failures restore pixels, selection, stable IDs and history. Projects persist the new layer and recorded result; verified replay restores outcomes without running transfer DLLs or consulting a clipboard. See [the transfer example](../examples/automation/selection-to-layer.jsonl).
+
+The command names follow [Adobe's layer creation commands](https://helpx.adobe.com/photoshop/desktop/create-manage-layers/create-layer-compositions/create-layers-and-layer-groups.html). An older profile that explicitly binds Ctrl+J to `layer.duplicate` retains that binding; the new implicit default yields to explicit built-in/plugin keys. Change `layer.via_copy` / `layer.via_cut` in the searchable shortcut settings to adopt or customize the new commands. Whole-layer Duplicate remains separately bindable.

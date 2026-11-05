@@ -943,6 +943,15 @@ mod tests {
             assert_eq!(s.state(), before);
             assert_eq!(s.doc.history_bytes(), history);
         }
+        s.apply(Action::new("selection.all", json!({}))).unwrap();
+        let before = s.state();
+        let history = s.doc.history_bytes();
+        for id in ["layer.via_copy", "layer.via_cut"] {
+            assert!(s.apply(Action::new(id, json!({}))).is_err());
+            assert_eq!(s.state(), before);
+            assert_eq!(s.doc.history_bytes(), history);
+            assert_eq!(s.doc.layers.len(), 1);
+        }
     }
     #[test]
     fn unavailable_edge_kernel_preserves_masks_pixels_revision_and_undo() {

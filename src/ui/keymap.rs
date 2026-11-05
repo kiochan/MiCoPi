@@ -439,12 +439,30 @@ pub static COMMANDS: &[Command] = &[
         42
     ),
     c!(
+        "layer.via_copy",
+        "Layer via Copy",
+        "Layers",
+        "selection copy duplicate layer",
+        UiCommand(10159),
+        "Ctrl+J",
+        10159
+    ),
+    c!(
+        "layer.via_cut",
+        "Layer via Cut",
+        "Layers",
+        "selection cut new layer",
+        UiCommand(10160),
+        "Ctrl+Shift+J",
+        10160
+    ),
+    c!(
         "layer.duplicate",
         "Duplicate Layer",
         "Layers",
         "duplicate copy layer fuzhi tuceng",
         UiCommand(10140),
-        "Ctrl+J",
+        "",
         10140
     ),
     c!(
@@ -1504,8 +1522,8 @@ impl Keymap {
                 return Err(format!("Unknown Command: {id}"));
             }
         }
-        // These gesture commands are new defaults. An older profile may already
-        // use M/L for another built-in or plugin action; keep that explicit choice.
+        // New gesture and layer defaults yield to explicit older bindings,
+        // including whole-layer duplication and unloaded plugin commands.
         let reserved: Vec<_> = COMMANDS
             .iter()
             .enumerate()
@@ -1514,7 +1532,10 @@ impl Keymap {
             .chain(map.pending.values().flatten().copied())
             .collect();
         for (i, command) in COMMANDS.iter().enumerate() {
-            if command.id.starts_with("toolbox.mode.selection_") && !explicit.contains(command.id) {
+            if (command.id.starts_with("toolbox.mode.selection_")
+                || matches!(command.id, "layer.via_copy" | "layer.via_cut"))
+                && !explicit.contains(command.id)
+            {
                 map.bindings[i].retain(|key| !reserved.contains(key));
             }
         }
@@ -1756,5 +1777,44 @@ mod tests {
                 map.bindings
             );
         }
+    }
+    #[test]
+    fn selection_to_layer_defaults_preserve_explicit_duplicate_and_plugin_bindings() {
+        let copy = COMMANDS
+            .iter()
+            .position(|c| c.id == "layer.via_copy")
+            .unwrap();
+        let cut = COMMANDS
+            .iter()
+            .position(|c| c.id == "layer.via_cut")
+            .unwrap();
+        assert_eq!(
+            Keymap::default().bindings[copy],
+            vec![Chord::parse("Ctrl+J").unwrap()]
+        );
+        assert_eq!(
+            Keymap::default().bindings[cut],
+            vec![Chord::parse("Ctrl+Shift+J").unwrap()]
+        );
+        for config in [
+            r#"{"keybindings":{"layer.duplicate":"Ctrl+J","plugin.custom.tool":"Ctrl+Shift+J"}}"#,
+            r#"{"keybindings":{"plugin.custom.tool":"Ctrl+J","tool.brush":"Ctrl+Shift+J"}}"#,
+        ] {
+            let map = Keymap::decode(config).unwrap();
+            assert!(map.bindings[copy].is_empty());
+            assert!(map.bindings[cut].is_empty());
+            assert_eq!(
+                Keymap::decode(&map.encode()).unwrap().bindings,
+                map.bindings
+            );
+        }
+        let map =
+            Keymap::decode(r#"{"keybindings":{"layer.via_copy":"Ctrl+Alt+J","layer.via_cut":[]}}"#)
+                .unwrap();
+        assert_eq!(
+            map.bindings[copy],
+            vec![Chord::parse("Ctrl+Alt+J").unwrap()]
+        );
+        assert!(map.bindings[cut].is_empty());
     }
 }

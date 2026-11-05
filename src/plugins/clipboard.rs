@@ -26,7 +26,7 @@ pub(crate) fn state(s: &Session) -> Value {
             p.summary()
         })
 }
-fn bounds(s: &Session) -> Result<[usize; 4], String> {
+pub(super) fn bounds(s: &Session) -> Result<[usize; 4], String> {
     let (w, h) = (s.doc.width, s.doc.height);
     let Some(mask) = &s.doc.selection().current else {
         return Ok([0, 0, w, h]);

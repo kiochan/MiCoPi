@@ -6,6 +6,7 @@ These are actual application captures, not interface mockups. Current images com
 | --- | --- |
 | [Atomic workflow](atomic-workflow.png) | Default atomic execution control in the plugin node editor |
 | [Verified replay](replay.png) | Event timeline and read-only recorded outcome preview |
+| [Selection to layer](selection-to-layer.png) | Actual selected-pixel layer extraction, with the source preserved and the new layer active |
 | [Session clipboard](clipboard.png) | Actual shared paste parameter form; coordinates are optional and execution is explicit |
 | [Selection outline](selection.png) | Command-generated ellipse overlay and active-selection status, independent of exported pixels |
 | [Workbench](workbench.png) | Default independent control bar, canvas and property windows |

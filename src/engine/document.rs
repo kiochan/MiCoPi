@@ -356,10 +356,14 @@ impl Document {
         self.render_error = None;
         self.invalidate();
     }
-    fn commit_composition(&mut self, before: Composition, layer_change: Option<LayerChange>) {
-        self.stroke = Some(Edit {
+    fn composition_edit(
+        before: Composition,
+        layer_change: Option<LayerChange>,
+        layer: usize,
+    ) -> Edit {
+        Edit {
             layer_change,
-            layer: self.active,
+            layer,
             tiles: BTreeMap::new(),
             metadata_bytes: before.graph.nodes.len() * 160
                 + before.selection.memory_bytes()
@@ -373,7 +377,10 @@ impl Document {
                     .sum::<usize>()
                 + 64,
             composition: Some(before),
-        });
+        }
+    }
+    fn commit_composition(&mut self, before: Composition, layer_change: Option<LayerChange>) {
+        self.stroke = Some(Self::composition_edit(before, layer_change, self.active));
         self.finish();
         self.render_error = None;
         self.invalidate();
@@ -1010,6 +1017,19 @@ impl Document {
             composition: None,
             metadata_bytes: 0,
         });
+        let changed = self.write_region(x, y, width, height, pixels);
+        self.finish();
+        changed
+    }
+    /// Write into a preflighted region under the caller's open history entry.
+    fn write_region(
+        &mut self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        pixels: &[u32],
+    ) -> bool {
         let mut changed = false;
         for ty in y / TILE..=(y + height - 1) / TILE {
             for tx in x / TILE..=(x + width - 1) / TILE {
@@ -1037,7 +1057,6 @@ impl Document {
         if changed {
             self.damage([x, y, x + width, y + height]);
         }
-        self.finish();
         changed
     }
     pub fn clear_layer(&mut self) {

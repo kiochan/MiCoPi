@@ -63,7 +63,8 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 - [x] Add persisted searchable selection defaults, preview/cancel and shared profile validation.
 - [x] Add native selection expansion/contraction, feathering and smoothing with shared actions/history.
 - [x] Add bounded Session clipboard copy/cut/paste through shared actions.
-- [ ] Add Windows system clipboard interoperability and selection-to-layer transfers.
+- [x] Add selection-to-layer copy/cut with one undo entry and configurable PS shortcuts.
+- [ ] Add Windows system clipboard interoperability.
 - [ ] Add selection-aware move, scale and rotate.
 - [ ] Add useful document controls: new-canvas presets, resolution/background choices, clearer dirty state and save/recovery feedback.
 

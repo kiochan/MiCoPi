@@ -41,7 +41,9 @@
 - JSONL 批处理、MCP stdio，以及连接正在运行的 GUI。
 - 统一插件清单、依赖感知的设置和按插件隔离的语言包。
 
-图层支持重命名、复制（**Ctrl+J**）、重排和删除，以及精确翻转、旋转 180° 和整数偏移。详见[图层编辑](docs/layer-editing.md)。
+图层支持重命名、复制、重排和删除，以及精确翻转、旋转 180° 和整数偏移。详见[图层编辑](docs/layer-editing.md)。
+
+**Ctrl+J** 通过选区拷贝新建图层（无选区时复制整层）；**Ctrl+Shift+J** 通过选区剪切新建图层。两者均支持一次撤销，且不修改剪贴板。
 
 支持向下合并（Ctrl+E）、合并可见图层（Ctrl+Shift+E）、盖印可见图层（Ctrl+Alt+Shift+E）和保留透明画布的拼合图像。详见 [Layer editing](docs/layer-editing.md)。
 

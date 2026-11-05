@@ -96,6 +96,8 @@ impl Operation {
                 | Self::AddLayer
                 | Self::RenameLayer
                 | Self::DuplicateLayer
+                | Self::LayerViaCopy
+                | Self::LayerViaCut
                 | Self::MoveLayer
                 | Self::DeleteLayer
                 | Self::MergeDown

@@ -95,7 +95,7 @@ mod tests {
         assert_eq!(resolve(0x48, false, false, false), Some(Action::Hand));
         assert_eq!(
             resolve(0x4a, true, false, false),
-            Some(Action::UiCommand(10140))
+            Some(Action::UiCommand(10159))
         );
         assert_eq!(resolve(0x5a, false, false, false), Some(Action::Zoom));
         assert_eq!(resolve(0x57, true, true, true), Some(Action::Export));

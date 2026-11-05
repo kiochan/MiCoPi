@@ -920,5 +920,7 @@
   "Cut selection to session clipboard": "Cut selection to session clipboard",
   "Inspect session clipboard": "Inspect session clipboard",
   "Paste session clipboard centered": "Paste session clipboard centered",
-  "Paste session clipboard in place": "Paste session clipboard in place"
+  "Paste session clipboard in place": "Paste session clipboard in place",
+  "Layer via Copy": "Layer via Copy",
+  "Layer via Cut": "Layer via Cut"
 }
