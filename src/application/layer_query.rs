@@ -14,6 +14,7 @@ struct Query {
     alpha_locked: Option<bool>,
     pixel_locked: Option<bool>,
     position_locked: Option<bool>,
+    selected: Option<bool>,
 }
 fn parse(args: &Value) -> Result<Query, ActionError> {
     if args
@@ -54,12 +55,14 @@ pub(crate) fn execute(s: &Session, args: &Value) -> Result<Value, ActionError> {
                 && matches(alpha, q.alpha_locked)
                 && matches(pixels, q.pixel_locked)
                 && matches(position, q.position_locked)
+                && matches(s.doc.layer_selected(i), q.selected)
         })
         .map(|i| s.layer_state(i))
         .collect();
     Ok(
         json!({"total":s.doc.layers.len(),"matched":layers.len(),"layers":layers,
-        "revision":s.revision,"drawing":s.is_drawing()}),
+        "revision":s.revision,"drawing":s.is_drawing(),
+        "selected_layer_ids":s.doc.selected_layer_ids(),"active_layer_id":s.doc.layer_id(s.doc.active)}),
     )
 }
 pub(crate) fn schema() -> Value {
@@ -67,6 +70,7 @@ pub(crate) fn schema() -> Value {
         "query":{"type":"string","description":"Case-insensitive Unicode substring of public layer names; at most 512 UTF-8 bytes, no control characters."},
         "color_label":{"type":"string","enum":["none","red","orange","yellow","green","blue","violet","gray"]},
         "visible":{"type":"boolean"},"locked":{"type":"boolean","description":"Any transparency, pixel or position lock. All supplied filters are combined with AND."},
-        "alpha_locked":{"type":"boolean"},"pixel_locked":{"type":"boolean"},"position_locked":{"type":"boolean"}
+        "alpha_locked":{"type":"boolean"},"pixel_locked":{"type":"boolean"},"position_locked":{"type":"boolean"},
+        "selected":{"type":"boolean","description":"Matches membership in the current layer selection, independently of the active painting layer."}
     },"required":[],"additionalProperties":false})
 }

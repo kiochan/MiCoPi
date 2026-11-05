@@ -102,6 +102,9 @@ impl Metadata {
         self.composition.graph.compile(n).map_err(bad)?;
         self.composition.validate_layer_metadata().map_err(bad)?;
         self.composition
+            .validate_layer_selection(self.active)
+            .map_err(bad)?;
+        self.composition
             .selection
             .validate(self.width, self.height)
             .map_err(bad)?;

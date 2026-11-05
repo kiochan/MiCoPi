@@ -19,6 +19,8 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 
 [Layer organization](automation/layer-organization.jsonl) protects an ink layer, labels layers, queries metadata and binds a found stable ID to a later atomic property action. Create `target/example-output/` first.
 
+[Layer batches](automation/layer-batch.jsonl) selects stable layer IDs, sets shared properties, duplicates originals, reorders a stable block and deletes copies with grouped Undo/Redo and verified replay. Create `target/example-output/` first.
+
 [PNG density](automation/png-density.jsonl) compares implicit defaults and explicit physical resolution through snapshots without resampling pixels.
 
 [Export sizing](automation/export-sizing.jsonl) plans and writes a composed PNG without resizing the document. Create `target/example-output/` first.

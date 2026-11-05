@@ -192,6 +192,7 @@ impl Document {
             Self::composition_edit(before, None, self.active)
         } else {
             Edit {
+                group: None,
                 layer_change: None,
                 layer: self.active,
                 tiles: BTreeMap::new(),

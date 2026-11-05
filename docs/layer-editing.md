@@ -21,7 +21,9 @@ Flips, 180° rotation and offsets operate on the selected visible layer's full c
 | `layer.move` | `to` (zero-based destination), optional `layer_id` or `index` |
 | `layer.delete` | optional `layer_id` or `index` |
 | `layer.select`, `layer.set` | accept `layer_id` alongside the existing `index` selector |
-| `layer.query` | optional name `query`, `color_label`, `visible`, `locked`, `alpha_locked`, `pixel_locked`, `position_locked`; read-only AND filters |
+| `layer.query` | optional name `query`, `color_label`, `visible`, `locked`, `alpha_locked`, `pixel_locked`, `position_locked`, `selected`; read-only AND filters |
+| `layer.selection.set` | required unique `layer_ids`, optional selected `active_layer_id`; sets the layer selection |
+| `layer.batch` | required `action`, unique `layer_ids`, optional action-specific `args`; one atomic batch undo/outcome |
 | `layer.flip_horizontal`, `layer.flip_vertical`, `layer.rotate_180` | no arguments; current layer |
 | `layer.translate` | required integers `dx`, `dy`, each from -4096 to 4096; current layer |
 
@@ -80,7 +82,31 @@ The Layers panel offers a name search and color/visibility/lock filters, restrai
 {"action":"layer.query","args":{"query":"ink","pixel_locked":true,"color_label":"violet"}}
 ```
 
-See the [organization example](../examples/automation/layer-organization.jsonl) and [native pixel-access contract](native-plugins.md#layer-pixel-access). Groups, multi-layer selection and raster/clipping masks remain planned in the [editing checklist](photoshop-essentials.md).
+See the [organization example](../examples/automation/layer-organization.jsonl) and [native pixel-access contract](native-plugins.md#layer-pixel-access). Groups and raster/clipping masks remain planned in the [editing checklist](photoshop-essentials.md).
+
+## Multiple selected layers and explicit batches
+
+![Two selected layers with a distinct active-layer outline and shared properties](screenshots/layer-multi-selection.png)
+
+The Layers panel distinguishes the active painting layer from the selected set. Plain click selects one layer, Ctrl-click toggles membership, and Shift-click selects a range in the currently visible filtered rows. Ctrl+Shift adds that range. Selection cannot become empty; the active layer is always a member. Hidden filtered selections remain selected and are included in an explicitly requested batch. Painting, pixel selections, Move and Free Transform retain their existing active-layer behavior.
+
+`layer.selection.set` accepts 1–16 unique stable IDs and an optional `active_layer_id` from that set. Without an explicit active ID, it retains the active member or chooses the last supplied ID. Public `selected_layer_ids` is always in storage order, and every layer row exposes a `selected` boolean separately from `active`. `layer.query` also accepts a `selected` filter; its top-level selected IDs describe the entire selection even if a name/property filter excludes those rows. `core.layers` and the active-document context expose the same state to workflows and AI clients.
+
+Layer selection changes are recorded and revisioned but do not create pixel undo entries. Sparse composition metadata persists multi-selection through projects, rollback and outcome replay; a singleton active selection is implicit and omitted, retaining legacy recording hashes. Creation and ordinary duplication/paste select the new layer. Reordering retains selected identities. Removing an active member prefers the nearest surviving selected layer, with the lower storage index winning ties; when none survives, the usual nearest remaining layer becomes the singleton selection. Ordinary metadata undo keeps its existing active-layer behavior and normalizes restored selection to include that active layer; batch undo restores its exact before/after active selection.
+
+`layer.batch` deliberately requires explicit IDs rather than silently widening existing single-layer commands. It supports `layer.set`, `layer.duplicate`, `layer.delete`, `layer.move`, `layer.clear`, `layer.flip_horizontal`, `layer.flip_vertical`, `layer.rotate_180` and `layer.translate`. `args` uses the selected action's ordinary parameter contract, excluding individual target selectors; names are edited separately on the active layer. Invalid IDs, duplicates, empty sets, unsupported arguments, locks, final-layer deletion, capacity and graph constraints are checked before edits. Batches require idle drawing and non-drawing contacts. Existing single-target commands keep their existing behavior.
+
+Targets normalize to original storage order independently of the input order. Deletion removes higher indices first. Duplication copies each original once and selects the copies, preserving the active source's counterpart when present. Batch Move treats its targets as a stable block: `args.to` is the block's final lowest index, from zero through the number of remaining layers. Other batches preserve the active layer and selection. Pixel operations reuse the existing native handlers, selection clipping and lock checks.
+
+One changed batch publishes one revision, one compact verified outcome and one undo group; no-op batches add no undo entry. The history group holds the existing metadata, removed-layer ownership and changed tiles instead of cloning whole images. History pruning waits until the bounded group closes. As with an existing single edit, the newest undo entry can exceed the 64 MiB retention target; it remains recoverable while older entries are pruned. Runtime or recording failure restores pixels, layers, selected IDs, active layer and undo/redo. Atomic workflow groups can contain batches; editing a batch node never executes it. Replay restores verified outcomes without executing commands or DLLs. General-purpose pipelines still retain their existing per-operation undo granularity; see [Atomic Operations](atomic-operations.md).
+
+```json
+{"action":"layer.selection.set","args":{"layer_ids":[1,3],"active_layer_id":3}}
+{"action":"layer.batch","args":{"action":"layer.set","layer_ids":[3,1],"args":{"color_label":"violet","pixel_locked":true}}}
+{"action":"layer.query","args":{"selected":true}}
+```
+
+See the [batch example](../examples/automation/layer-batch.jsonl). Layer groups, raster/clipping masks, multi-layer pixel transforms and off-canvas storage remain separate planned work.
 
 ## Merge, flatten and stamp
 

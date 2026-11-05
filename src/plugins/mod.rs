@@ -19,6 +19,7 @@ mod compositing;
 mod document;
 pub(crate) mod export;
 mod geometry;
+pub(crate) mod layer_batch;
 mod layer_transfer;
 mod layers;
 pub(crate) mod movement;
@@ -38,6 +39,7 @@ pub(crate) fn execute(
     use crate::application::Operation::*;
     match op {
         LayerQuery => crate::application::layer_query::execute(session, &args),
+        LayerBatch => layer_batch::execute(session, args),
         Export | Render | ExportPlan | ExportPreview | ExportDialog => {
             export::execute(session, op, args)
         }
@@ -89,9 +91,8 @@ pub(crate) fn execute(
         New | NewPlan | DocumentInfo | DocumentResolution | CanvasSize | Crop | Open | Save
         | Undo | Redo => document::execute(session, op, args),
         AddLayer | RenameLayer | DuplicateLayer | MoveLayer | DeleteLayer | SelectLayer
-        | MergeDown | MergeVisible | FlattenImage | StampVisible | LayerProperties | ClearLayer => {
-            layers::execute(session, op, args)
-        }
+        | LayerSelection | MergeDown | MergeVisible | FlattenImage | StampVisible
+        | LayerProperties | ClearLayer => layers::execute(session, op, args),
         SelectTool | Parameters | Pointer | Stroke | Pick | View => {
             painting::execute(session, op, args)
         }

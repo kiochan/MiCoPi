@@ -210,6 +210,11 @@ impl Document {
             self.next_layer_id += 1;
         }
         self.active = insert;
+        if operation == MergeLayers::Stamp {
+            self.select_layer(insert);
+        } else {
+            self.normalize_layer_selection();
+        }
         self.graph = graph;
         self.plan = plan;
         self.track_layer_order();

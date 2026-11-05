@@ -33,6 +33,8 @@ All child writes are staged in the document and combined into **one replay event
 
 Existing per-stroke undo granularity is retained after a successful group; atomic failure rollback is separate from undo grouping. Atomic groups require an idle contact. Supported effects are document changes and queries, not arbitrary external transactions. File open/new/save/export, settings writes, UI effects and replay loading/opening are rejected in a group. Static action capabilities are checked during pipeline validation/dry run and host callbacks are checked again during execution.
 
+The explicit [layer batch command](layer-editing.md#multiple-selected-layers-and-explicit-batches) additionally groups its bounded child edits into one Undo/Redo operation and publishes one revision. It retains the existing tiled/structural edits and defers history pruning until the group closes; failed batches restore the enclosing checkpoint. Layer multi-selection uses stable IDs in sparse composition metadata and participates in the same rollback and verified outcomes.
+
 ## Plugin capability
 
 A native action can declare `"document_atomic": true` in its contribution descriptor. `app.describe` reports this as `documentAtomic`. This opts the action into document checkpoints and a single commit around nested host actions. The bundled native-paint and AI-assistant examples declare support. Unmarked mutating native actions are rejected inside atomic groups.

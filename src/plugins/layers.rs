@@ -27,6 +27,19 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         Ok(i)
     };
     match op {
+        LayerSelection => {
+            if s.stroke.active() || s.pointer_checkpoint.is_some() {
+                return Err(ActionError::new(
+                    "stroke_active",
+                    "Finish the current contact before selecting layers",
+                ));
+            }
+            let ids: Vec<u64> = serde_json::from_value(args["layer_ids"].clone())?;
+            s.doc
+                .set_layer_selection(&ids, args["active_layer_id"].as_u64())
+                .map_err(|e| ActionError::new("invalid_layer_selection", e))?;
+            Ok(s.state())
+        }
         MergeDown | MergeVisible | FlattenImage | StampVisible => {
             use crate::engine::document::MergeLayers;
             let i = if op == MergeDown {
@@ -125,7 +138,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             }
             s.finish_stroke();
             if op == SelectLayer {
-                s.doc.active = i;
+                s.doc.select_layer(i);
             } else {
                 let l = &s.doc.layers[i];
                 let visible = args["visible"].as_bool().unwrap_or(l.visible);

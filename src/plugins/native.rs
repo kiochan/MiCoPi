@@ -1042,7 +1042,9 @@ unsafe extern "C" fn edit_region(
         return abi::ERROR;
     }
     if status == abi::OK && session.doc.replace_region(x, y, w, h, &pixels) {
-        session.revision += 1;
+        if !session.doc.history_group_active() {
+            session.revision += 1;
+        }
     }
     (*host).busy = false;
     status

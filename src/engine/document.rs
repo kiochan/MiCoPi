@@ -24,6 +24,8 @@ pub struct Composition {
     pub layer_metadata: Vec<LayerMetadata>,
     #[serde(default, skip_serializing_if = "is_zero")]
     pub next_layer_id: u64,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub selected_layer_ids: Vec<u64>,
     #[serde(
         default,
         skip_serializing_if = "super::selection::SelectionState::is_default"
@@ -155,6 +157,13 @@ struct Edit {
     composition: Option<Composition>,
     metadata_bytes: usize,
     layer_change: Option<LayerChange>,
+    group: Option<HistoryGroup>,
+}
+#[derive(Clone)]
+struct HistoryGroup {
+    edits: Vec<Edit>,
+    active: usize,
+    selected: Vec<u64>,
 }
 #[derive(Clone)]
 enum LayerChange {
@@ -192,6 +201,7 @@ pub(crate) struct HistoryCheckpoint {
     last_brush: Option<Brush>,
     distance: f32,
     next_layer_id: u64,
+    history_group: Option<HistoryGroup>,
 }
 impl Edit {
     fn bytes(&self) -> usize {
@@ -206,6 +216,9 @@ impl Edit {
                     saved.iter().map(|(_, l)| l.pixels.len() * 4).sum()
                 }
                 _ => 0,
+            })
+            + self.group.as_ref().map_or(0, |g| {
+                g.edits.iter().map(Edit::bytes).sum::<usize>() + g.selected.len() * 8 + 64
             })
     }
 }
@@ -223,6 +236,7 @@ pub struct Document {
     selection: super::selection::SelectionState,
     layer_metadata: Vec<LayerMetadata>,
     next_layer_id: u64,
+    selected_layer_ids: Vec<u64>,
     pub(crate) replay_tiles: std::collections::BTreeSet<(usize, usize)>,
     pub(crate) replay_surface: Option<[usize; 4]>,
     pub(crate) replay_data: Option<Vec<u8>>,
@@ -240,6 +254,7 @@ pub struct Document {
     pub dirty: bool,
     undo: Vec<Edit>,
     redo: Vec<Edit>,
+    history_group: Option<HistoryGroup>,
     stroke: Option<Edit>,
     last: Option<(f32, f32)>,
     last_brush: Option<Brush>,
@@ -278,6 +293,7 @@ impl Document {
             last_brush: self.last_brush,
             distance: self.distance,
             next_layer_id: self.next_layer_id,
+            history_group: self.history_group.clone(),
         }
     }
     pub(crate) fn restore_history(&mut self, saved: HistoryCheckpoint) {
@@ -290,6 +306,7 @@ impl Document {
         self.last_brush = saved.last_brush;
         self.distance = saved.distance;
         self.next_layer_id = saved.next_layer_id;
+        self.history_group = saved.history_group;
     }
     pub fn new(width: usize, height: usize) -> Self {
         assert!(width > 0 && height > 0 && width <= MAX_SIDE && height <= MAX_SIDE);
@@ -312,6 +329,7 @@ impl Document {
                 ..Default::default()
             }],
             next_layer_id: 2,
+            selected_layer_ids: Vec::new(),
             selection: Default::default(),
             workflow: Default::default(),
             identity: {
@@ -333,6 +351,7 @@ impl Document {
             dirty: false,
             undo: vec![],
             redo: vec![],
+            history_group: None,
             stroke: None,
             last: None,
             last_brush: None,
@@ -366,6 +385,7 @@ impl Document {
             layer_metadata: self.layer_metadata.clone(),
             next_layer_id: self.next_layer_id,
             workflow: self.workflow.clone(),
+            selected_layer_ids: self.selected_layer_ids.clone(),
             graph: self.graph.clone(),
             layers: self
                 .layers
@@ -431,6 +451,7 @@ impl Document {
         self.document_info = state.document_info;
         self.last_transform = state.last_transform;
         self.selection = state.selection;
+        self.selected_layer_ids = state.selected_layer_ids;
         self.layer_metadata = if state.layer_metadata.is_empty() {
             (0..self.layers.len())
                 .map(|i| LayerMetadata {
@@ -455,6 +476,7 @@ impl Document {
             l.opacity = opacity;
             l.mode = mode;
         }
+        self.normalize_layer_selection();
         self.render_error = None;
         self.invalidate();
     }
@@ -464,10 +486,12 @@ impl Document {
         layer: usize,
     ) -> Edit {
         Edit {
+            group: None,
             layer_change,
             layer,
             tiles: BTreeMap::new(),
             metadata_bytes: before.graph.nodes.len() * 160
+                + before.selected_layer_ids.len() * 8
                 + before.selection.memory_bytes()
                 + std::mem::size_of_val(&before.last_transform)
                 + std::mem::size_of_val(&before.document_info)
@@ -749,6 +773,7 @@ impl Document {
     pub(crate) fn begin_plugin_stroke(&mut self) {
         self.finish();
         self.stroke = Some(Edit {
+            group: None,
             layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
@@ -846,6 +871,7 @@ impl Document {
             return;
         }
         self.stroke = Some(Edit {
+            group: None,
             layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
@@ -961,11 +987,13 @@ impl Document {
     pub fn finish(&mut self) {
         if let Some(edit) = self.stroke.take() {
             if !edit.tiles.is_empty() || edit.composition.is_some() {
-                self.undo.push(edit);
-                self.redo.clear();
                 self.dirty = true;
-                while self.undo.len() > 1 && self.history_bytes() > HISTORY_LIMIT {
-                    self.undo.remove(0);
+                if let Some(group) = &mut self.history_group {
+                    group.edits.push(edit);
+                } else {
+                    self.undo.push(edit);
+                    self.redo.clear();
+                    self.prune_history();
                 }
             }
         }
@@ -979,7 +1007,27 @@ impl Document {
             .map(Edit::bytes)
             .sum()
     }
+    fn prune_history(&mut self) {
+        while self.undo.len() > 1 && self.history_bytes() > HISTORY_LIMIT {
+            self.undo.remove(0);
+        }
+    }
     fn swap_edit(&mut self, mut e: Edit) -> Edit {
+        if let Some(group) = &mut e.group {
+            let active = self.active;
+            let selected = self.selected_layer_ids.clone();
+            group.edits = std::mem::take(&mut group.edits)
+                .into_iter()
+                .rev()
+                .map(|child| self.swap_edit(child))
+                .collect();
+            self.active = std::mem::replace(&mut group.active, active);
+            self.selected_layer_ids = std::mem::replace(&mut group.selected, selected);
+            self.normalize_layer_selection();
+            self.invalidate();
+            self.dirty = true;
+            return e;
+        }
         if let Some(state) = &mut e.composition {
             let before = self.composition();
             if let Some(change) = &mut e.layer_change {
@@ -1040,6 +1088,7 @@ impl Document {
             self.restore_composition(state.clone());
             *state = before;
             e.metadata_bytes = state.graph.nodes.len() * 160
+                + state.selected_layer_ids.len() * 8
                 + state.selection.memory_bytes()
                 + std::mem::size_of_val(&state.last_transform)
                 + std::mem::size_of_val(&state.document_info)
@@ -1120,7 +1169,7 @@ impl Document {
             opacity: 255,
             mode: BlendMode::Normal,
         });
-        self.active = self.layers.len() - 1;
+        self.select_layer(self.layers.len() - 1);
         self.graph = graph;
         self.plan = plan;
         self.commit_composition(
@@ -1162,6 +1211,7 @@ impl Document {
         }
         self.finish();
         self.stroke = Some(Edit {
+            group: None,
             layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
@@ -1216,6 +1266,7 @@ impl Document {
         }
         self.finish();
         self.stroke = Some(Edit {
+            group: None,
             layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
@@ -1367,6 +1418,7 @@ impl Document {
                 return Err(bad());
             }
             state.validate_layer_metadata().map_err(|_| bad())?;
+            state.validate_layer_selection(a).map_err(|_| bad())?;
             state.selection.validate(w, h).map_err(|_| bad())?;
             state.graph.compile(n).map_err(|_| bad())?;
             state.workflow.validate_structure().map_err(|_| bad())?;
@@ -1394,6 +1446,8 @@ mod canvas_editing;
 mod layer_editing;
 #[path = "layer_merge.rs"]
 mod layer_merge;
+#[path = "layer_selection.rs"]
+mod layer_selection;
 pub use layer_merge::MergeLayers;
 #[cfg(test)]
 #[path = "document_tests.rs"]

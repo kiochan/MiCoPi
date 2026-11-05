@@ -147,6 +147,8 @@ pub enum Operation {
     SelectLayer,
     LayerProperties,
     LayerQuery,
+    LayerSelection,
+    LayerBatch,
     ClearLayer,
     SelectionShape,
     SelectAll,
@@ -192,6 +194,15 @@ impl Operation {
     pub fn schema(self) -> Value {
         if self == Self::LayerQuery {
             return super::layer_query::schema();
+        }
+        if self == Self::LayerBatch {
+            return crate::plugins::layer_batch::schema();
+        }
+        if self == Self::LayerSelection {
+            return json!({"type":"object","properties":{
+                "layer_ids":{"type":"array","minItems":1,"maxItems":16,"items":{"type":"integer","minimum":1,"maximum":4294967295u64},"description":"Unique stable layer IDs. The result is normalized to stack order."},
+                "active_layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64,"description":"Must be selected. If absent, retain the current active member or use the last supplied ID."}
+            },"required":["layer_ids"],"additionalProperties":false});
         }
         if matches!(self, Self::ImageSize | Self::ImageSizePlan) {
             return super::image_size::schema();

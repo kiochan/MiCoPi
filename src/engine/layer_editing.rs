@@ -1,6 +1,57 @@
 //! Structural edits move pixel buffers; only duplication allocates another layer.
 use super::*;
 impl Document {
+    /// Simulate only bounded graph/identity metadata before a multi-target copy.
+    pub(crate) fn preflight_layer_duplicates(&self, selected: &[u64]) -> Result<(), String> {
+        let count = self.layers.len() + selected.len();
+        if count > MAX_LAYERS
+            || self.width * self.height * count > 64 * 1024 * 1024
+            || self.next_layer_id + selected.len() as u64 > u32::MAX as u64 + 1
+        {
+            return Err("Layer count, document pixel or identity limit reached".into());
+        }
+        let mut ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
+        let mut modes: Vec<_> = self.layers.iter().map(|l| l.mode).collect();
+        let mut graph = self.graph.clone();
+        for (offset, id) in selected.iter().enumerate() {
+            let index = ids
+                .iter()
+                .position(|v| v == id)
+                .ok_or("Layer does not exist")?;
+            let old = ids.clone();
+            let new = self.next_layer_id + offset as u64;
+            ids.insert(index + 1, new);
+            modes.insert(index + 1, modes[index]);
+            if graph.linked {
+                graph = graph.sync_stack(&modes, &old, &ids, Some((*id, new)))?;
+            } else {
+                for node in &mut graph.nodes {
+                    if let NodeKind::Layer { index } = &mut node.data {
+                        *index = ids
+                            .iter()
+                            .position(|id| *id == old[*index])
+                            .ok_or("Invalid layer reference")?;
+                    }
+                }
+            }
+            graph.compile(ids.len())?;
+        }
+        Ok(())
+    }
+    pub(crate) fn preflight_layer_deletions(&self, selected: &[u64]) -> Result<(), String> {
+        if selected.len() >= self.layers.len() {
+            return Err("The final layer cannot be deleted".into());
+        }
+        let metadata: Vec<_> = self
+            .layer_metadata
+            .iter()
+            .filter(|m| !selected.contains(&m.id))
+            .cloned()
+            .collect();
+        self.reindexed_graph(&metadata, None)?
+            .compile(metadata.len())?;
+        Ok(())
+    }
     pub fn pixel_locked(&self, index: usize) -> bool {
         self.layer_metadata[index].pixel_locked
     }
@@ -150,7 +201,7 @@ impl Document {
         self.layers.insert(index + 1, layer);
         self.layer_metadata = metadata;
         self.next_layer_id += 1;
-        self.active = index + 1;
+        self.select_layer(index + 1);
         self.graph = graph;
         self.plan = plan;
         self.track_layer_order();
@@ -239,7 +290,7 @@ impl Document {
         );
         self.layer_metadata = metadata;
         self.next_layer_id += 1;
-        self.active = index;
+        self.select_layer(index);
         self.graph = graph;
         self.plan = plan;
         if self.selection.current.is_some() {
@@ -271,6 +322,7 @@ impl Document {
         self.layers.insert(to, layer);
         self.layer_metadata = metadata;
         self.active = self.layer_index(selected).unwrap();
+        self.normalize_layer_selection();
         self.graph = graph;
         self.plan = self.graph.compile(self.layers.len())?;
         self.track_layer_order();
@@ -298,11 +350,21 @@ impl Document {
         let before = self.composition();
         let active = self.active;
         let selected = self.layer_id(active);
+        let selected_survivor = self
+            .selected_layer_ids()
+            .into_iter()
+            .filter(|id| *id != self.layer_id(index))
+            .min_by_key(|id| {
+                let i = self.layer_index(*id).unwrap();
+                (i.abs_diff(active), i)
+            });
         let removed = Some(Arc::new(self.layers.remove(index)));
         self.layer_metadata = metadata;
         self.active = self
             .layer_index(selected)
+            .or_else(|| selected_survivor.and_then(|id| self.layer_index(id)))
             .unwrap_or(index.min(self.layers.len() - 1));
+        self.normalize_layer_selection();
         self.graph = graph;
         self.plan = self.graph.compile(self.layers.len())?;
         self.track_layer_order();

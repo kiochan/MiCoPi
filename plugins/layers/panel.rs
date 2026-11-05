@@ -39,6 +39,7 @@ struct LayerFilter {
     query: String,
     color: Option<LayerColor>,
     visible: Option<bool>,
+    selected: Option<bool>,
     lock: LockFilter,
 }
 impl LayerFilter {
@@ -49,6 +50,7 @@ impl LayerFilter {
         !self.query.is_empty()
             || self.color.is_some()
             || self.visible.is_some()
+            || self.selected.is_some()
             || self.lock != LockFilter::Any
     }
     fn args(&self) -> Value {
@@ -61,6 +63,9 @@ impl LayerFilter {
         }
         if let Some(visible) = self.visible {
             args["visible"] = json!(visible);
+        }
+        if let Some(selected) = self.selected {
+            args["selected"] = json!(selected);
         }
         match self.lock {
             LockFilter::Any => {}
@@ -98,11 +103,42 @@ fn layer_fingerprint(editor: &Editor) -> u64 {
             doc.pixel_locked(i) as u8,
             doc.position_locked(i) as u8,
             doc.color_label(i) as u8,
+            doc.layer_selected(i) as u8,
         ] {
             hash.write_u8(value);
         }
     }
     hash.finish()
+}
+#[derive(Clone)]
+struct LayerAnchor {
+    id: u64,
+    active: u64,
+    selected: Vec<u64>,
+}
+fn layer_anchor_key(identity: u64) -> Id {
+    Id::new(("layer-selection-anchor", identity))
+}
+fn batch_action(command: &str, ids: &[u64], mut args: Value) -> crate::application::Action {
+    if let Some(args) = args.as_object_mut() {
+        args.remove("layer_id");
+        args.remove("index");
+    }
+    crate::application::Action::new(
+        "layer.batch",
+        json!({"action":command,"layer_ids":ids,"args":args}),
+    )
+}
+fn property_action(ids: &[u64], mut args: Value) -> Option<crate::application::Action> {
+    if args.as_object().is_none_or(|args| args.is_empty()) {
+        return None;
+    }
+    Some(if ids.len() > 1 {
+        batch_action("layer.set", ids, args)
+    } else {
+        args["layer_id"] = json!(ids[0]);
+        crate::application::Action::new("layer.set", args)
+    })
 }
 #[derive(Clone, Copy, PartialEq, Eq)]
 struct LayerProperties {
@@ -121,6 +157,7 @@ impl LayerProperties {
             color: doc.color_label(index),
         }
     }
+    #[cfg(test)]
     fn action(self, before: Self, id: u64) -> Option<crate::application::Action> {
         (self != before).then(|| crate::application::Action::new("layer.set", json!({"layer_id":id,
             "alpha_locked":self.alpha,"pixel_locked":self.pixels,"position_locked":self.position,"color_label":self.color})))
@@ -183,6 +220,116 @@ fn layer_text(ui: &Ui, text: String, rect: Rect, font: FontId, color: Color32) {
         );
 }
 impl Editor {
+    fn layer_row_selection(
+        &mut self,
+        ctx: &Context,
+        clicked: u64,
+        visible: &[usize],
+        modifiers: Modifiers,
+    ) -> bool {
+        let selected = self.session.doc.selected_layer_ids();
+        let active = self.session.doc.layer_id(self.session.doc.active);
+        let key = layer_anchor_key(self.session.doc.identity);
+        let prior = ctx.data_mut(|data| data.get_temp::<LayerAnchor>(key));
+        let visible_ids: Vec<_> = visible
+            .iter()
+            .map(|&i| self.session.doc.layer_id(i))
+            .collect();
+        let anchor = prior
+            .filter(|anchor| {
+                anchor.selected == selected
+                    && anchor.active == active
+                    && visible_ids.contains(&anchor.id)
+            })
+            .map(|anchor| anchor.id)
+            .unwrap_or_else(|| {
+                if visible_ids.contains(&active) {
+                    active
+                } else {
+                    clicked
+                }
+            });
+        let mut ids = selected.clone();
+        let mut next_active = clicked;
+        let mut next_anchor = clicked;
+        if modifiers.shift {
+            let Some(start) = visible_ids.iter().position(|id| *id == anchor) else {
+                return false;
+            };
+            let Some(end) = visible_ids.iter().position(|id| *id == clicked) else {
+                return false;
+            };
+            if !modifiers.ctrl {
+                ids.clear();
+            }
+            for &id in &visible_ids[start.min(end)..=start.max(end)] {
+                if !ids.contains(&id) {
+                    ids.push(id);
+                }
+            }
+            next_anchor = anchor;
+        } else if modifiers.ctrl {
+            if let Some(position) = ids.iter().position(|id| *id == clicked) {
+                if ids.len() == 1 {
+                    return true;
+                }
+                ids.remove(position);
+                next_active = if active != clicked {
+                    active
+                } else {
+                    let clicked_index = self.session.doc.layer_index(clicked).unwrap();
+                    *ids.iter()
+                        .min_by_key(|id| {
+                            let i = self.session.doc.layer_index(**id).unwrap();
+                            (i.abs_diff(clicked_index), i)
+                        })
+                        .unwrap()
+                };
+                next_anchor = next_active;
+            } else {
+                ids.push(clicked);
+            }
+        } else {
+            ids = vec![clicked];
+        }
+        if self.input_owned || self.drawing || self.panning.is_some() {
+            self.finish_stroke();
+        }
+        let revision = self.session.revision;
+        let success = self.core_at_revision(
+            "layer.selection.set",
+            json!({"layer_ids":ids,"active_layer_id":next_active}),
+            Some(revision),
+        );
+        if success {
+            ctx.data_mut(|data| {
+                data.insert_temp(
+                    key,
+                    LayerAnchor {
+                        id: next_anchor,
+                        active: self.session.doc.layer_id(self.session.doc.active),
+                        selected: self.session.doc.selected_layer_ids(),
+                    },
+                )
+            });
+        }
+        success
+    }
+    fn dispatch_layer_pending(&mut self, pending: Vec<crate::application::Action>) {
+        for mut action in pending {
+            if self.input_owned || self.drawing || self.panning.is_some() {
+                self.finish_stroke();
+            }
+            // A pending active-name commit may precede this explicit batch.
+            // Capture its guard at dispatch, after the preceding local action.
+            if action.action == "layer.batch" && action.expected_revision.is_none() {
+                action.expected_revision = Some(self.session.revision);
+            }
+            if !self.core_at_revision(&action.action, action.args, action.expected_revision) {
+                break;
+            }
+        }
+    }
     fn filtered_layer_indices(&mut self, filter: &LayerFilter) -> Result<Vec<usize>, String> {
         let response = self
             .session
@@ -303,6 +450,18 @@ impl Editor {
         let rows = self.cached_layer_indices(ui.ctx(), &filter);
         match &rows {
             Ok(rows) => {
+                let selected = (0..self.session.doc.layers.len())
+                    .filter(|&i| self.session.doc.layer_selected(i))
+                    .count();
+                let outside = (0..self.session.doc.layers.len())
+                    .filter(|&i| self.session.doc.layer_selected(i) && !rows.contains(&i))
+                    .count();
+                if selected > 1 {
+                    ui.weak(tr(format!("{} selected", selected)));
+                }
+                if outside > 0 {
+                    ui.weak(tr(format!("{} selected outside this filter", outside)));
+                }
                 if filter.active() {
                     ui.weak(tr(format!(
                         "{} of {} layers",
@@ -334,33 +493,84 @@ impl Editor {
         let mut action = None;
         let id = self.session.doc.layer_id(index);
         let count = self.session.doc.layers.len();
-        let pixels = self.session.doc.pixel_locked(index);
-        let position = self.session.doc.position_locked(index);
+        let targets = if self.session.doc.layer_selected(index) {
+            self.session.doc.selected_layer_ids()
+        } else {
+            vec![id]
+        };
+        let indices: Vec<_> = targets
+            .iter()
+            .map(|id| self.session.doc.layer_index(*id).unwrap())
+            .collect();
+        let multi = targets.len() > 1;
+        let lowest = *indices.iter().min().unwrap();
+        let remaining = count - targets.len();
+        let pixels = indices.iter().any(|&i| self.session.doc.pixel_locked(i));
+        let position = indices.iter().any(|&i| self.session.doc.position_locked(i));
+        if multi {
+            ui.weak(tr(format!("{} selected", targets.len())));
+            for (visible, title) in [
+                (true, "Show Selected Layers"),
+                (false, "Hide Selected Layers"),
+            ] {
+                if ui.button(tr(title)).clicked() {
+                    action = property_action(&targets, json!({"visible":visible}));
+                    ui.close();
+                }
+            }
+            if ui
+                .add_enabled(
+                    !pixels && indices.iter().all(|&i| !self.session.doc.alpha_locked(i)),
+                    Button::new(tr("Clear Selected Layers")),
+                )
+                .clicked()
+            {
+                action = Some(batch_action("layer.clear", &targets, json!({})));
+                ui.close();
+            }
+            ui.separator();
+        }
         let protected = |i| self.session.doc.alpha_locked(i) || self.session.doc.pixel_locked(i);
         for (command, title, args, enabled) in [
             (
                 "layer.duplicate",
-                "Duplicate Layer",
+                if multi {
+                    "Duplicate Selected Layers"
+                } else {
+                    "Duplicate Layer"
+                },
                 serde_json::json!({"layer_id":id}),
-                count < 16,
+                count + targets.len() <= 16,
             ),
             (
                 "layer.move",
-                "Move Layer Up",
-                serde_json::json!({"layer_id":id,"to":(index+1).min(count-1)}),
-                index + 1 < count,
+                if multi {
+                    "Move Selected Layers Up"
+                } else {
+                    "Move Layer Up"
+                },
+                serde_json::json!({"layer_id":id,"to":(lowest+1).min(remaining)}),
+                lowest < remaining,
             ),
             (
                 "layer.move",
-                "Move Layer Down",
-                serde_json::json!({"layer_id":id,"to":index.saturating_sub(1)}),
-                index > 0,
+                if multi {
+                    "Move Selected Layers Down"
+                } else {
+                    "Move Layer Down"
+                },
+                serde_json::json!({"layer_id":id,"to":lowest.saturating_sub(1)}),
+                lowest > 0,
             ),
             (
                 "layer.delete",
-                "Delete Layer",
+                if multi {
+                    "Delete Selected Layers"
+                } else {
+                    "Delete Layer"
+                },
                 serde_json::json!({"layer_id":id}),
-                count > 1,
+                count > targets.len(),
             ),
         ] {
             if ui.add_enabled(enabled, Button::new(tr(title))).clicked() {
@@ -370,11 +580,12 @@ impl Editor {
         }
         ui.separator();
         for (command, title, enabled) in [
-            ("layer.via_copy", "Layer via Copy", count < 16),
+            ("layer.via_copy", "Layer via Copy", count < 16 && !multi),
             (
                 "layer.via_cut",
                 "Layer via Cut",
                 count < 16
+                    && !multi
                     && self.session.doc.selection().current.is_some()
                     && !self.session.doc.alpha_locked(index)
                     && !pixels,
@@ -403,7 +614,7 @@ impl Editor {
                 "layer.merge_down",
                 "Merge Down",
                 serde_json::json!({"layer_id":id}),
-                index > 0 && !protected(index) && !protected(index - 1),
+                !multi && index > 0 && !protected(index) && !protected(index - 1),
             ),
             (
                 "layer.merge_visible",
@@ -456,7 +667,8 @@ impl Editor {
                         .registry
                         .actions
                         .contains_key("layer.fill_color")
-                        && !pixels,
+                        && !pixels
+                        && !multi,
                     Button::new(tr(title)),
                 )
                 .clicked()
@@ -481,7 +693,16 @@ impl Editor {
         ] {
             if ui
                 .add_enabled(
-                    self.session.registry.actions.contains_key(command) && !pixels && !position,
+                    self.session.registry.actions.contains_key(command)
+                        && !pixels
+                        && !position
+                        && (!multi
+                            || matches!(
+                                command,
+                                "layer.flip_horizontal"
+                                    | "layer.flip_vertical"
+                                    | "layer.rotate_180"
+                            )),
                     Button::new(tr(title)),
                 )
                 .clicked()
@@ -527,23 +748,68 @@ impl Editor {
                 }
             }
         });
+        if multi {
+            if let Some(source) = &action {
+                let (command, args) = if source.action == "pipeline.run" {
+                    let last = source.args["steps"]
+                        .as_array()
+                        .and_then(|steps| steps.last());
+                    last.and_then(|step| {
+                        step["action"].as_str().map(|command| {
+                            (
+                                command,
+                                step.get("args").cloned().unwrap_or_else(|| json!({})),
+                            )
+                        })
+                    })
+                    .unwrap_or(("", json!({})))
+                } else {
+                    (source.action.as_str(), source.args.clone())
+                };
+                if matches!(
+                    command,
+                    "layer.set"
+                        | "layer.duplicate"
+                        | "layer.delete"
+                        | "layer.move"
+                        | "layer.clear"
+                        | "layer.flip_horizontal"
+                        | "layer.flip_vertical"
+                        | "layer.rotate_180"
+                        | "layer.translate"
+                ) {
+                    action = Some(batch_action(command, &targets, args));
+                }
+            }
+        }
         action
     }
     pub(super) fn layers_ui(&mut self, ui: &mut Ui) {
         let mut pending = Vec::new();
+        let targets = self.session.doc.selected_layer_ids();
+        let target_indices: Vec<_> = targets
+            .iter()
+            .map(|id| self.session.doc.layer_index(*id).unwrap())
+            .collect();
         ui.horizontal_wrapped(|ui| {
             if icon_button(ui, self, 42, false).clicked() {
                 self.actions.push(Action::NewLayer);
             }
             if ui
                 .add_enabled_ui(
-                    !self.session.doc.pixel_locked(self.session.doc.active),
+                    target_indices.iter().all(|&i| {
+                        !self.session.doc.pixel_locked(i) && !self.session.doc.alpha_locked(i)
+                    }),
                     |ui| icon_button(ui, self, 43, false),
                 )
                 .inner
                 .clicked()
             {
-                self.actions.push(Action::UiCommand(43));
+                if targets.len() > 1 {
+                    pending.push(batch_action("layer.clear", &targets, json!({})));
+                } else {
+                    self.actions.push(Action::UiCommand(43));
+                }
             }
             ui.menu_button(tr("···"), |ui| {
                 if let Some(action) = self.layer_menu(ui, self.session.doc.active) {
@@ -558,6 +824,9 @@ impl Editor {
         });
         let index = self.session.doc.active;
         let id = self.session.doc.layer_id(index);
+        if targets.len() > 1 {
+            ui.weak(tr("Active Layer Name"));
+        }
         let edit_id = Id::new(("layer-name", self.session.doc.identity, id));
         let current = if self.session.doc.custom_layer_name(index).is_empty() {
             localize(format!("Layer {:02}", index + 1))
@@ -596,49 +865,100 @@ impl Editor {
         }
         ui.add_space(self.settings.ui.item_spacing);
         let before = LayerProperties::read(self, index);
-        let mut properties = before;
+        let alpha_mixed = target_indices
+            .iter()
+            .any(|&i| self.session.doc.alpha_locked(i) != before.alpha);
+        let pixels_mixed = target_indices
+            .iter()
+            .any(|&i| self.session.doc.pixel_locked(i) != before.pixels);
+        let position_mixed = target_indices
+            .iter()
+            .any(|&i| self.session.doc.position_locked(i) != before.position);
+        let color_mixed = target_indices
+            .iter()
+            .any(|&i| self.session.doc.color_label(i) != before.color);
+        let mut changes = json!({});
+        let mut alpha = before.alpha && !alpha_mixed;
         ui.scope(|ui| {
             ui.style_mut().wrap_mode = Some(TextWrapMode::Wrap);
-            ui.checkbox(&mut properties.alpha, tr("Lock Layer Transparency"));
+            if ui
+                .add(
+                    Checkbox::new(&mut alpha, tr("Lock Layer Transparency"))
+                        .indeterminate(alpha_mixed),
+                )
+                .changed()
+            {
+                changes["alpha_locked"] = json!(alpha);
+            }
         });
         let a = self.settings.ui.clone();
         ui.horizontal_wrapped(|ui| {
             ui.weak(tr("Layer Locks"));
+            let pixel_hint = if pixels_mixed {
+                format!("{}\n{}", localize("Lock Pixels"), localize("Mixed Values"))
+            } else {
+                localize("Lock Pixels").into_owned()
+            };
             if ui
-                .add(layer_icon_button(&a, '\u{e899}', properties.pixels))
-                .on_hover_text(tr("Lock Pixels"))
+                .add(layer_icon_button(
+                    &a,
+                    '\u{e899}',
+                    before.pixels && !pixels_mixed,
+                ))
+                .on_hover_text(pixel_hint)
                 .clicked()
             {
-                properties.pixels = !properties.pixels;
+                changes["pixel_locked"] = json!(pixels_mixed || !before.pixels);
             }
+            let position_hint = if position_mixed {
+                format!(
+                    "{}\n{}",
+                    localize("Lock Position"),
+                    localize("Mixed Values")
+                )
+            } else {
+                localize("Lock Position").into_owned()
+            };
             if ui
-                .add(layer_icon_button(&a, '\u{e89f}', properties.position))
-                .on_hover_text(tr("Lock Position"))
+                .add(layer_icon_button(
+                    &a,
+                    '\u{e89f}',
+                    before.position && !position_mixed,
+                ))
+                .on_hover_text(position_hint)
                 .clicked()
             {
-                properties.position = !properties.position;
+                changes["position_locked"] = json!(position_mixed || !before.position);
             }
             ComboBox::from_id_salt(("layer-color", id))
                 .width(a.control_height * 4.)
                 .truncate()
-                .selected_text(color_label_text(ui, properties.color))
+                .selected_text(if color_mixed {
+                    tr("Mixed Values")
+                } else {
+                    color_label_text(ui, before.color)
+                })
                 .show_ui(ui, |ui| {
                     for color in LayerColor::ALL {
-                        ui.selectable_value(
-                            &mut properties.color,
-                            color,
-                            color_label_text(ui, color),
-                        );
+                        if ui
+                            .selectable_label(
+                                !color_mixed && before.color == color,
+                                color_label_text(ui, color),
+                            )
+                            .clicked()
+                        {
+                            changes["color_label"] = json!(color);
+                        }
                     }
                 })
                 .response
                 .on_hover_text(tr("Color Label"));
         });
-        if let Some(action) = properties.action(before, id) {
-            pending.push(action);
-        }
         let mut mode = self.session.doc.layers[index].mode;
-        let before_mode = mode;
+        let mode_mixed = target_indices
+            .iter()
+            .any(|&i| self.session.doc.layers[i].mode != mode);
+        let mut mode_changed = false;
         let narrow = ui.available_width() < a.control_height * 9.;
         let blend = |ui: &mut Ui| {
             ui.weak(tr("Blend Mode"));
@@ -652,10 +972,20 @@ impl Editor {
                             a.control_height * 4.
                         })
                         .truncate()
-                        .selected_text(tr(mode.title()))
+                        .selected_text(tr(if mode_mixed {
+                            "Mixed Values"
+                        } else {
+                            mode.title()
+                        }))
                         .show_ui(ui, |ui| {
                             for item in crate::engine::graph::BlendMode::ALL {
-                                ui.selectable_value(&mut mode, item, tr(item.title()));
+                                if ui
+                                    .selectable_label(!mode_mixed && mode == item, tr(item.title()))
+                                    .clicked()
+                                {
+                                    mode = item;
+                                    mode_changed = true;
+                                }
                             }
                         });
                 },
@@ -666,8 +996,8 @@ impl Editor {
         } else {
             ui.horizontal(blend);
         }
-        if mode != before_mode {
-            self.core("layer.set", json!({"layer_id":id,"blend_mode":mode}));
+        if mode_changed {
+            changes["blend_mode"] = json!(mode);
         }
         if ui
             .add(
@@ -694,10 +1024,16 @@ impl Editor {
         let previous = opacity;
         parameter(ui, "Opacity", &mut opacity, 0.0..=1., "%", true, false);
         if (opacity - previous).abs() > 0.0001 {
-            self.core(
-                "layer.set",
-                serde_json::json!({"layer_id":id,"opacity":opacity}),
-            );
+            changes["opacity"] = json!(opacity);
+        }
+        if target_indices
+            .iter()
+            .any(|&i| self.session.doc.layers[i].opacity != self.session.doc.layers[index].opacity)
+        {
+            ui.weak(tr("Mixed opacity; edits apply to selected layers."));
+        }
+        if let Some(action) = property_action(&targets, changes) {
+            pending.push(action);
         }
         ui.add_space(self.settings.ui.item_spacing);
         let indices = self.layer_filters_ui(ui);
@@ -726,12 +1062,22 @@ impl Editor {
                 self.settings.ui.corner_radius,
                 if index == self.session.doc.active {
                     colors.tint(if colors.dark { 0.16 } else { 0.13 })
+                } else if self.session.doc.layer_selected(index) {
+                    colors.tint(if colors.dark { 0.08 } else { 0.06 })
                 } else if response.hovered() {
                     colors.raised
                 } else {
                     colors.panel
                 },
             );
+            if index == self.session.doc.active {
+                ui.painter().rect_stroke(
+                    r.shrink(0.5),
+                    a.corner_radius,
+                    Stroke::new(1., colors.accent.gamma_multiply(0.6)),
+                    StrokeKind::Inside,
+                );
+            }
             let color = self.session.doc.color_label(index);
             if let Some(color) = label_color(color)
                 .or_else(|| (index == self.session.doc.active).then_some(colors.accent))
@@ -880,12 +1226,21 @@ impl Editor {
                 hint.push('\n');
                 hint.push_str(&localize(*title));
             }
+            hint.push('\n');
+            hint.push_str(&localize(
+                "Click selects one layer. Ctrl toggles. Shift selects a visible range.",
+            ));
+            if index == self.session.doc.active {
+                hint.push('\n');
+                hint.push_str(&localize("Active painting layer"));
+            }
             let response = response.on_hover_text(hint);
             if response.clicked() && !toggle.clicked() {
-                self.finish_stroke();
-                self.core(
-                    "layer.select",
-                    serde_json::json!({"layer_id":self.session.doc.layer_id(index)}),
+                self.layer_row_selection(
+                    ui.ctx(),
+                    self.session.doc.layer_id(index),
+                    &indices,
+                    ui.input(|input| input.modifiers),
                 );
             }
             response.context_menu(|ui| {
@@ -894,10 +1249,7 @@ impl Editor {
                 }
             });
         }
-        for action in pending {
-            self.finish_stroke();
-            self.core(&action.action, action.args);
-        }
+        self.dispatch_layer_pending(pending);
     }
 }
 
@@ -966,6 +1318,7 @@ mod tests {
             query: "iNk".into(),
             color: Some(LayerColor::Violet),
             visible: Some(true),
+            selected: None,
             lock: LockFilter::Pixels,
         };
         let ctx = Context::default();
@@ -1140,6 +1493,7 @@ mod tests {
             query: "Line".into(),
             color: Some(LayerColor::Violet),
             visible: Some(true),
+            selected: None,
             lock: LockFilter::Pixels,
         };
         assert_eq!(
@@ -1291,6 +1645,412 @@ mod tests {
         assert_eq!(app.editor.session.doc.layer_name(0), "Ink 墨");
         assert!(ctx.data_mut(|d| d.get_temp::<String>(edit)).is_none());
     }
+    fn selected(app: &Studio) -> Vec<u64> {
+        app.editor.session.doc.selected_layer_ids()
+    }
+    fn native_multi() -> (Studio, Vec<u64>) {
+        let mut app = studio();
+        app.editor.session = crate::application::Session::new(
+            crate::plugins::Registry::load(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert!(app
+            .editor
+            .core("canvas.new", json!({"width":12,"height":8})));
+        for i in 0..4 {
+            if i > 0 {
+                assert!(app.editor.core("layer.add", json!({})));
+            }
+            assert!(app
+                .editor
+                .core("layer.rename", json!({"name":format!("L{i}")})));
+            assert!(app.editor.core(
+                "layer.fill_color",
+                json!({"color":format!("#{:06X}",0x224466+i*0x110000)})
+            ));
+        }
+        let ids = (0..4)
+            .map(|i| app.editor.session.doc.layer_id(i))
+            .collect::<Vec<_>>();
+        assert!(app.editor.core(
+            "layer.selection.set",
+            json!({"layer_ids":[ids[1],ids[2]],"active_layer_id":ids[2]})
+        ));
+        (app, ids)
+    }
+    fn menu_click(app: &mut Studio, title: &str) -> crate::application::Action {
+        let ctx = Context::default();
+        theme::fonts(&ctx);
+        theme::apply(&ctx, &app.editor.settings.ui);
+        let mut chosen = None;
+        let mut point = None;
+        for n in 0..4 {
+            let events = if n == 3 {
+                let p = point.unwrap();
+                vec![
+                    Event::PointerMoved(p),
+                    Event::PointerButton {
+                        pos: p,
+                        button: PointerButton::Primary,
+                        pressed: true,
+                        modifiers: Modifiers::NONE,
+                    },
+                    Event::PointerButton {
+                        pos: p,
+                        button: PointerButton::Primary,
+                        pressed: false,
+                        modifiers: Modifiers::NONE,
+                    },
+                ]
+            } else {
+                vec![]
+            };
+            let output = ctx.run(
+                RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(460., 1400.))),
+                    events,
+                    time: Some(n as f64),
+                    focused: true,
+                    ..Default::default()
+                },
+                |ctx| {
+                    CentralPanel::default().frame(Frame::NONE).show(ctx, |ui| {
+                        if let Some(action) =
+                            app.editor.layer_menu(ui, app.editor.session.doc.active)
+                        {
+                            chosen = Some(action);
+                        }
+                    });
+                },
+            );
+            if n == 2 {
+                point = output
+                    .shapes
+                    .iter()
+                    .find_map(|shape| label(&shape.shape, title));
+                assert!(point.is_some(), "missing menu action {title}");
+            }
+        }
+        chosen.unwrap_or_else(|| panic!("menu click did not dispatch {title}"))
+    }
+    #[test]
+    fn layers_ctrl_toggle_and_shift_ranges_keep_active_and_filter_boundaries_explicit() {
+        let mut app = layers();
+        assert!(app.editor.core("layer.add", json!({})));
+        assert!(app.editor.core("layer.add", json!({})));
+        let ids = (0..4)
+            .map(|i| app.editor.session.doc.layer_id(i))
+            .collect::<Vec<_>>();
+        let ctx = Context::default();
+        let all = [0, 1, 2, 3];
+        let pixels = app
+            .editor
+            .session
+            .doc
+            .layers
+            .iter()
+            .map(|l| l.pixels.clone())
+            .collect::<Vec<_>>();
+        let history = app.editor.session.doc.history_bytes();
+        assert!(app
+            .editor
+            .layer_row_selection(&ctx, ids[0], &all, Modifiers::NONE));
+        assert_eq!(selected(&app), vec![ids[0]]);
+        assert!(app
+            .editor
+            .layer_row_selection(&ctx, ids[2], &all, Modifiers::CTRL));
+        assert_eq!(selected(&app), vec![ids[0], ids[2]]);
+        assert_eq!(
+            app.editor
+                .session
+                .doc
+                .layer_id(app.editor.session.doc.active),
+            ids[2]
+        );
+        assert!(app
+            .editor
+            .layer_row_selection(&ctx, ids[3], &all, Modifiers::SHIFT));
+        assert_eq!(selected(&app), vec![ids[2], ids[3]]);
+        let both = Modifiers {
+            ctrl: true,
+            shift: true,
+            ..Modifiers::NONE
+        };
+        assert!(app.editor.layer_row_selection(&ctx, ids[0], &all, both));
+        assert_eq!(selected(&app), ids);
+        assert!(app
+            .editor
+            .layer_row_selection(&ctx, ids[0], &all, Modifiers::CTRL));
+        assert_eq!(app.editor.session.doc.active, 1);
+        for id in [ids[2], ids[3]] {
+            assert!(app
+                .editor
+                .layer_row_selection(&ctx, id, &all, Modifiers::CTRL));
+        }
+        assert_eq!(selected(&app), vec![ids[1]]);
+        assert!(app
+            .editor
+            .layer_row_selection(&ctx, ids[1], &all, Modifiers::CTRL));
+        assert_eq!(selected(&app), vec![ids[1]]);
+        let visible = [0, 2, 3];
+        assert!(app
+            .editor
+            .layer_row_selection(&ctx, ids[0], &visible, Modifiers::NONE));
+        assert!(app
+            .editor
+            .layer_row_selection(&ctx, ids[3], &visible, Modifiers::SHIFT));
+        assert_eq!(selected(&app), vec![ids[0], ids[2], ids[3]]);
+        assert!(app
+            .editor
+            .session
+            .doc
+            .layers
+            .iter()
+            .all(|layer| layer.visible));
+        // An external selection invalidates the old gesture anchor. Add-range
+        // keeps explicitly selected layers that are outside the current filter.
+        assert!(app.editor.core(
+            "layer.selection.set",
+            json!({"layer_ids":[ids[0],ids[1]],"active_layer_id":ids[0]})
+        ));
+        assert!(app.editor.layer_row_selection(&ctx, ids[3], &visible, both));
+        assert_eq!(selected(&app), ids);
+        assert_eq!(
+            app.editor
+                .session
+                .doc
+                .layers
+                .iter()
+                .map(|l| l.pixels.clone())
+                .collect::<Vec<_>>(),
+            pixels
+        );
+        assert_eq!(app.editor.session.doc.history_bytes(), history);
+    }
+    #[test]
+    fn layers_mixed_property_click_preserves_other_fields_and_commits_pending_active_name_first() {
+        let mut app = layers();
+        let ids = (0..2)
+            .map(|i| app.editor.session.doc.layer_id(i))
+            .collect::<Vec<_>>();
+        assert!(app.editor.core("layer.set",json!({"layer_id":ids[0],"alpha_locked":true,"position_locked":true,"color_label":"red"})));
+        assert!(app
+            .editor
+            .core("layer.set", json!({"layer_id":ids[1],"color_label":"blue"})));
+        assert!(app.editor.core(
+            "layer.selection.set",
+            json!({"layer_ids":ids,"active_layer_id":ids[0]})
+        ));
+        let before = ids
+            .iter()
+            .map(|id| {
+                LayerProperties::read(
+                    &app.editor,
+                    app.editor.session.doc.layer_index(*id).unwrap(),
+                )
+            })
+            .collect::<Vec<_>>();
+        let ctx = Context::default();
+        let size = vec2(244., 1100.);
+        for n in 0..3 {
+            panel_frame(&mut app, &ctx, size, vec![], n as f64);
+        }
+        let edit = Id::new(("layer-name", app.editor.session.doc.identity, ids[0]));
+        ctx.data_mut(|data| data.insert_temp(edit, "Finished Ink".to_owned()));
+        ctx.memory_mut(|memory| memory.request_focus(edit));
+        let output = panel_frame(&mut app, &ctx, size, vec![], 3.);
+        let p = output
+            .shapes
+            .iter()
+            .find_map(|shape| label(&shape.shape, "Lock Layer Transparency"))
+            .unwrap();
+        app.editor.session.replay_boundary().unwrap();
+        let events = app
+            .editor
+            .session
+            .replay_journal(false)
+            .unwrap()
+            .entries
+            .len();
+        panel_frame(
+            &mut app,
+            &ctx,
+            size,
+            vec![
+                Event::PointerMoved(p),
+                Event::PointerButton {
+                    pos: p,
+                    button: PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Modifiers::NONE,
+                },
+                Event::PointerButton {
+                    pos: p,
+                    button: PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Modifiers::NONE,
+                },
+            ],
+            4.,
+        );
+        assert_eq!(app.editor.session.doc.layer_name(0), "Finished Ink");
+        assert_eq!(app.editor.session.doc.layer_name(1), "Sketch 下描き");
+        for (i, previous) in before.iter().enumerate() {
+            let after = LayerProperties::read(&app.editor, i);
+            assert!(after.alpha);
+            assert_eq!(
+                (after.pixels, after.position, after.color),
+                (previous.pixels, previous.position, previous.color)
+            );
+        }
+        let journal = app.editor.session.replay_journal(false).unwrap();
+        assert_eq!(journal.entries.len(), events + 2);
+        let recorded = journal.events(events, 2).unwrap();
+        assert_eq!(recorded["events"][0]["source"]["action"], "layer.rename");
+        assert_eq!(
+            recorded["events"][1]["source"]["args"]["args"],
+            json!({"alpha_locked":true})
+        );
+        assert!(app.editor.core("history.undo", json!({})));
+        assert_eq!(app.editor.session.doc.layer_name(0), "Finished Ink");
+        assert!(LayerProperties::read(&app.editor, 0) == before[0]);
+        assert!(LayerProperties::read(&app.editor, 1) == before[1]);
+        assert!(app.editor.core("history.undo", json!({})));
+        assert_eq!(app.editor.session.doc.layer_name(0), "Ink 墨");
+    }
+    #[test]
+    fn layers_batch_menu_clear_delete_reorder_and_duplicate_each_have_one_event_and_one_undo() {
+        for (title, command) in [
+            ("Clear Selected Layers", "layer.clear"),
+            ("Delete Selected Layers", "layer.delete"),
+            ("Move Selected Layers Up", "layer.move"),
+            ("Move Selected Layers Down", "layer.move"),
+            ("Duplicate Selected Layers", "layer.duplicate"),
+        ] {
+            let (mut app, ids) = native_multi();
+            let before = app.editor.session.doc.composition();
+            let pixels = app
+                .editor
+                .session
+                .doc
+                .layers
+                .iter()
+                .map(|layer| layer.pixels.clone())
+                .collect::<Vec<_>>();
+            let action = menu_click(&mut app, title);
+            assert_eq!(action.action, "layer.batch");
+            assert_eq!(action.args["action"], command);
+            assert_eq!(action.args["layer_ids"], json!([ids[1], ids[2]]));
+            app.editor.session.replay_boundary().unwrap();
+            let events = app
+                .editor
+                .session
+                .replay_journal(false)
+                .unwrap()
+                .entries
+                .len();
+            app.editor.dispatch_layer_pending(vec![action]);
+            assert_eq!(
+                app.editor
+                    .session
+                    .replay_journal(false)
+                    .unwrap()
+                    .entries
+                    .len(),
+                events + 1,
+                "{title}: {}",
+                app.editor.status
+            );
+            let order = (0..app.editor.session.doc.layers.len())
+                .map(|i| app.editor.session.doc.layer_id(i))
+                .collect::<Vec<_>>();
+            match title {
+                "Clear Selected Layers" => {
+                    for i in [1, 2] {
+                        assert!(app.editor.session.doc.layers[i]
+                            .pixels
+                            .iter()
+                            .all(|p| *p == 0));
+                    }
+                }
+                "Delete Selected Layers" => assert_eq!(order, vec![ids[0], ids[3]]),
+                "Move Selected Layers Up" => {
+                    assert_eq!(order, vec![ids[0], ids[3], ids[1], ids[2]])
+                }
+                "Move Selected Layers Down" => {
+                    assert_eq!(order, vec![ids[1], ids[2], ids[0], ids[3]])
+                }
+                "Duplicate Selected Layers" => {
+                    assert_eq!(order.len(), 6);
+                    assert!(selected(&app).iter().all(|id| !ids.contains(id)));
+                }
+                _ => unreachable!(),
+            }
+            let allocated = app.editor.session.doc.composition().next_layer_id;
+            assert!(app.editor.core("history.undo", json!({})), "{title}");
+            let mut restored = app.editor.session.doc.composition();
+            if command == "layer.duplicate" {
+                // Undo removes the copies without reusing their stable IDs.
+                assert_eq!(restored.next_layer_id, allocated);
+                assert!(restored.next_layer_id > before.next_layer_id);
+                restored.next_layer_id = before.next_layer_id;
+            }
+            assert_eq!(restored, before, "{title}");
+            assert_eq!(
+                app.editor
+                    .session
+                    .doc
+                    .layers
+                    .iter()
+                    .map(|layer| layer.pixels.clone())
+                    .collect::<Vec<_>>(),
+                pixels,
+                "{title}"
+            );
+        }
+    }
+    #[test]
+    fn layers_pending_dispatch_preserves_explicit_revision_conflicts() {
+        let mut app = layers();
+        let ids = selected(&app);
+        let mut action = batch_action("layer.set", &ids, json!({"visible":false}));
+        action.expected_revision = Some(app.editor.session.revision.saturating_sub(1));
+        let before = app.editor.session.state();
+        app.editor.dispatch_layer_pending(vec![action]);
+        assert_eq!(app.editor.session.state(), before);
+        assert!(app.editor.status.contains("revision_conflict"));
+    }
+    #[test]
+    fn layers_new_selection_and_batch_controls_keep_external_hand_contacts_intact() {
+        let (mut app, ids) = native_multi();
+        assert!(app.editor.core("tool.select", json!({"tool":"hand"})));
+        assert!(app.editor.core(
+            "canvas.pointer",
+            json!({"phase":"down","x":2,"y":2,"time":0})
+        ));
+        let state = app.editor.session.state();
+        assert!(!app.editor.layer_row_selection(
+            &Context::default(),
+            ids[0],
+            &[0, 1, 2, 3],
+            Modifiers::NONE
+        ));
+        assert_eq!(app.editor.session.state(), state);
+        app.editor.dispatch_layer_pending(vec![batch_action(
+            "layer.clear",
+            &[ids[1], ids[2]],
+            json!({}),
+        )]);
+        assert_eq!(app.editor.session.state(), state);
+        assert!(app.editor.session.stroke.active());
+        assert!(app.editor.session.pointer_checkpoint.is_some());
+        assert!(app
+            .editor
+            .core("canvas.pointer", json!({"phase":"up","x":2,"y":2,"time":1})));
+    }
     #[test]
     fn layer_icon_controls_keep_square_targets_when_a_font_glyph_is_unavailable() {
         let ctx = Context::default();
@@ -1374,6 +2134,10 @@ mod tests {
                 app.editor.settings.ui.language = language;
                 assert!(app.editor.core("layer.rename", json!({"name":name})));
                 assert!(app.editor.core("layer.set",json!({"alpha_locked":true,"pixel_locked":true,"position_locked":true,"color_label":"green"})));
+                let ids = (0..app.editor.session.doc.layers.len())
+                    .map(|i| app.editor.session.doc.layer_id(i))
+                    .collect::<Vec<_>>();
+                assert!(app.editor.core("layer.selection.set",json!({"layer_ids":ids,"active_layer_id":app.editor.session.doc.layer_id(app.editor.session.doc.active)})));
                 let state = app.editor.session.state();
                 let ctx = Context::default();
                 let size = vec2(width, 1100.);

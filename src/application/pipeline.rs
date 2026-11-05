@@ -64,7 +64,7 @@ pub(crate) fn resource_schema(id: &str) -> Value {
         "id":{"type":"string"},"name":{"description":"File name or null for untitled canvas"},
         "source_path":{"description":"Imported/opened source path or null"},"save_path":{"description":"Project save target or null"},
         "width":{"type":"integer"},"height":{"type":"integer"},"dirty":{"type":"boolean"},
-        "active_layer":{"type":"integer"},"layers":{"type":"array","items":{"type":"object"}}
+        "active_layer":{"type":"integer"},"selected_layer_ids":{"type":"array","items":{"type":"integer"}},"layers":{"type":"array","items":{"type":"object"}}
     },"required":["id","source_path","save_path","width","height","dirty","layers"]});
     match id {
         "document.active" => document.clone(),
@@ -84,7 +84,7 @@ fn document(s: &Session) -> Value {
     let path = s.file.as_ref().or(s.source_file.as_ref());
     json!({"id":"active","name":path.and_then(|p|p.file_name()).map(|p|p.to_string_lossy()),
         "source_path":s.source_file,"save_path":s.file,"dirty":s.doc.dirty,
-        "width":s.doc.width,"height":s.doc.height,"active_layer":s.doc.active,
+        "width":s.doc.width,"height":s.doc.height,"active_layer":s.doc.active,"selected_layer_ids":s.doc.selected_layer_ids(),
         "layers":s.state()["layers"],"snapshot_action":"canvas.snapshot"})
 }
 pub fn context(s: &mut Session, args: Value) -> ActionResult {

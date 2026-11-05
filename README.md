@@ -54,6 +54,8 @@ Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadma
 
 Layers support pixel/position locks, color labels and shared read-only name/visibility/lock filters, with undo, projects and verified replay. Native write permissions retain read tools and protect locked targets.
 
+Ctrl/Shift layer selection is separate from the active painting layer. Explicit stable-ID batches apply properties, duplicate, delete, reorder or run exact pixel edits with one Undo/Redo group and one verified outcome. The same actions and selected state are available to nodes, MCP and headless clients.
+
 Layers support renaming, reordering, deletion and selection-aware **Layer via Copy (Ctrl+J)** / **Layer via Cut (Ctrl+Shift+J)**. Without a selection, Ctrl+J duplicates the whole layer. Layers also support Merge Down (**Ctrl+E**), Merge Visible (**Ctrl+Shift+E**), Stamp Visible (**Ctrl+Alt+Shift+E**) and transparent-canvas flattening. Exact flips, 180° rotation and integer offsets are also available. See [Layer editing](docs/layer-editing.md).
 
 Current limits: one document per session; no Wintab, off-canvas layer storage, layer groups or watercolor engine. Native plugin DLLs execute inside the host process.

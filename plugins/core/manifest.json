@@ -93,6 +93,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -106,7 +109,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -352,6 +356,16 @@
               "physical_size_known",
               "resolution_source"
             ]
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -360,7 +374,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -786,6 +801,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -799,7 +817,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -912,6 +931,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -920,7 +949,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -1263,6 +1293,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -1276,7 +1309,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -1389,6 +1423,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -1397,7 +1441,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -1491,6 +1536,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -1504,7 +1552,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -1617,6 +1666,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -1625,7 +1684,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -1719,6 +1779,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -1732,7 +1795,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -1845,6 +1909,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -1853,7 +1927,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -2777,6 +2852,758 @@
       "operation": "layer_properties"
     },
     {
+      "id": "layer.selection.set",
+      "title": "Select Layers",
+      "operation": "layer_selection",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "dirty": {
+            "type": "boolean"
+          },
+          "selected_tool": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "view": {
+            "type": "object"
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "selection": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "can_reselect": {
+                "type": "boolean"
+              }
+            }
+          },
+          "selection_sampling": {
+            "type": "object",
+            "properties": {
+              "tolerance": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "default": 32
+              },
+              "contiguous": {
+                "type": "boolean",
+                "default": true
+              },
+              "sample_merged": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "selection_defaults": {
+            "type": "object",
+            "properties": {
+              "tolerance": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "default": 32
+              },
+              "contiguous": {
+                "type": "boolean",
+                "default": true
+              },
+              "sample_merged": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "movement_defaults": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "layer",
+                  "selection",
+                  "selection_mask"
+                ]
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "large_step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              }
+            },
+            "required": [
+              "target",
+              "step",
+              "large_step"
+            ],
+            "additionalProperties": false
+          },
+          "movement_options": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "layer",
+                  "selection",
+                  "selection_mask"
+                ]
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "large_step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              }
+            },
+            "required": [
+              "target",
+              "step",
+              "large_step"
+            ],
+            "additionalProperties": false
+          },
+          "last_transform": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "matrix": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "target": {
+                "type": "string",
+                "enum": [
+                  "layer",
+                  "selection",
+                  "selection_mask"
+                ]
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "nearest",
+                  "bilinear"
+                ]
+              },
+              "denominator": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "type": "number"
+                },
+                "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
+              }
+            },
+            "required": [
+              "available"
+            ]
+          },
+          "document_info": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "resolution_ppi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2400,
+                "description": "Editable nominal scalar; inspect per-axis PPI for exact imported metric density. Setting this replaces imported density."
+              },
+              "initial_background": {
+                "type": "string",
+                "description": "Creation fill intent, not a permanent compositing background."
+              },
+              "width_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_explicit": {
+                "type": "boolean",
+                "description": "An explicit document resolution also writes PNG density at 72 PPI."
+              },
+              "png_density": {
+                "type": "object",
+                "properties": {
+                  "xppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "yppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "meter",
+                      "unspecified"
+                    ]
+                  }
+                },
+                "required": [
+                  "xppu",
+                  "yppu",
+                  "unit"
+                ],
+                "additionalProperties": false,
+                "description": "Exact imported PNG pHYs. Zero axes or unspecified units have no known physical size."
+              },
+              "physical_size_known": {
+                "type": "boolean"
+              },
+              "resolution_source": {
+                "type": "string",
+                "enum": [
+                  "png",
+                  "document"
+                ]
+              },
+              "resolution_ppi_x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_ppi_y": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "width",
+              "height",
+              "resolution_ppi",
+              "initial_background",
+              "physical_size_known",
+              "resolution_source"
+            ]
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          }
+        },
+        "required": [
+          "width",
+          "height",
+          "revision",
+          "dirty",
+          "parameters",
+          "layers",
+          "selected_layer_ids"
+        ]
+      }
+    },
+    {
+      "id": "layer.batch",
+      "title": "Apply Layer Batch",
+      "operation": "layer_batch",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "dirty": {
+            "type": "boolean"
+          },
+          "selected_tool": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "view": {
+            "type": "object"
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "selection": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "can_reselect": {
+                "type": "boolean"
+              }
+            }
+          },
+          "selection_sampling": {
+            "type": "object",
+            "properties": {
+              "tolerance": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "default": 32
+              },
+              "contiguous": {
+                "type": "boolean",
+                "default": true
+              },
+              "sample_merged": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "selection_defaults": {
+            "type": "object",
+            "properties": {
+              "tolerance": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "default": 32
+              },
+              "contiguous": {
+                "type": "boolean",
+                "default": true
+              },
+              "sample_merged": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "movement_defaults": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "layer",
+                  "selection",
+                  "selection_mask"
+                ]
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "large_step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              }
+            },
+            "required": [
+              "target",
+              "step",
+              "large_step"
+            ],
+            "additionalProperties": false
+          },
+          "movement_options": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "layer",
+                  "selection",
+                  "selection_mask"
+                ]
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "large_step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              }
+            },
+            "required": [
+              "target",
+              "step",
+              "large_step"
+            ],
+            "additionalProperties": false
+          },
+          "last_transform": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean"
+              },
+              "matrix": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "target": {
+                "type": "string",
+                "enum": [
+                  "layer",
+                  "selection",
+                  "selection_mask"
+                ]
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "nearest",
+                  "bilinear"
+                ]
+              },
+              "denominator": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "type": "number"
+                },
+                "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
+              }
+            },
+            "required": [
+              "available"
+            ]
+          },
+          "document_info": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "resolution_ppi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2400,
+                "description": "Editable nominal scalar; inspect per-axis PPI for exact imported metric density. Setting this replaces imported density."
+              },
+              "initial_background": {
+                "type": "string",
+                "description": "Creation fill intent, not a permanent compositing background."
+              },
+              "width_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_explicit": {
+                "type": "boolean",
+                "description": "An explicit document resolution also writes PNG density at 72 PPI."
+              },
+              "png_density": {
+                "type": "object",
+                "properties": {
+                  "xppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "yppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "meter",
+                      "unspecified"
+                    ]
+                  }
+                },
+                "required": [
+                  "xppu",
+                  "yppu",
+                  "unit"
+                ],
+                "additionalProperties": false,
+                "description": "Exact imported PNG pHYs. Zero axes or unspecified units have no known physical size."
+              },
+              "physical_size_known": {
+                "type": "boolean"
+              },
+              "resolution_source": {
+                "type": "string",
+                "enum": [
+                  "png",
+                  "document"
+                ]
+              },
+              "resolution_ppi_x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_ppi_y": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "width",
+              "height",
+              "resolution_ppi",
+              "initial_background",
+              "physical_size_known",
+              "resolution_source"
+            ]
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          }
+        },
+        "required": [
+          "width",
+          "height",
+          "revision",
+          "dirty",
+          "parameters",
+          "layers",
+          "selected_layer_ids"
+        ]
+      }
+    },
+    {
       "id": "layer.query",
       "title": "Find Layers",
       "operation": "layer_query",
@@ -2855,6 +3682,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -2868,7 +3698,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -2879,6 +3710,21 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "active_layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
           }
         },
         "required": [
@@ -2886,7 +3732,9 @@
           "matched",
           "layers",
           "revision",
-          "drawing"
+          "drawing",
+          "selected_layer_ids",
+          "active_layer_id"
         ],
         "additionalProperties": false
       }
@@ -3520,6 +4368,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -3533,7 +4384,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -3646,6 +4498,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -3654,7 +4516,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -3748,6 +4611,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -3761,7 +4627,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -3874,6 +4741,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -3882,7 +4759,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -4385,6 +5263,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -4398,7 +5279,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -4511,6 +5393,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -4519,7 +5411,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -4613,6 +5506,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -4626,7 +5522,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -4739,6 +5636,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -4747,7 +5654,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -4841,6 +5749,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -4854,7 +5765,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -4967,6 +5879,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -4975,7 +5897,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -5069,6 +5992,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -5082,7 +6008,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -5195,6 +6122,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -5203,7 +6140,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -5297,6 +6235,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -5310,7 +6251,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -5423,6 +6365,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -5431,7 +6383,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -5525,6 +6478,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -5538,7 +6494,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -5651,6 +6608,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -5659,7 +6626,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -5753,6 +6721,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -5766,7 +6737,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -5879,6 +6851,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -5887,7 +6869,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -5981,6 +6964,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -5994,7 +6980,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -6107,6 +7094,16 @@
               "large_step"
             ],
             "additionalProperties": false
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -6115,7 +7112,8 @@
           "revision",
           "dirty",
           "parameters",
-          "layers"
+          "layers",
+          "selected_layer_ids"
         ]
       }
     },
@@ -6720,6 +7718,9 @@
                 },
                 "active": {
                   "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -6733,7 +7734,8 @@
                 "visible",
                 "opacity",
                 "blend_mode",
-                "active"
+                "active",
+                "selected"
               ],
               "additionalProperties": false
             }
@@ -6744,6 +7746,21 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "active_layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
           }
         },
         "required": [
@@ -6751,7 +7768,9 @@
           "matched",
           "layers",
           "revision",
-          "drawing"
+          "drawing",
+          "selected_layer_ids",
+          "active_layer_id"
         ],
         "additionalProperties": false
       }

@@ -80,7 +80,7 @@ Acceptance: coordinate units, pivots, bounds, resampling and clipping are specif
 ### P4 — Layer organization and masks
 
 - [x] Add persistent pixel/position locks, color labels and read-only layer search/filter through shared actions/state/nodes, typed host permissions, one undo and verified replay.
-- [ ] Add multi-layer selection and explicit batch targeting for layer operations.
+- [x] Add stable-ID multi-layer selection and explicit property, duplicate, delete, block-order and exact pixel batch targeting, with shared actions/state/nodes, one Undo/Redo group/revision/outcome and rollback. Painting and Free Transform remain active-layer operations.
 - [ ] Add groups with stable IDs, nested visibility/opacity/blending and deterministic structural history.
 - [ ] Add raster masks, mask editing/enable/invert/density/feather and selection-to-mask conversion.
 - [ ] Add clipping masks and mask-aware image graph ports/composition.

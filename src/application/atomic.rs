@@ -132,6 +132,8 @@ impl Operation {
                 | Self::StampVisible
                 | Self::SelectLayer
                 | Self::LayerProperties
+                | Self::LayerSelection
+                | Self::LayerBatch
                 | Self::ClearLayer
                 | Self::SelectionShape
                 | Self::SelectAll

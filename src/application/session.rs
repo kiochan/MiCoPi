@@ -324,14 +324,15 @@ impl Session {
         let mut parameters = json!(self.parameters);
         parameters["spacing"] = json!(self.parameters.spacing);
         parameters["minimum_opacity"] = json!(self.parameters.minimum_opacity);
-        json!({"document_info":self.doc.info().state(self.doc.width,self.doc.height),"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"layers":(0..self.doc.layers.len()).map(|index|self.layer_state(index)).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"last_transform":crate::plugins::affine::repeat_state(self),"movement_defaults":self.movement_defaults,"movement_options":self.movement_options(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
+        json!({"document_info":self.doc.info().state(self.doc.width,self.doc.height),"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"selected_layer_ids":self.doc.selected_layer_ids(),"layers":(0..self.doc.layers.len()).map(|index|self.layer_state(index)).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"last_transform":crate::plugins::affine::repeat_state(self),"movement_defaults":self.movement_defaults,"movement_options":self.movement_options(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
     }
     pub(crate) fn layer_state(&self, index: usize) -> Value {
         let l = &self.doc.layers[index];
         json!({"index":index,"id":self.doc.layer_id(index),"name":self.doc.layer_name(index),
             "alpha_locked":self.doc.alpha_locked(index),"pixel_locked":self.doc.pixel_locked(index),
             "position_locked":self.doc.position_locked(index),"color_label":self.doc.color_label(index),
-            "visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode,"active":index==self.doc.active})
+            "visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode,"active":index==self.doc.active,
+            "selected":self.doc.layer_selected(index)})
     }
     pub fn apply(&mut self, action: Action) -> ActionResult {
         let pointer_action = self
@@ -498,6 +499,7 @@ impl Session {
                         };
                     }
                     if !read_only
+                        && !self.doc.history_group_active()
                         && !(failed && self.registry.actions[&id].is_document_atomic())
                         && !matches!(
                             op,
@@ -605,6 +607,9 @@ impl Session {
             }
             if op == Operation::LayerQuery {
                 super::layer_query::validate(&action.args)?;
+            }
+            if op == Operation::LayerBatch {
+                crate::plugins::layer_batch::validate(&action.args)?;
             }
             out.push((action.action.clone(), Some(op), action.args.clone()));
         } else if definition.native.is_some() {
