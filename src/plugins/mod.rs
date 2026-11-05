@@ -13,6 +13,7 @@ pub fn panel_key(id: &str) -> u32 {
     })
 }
 
+pub(crate) mod clipboard;
 mod compositing;
 mod document;
 mod layers;
@@ -28,6 +29,12 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        ClipboardCopy
+        | ClipboardCopyMerged
+        | ClipboardCut
+        | ClipboardPaste
+        | ClipboardPasteInPlace
+        | ClipboardState => clipboard::execute(session, op, args),
         SelectionShape | SelectAll | Deselect | Reselect | InvertSelection | ReadSelection
         | SelectColor | GrowSelection | SimilarSelection | ExpandSelection | ContractSelection
         | FeatherSelection | SmoothSelection => selection::execute(session, op, args),

@@ -32,6 +32,7 @@ type SelectionTable = (
     abi::SelectionApi,
     Option<abi::SelectionColorFn>,
     Option<abi::SelectionEdgesFn>,
+    Option<abi::SelectionTransferFn>,
 );
 // Read only advertised, complete optional tails; legacy prefixes remain usable.
 unsafe fn decode_selection_table(
@@ -60,7 +61,13 @@ unsafe fn decode_selection_table(
     } else {
         None
     };
-    Ok((api, color, edges))
+    let transfer = if header.struct_size >= std::mem::size_of::<abi::SelectionApiTransfer>() as u32
+    {
+        std::ptr::read_unaligned(pointer.cast::<abi::SelectionApiTransfer>()).transfer
+    } else {
+        None
+    };
+    Ok((api, color, edges, transfer))
 }
 impl Module {
     unsafe fn selection_api(&self) -> Result<Option<SelectionTable>, String> {
@@ -238,6 +245,7 @@ pub struct NativePlugin {
     selection_mix: Option<abi::SelectionApi>,
     selection_color: Option<abi::SelectionColorFn>,
     selection_edges: Option<abi::SelectionEdgesFn>,
+    selection_transfer: Option<abi::SelectionTransferFn>,
     compositor: Option<abi::CompositorApi>,
     _module: Module,
 }
@@ -303,10 +311,10 @@ impl NativePlugin {
         };
         let tools = unsafe { module.tool_api()? };
         let tool_options = unsafe { module.tool_options_api()? };
-        let (selection_mix, selection_color, selection_edges) =
+        let (selection_mix, selection_color, selection_edges, selection_transfer) =
             match unsafe { module.selection_api()? } {
-                Some((base, color, edges)) => (Some(base), color, edges),
-                None => (None, None, None),
+                Some((base, color, edges, transfer)) => (Some(base), color, edges, transfer),
+                None => (None, None, None, None),
             };
         if tool_options.is_some() && tools.is_none() {
             return Err("Tool options require a tool API".into());
@@ -336,6 +344,7 @@ impl NativePlugin {
                 selection_mix,
                 selection_color,
                 selection_edges,
+                selection_transfer,
                 compositor,
                 _module: module,
             }),
@@ -868,6 +877,74 @@ mod tests {
         }
     }
     #[test]
+    fn transfer_tail_is_optional_and_unsupported_operations_do_not_mutate() {
+        unsafe extern "C" fn mix(
+            _: *const abi::Coverage,
+            _: *const abi::Pixels,
+            _: *mut abi::Pixels,
+        ) -> i32 {
+            abi::OK
+        }
+        unsafe extern "C" fn transfer(
+            _: *const abi::SelectionTransfer,
+            _: *const abi::Pixels,
+            _: *const abi::Coverage,
+            _: *mut abi::Pixels,
+        ) -> i32 {
+            abi::OK
+        }
+        let mut table = abi::SelectionApiTransfer {
+            base: abi::SelectionApiEdges {
+                base: abi::SelectionApiColor {
+                    base: abi::SelectionApi {
+                        abi_version: 1,
+                        struct_size: std::mem::size_of::<abi::SelectionApiEdges>() as u32,
+                        mix: Some(mix),
+                        rasterize: None,
+                    },
+                    color: None,
+                },
+                edges: None,
+            },
+            transfer: Some(transfer),
+        };
+        unsafe {
+            assert!(decode_selection_table(&table.base.base.base)
+                .unwrap()
+                .3
+                .is_none());
+            table.base.base.base.struct_size =
+                std::mem::size_of::<abi::SelectionApiTransfer>() as u32 - 1;
+            assert!(decode_selection_table(&table.base.base.base)
+                .unwrap()
+                .3
+                .is_none());
+            table.base.base.base.struct_size += 1;
+            assert!(decode_selection_table(&table.base.base.base)
+                .unwrap()
+                .3
+                .is_some());
+        }
+        let mut registry = super::super::Registry::load(
+            &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+        )
+        .unwrap();
+        Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .selection_transfer = None;
+        let mut s = Session::new(registry).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+            .unwrap();
+        let before = s.state();
+        let history = s.doc.history_bytes();
+        for id in ["clipboard.copy", "clipboard.copy_merged", "clipboard.cut"] {
+            assert!(s.apply(Action::new(id, json!({}))).is_err());
+            assert!(s.clipboard.is_none());
+            assert_eq!(s.state(), before);
+            assert_eq!(s.doc.history_bytes(), history);
+        }
+    }
+    #[test]
     fn unavailable_edge_kernel_preserves_masks_pixels_revision_and_undo() {
         let mut registry = super::super::Registry::load(
             &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
@@ -975,7 +1052,8 @@ mod tests {
         unsafe {
             assert!(decode_selection_table(std::ptr::null()).is_err());
             let legacy = table.base;
-            let (base, tail, edges) = decode_selection_table(&legacy).unwrap();
+            let (base, tail, edges, transfer) = decode_selection_table(&legacy).unwrap();
+            assert!(transfer.is_none());
             assert!(edges.is_none());
             assert!(base.mix.is_some());
             assert!(tail.is_none());
@@ -1618,4 +1696,51 @@ unsafe extern "C" fn tool_pick(context: *mut c_void, x: f32, y: f32, color: *mut
         *color = pixel & 0xffffff;
     }
     abi::OK
+}
+
+/// Cold transfer boundary: source and output are separate, tightly packed buffers.
+pub(crate) fn transfer(
+    s: &Session,
+    options: &abi::SelectionTransfer,
+    source: &[u32],
+    size: [usize; 2],
+    mask: Option<&crate::engine::selection::Mask>,
+    output: &mut [u32],
+    target: [usize; 2],
+) -> Result<(), String> {
+    let kernel = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.selection_transfer)
+        .ok_or("Painting DLL does not support pixel transfer")?;
+    let mut src = abi::Pixels {
+        data: source.as_ptr() as *mut u32,
+        len: source.len(),
+        width: size[0] as u32,
+        height: size[1] as u32,
+        stride: size[0] as u32,
+        origin_x: 0,
+        origin_y: 0,
+    };
+    let mut dst = abi::Pixels {
+        data: output.as_mut_ptr(),
+        len: output.len(),
+        width: target[0] as u32,
+        height: target[1] as u32,
+        stride: target[0] as u32,
+        origin_x: 0,
+        origin_y: 0,
+    };
+    let coverage = mask.map(coverage).unwrap_or(abi::Coverage {
+        data: std::ptr::null(),
+        len: 0,
+        width: 0,
+        height: 0,
+        stride: 0,
+    });
+    if unsafe { kernel(options, &mut src, &coverage, &mut dst) } != abi::OK {
+        return Err("Native pixel transfer failed".into());
+    }
+    Ok(())
 }

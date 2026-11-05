@@ -914,5 +914,11 @@
   "Contract Selection": "選択範囲を縮小",
   "Feather Selection": "選択範囲をぼかす",
   "Smooth Selection": "選択範囲を滑らかに",
-  "Capture Workspace": "ワークスペースを撮影"
+  "Capture Workspace": "ワークスペースを撮影",
+  "Copy merged selection to session clipboard": "結合した選択範囲をセッションのクリップボードにコピー",
+  "Copy selection to session clipboard": "選択範囲をセッションのクリップボードにコピー",
+  "Cut selection to session clipboard": "選択範囲をセッションのクリップボードに切り取り",
+  "Inspect session clipboard": "セッションのクリップボードを確認",
+  "Paste session clipboard centered": "セッションのクリップボードを中央に貼り付け",
+  "Paste session clipboard in place": "セッションのクリップボードを元の位置に貼り付け"
 }

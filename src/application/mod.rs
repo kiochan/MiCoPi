@@ -36,3 +36,6 @@ mod selection_tests;
 mod tool_tests;
 #[cfg(test)]
 mod workflow_tests;
+
+#[cfg(test)]
+mod clipboard_tests;

@@ -914,5 +914,11 @@
   "Contract Selection": "Contract Selection",
   "Feather Selection": "Feather Selection",
   "Smooth Selection": "Smooth Selection",
-  "Capture Workspace": "Capture Workspace"
+  "Capture Workspace": "Capture Workspace",
+  "Copy merged selection to session clipboard": "Copy merged selection to session clipboard",
+  "Copy selection to session clipboard": "Copy selection to session clipboard",
+  "Cut selection to session clipboard": "Cut selection to session clipboard",
+  "Inspect session clipboard": "Inspect session clipboard",
+  "Paste session clipboard centered": "Paste session clipboard centered",
+  "Paste session clipboard in place": "Paste session clipboard in place"
 }

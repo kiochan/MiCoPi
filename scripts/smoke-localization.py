@@ -123,7 +123,7 @@ def main():
                 # Close the preview without applying any document operation.
                 call('ui.dispatch', dict(id='command', value='Cancel'))
             # Dynamic action commands use the same stable identity as Keymap.
-            for action in ['selection.feather','selection.smooth']:
+            for action in ['selection.feather','selection.smooth','clipboard.paste']:
                 identity=2166136261
                 for byte in ('plugin.'+action).encode():
                     identity=((identity^byte)*16777619)&0xffffffff

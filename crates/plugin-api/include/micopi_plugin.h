@@ -121,6 +121,15 @@ typedef struct {
     MicopiSelectionApiColor base;
     int32_t (*edges)(const MicopiSelectionEdges *, const MicopiCoverage *, uint8_t *, size_t);
 } MicopiSelectionApiEdges;
+/* Optional fixed tail; buffers are disjoint and local origins must be zero.
+   Kind 0 extracts at x/y with optional coverage; kind 1 places with clipping,
+   requires absent coverage and leaves destination pixels outside the overlap unchanged. */
+typedef struct { uint32_t kind; int32_t x, y; } MicopiSelectionTransfer;
+typedef struct {
+    MicopiSelectionApiEdges base;
+    int32_t (*transfer)(const MicopiSelectionTransfer *, const MicopiPixels *,
+                        const MicopiCoverage *, MicopiPixels *);
+} MicopiSelectionApiTransfer;
 const MicopiSelectionApi *micopi_selection_v1(void);
 typedef struct { MicopiToolOptionsApi base; uint32_t features; } MicopiToolOptionsApiExt;
 /* SDK 1.2 additive compositor extension; no existing tables change. */

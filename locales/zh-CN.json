@@ -914,5 +914,11 @@
   "Contract Selection": "收缩选区",
   "Feather Selection": "羽化选区",
   "Smooth Selection": "平滑选区",
-  "Capture Workspace": "截取工作区"
+  "Capture Workspace": "截取工作区",
+  "Copy merged selection to session clipboard": "复制合成选区到会话剪贴板",
+  "Copy selection to session clipboard": "复制选区到会话剪贴板",
+  "Cut selection to session clipboard": "剪切选区到会话剪贴板",
+  "Inspect session clipboard": "查看会话剪贴板",
+  "Paste session clipboard centered": "居中粘贴会话剪贴板",
+  "Paste session clipboard in place": "原位粘贴会话剪贴板"
 }

@@ -126,6 +126,62 @@ impl Document {
         );
         Ok(())
     }
+    /// Insert exact pixels above the active layer as one structural undo entry.
+    pub fn insert_pixels(&mut self, pixels: Vec<u32>) -> Result<(), String> {
+        if pixels.len() != self.width * self.height
+            || self.layers.len() >= MAX_LAYERS
+            || pixels.len() * (self.layers.len() + 1) > 64 * 1024 * 1024
+            || self.next_layer_id > u32::MAX as u64
+        {
+            return Err("Layer dimensions, count or identity limit exceeded".into());
+        }
+        if self.graph.enabled && !self.graph.linked {
+            return Err("Link the layer stack before inserting pasted pixels".into());
+        }
+        let index = self.active + 1;
+        let mut metadata = self.layer_metadata.clone();
+        metadata.insert(
+            index,
+            LayerMetadata {
+                id: self.next_layer_id,
+                name: String::new(),
+                alpha_locked: false,
+            },
+        );
+        let graph = self.reindexed_graph(&metadata, None)?;
+        let plan = graph.compile(metadata.len())?;
+        self.finish();
+        let before = self.composition();
+        let active = self.active;
+        self.layers.insert(
+            index,
+            Layer {
+                pixels,
+                visible: true,
+                opacity: 255,
+                mode: BlendMode::Normal,
+            },
+        );
+        self.layer_metadata = metadata;
+        self.next_layer_id += 1;
+        self.active = index;
+        self.graph = graph;
+        self.plan = plan;
+        if self.selection.current.is_some() {
+            self.selection.previous = self.selection.current.take();
+        }
+        self.track_layer_order();
+        self.commit_composition(
+            before,
+            Some(LayerChange::Toggle {
+                index,
+                active,
+                removed: None,
+            }),
+        );
+        Ok(())
+    }
+
     pub fn move_layer(&mut self, index: usize, to: usize) -> Result<(), String> {
         if index >= self.layers.len() || to >= self.layers.len() {
             return Err("Layer does not exist".into());

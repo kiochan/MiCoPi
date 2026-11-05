@@ -16,7 +16,7 @@ This roadmap starts from the **0.21.0 implementation and subsequent work on main
 - Unified package metadata, host compatibility checks, lifecycle diagnostics and dependency-aware enable/disable plans shared by Settings and automation.
 - English-only embedding; external Chinese, Japanese and Korean catalogs with profile overrides, owner-scoped plugin catalogs and background hot reload.
 
-Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no clipboard, free transforms or layer groups. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
+Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no system clipboard, free transforms or layer groups. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
 
 ## Delivery order
 
@@ -62,7 +62,8 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 - [x] Add direct Magic Wand activation, session-local sampling controls and a Grow/Similar menu.
 - [x] Add persisted searchable selection defaults, preview/cancel and shared profile validation.
 - [x] Add native selection expansion/contraction, feathering and smoothing with shared actions/history.
-- [ ] Add clipboard operations.
+- [x] Add bounded Session clipboard copy/cut/paste through shared actions.
+- [ ] Add Windows system clipboard interoperability and selection-to-layer transfers.
 - [ ] Add selection-aware move, scale and rotate.
 - [ ] Add useful document controls: new-canvas presets, resolution/background choices, clearer dirty state and save/recovery feedback.
 

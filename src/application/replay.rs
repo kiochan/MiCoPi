@@ -142,10 +142,26 @@ impl Session {
             self.replay_error = None;
             self.replay_identity = self.doc.identity;
         }
+        let context = if success
+            && matches!(
+                op,
+                Some(
+                    Operation::ClipboardCopy
+                        | Operation::ClipboardCopyMerged
+                        | Operation::ClipboardCut
+                        | Operation::ClipboardPaste
+                        | Operation::ClipboardPasteInPlace
+                )
+            ) {
+            Some(serde_json::json!({"clipboard": crate::plugins::clipboard::state(self)}))
+        } else {
+            None
+        };
         let source = Source::Action {
             action: id.into(),
             args: args.clone(),
             depth: self.execution_depth,
+            context,
         };
         if let Some((path, old_file, old_dirty, old_revision)) = self.pending_save.take() {
             // A saved project is a full verification boundary, including callers of
@@ -202,6 +218,7 @@ impl Session {
                             action: id.into(),
                             args: args.clone(),
                             depth: self.execution_depth,
+                            context: None,
                         },
                         false,
                         Some(error.to_string()),

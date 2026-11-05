@@ -143,7 +143,7 @@ try {
         if (!($coreConfig.actions | Where-Object { $_.id -eq $action.id })) { $coreConfig.actions = @($coreConfig.actions) + @($action) }
     }
     $coreConfig | ConvertTo-Json -Depth 32 | Set-Content -LiteralPath $corePath -Encoding utf8
-    foreach ($systemPackage in @('workbench','workflows','toolbox')) {
+    foreach ($systemPackage in @('core','workbench','workflows','toolbox')) {
         $installedManifest = Join-Path (Join-Path 'dist/plugins' $systemPackage) 'manifest.json'
         $systemConfig = Get-Content -LiteralPath $installedManifest -Raw | ConvertFrom-Json
         $currentSystem = Get-Content -LiteralPath (Join-Path (Join-Path 'plugins' $systemPackage) 'manifest.json') -Raw | ConvertFrom-Json

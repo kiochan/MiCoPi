@@ -128,6 +128,8 @@ pub enum Source {
         action: String,
         args: Value,
         depth: usize,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        context: Option<Value>,
     },
     Pointer {
         samples: Vec<Pointer>,

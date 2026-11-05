@@ -44,3 +44,5 @@ MCP configurations contain example paths; adjust executable/profile paths for yo
 Its `locales/` directory demonstrates Chinese, Japanese and Korean plugin translations. Edit these JSON files while the desktop is running to update package titles, buttons and command search. English messages remain in the manifest; plugin translations are scoped to this package. See [Plugin system](../docs/plugin-system.md).
 
 The INI files under [legacy](legacy/README.md) describe earlier workspaces. The current desktop uses `settings.json` and `workspace.egui.json`; do not copy the old INI files over current JSON settings.
+
+[Session clipboard](automation/clipboard.jsonl) demonstrates internal copy/merged copy, cut, centered/explicit paste, undo and replay verification. It does not access the system clipboard.

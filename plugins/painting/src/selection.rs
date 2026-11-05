@@ -2,6 +2,7 @@
 use micopi_plugin_api as abi;
 mod color;
 mod edges;
+mod transfer;
 pub fn valid(mask: &abi::Coverage) -> bool {
     if mask.data.is_null() {
         return mask.len == 0 && mask.width == 0 && mask.height == 0 && mask.stride == 0;
@@ -87,17 +88,20 @@ fn interpolate(before: u32, after: u32, m: u32) -> u32 {
     }
     output
 }
-static API: abi::SelectionApiEdges = abi::SelectionApiEdges {
-    base: abi::SelectionApiColor {
-        base: abi::SelectionApi {
-            abi_version: 1,
-            struct_size: std::mem::size_of::<abi::SelectionApiEdges>() as u32,
-            mix: Some(mix),
-            rasterize: Some(rasterize),
+static API: abi::SelectionApiTransfer = abi::SelectionApiTransfer {
+    base: abi::SelectionApiEdges {
+        base: abi::SelectionApiColor {
+            base: abi::SelectionApi {
+                abi_version: 1,
+                struct_size: std::mem::size_of::<abi::SelectionApiTransfer>() as u32,
+                mix: Some(mix),
+                rasterize: Some(rasterize),
+            },
+            color: Some(color::select),
         },
-        color: Some(color::select),
+        edges: Some(edges::process),
     },
-    edges: Some(edges::process),
+    transfer: Some(transfer::process),
 };
 unsafe extern "C" fn rasterize(
     shape: *const abi::SelectionShape,
@@ -203,7 +207,7 @@ unsafe extern "C" fn rasterize(
 }
 #[no_mangle]
 pub extern "C" fn micopi_selection_v1() -> *const abi::SelectionApi {
-    &API.base.base
+    &API.base.base.base
 }
 
 #[cfg(test)]

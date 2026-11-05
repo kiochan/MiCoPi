@@ -198,6 +198,7 @@ pub struct Event {
     pub event: EventKind,
 }
 pub struct Session {
+    pub(crate) clipboard: Option<std::sync::Arc<crate::plugins::clipboard::Payload>>,
     pub(crate) pointer_checkpoint: Option<(
         super::atomic::Checkpoint,
         crate::engine::replay::JournalCheckpoint,
@@ -290,6 +291,7 @@ impl Session {
             ui: json!({}),
             selection_defaults: Default::default(),
             settings_path: None,
+            clipboard: None,
             ui_effects: VecDeque::new(),
             stroke: Default::default(),
             events: VecDeque::with_capacity(512),
@@ -350,6 +352,7 @@ impl Session {
                         action: action.action,
                         args: action.args,
                         depth: self.execution_depth,
+                        context: None,
                     },
                     false,
                     Some(error.to_string()),

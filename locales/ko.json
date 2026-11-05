@@ -914,5 +914,11 @@
   "Contract Selection": "선택 영역 축소",
   "Feather Selection": "선택 영역 페더",
   "Smooth Selection": "선택 영역 매끄럽게",
-  "Capture Workspace": "작업 공간 캡처"
+  "Capture Workspace": "작업 공간 캡처",
+  "Copy merged selection to session clipboard": "병합한 선택 영역을 세션 클립보드에 복사",
+  "Copy selection to session clipboard": "선택 영역을 세션 클립보드에 복사",
+  "Cut selection to session clipboard": "선택 영역을 세션 클립보드로 잘라내기",
+  "Inspect session clipboard": "세션 클립보드 확인",
+  "Paste session clipboard centered": "세션 클립보드를 가운데에 붙여넣기",
+  "Paste session clipboard in place": "세션 클립보드를 제자리에 붙여넣기"
 }

@@ -56,6 +56,12 @@ pub type ActionResult = Result<Value, ActionError>;
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Operation {
+    ClipboardCopy,
+    ClipboardCopyMerged,
+    ClipboardCut,
+    ClipboardPaste,
+    ClipboardPasteInPlace,
+    ClipboardState,
     ReplayStatus,
     ReplayOpen,
     ReplayEvents,
@@ -153,6 +159,10 @@ impl Operation {
         let number = json!({"type":"number"});
         let point = json!({"type":"object","properties":{"x":number,"y":number,"pressure":{"type":"number","minimum":0,"maximum":1},"time":{"type":"integer","minimum":0},"pen":{"type":"boolean"},"eraser":{"type":"boolean"},"tool_override":{"type":"string","enum":["brush","eraser","picker","hand","zoom"]},"view_x":number,"view_y":number},"required":["x","y"],"additionalProperties":false});
         let (props, required) = match self {
+            Self::ClipboardPaste | Self::ClipboardPasteInPlace => (
+                json!({"x":{"type":"integer","minimum":-4096,"maximum":4096},"y":{"type":"integer","minimum":-4096,"maximum":4096}}),
+                vec![],
+            ),
             Self::ExpandSelection
             | Self::ContractSelection
             | Self::FeatherSelection
@@ -320,6 +330,7 @@ impl Operation {
                 | Self::ContextRead
                 | Self::State
                 | Self::ReadSelection
+                | Self::ClipboardState
                 | Self::Plugins
                 | Self::PluginPlan
                 | Self::Events

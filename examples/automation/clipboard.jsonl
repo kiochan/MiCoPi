@@ -1,0 +1,12 @@
+{"action":"canvas.new","args":{"width":128,"height":96}}
+{"action":"native.checkerboard","args":{"cell":16}}
+{"action":"selection.shape","args":{"kind":"ellipse","x":16,"y":16,"width":48,"height":48}}
+{"action":"clipboard.copy_merged","args":{}}
+{"action":"clipboard.state","args":{}}
+{"action":"clipboard.cut","args":{}}
+{"action":"selection.deselect","args":{}}
+{"action":"clipboard.paste","args":{}}
+{"action":"clipboard.paste_in_place","args":{"x":80,"y":24}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}
+{"action":"replay.verify","args":{}}

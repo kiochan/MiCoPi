@@ -310,6 +310,28 @@ pub struct SelectionApiEdges {
     pub base: SelectionApiColor,
     pub edges: Option<SelectionEdgesFn>,
 }
+/// Optional fixed-size pixel transfer tail; all earlier table layouts are retained.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct SelectionApiTransfer {
+    pub base: SelectionApiEdges,
+    pub transfer: Option<SelectionTransferFn>,
+}
+/// Kind 0 extracts a bounded source rectangle and multiplies alpha by coverage.
+/// Kind 1 places a source rectangle, clipping to output bounds; coverage must be absent.
+/// Buffers must not overlap. Pixels use local coordinates (origins must be zero).
+#[repr(C)]
+pub struct SelectionTransfer {
+    pub kind: u32,
+    pub x: i32,
+    pub y: i32,
+}
+pub type SelectionTransferFn = unsafe extern "C" fn(
+    *const SelectionTransfer,
+    *const Pixels,
+    *const Coverage,
+    *mut Pixels,
+) -> i32;
 pub type SelectionEdgesFn =
     unsafe extern "C" fn(*const SelectionEdges, *const Coverage, *mut u8, usize) -> i32;
 /// Kinds: 0 disk expansion, 1 disk contraction, 2 feather, 3 smooth.

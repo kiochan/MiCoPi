@@ -39,6 +39,7 @@ impl Session {
 }
 #[derive(Clone)]
 pub(crate) struct Checkpoint {
+    clipboard: Option<std::sync::Arc<crate::plugins::clipboard::Payload>>,
     state: State,
     history: HistoryCheckpoint,
     last_pointer: Option<Pointer>,
@@ -50,12 +51,14 @@ impl Checkpoint {
         Self {
             state: s.journal.as_ref().expect("journal boundary").state.clone(),
             history: s.doc.checkpoint_history(),
+            clipboard: s.clipboard.clone(),
             last_pointer: s.last_pointer,
             pen_observed: s.pen_observed,
             ui_effects: s.ui_effects.clone(),
         }
     }
     pub fn restore(self, s: &mut Session) {
+        s.clipboard = self.clipboard;
         s.stroke = Default::default();
         s.tool_instances.clear();
         self.state.restore_document(&mut s.doc);
@@ -80,7 +83,12 @@ impl Operation {
     pub(crate) fn document_atomic(self) -> bool {
         matches!(
             self,
-            Self::Stroke
+            Self::ClipboardCopy
+                | Self::ClipboardCopyMerged
+                | Self::ClipboardCut
+                | Self::ClipboardPaste
+                | Self::ClipboardPasteInPlace
+                | Self::Stroke
                 | Self::CanvasSize
                 | Self::Crop
                 | Self::Undo
