@@ -947,6 +947,7 @@
   "Resampling": "重采样",
   "Bilinear": "双线性",
   "Nearest Neighbor": "最近邻",
-  "Nearest preserves pixel edges. Bilinear softens edges and preserves transparency.": "最近邻保留像素边缘；双线性柔化边缘并保持透明度。",
-  "Derived image dimensions must be between 1 and 4096 pixels": "等比计算后的尺寸必须在 1 至 4096 像素之间"
+  "Derived image dimensions must be between 1 and 4096 pixels": "等比计算后的尺寸必须在 1 至 4096 像素之间",
+  "Area (Downscale)": "面积平均（缩小）",
+  "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking.": "最近邻保留像素边缘，双线性平滑缩放，面积平均保留缩小时的细节。"
 }

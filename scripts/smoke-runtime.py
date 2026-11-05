@@ -176,6 +176,7 @@ def main():
     ]]
     commands += [
         dict(action="canvas.image_size",args=dict(width=130,height=98,lock_aspect=False,method="bilinear")),
+        dict(action="canvas.image_size",args=dict(width=65,height=49,lock_aspect=False,method="area")),
         dict(action="canvas.image_size",args=dict(width=260,height=195,lock_aspect=False,method="nearest")),
     ]
     script = output / "draw.jsonl"

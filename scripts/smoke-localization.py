@@ -133,6 +133,15 @@ def main():
                 time.sleep(.15)
                 screenshot(f'{language}-{action}.png')
                 call('ui.dispatch',dict(id='command',value='Cancel'))
+            call('canvas.image_size',dict(width=128,method='area'))
+            time.sleep(.15)
+            screenshot(f'{language}-area-reduction.png')
+            # Exercise the GUI Undo adapter, which must resize its own texture cache.
+            call('ui.dispatch',dict(id='command',value='Undo'))
+            deadline=time.monotonic()+10
+            while call('canvas.state',{})['width']!=256:
+                assert process.poll() is None and time.monotonic()<deadline,'Area undo timeout'
+                time.sleep(.05)
             call('canvas.rotate_90_cw',{})
             time.sleep(.15)
             screenshot(f'{language}-canvas-quarter-turn.png')

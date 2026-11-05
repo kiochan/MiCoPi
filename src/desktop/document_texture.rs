@@ -2,6 +2,16 @@
 use super::*;
 impl Editor {
     pub(super) fn refresh_texture(&mut self, ctx: &Context) {
+        // Commands such as undo can change dimensions before an adapter sync.
+        // Rebuild the complete surface only then; retain partial uploads for strokes.
+        if self
+            .texture
+            .as_ref()
+            .is_none_or(|t| t.size() != [self.session.doc.width, self.session.doc.height])
+        {
+            self.texture = None;
+            self.display.clear();
+        }
         if let Some([x0, y0, x1, y1]) = self.session.doc.update_display(&mut self.display) {
             if let Some(texture) = &mut self.texture {
                 let pixels = (y0..y1)
@@ -30,5 +40,54 @@ impl Editor {
                 ));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn texture_size_tracks_unsynchronized_undo_and_equal_area_rotation() {
+        let mut app = crate::desktop::tests::studio();
+        app.editor.session = crate::application::Session::new(
+            crate::plugins::Registry::load(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let ctx = Context::default();
+        app.editor
+            .core("canvas.new", serde_json::json!({"width":12,"height":8}));
+        app.editor.refresh_texture(&ctx);
+        let first = app.editor.texture.as_ref().unwrap().id();
+        app.editor.core(
+            "canvas.image_size",
+            serde_json::json!({"width":6,"method":"area"}),
+        );
+        app.editor.refresh_texture(&ctx);
+        assert_eq!(app.editor.texture.as_ref().unwrap().size(), [6, 4]);
+        assert_ne!(app.editor.texture.as_ref().unwrap().id(), first);
+        app.editor.actions.push(Action::Undo);
+        app.run_actions(&ctx);
+        app.editor.refresh_texture(&ctx);
+        assert_eq!(app.editor.texture.as_ref().unwrap().size(), [12, 8]);
+        assert_eq!(app.editor.display.len(), 96);
+        app.editor
+            .core("canvas.rotate_90_cw", serde_json::json!({}));
+        app.editor.refresh_texture(&ctx);
+        assert_eq!(app.editor.texture.as_ref().unwrap().size(), [8, 12]);
+        assert_eq!(app.editor.display.len(), 96);
+        let id = app.editor.texture.as_ref().unwrap().id();
+        app.editor
+            .core("layer.fill_color", serde_json::json!({"color":"#336699"}));
+        app.editor.refresh_texture(&ctx);
+        assert_eq!(app.editor.texture.as_ref().unwrap().id(), id);
+        app.editor.actions.push(Action::Undo);
+        app.run_actions(&ctx);
+        app.editor.actions.push(Action::Undo);
+        app.run_actions(&ctx);
+        app.editor.refresh_texture(&ctx);
+        assert_eq!(app.editor.texture.as_ref().unwrap().size(), [12, 8]);
     }
 }

@@ -17,7 +17,7 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 | Drawing | Native DLL tools, pressure, stabilization, spacing, pressure curve, size/shape cursor | Rich tips/dynamics and additional painting tools |
 | Layers | Stable IDs, rename/duplicate/reorder/delete, opacity, visibility, alpha lock, merge/flatten/stamp | Masks, clipping, groups and multi-selection |
 | Selection/editing | Document masks, gestures, color matching, edge processing, selected painting and internal transfers | System clipboard and selection transforms |
-| Geometry | Anchored canvas size, exact crop, global orthogonal geometry and centered layer quarter turns | Higher-quality downsampling, off-canvas storage and free transform |
+| Geometry | Anchored canvas size, exact crop, global orthogonal geometry and centered layer quarter turns | Off-canvas storage and free transform |
 | Composition | Linked layer/filter/blend graphs and explicit free graphs | More adjustments, filters and mask-aware composition |
 | Files | PNG/JPEG/BMP import, PNG export, projects and verified replay | Rich export and layered interchange |
 | Workspace | Independent/docked/tabbed windows, Tools/Options, searchable settings and shortcuts | Guides, snapping, view rotation and multiple documents |
@@ -60,7 +60,7 @@ Acceptance: preview/cancel leaves pixels untouched; selection is visible and beh
 
 - [x] Add exact document 90° clockwise/counterclockwise/180° rotations and flips, preserving all layers and selection masks. Add centered active-layer quarter turns with selection/alpha-lock guards and explicit frame clipping; off-canvas storage remains future work. See [Canvas editing](canvas-editing.md#exact-rotation-and-flips).
 - [x] Add Image Size with aspect locking and measured nearest/bilinear resampling through DLL actions, menus, nodes and MCP/headless; retain masks, structural identities, undo and verified outcomes.
-- [ ] Add a measured higher-quality sampler with anti-aliasing for substantial downscaling; bilinear remains a four-neighbor interpolator.
+- [x] Add measured area averaging for substantial downscaling, with exact footprint weights, premultiplied alpha, fractional masks and bounded streaming rows. Enlarging axes use bilinear; this is a box filter, not Photoshop bicubic/Lanczos parity.
 - [ ] Add transparent/edge-color trim and Reveal All for supported off-canvas content.
 - [ ] Add Move/nudge with explicit active-layer/selection targets and configurable modifier steps.
 - [ ] Add Free Transform translate, scale, rotate and flip with a reversible preview and explicit commit/cancel.

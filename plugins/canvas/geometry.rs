@@ -133,9 +133,10 @@ mod tests {
         app.run_actions(&ctx);
         let d = app.editor.geometry.as_mut().unwrap();
         assert!(d.image_size);
-        d.width = 18;
-        d.height = 12;
-        assert_eq!(d.image_dimensions().unwrap(), [18, 12]);
+        d.width = 6;
+        d.height = 4;
+        d.method = 2;
+        assert_eq!(d.image_dimensions().unwrap(), [6, 4]);
         let pixels = app.editor.session.doc.layers[0].pixels.clone();
         for t in 1..4 {
             frame(&mut app, &ctx, size, vec![], t as f64);
@@ -171,10 +172,10 @@ mod tests {
         assert!(app.editor.geometry.is_none());
         assert_eq!(
             (app.editor.session.doc.width, app.editor.session.doc.height),
-            (18, 12)
+            (6, 4)
         );
         frame(&mut app, &ctx, size, vec![], 6.);
-        assert_eq!(app.editor.texture.as_ref().unwrap().size(), [18, 12]);
+        assert_eq!(app.editor.texture.as_ref().unwrap().size(), [6, 4]);
         app.editor.core("history.undo", serde_json::json!({}));
         assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
         app.editor.open_image_size();
@@ -451,14 +452,15 @@ impl Editor {
                 ui.horizontal(|ui| {
                     ui.label(tr("Resampling"));
                     ComboBox::from_id_salt("image-resampling")
-                        .selected_text(tr(if d.method == 0 {
-                            "Bilinear"
-                        } else {
-                            "Nearest Neighbor"
+                        .selected_text(tr(match d.method {
+                            0 => "Bilinear",
+                            1 => "Nearest Neighbor",
+                            _ => "Area (Downscale)",
                         }))
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut d.method, 0, tr("Bilinear"));
                             ui.selectable_value(&mut d.method, 1, tr("Nearest Neighbor"));
+                            ui.selectable_value(&mut d.method, 2, tr("Area (Downscale)"));
                         });
                 });
             }
@@ -480,7 +482,7 @@ impl Editor {
             }
             ui.add_space(a.panel_padding);
             ui.weak(tr(if d.image_size {
-                "Nearest preserves pixel edges. Bilinear softens edges and preserves transparency."
+                "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking."
             } else {
                 "Pixels outside the new canvas are removed. Undo restores them."
             }));
@@ -514,7 +516,7 @@ impl Editor {
         }
         if apply {
             let (action, args) = if d.image_size {
-                let mut args = serde_json::json!({"lock_aspect":d.lock_aspect,"method":if d.method==0 {"bilinear"} else {"nearest"}});
+                let mut args = serde_json::json!({"lock_aspect":d.lock_aspect,"method":match d.method {0=>"bilinear",1=>"nearest",_=>"area"}});
                 if !d.lock_aspect || d.width_axis {
                     args["width"] = serde_json::json!(d.width);
                 }

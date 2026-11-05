@@ -1,6 +1,8 @@
 //! Pixel-center image sampling; bounded axis plans, no full-image scratch.
 use super::geometry::{disjoint, layout};
 use micopi_plugin_api as abi;
+#[path = "resample/area.rs"]
+mod area;
 #[derive(Clone, Copy)]
 struct Axis {
     a: usize,
@@ -52,7 +54,7 @@ impl Sample for u32 {
         out
     }
 }
-fn run<T: Sample>(
+fn run<T: Sample + area::AreaSample>(
     method: u32,
     src: &[T],
     sw: usize,
@@ -67,6 +69,8 @@ fn run<T: Sample>(
         for y in 0..h {
             out[y * stride..y * stride + w].copy_from_slice(&src[y * ss..y * ss + w]);
         }
+    } else if method == 2 {
+        area::run(src, sw, sh, ss, out, w, h, stride);
     } else if method == 0 {
         let xs: Vec<_> = (0..w)
             .map(|x| ((2 * x + 1) * sw / (2 * w)).min(sw - 1))
@@ -109,7 +113,7 @@ unsafe extern "C" fn pixels(
         return abi::ERROR;
     }
     let (o, s, d) = (&*o, &*s, &mut *d);
-    if o.method > 1
+    if o.method > 2
         || !layout(s.width, s.height, s.stride, s.len)
         || !layout(d.width, d.height, d.stride, d.len)
         || (s.origin_x, s.origin_y, d.origin_x, d.origin_y) != (0, 0, 0, 0)
@@ -142,7 +146,7 @@ unsafe extern "C" fn mask(
         return abi::ERROR;
     }
     let (o, s) = (&*o, &*s);
-    if o.method > 1
+    if o.method > 2
         || !layout(s.width, s.height, s.stride, s.len)
         || !layout(w, h, w, len)
         || len != w as usize * h as usize
@@ -163,15 +167,18 @@ unsafe extern "C" fn mask(
     );
     abi::OK
 }
-static API: abi::ResampleApi = abi::ResampleApi {
-    abi_version: 1,
-    struct_size: std::mem::size_of::<abi::ResampleApi>() as u32,
-    pixels: Some(pixels),
-    mask: Some(mask),
+static API: abi::ResampleApiExt = abi::ResampleApiExt {
+    base: abi::ResampleApi {
+        abi_version: 1,
+        struct_size: std::mem::size_of::<abi::ResampleApiExt>() as u32,
+        pixels: Some(pixels),
+        mask: Some(mask),
+    },
+    features: abi::RESAMPLE_AREA,
 };
 #[no_mangle]
 pub extern "C" fn micopi_resample_v1() -> *const abi::ResampleApi {
-    &API
+    &API.base
 }
 
 #[cfg(test)]
@@ -296,7 +303,7 @@ mod tests {
         let mut mask = [0u8; 3];
         run(1, &[0u8, 255], 2, 1, 2, &mut mask, 3, 1, 3);
         assert_eq!(mask, [0, 128, 255]);
-        for method in 0..=1 {
+        for method in 0..=2 {
             let mut out = [0; 2];
             run(method, &src, 2, 1, 2, &mut out, 2, 1, 2);
             assert_eq!(out, src);
@@ -310,7 +317,7 @@ mod tests {
         let mut source = [0xff112233; 4];
         let s = view(&mut source, 2, 2, 2);
         let mut output = [77; 4];
-        for method in [2, u32::MAX] {
+        for method in [3, u32::MAX] {
             assert_eq!(
                 unsafe {
                     pixels(

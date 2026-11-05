@@ -947,6 +947,7 @@
   "Resampling": "再サンプリング",
   "Bilinear": "バイリニア",
   "Nearest Neighbor": "ニアレストネイバー",
-  "Nearest preserves pixel edges. Bilinear softens edges and preserves transparency.": "ニアレストは画素の境界を保持し、バイリニアは透明度を考慮して滑らかにします。",
-  "Derived image dimensions must be between 1 and 4096 pixels": "算出後の画像サイズは 1～4096 ピクセルにしてください"
+  "Derived image dimensions must be between 1 and 4096 pixels": "算出後の画像サイズは 1～4096 ピクセルにしてください",
+  "Area (Downscale)": "面積平均（縮小）",
+  "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking.": "ニアレストは画素の境界を保持。バイリニアは滑らかに、面積平均は縮小時の細部を保ちます。"
 }

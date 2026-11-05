@@ -169,6 +169,10 @@ typedef struct {
     int32_t (*pixels)(const MicopiResample *, const MicopiPixels *, MicopiPixels *);
     int32_t (*mask)(const MicopiResample *, const MicopiCoverage *, uint8_t *, size_t, uint32_t, uint32_t);
 } MicopiResampleApi;
+/* Optional complete tail; base methods 0/1 remain unchanged. Method 2 averages
+   exact source footprints on shrinking axes, bilinear on equal/enlarging axes. */
+#define MICOPI_RESAMPLE_AREA (1u << 2)
+typedef struct { MicopiResampleApi base; uint32_t features; } MicopiResampleApiExt;
 const MicopiResampleApi *micopi_resample_v1(void);
 #ifdef __cplusplus
 }

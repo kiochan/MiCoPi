@@ -947,6 +947,7 @@
   "Resampling": "리샘플링",
   "Bilinear": "쌍선형",
   "Nearest Neighbor": "최근접 이웃",
-  "Nearest preserves pixel edges. Bilinear softens edges and preserves transparency.": "최근접은 픽셀 경계를 유지하고 쌍선형은 투명도를 고려해 부드럽게 합니다.",
-  "Derived image dimensions must be between 1 and 4096 pixels": "계산된 이미지 크기는 1~4096픽셀이어야 합니다"
+  "Derived image dimensions must be between 1 and 4096 pixels": "계산된 이미지 크기는 1~4096픽셀이어야 합니다",
+  "Area (Downscale)": "영역 평균(축소)",
+  "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking.": "최근접은 픽셀 경계를, 쌍선형은 부드러움을, 영역 평균은 축소 시 세부를 유지합니다."
 }

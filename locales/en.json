@@ -947,6 +947,7 @@
   "Resampling": "Resampling",
   "Bilinear": "Bilinear",
   "Nearest Neighbor": "Nearest Neighbor",
-  "Nearest preserves pixel edges. Bilinear softens edges and preserves transparency.": "Nearest preserves pixel edges. Bilinear softens edges and preserves transparency.",
-  "Derived image dimensions must be between 1 and 4096 pixels": "Derived image dimensions must be between 1 and 4096 pixels"
+  "Derived image dimensions must be between 1 and 4096 pixels": "Derived image dimensions must be between 1 and 4096 pixels",
+  "Area (Downscale)": "Area (Downscale)",
+  "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking.": "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking."
 }

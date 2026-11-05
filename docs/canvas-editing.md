@@ -61,7 +61,7 @@ Use **Image > Image Size…** (**Ctrl+Alt+I**, configurable) to scale every laye
 | --- | --- |
 | `width`, `height` | Integer pixels, 1–4096. With aspect lock supply **exactly one**; with lock off supply both. |
 | `lock_aspect` | Defaults to `true`; derive the omitted dimension from the current source ratio. |
-| `method` | `bilinear` (default) or `nearest`. |
+| `method` | `bilinear` (default), `nearest` or `area` (area averaging on shrinking axes, bilinear on enlarging axes). |
 
 ```json
 {"action":"canvas.image_size","args":{"width":1600,"method":"nearest"}}
@@ -72,6 +72,10 @@ Derived dimensions outside 1–4096, missing/ambiguous dimensions, unknown argum
 
 Sampling maps destination pixel centers into the source. Nearest uses `floor((destination+0.5)*source_size/target_size)` with edge clamping; the selected raw 32-bit word, including hidden RGB, is copied exactly. Bilinear uses the four neighboring source centers with clamped edges and exact rational fixed-point weights. Alpha is interpolated, RGB is weighted by source alpha then unpremultiplied; rounded zero-alpha results have RGB zero. Channel and alpha rounding is half-up. Filtering uses the document's existing encoded 8-bit RGB values, not linear-light/ICC color management. Masks use the same nearest or bilinear coordinates, independently interpolating coverage bytes.
 
-Bilinear smooths enlargement and small reductions but is **not an area/anti-aliasing filter for substantial downscaling**. A higher-quality sampler remains planned and separately measured. No command promises lossless downsampling; undo retains the original buffers.
+Bilinear smooths enlargement and small reductions but is **not an area/anti-aliasing filter for substantial downscaling**. Choose **Area (Downscale)** to integrate the source footprint of every destination pixel on each shrinking axis. For example, reducing an eight-pixel row to two pixels averages each group of four; a one-pixel white line over black contributes 25% gray instead of disappearing between sample centers. Noninteger ratios use exact overlap fractions. Enlarging or unchanged axes use bilinear centers; mixed-axis scaling combines these rules. The default remains bilinear, retaining prior workflow/action behavior.
+
+Area sampling accumulates alpha and alpha-weighted RGB, rounds only after both axes, then unpremultiplies; coverage masks use the same footprint weights. Filtering remains in encoded RGB, not linear light. A box footprint suppresses aliasing during reductions without negative-lobe ringing, but is not a claim of Photoshop bicubic, Lanczos or ideal frequency rejection. No command promises lossless downsampling; undo retains original buffers. The native kernel reuses two horizontally filtered source rows and one accumulator row, with at most 480 KiB pixel scratch (192 KiB for masks) on x64, rather than a full intermediate image. Old resampling DLLs without the complete advertised area-capability tail reject `area` explicitly; nearest/bilinear and identity sizing remain available.
 
 Hidden and transparency-locked layers participate because this changes document coordinates. Names, IDs, active layer, visibility, opacity, blend/lock flags and image/workflow graphs are retained. Source filters are not baked or scaled: their parameter values remain unchanged and they render against the resampled sources. All masks/outputs are staged and validated before one structural undo entry and verified outcome event. A failed later layer, missing optional DLL capability, oversized compressed mask, atomic batch or partial journal write leaves the previous committed document/history intact. Replay restores outcomes without executing a sampler. See [the runnable example](../examples/automation/image-size.jsonl) and [native extension](native-plugins.md#optional-image-resampling-table).
+
+The shared desktop texture cache checks its own dimensions before partial uploads, including GUI Undo and equal-pixel-count quarter turns. Dimension changes rebuild the surface; ordinary drawing retains dirty-region uploads. This protects Canvas and Navigator even when a command has not performed an adapter-level state sync.

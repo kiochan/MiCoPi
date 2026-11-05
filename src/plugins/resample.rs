@@ -43,10 +43,10 @@ fn run(s: &mut Session, args: Value) -> Result<(), String> {
         return Ok(());
     }
     let options = abi::Resample {
-        method: if args["method"].as_str() == Some("nearest") {
-            0
-        } else {
-            1
+        method: match args["method"].as_str() {
+            Some("nearest") => 0,
+            Some("area") => 2,
+            _ => 1,
         },
     };
     let state = s.doc.selection();

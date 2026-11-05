@@ -35,4 +35,4 @@ Older screenshots live in [archive](archive/README.md) for historical reference.
 
 `canvas-quarter-turn.png` was reviewed from the English `scripts/smoke-localization.py` capture on 2026-11-05. It shows the real application after `canvas.rotate_90_cw`; the mask, two source layers and navigator retain the shared document state.
 
-`image-size.png` was reviewed from the English `scripts/smoke-localization.py` capture on 2026-11-05, alongside its Korean capture. It shows the real Image Size dialog; opening/editing the form does not execute a resample.
+`image-size.png` was reviewed from the English `scripts/smoke-localization.py` capture on 2026-11-05, alongside its Japanese capture. It shows the real Image Size dialog with nearest/bilinear/area guidance; the default remains bilinear. Opening/editing the form does not execute a resample. The smoke check also applies area reduction and restores through GUI Undo.

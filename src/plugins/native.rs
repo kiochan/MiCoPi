@@ -71,7 +71,7 @@ unsafe fn decode_selection_table(
 }
 unsafe fn decode_resample_table(
     pointer: *const abi::ResampleApi,
-) -> Result<abi::ResampleApi, String> {
+) -> Result<(abi::ResampleApi, u32), String> {
     if pointer.is_null() {
         return Err("Null resample table".into());
     }
@@ -81,7 +81,12 @@ unsafe fn decode_resample_table(
     {
         return Err("Incompatible resample ABI".into());
     }
-    Ok(std::ptr::read_unaligned(pointer))
+    let features = if header.struct_size >= std::mem::size_of::<abi::ResampleApiExt>() as u32 {
+        std::ptr::read_unaligned(pointer.cast::<abi::ResampleApiExt>()).features
+    } else {
+        0
+    };
+    Ok((std::ptr::read_unaligned(pointer), features))
 }
 unsafe fn decode_geometry_table(
     pointer: *const abi::GeometryApi,
@@ -114,7 +119,7 @@ impl Module {
         }
     }
 
-    unsafe fn resample_api(&self) -> Result<Option<abi::ResampleApi>, String> {
+    unsafe fn resample_api(&self) -> Result<Option<(abi::ResampleApi, u32)>, String> {
         #[cfg(windows)]
         {
             let address = GetProcAddress(self.handle as *mut c_void, abi::RESAMPLE_SYMBOL.as_ptr());
@@ -308,6 +313,7 @@ pub struct NativePlugin {
     selection_transfer: Option<abi::SelectionTransferFn>,
     geometry: Option<abi::GeometryApi>,
     resample: Option<abi::ResampleApi>,
+    resample_features: u32,
     compositor: Option<abi::CompositorApi>,
     _module: Module,
 }
@@ -372,7 +378,10 @@ impl NativePlugin {
             std::ptr::read_unaligned(pointer)
         };
         let geometry = unsafe { module.geometry_api()? };
-        let resample = unsafe { module.resample_api()? };
+        let (resample, resample_features) = match unsafe { module.resample_api()? } {
+            Some((api, features)) => (Some(api), features),
+            None => (None, 0),
+        };
         let tools = unsafe { module.tool_api()? };
         let tool_options = unsafe { module.tool_options_api()? };
         let (selection_mix, selection_color, selection_edges, selection_transfer) =
@@ -411,6 +420,7 @@ impl NativePlugin {
                 selection_transfer,
                 geometry,
                 resample,
+                resample_features,
                 compositor,
                 _module: module,
             }),
@@ -989,6 +999,53 @@ mod tests {
             api.abi_version = 2;
             assert!(decode_geometry_table(&api).is_err());
         }
+    }
+    #[test]
+    fn area_capability_requires_a_complete_advertised_optional_tail() {
+        let mut api = abi::ResampleApiExt {
+            base: abi::ResampleApi {
+                abi_version: 1,
+                struct_size: std::mem::size_of::<abi::ResampleApi>() as u32,
+                pixels: None,
+                mask: None,
+            },
+            features: abi::RESAMPLE_AREA,
+        };
+        unsafe {
+            assert_eq!(decode_resample_table(&api.base).unwrap().1, 0);
+            api.base.struct_size = std::mem::size_of::<abi::ResampleApiExt>() as u32 - 1;
+            assert_eq!(decode_resample_table(&api.base).unwrap().1, 0);
+            api.base.struct_size += 1;
+            assert_eq!(
+                decode_resample_table(&api.base).unwrap().1,
+                abi::RESAMPLE_AREA
+            );
+        }
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins");
+        let mut registry = super::super::Registry::load(&root).unwrap();
+        Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .resample_features = 0;
+        let mut s = Session::new(registry).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+            .unwrap();
+        let state = s.state();
+        let history = s.doc.history_bytes();
+        let error = s
+            .apply(Action::new(
+                "canvas.image_size",
+                json!({"width":6,"method":"area"}),
+            ))
+            .unwrap_err();
+        assert_eq!(error.code, "image_size");
+        assert!(error.message.contains("does not support area"));
+        assert_eq!(s.state(), state);
+        assert_eq!(s.doc.history_bytes(), history);
+        s.apply(Action::new(
+            "canvas.image_size",
+            json!({"width":6,"method":"bilinear"}),
+        ))
+        .unwrap();
     }
     #[test]
     fn missing_resample_and_failed_later_layer_never_publish_partial_outputs() {
@@ -2050,6 +2107,22 @@ pub(crate) fn geometry_mask(
     crate::engine::selection::Mask::new(w, h, out)
 }
 
+fn resampler(s: &Session, o: &abi::Resample) -> Result<abi::ResampleApi, String> {
+    let plugin = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .ok_or("Painting DLL is unavailable")?;
+    let api = plugin
+        .resample
+        .ok_or("Painting DLL does not support image resampling")?;
+    if o.method == 2 && plugin.resample_features & abi::RESAMPLE_AREA == 0 {
+        return Err(
+            "Painting DLL does not support area resampling; rebuild matching plugins".into(),
+        );
+    }
+    Ok(api)
+}
 pub(crate) fn resample_pixels(
     s: &Session,
     o: &abi::Resample,
@@ -2059,12 +2132,8 @@ pub(crate) fn resample_pixels(
     w: usize,
     h: usize,
 ) -> Result<Vec<u32>, String> {
-    let kernel = s
-        .registry
-        .native_plugins
-        .get("painting")
-        .and_then(|p| p.resample)
-        .and_then(|api| api.pixels)
+    let kernel = resampler(s, o)?
+        .pixels
         .ok_or("Painting DLL does not support image resampling")?;
     let src = abi::Pixels {
         data: source.as_ptr() as *mut u32,
@@ -2097,12 +2166,8 @@ pub(crate) fn resample_mask(
     w: usize,
     h: usize,
 ) -> Result<crate::engine::selection::Mask, String> {
-    let kernel = s
-        .registry
-        .native_plugins
-        .get("painting")
-        .and_then(|p| p.resample)
-        .and_then(|api| api.mask)
+    let kernel = resampler(s, o)?
+        .mask
         .ok_or("Painting DLL does not support selection resample")?;
     let mut out = vec![0; w * h];
     let src = coverage(mask);

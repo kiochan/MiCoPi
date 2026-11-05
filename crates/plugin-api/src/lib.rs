@@ -441,7 +441,16 @@ pub struct ResampleApi {
     pub pixels: Option<ResamplePixelsFn>,
     pub mask: Option<ResampleMaskFn>,
 }
-/// Method: 0 nearest pixel center, 1 bilinear premultiplied alpha in encoded RGB.
+/// Optional area-filter capability; legacy ResampleApi supports only methods 0/1.
+pub const RESAMPLE_AREA: u32 = 1 << 2;
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ResampleApiExt {
+    pub base: ResampleApi,
+    pub features: u32,
+}
+/// Method: 0 nearest pixel center, 1 bilinear, 2 area on shrinking axes / bilinear otherwise.
+/// Interpolating methods use premultiplied alpha in encoded RGB.
 #[repr(C)]
 pub struct Resample {
     pub method: u32,
