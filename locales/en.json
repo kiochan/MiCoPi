@@ -898,5 +898,13 @@
   "Intersect": "Intersect",
   "Magic Wand": "Magic Wand",
   "Grow Selection": "Grow Selection",
-  "Select Similar": "Select Similar"
+  "Select Similar": "Select Similar",
+  "Selection Sampling Options": "Selection Sampling Options",
+  "Selection Tolerance": "Selection Tolerance",
+  "Contiguous Selection": "Contiguous Selection",
+  "Sample Merged": "Sample Merged",
+  "Click to select a color. Shift adds, Alt subtracts, Shift+Alt intersects.": "Click to select a color. Shift adds, Alt subtracts, Shift+Alt intersects.",
+  "Tolerance": "Tolerance",
+  "Contiguous": "Contiguous",
+  "Selection Actions": "Selection Actions"
 }

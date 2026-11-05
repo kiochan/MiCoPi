@@ -52,6 +52,111 @@ fn verify(app: &mut Studio) {
     assert_eq!(result["result"]["valid"], true);
 }
 #[test]
+fn wand_click_uses_sampling_controls_and_never_paints_while_dragging() {
+    let (mut app, ctx) = fresh(0);
+    app.editor.actions.push(Action::UiCommand(10158));
+    app.run_actions(&ctx);
+    app.consume_ui_effects(&ctx);
+    assert_eq!(app.editor.area_mode, 7);
+    app.editor.core("native.checkerboard", json!({"cell":4}));
+    app.editor.core(
+        "toolbox.selection.options",
+        json!({"tolerance":0,"contiguous":true,"sample_merged":false}),
+    );
+    app.consume_ui_effects(&ctx);
+    let pixels = app.editor.session.doc.layers[0].pixels.clone();
+    let before = app.editor.session.doc.composition();
+    mouse(&mut app, &ctx, pos2(1., 1.), true, Modifiers::NONE, 4.);
+    let mask = app.editor.session.doc.selection().current.clone().unwrap();
+    assert_eq!(mask.coverage().iter().filter(|v| **v > 0).count(), 16);
+    let revision = app.editor.session.revision;
+    mouse(&mut app, &ctx, pos2(10., 9.), false, Modifiers::NONE, 4.1);
+    assert_eq!(app.editor.session.revision, revision);
+    assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+    app.editor.core("history.undo", json!({}));
+    assert_eq!(app.editor.session.doc.composition(), before);
+    app.editor.core(
+        "toolbox.selection.options",
+        json!({"tolerance":0,"contiguous":false,"sample_merged":false}),
+    );
+    app.consume_ui_effects(&ctx);
+    mouse(&mut app, &ctx, pos2(1., 1.), true, Modifiers::NONE, 5.);
+    mouse(&mut app, &ctx, pos2(1., 1.), false, Modifiers::NONE, 5.1);
+    assert_eq!(
+        app.editor
+            .session
+            .doc
+            .selection()
+            .current
+            .as_ref()
+            .unwrap()
+            .coverage()
+            .iter()
+            .filter(|v| **v > 0)
+            .count(),
+        240
+    );
+    mouse(&mut app, &ctx, pos2(1., 1.), true, Modifiers::ALT, 6.);
+    mouse(&mut app, &ctx, pos2(1., 1.), false, Modifiers::ALT, 6.1);
+    assert!(app
+        .editor
+        .session
+        .doc
+        .selection()
+        .current
+        .as_ref()
+        .unwrap()
+        .coverage()
+        .iter()
+        .all(|v| *v == 0));
+    assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+    verify(&mut app);
+}
+#[test]
+fn wand_synthetic_pen_selects_once_and_outside_seed_is_a_noop() {
+    use crate::platform::windows::desktop_bridge::{PenPhase, PenSample};
+    let (mut app, ctx) = fresh(7);
+    app.editor.core("native.checkerboard", json!({"cell":4}));
+    let before = app.editor.session.doc.layers[0].pixels.clone();
+    for (i, phase) in [PenPhase::Down, PenPhase::Move, PenPhase::Up]
+        .into_iter()
+        .enumerate()
+    {
+        let p = (app.editor.image_rect.min + vec2(1. + i as f32 * 5., 1.) * app.editor.zoom)
+            * ctx.pixels_per_point();
+        app.editor.packets.push(PenSample {
+            phase,
+            x: p.x,
+            y: p.y,
+            pressure: 0.3 + i as f32 * 0.2,
+            time: 10 + i as u32,
+            eraser: false,
+        });
+        frame(&mut app, &ctx, vec2(1360., 920.), vec![], 5. + i as f64);
+    }
+    assert_eq!(app.editor.session.doc.layers[0].pixels, before);
+    assert_eq!(
+        app.editor
+            .session
+            .doc
+            .selection()
+            .current
+            .as_ref()
+            .unwrap()
+            .coverage()
+            .iter()
+            .filter(|v| **v > 0)
+            .count(),
+        16
+    );
+    let revision = app.editor.session.revision;
+    app.editor
+        .selection_down(pos2(-1., 2.), Modifiers::NONE, 20);
+    app.editor.selection_release();
+    assert_eq!(app.editor.session.revision, revision);
+    verify(&mut app);
+}
+#[test]
 fn rectangle_drag_previews_without_mutation_and_commits_one_undoable_action() {
     let (mut app, ctx) = fresh(3);
     let before = app.editor.session.doc.composition();

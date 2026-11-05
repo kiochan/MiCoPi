@@ -898,5 +898,13 @@
   "Intersect": "相交",
   "Magic Wand": "魔棒",
   "Grow Selection": "扩大选区",
-  "Select Similar": "选取相似颜色"
+  "Select Similar": "选取相似颜色",
+  "Selection Sampling Options": "选区取样选项",
+  "Selection Tolerance": "选区容差",
+  "Contiguous Selection": "连续选区",
+  "Sample Merged": "合并取样",
+  "Click to select a color. Shift adds, Alt subtracts, Shift+Alt intersects.": "点击选择颜色。Shift 添加，Alt 减去，Shift+Alt 相交。",
+  "Tolerance": "容差",
+  "Contiguous": "连续区域",
+  "Selection Actions": "选区操作"
 }

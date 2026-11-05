@@ -898,5 +898,13 @@
   "Intersect": "共通部分",
   "Magic Wand": "自動選択",
   "Grow Selection": "選択範囲を拡張",
-  "Select Similar": "類似色を選択"
+  "Select Similar": "類似色を選択",
+  "Selection Sampling Options": "選択範囲のサンプリング設定",
+  "Selection Tolerance": "選択許容値",
+  "Contiguous Selection": "隣接領域のみ",
+  "Sample Merged": "結合画像を参照",
+  "Click to select a color. Shift adds, Alt subtracts, Shift+Alt intersects.": "クリックで色を選択。Shift で追加、Alt で削除、Shift+Alt で共通範囲。",
+  "Tolerance": "許容値",
+  "Contiguous": "隣接領域",
+  "Selection Actions": "選択範囲の操作"
 }

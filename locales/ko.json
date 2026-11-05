@@ -898,5 +898,13 @@
   "Intersect": "교차",
   "Magic Wand": "자동 선택",
   "Grow Selection": "선택 영역 확대",
-  "Select Similar": "유사 색상 선택"
+  "Select Similar": "유사 색상 선택",
+  "Selection Sampling Options": "선택 영역 샘플링 옵션",
+  "Selection Tolerance": "선택 허용 오차",
+  "Contiguous Selection": "인접 영역만",
+  "Sample Merged": "병합 이미지 샘플링",
+  "Click to select a color. Shift adds, Alt subtracts, Shift+Alt intersects.": "클릭하여 색상을 선택합니다. Shift: 추가, Alt: 빼기, Shift+Alt: 교차.",
+  "Tolerance": "허용 오차",
+  "Contiguous": "인접 영역",
+  "Selection Actions": "선택 영역 작업"
 }

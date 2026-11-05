@@ -20,6 +20,7 @@ fn selection_mode(id: &str) -> Option<u8> {
         "selection_ellipse" => Some(4),
         "selection_lasso" => Some(5),
         "selection_polygon" => Some(6),
+        "selection_wand" => Some(7),
         _ => None,
     }
 }
@@ -29,6 +30,13 @@ fn selection_icon(painter: &Painter, r: Rect, mode: u8, color: Color32) {
     match mode {
         3 => {
             painter.rect_stroke(r, 0., stroke, StrokeKind::Inside);
+        }
+        7 => {
+            let c = r.min + r.size() * vec2(0.75, 0.25);
+            painter.line_segment([r.left_bottom(), c], stroke);
+            for d in [vec2(0., 3.), vec2(3., 0.)] {
+                painter.line_segment([c - d, c + d], stroke);
+            }
         }
         4 => {
             painter.circle_stroke(r.center(), r.width().min(r.height()) * 0.5, stroke);
@@ -81,9 +89,9 @@ impl Editor {
         let rank = |kind: Tool| match kind {
             Tool::Brush => 0,
             Tool::Eraser => 1,
-            Tool::Picker => 8,
-            Tool::Hand => 9,
-            Tool::Zoom => 10,
+            Tool::Picker => 9,
+            Tool::Hand => 10,
+            Tool::Zoom => 11,
         };
         tools.sort_by_key(|t| (rank(t.kind), t.id.clone()));
         let mut items: Vec<(u8, ToolbarItem)> = tools
@@ -111,8 +119,8 @@ impl Editor {
             })
             .collect();
         for (rank, id, action, title, icon) in [
-            (6, FILL, "layer.fill", "Flood Fill", '\u{e23a}'),
-            (7, GRADIENT, "layer.gradient", "Gradient", '\u{e3e9}'),
+            (7, FILL, "layer.fill", "Flood Fill", '\u{e23a}'),
+            (8, GRADIENT, "layer.gradient", "Gradient", '\u{e3e9}'),
             (
                 2,
                 "selection_rectangle",
@@ -125,6 +133,13 @@ impl Editor {
                 "selection_ellipse",
                 "selection.shape",
                 "Elliptical Marquee",
+                '\u{e3c2}',
+            ),
+            (
+                6,
+                "selection_wand",
+                "selection.wand",
+                "Magic Wand",
                 '\u{e3c2}',
             ),
             (4, "selection_lasso", "selection.shape", "Lasso", '\u{e3c2}'),
@@ -252,6 +267,7 @@ impl Editor {
             .into_iter()
             .find(|item| self.toolbar_selected(&item.id));
         let body = |ui: &mut Ui, editor: &mut Editor| {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             ui.spacing_mut().item_spacing.x = a.item_spacing * 1.5;
             if let Some(item) = &active {
                 if let Some(mode) = selection_mode(&item.id) {
@@ -267,22 +283,100 @@ impl Editor {
                 ui.separator();
             }
             if editor.area_mode >= 3 {
-                for (mode, short, title) in [
-                    ("replace", "New", "New Selection"),
-                    ("add", "Add", "Add to Selection"),
-                    ("subtract", "Subtract", "Subtract from Selection"),
-                    ("intersect", "Intersect", "Intersect Selection"),
+                for (mode, title) in [
+                    ("replace", "New Selection"),
+                    ("add", "Add to Selection"),
+                    ("subtract", "Subtract from Selection"),
+                    ("intersect", "Intersect Selection"),
                 ] {
-                    if ui
-                        .add(Button::new(tr(short)).selected(editor.selection_combine == mode))
-                        .on_hover_text(tr(title))
-                        .clicked()
-                    {
+                    let selected = editor.selection_combine == mode;
+                    let response = ui
+                        .add_sized(
+                            Vec2::splat(a.control_height),
+                            Button::new("").selected(selected),
+                        )
+                        .on_hover_text(tr(title));
+                    response.widget_info(|| {
+                        egui::WidgetInfo::selected(
+                            egui::WidgetType::SelectableLabel,
+                            true,
+                            selected,
+                            crate::i18n::text(title),
+                        )
+                    });
+                    let r = response.rect.shrink(6.);
+                    let color = if selected {
+                        c.accent_text
+                    } else {
+                        ui.visuals().text_color()
+                    };
+                    let stroke = Stroke::new(1., color);
+                    if mode == "replace" {
+                        ui.painter().rect_stroke(r, 0., stroke, StrokeKind::Inside);
+                    } else {
+                        let first = Rect::from_min_size(r.min, r.size() * 0.7);
+                        let second = Rect::from_min_max(r.max - r.size() * 0.7, r.max);
+                        ui.painter()
+                            .rect_stroke(first, 0., stroke, StrokeKind::Inside);
+                        ui.painter()
+                            .rect_stroke(second, 0., stroke, StrokeKind::Inside);
+                        if mode == "intersect" {
+                            ui.painter().rect_filled(first.intersect(second), 0., color);
+                        } else {
+                            let center = second.right_top();
+                            ui.painter().line_segment(
+                                [center - vec2(2., 0.), center + vec2(2., 0.)],
+                                stroke,
+                            );
+                            if mode == "add" {
+                                ui.painter().line_segment(
+                                    [center - vec2(0., 2.), center + vec2(0., 2.)],
+                                    stroke,
+                                );
+                            }
+                        }
+                    }
+                    if response.clicked() {
                         editor.core(&format!("toolbox.selection.{mode}"), serde_json::json!({}));
                     }
                 }
+                if editor.area_mode == 7 {
+                    let mut options = editor.session.selection_sampling();
+                    let before = options;
+                    ui.separator();
+                    ui.weak(tr("Tolerance"))
+                        .on_hover_text(tr("Selection Tolerance"));
+                    ui.add(DragValue::new(&mut options.tolerance).range(0..=255));
+                    ui.checkbox(&mut options.contiguous, tr("Contiguous"));
+                    ui.checkbox(&mut options.sample_merged, tr("Sample Merged"));
+                    if options != before {
+                        editor.core(
+                            "toolbox.selection.options",
+                            serde_json::to_value(options).unwrap(),
+                        );
+                    }
+                    ui.menu_button(RichText::new("…").size(a.icon_size), |ui| {
+                    for (id, title) in [
+                        ("selection.grow", "Grow Selection"),
+                        ("selection.similar", "Select Similar"),
+                    ] {
+                        if ui
+                            .add_enabled(
+                                editor.session.doc.selection().current.is_some(),
+                                Button::new(tr(title)),
+                            )
+                            .clicked()
+                        {
+                            editor.core(id, serde_json::json!({"tolerance":options.tolerance,"sample_merged":options.sample_merged}));
+                            ui.close();
+                        }
+                    }
+                    }).response.on_hover_text(tr("Selection Actions"));
+                }
                 ui.label(tr(theme::icon('\u{e312}', a.icon_size).color(c.muted)))
-                    .on_hover_text(tr(if editor.area_mode == 6 {
+                    .on_hover_text(tr(if editor.area_mode == 7 {
+                        "Click to select a color. Shift adds, Alt subtracts, Shift+Alt intersects."
+                    } else if editor.area_mode == 6 {
                         "Click vertices; Enter or double-click to finish. Esc cancels."
                     } else {
                         "Drag to select. Shift adds, Alt subtracts, Shift+Alt intersects."
@@ -321,9 +415,8 @@ impl Editor {
                 );
             }
         };
-        ScrollArea::horizontal()
+        ScrollArea::vertical()
             .auto_shrink([false, false])
-            .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-            .show(ui, |ui| ui.horizontal_centered(|ui| body(ui, self)));
+            .show(ui, |ui| ui.horizontal_wrapped(|ui| body(ui, self)));
     }
 }

@@ -755,6 +755,7 @@ impl Studio {
                         Some("selection_ellipse") => Some(4),
                         Some("selection_lasso") => Some(5),
                         Some("selection_polygon") => Some(6),
+                        Some("selection_wand") => Some(7),
                         _ => None,
                     } {
                         self.editor.finish_stroke();
@@ -762,6 +763,7 @@ impl Studio {
                         self.editor.area_mode = mode;
                     }
                 }
+                Some("selection.options") => self.editor.finish_stroke(),
                 Some("selection.combine") => {
                     if let Some(mode) = match effect["value"].as_str() {
                         Some("replace") => Some("replace"),

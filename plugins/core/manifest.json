@@ -44,6 +44,25 @@
                 "type": "boolean"
               }
             }
+          },
+          "selection_sampling": {
+            "type": "object",
+            "properties": {
+              "tolerance": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "default": 32
+              },
+              "contiguous": {
+                "type": "boolean",
+                "default": true
+              },
+              "sample_merged": {
+                "type": "boolean",
+                "default": false
+              }
+            }
           }
         },
         "required": [

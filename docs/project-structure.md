@@ -65,6 +65,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/document.rs` | Pixels, composition and copy-on-write undo tiles |
 | `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
 | `src/engine/selection.rs` | Immutable coverage storage, bounded encoding and shared selection snapshots |
+| `src/application/selection_sampling.rs` | Validated session sampling controls and compact public state |
 | `src/plugins/selection.rs` | Selection schema dispatch, history publication and DLL geometry calls |
 | `plugins/painting/src/selection.rs` | Typed geometry and premultiplied selection blending kernels |
 | `plugins/painting/src/selection/color.rs` | Immutable color sampling, connected selection and exact Grow/Similar palette kernels |

@@ -547,6 +547,15 @@ pub static COMMANDS: &[Command] = &[
         10157
     ),
     c!(
+        "toolbox.mode.selection_wand",
+        "Magic Wand",
+        "Selection",
+        "wand color tolerance selection",
+        UiCommand(10158),
+        "W",
+        10158
+    ),
+    c!(
         "selection.deselect",
         "Deselect",
         "Selection",
@@ -1725,5 +1734,27 @@ mod tests {
             r#"{"keybindings":{"tool.brush":"M","toolbox.mode.selection_rectangle":"M"}}"#
         )
         .is_err());
+    }
+    #[test]
+    fn wand_default_yields_to_explicit_older_w_bindings() {
+        let wand = COMMANDS
+            .iter()
+            .position(|c| c.id == "toolbox.mode.selection_wand")
+            .unwrap();
+        assert_eq!(
+            Keymap::default().bindings[wand],
+            vec![Chord::parse("W").unwrap()]
+        );
+        for text in [
+            r#"{"keybindings":{"tool.brush":"W"}}"#,
+            r#"{"keybindings":{"plugin.custom.tool":"W"}}"#,
+        ] {
+            let map = Keymap::decode(text).unwrap();
+            assert!(map.bindings[wand].is_empty());
+            assert_eq!(
+                Keymap::decode(&map.encode()).unwrap().bindings,
+                map.bindings
+            );
+        }
     }
 }

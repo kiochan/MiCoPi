@@ -205,6 +205,71 @@
         "type": "object",
         "additionalProperties": false
       }
+    },
+    {
+      "id": "toolbox.mode.selection_wand",
+      "title": "Magic Wand",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "painting.mode",
+            "value": "selection_wand"
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "toolbox.selection.options",
+      "title": "Selection Sampling Options",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "tolerance": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255,
+            "default": 32
+          },
+          "contiguous": {
+            "type": "boolean",
+            "default": true
+          },
+          "sample_merged": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "tolerance",
+          "contiguous",
+          "sample_merged"
+        ],
+        "additionalProperties": false
+      },
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "selection.options",
+            "value": {
+              "tolerance": {
+                "$arg": "tolerance"
+              },
+              "contiguous": {
+                "$arg": "contiguous"
+              },
+              "sample_merged": {
+                "$arg": "sample_merged"
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

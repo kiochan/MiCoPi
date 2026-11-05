@@ -48,7 +48,7 @@ Current limits: one document per session; no Wintab, clipboard, free transforms,
 
 Schema-described rectangle, ellipse and polygon [selections](docs/selections.md) support combinations, native drawing/action clipping, undo and replay. The Tools strip offers rectangle/ellipse marquees and freehand/polygonal lassos with reversible previews. PS-style selection shortcuts are configurable; clipboard tools remain planned.
 
-Tolerance-based Wand, Grow and Similar color-selection commands are available through command parameter forms and automation; a direct Wand canvas tool remains planned.
+Magic Wand (**W**) offers tolerance, contiguous and merged sampling controls, plus Grow/Similar. The same color-selection commands are available through parameter forms and automation.
 
 ## Build and run
 

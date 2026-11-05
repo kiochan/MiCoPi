@@ -51,6 +51,19 @@ def main():
             time.sleep(.05)
         return path
 
+    def selection_options_capture(language, width, height):
+        result = call('window.command',dict(panel='tool-options',operation='float',x=60,y=80,width=width,height=height))
+        assert result['queued']
+        deadline = time.monotonic()+10
+        while call('window.list',{})['last_result']['status']=='queued':
+            assert time.monotonic()<deadline,'Selection options placement timeout'
+            time.sleep(.05)
+        path=output/f'{language}-wand-{width}.png'
+        call('window.capture',dict(panel='tool-options',path=str(path)))
+        while not path.exists():
+            assert time.monotonic()<deadline,'Selection options capture timeout'
+            time.sleep(.05)
+
     try:
         deadline = time.monotonic()+20
         while not endpoint.exists():
@@ -89,9 +102,15 @@ def main():
             assert stored['ui']['language']==language and stored['custom']['keep']==42
             assert stored['keybindings']['file.save']==['Ctrl+F12']
             call('toolbox.mode.selection_ellipse',{})
+            call('toolbox.mode.selection_wand',{})
+            call('toolbox.selection.options',dict(tolerance=16,contiguous=True,sample_merged=True))
             call('workflow.open',{})
             time.sleep(.25)
             screenshot(f'{language}-workbench.png')
+            for width,height in [(280,300),(1000,150)]:
+                selection_options_capture(language,width,height)
+            call('window.command',dict(panel='tool-options',operation='dock_top',target='canvas'))
+
             call('window.command', dict(panel='quick.panel',operation='focus'))
             time.sleep(.15)
             screenshot(f'{language}-plugin-panel.png')

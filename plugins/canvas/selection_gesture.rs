@@ -15,7 +15,7 @@ impl Editor {
         self.selection_gesture.as_ref().is_some_and(|g| g.kind == 6)
     }
     pub(super) fn selection_down(&mut self, q: Pos2, mods: Modifiers, time: u32) -> bool {
-        if !(3..=6).contains(&self.area_mode) {
+        if !(3..=7).contains(&self.area_mode) {
             return false;
         }
         let q = bounded(q);
@@ -42,6 +42,22 @@ impl Editor {
             (false, true) => "subtract",
             _ => self.selection_combine,
         };
+        if self.area_mode == 7 {
+            // A contact selects once; movement and release must never paint.
+            self.input_owned = true;
+            if q.x >= 0.
+                && q.y >= 0.
+                && q.x < self.session.doc.width as f32
+                && q.y < self.session.doc.height as f32
+            {
+                let options = self.session.selection_sampling();
+                self.core("selection.wand", serde_json::json!({
+                    "x":q.x.floor() as u32,"y":q.y.floor() as u32,"mode":mode,
+                    "tolerance":options.tolerance,"contiguous":options.contiguous,"sample_merged":options.sample_merged
+                }));
+            }
+            return true;
+        }
         self.selection_gesture = Some(Gesture {
             kind: self.area_mode,
             target: (self.session.doc.identity, self.session.revision),
