@@ -67,6 +67,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
 | `src/engine/selection.rs` | Immutable coverage storage, bounded encoding and shared selection snapshots |
 | `src/application/movement_preferences.rs`, `src/application/movement_tests.rs` | Validated move targets/steps, public state and shared history/replay regressions |
+| `src/engine/transform.rs`, `src/application/transform_repeat_tests.rs` | Bounded document-owned repeat recipes, persistence validation and repeat/copy history/replay contracts |
 | `src/plugins/affine.rs`, `src/application/affine_tests.rs` | Shared affine plans, staged outputs, borrowed-source preview composition and action/history/replay contracts |
 | `plugins/painting/src/affine.rs` | Allocation-free inverse affine sampling with transparent edges and independent references |
 | `plugins/canvas/transform.rs`, `plugins/canvas/transform_tests.rs` | Reversible numeric/handle drafts, idle textures, source guards and UI regressions |

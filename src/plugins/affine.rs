@@ -1,15 +1,10 @@
 //! Shared affine planning and atomic publication. Pixel algorithms belong to the DLL.
 use crate::application::{ActionError, ActionResult, MoveTarget, Session};
+pub(crate) use crate::engine::transform::Method;
+use crate::engine::transform::{Recipe, Target};
 use micopi_plugin_api as abi;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub(crate) enum Method {
-    Nearest,
-    #[default]
-    Bilinear,
-}
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub(crate) struct Parameters {
@@ -188,7 +183,17 @@ fn run(s: &mut Session, args: Value) -> Result<(), String> {
     let o = &plan.options;
     if o.matrix != [1., 0., 0., 0., 1., 0.] {
         let (pixels, selection) = staged(s, o)?;
-        s.doc.apply_movement(pixels.as_deref(), selection)?;
+        let recipe = Recipe {
+            matrix: o.matrix,
+            target: match plan.target {
+                MoveTarget::Layer => Target::Layer,
+                MoveTarget::Selection => Target::Selection,
+                _ => Target::SelectionMask,
+            },
+            method: p.method,
+        };
+        s.doc
+            .apply_affine(pixels.as_deref(), selection, Some(recipe))?;
     }
     if s.atomic_depth == 0 {
         s.transform_event = Some(
@@ -217,4 +222,92 @@ pub(crate) fn request_preview(s: &mut Session, args: Value) -> ActionResult {
     s.ui_effects
         .push_back(json!({"id":"transform.parameters","value":p}));
     Ok(json!({"queued":true}))
+}
+
+/// Read-only, stable node/state contract. No stroke completion or native invocation.
+pub(crate) fn repeat_state(s: &Session) -> Value {
+    if let Some(recipe) = s.doc.last_transform() {
+        let mut result = json!(recipe);
+        result["available"] = json!(true);
+        result
+    } else {
+        json!({"available":false})
+    }
+}
+pub(crate) fn repeat(s: &mut Session, duplicate: bool) -> ActionResult {
+    repeat_run(s, duplicate).map_err(|e| ActionError::new("transform", e))?;
+    Ok(s.state())
+}
+fn repeat_run(s: &mut Session, duplicate: bool) -> Result<(), String> {
+    s.transform_event = None;
+    let recipe = s
+        .doc
+        .last_transform()
+        .ok_or("No saved transform to repeat")?;
+    recipe.validate()?;
+    let target = match recipe.target {
+        Target::Layer => MoveTarget::Layer,
+        Target::Selection => MoveTarget::Selection,
+        Target::SelectionMask => MoveTarget::SelectionMask,
+    };
+    if duplicate && target == MoveTarget::SelectionMask {
+        return Err("Cannot duplicate a selection outline; repeat without duplication".into());
+    }
+    let bounds = source_bounds(s, target)?;
+    if duplicate
+        && (s.doc.layers.len() >= crate::engine::MAX_LAYERS
+            || s.doc.width * s.doc.height * (s.doc.layers.len() + 1) > 64 * 1024 * 1024)
+    {
+        return Err("Layer count or document pixel limit reached".into());
+    }
+    s.finish_stroke();
+    let mut options = abi::Affine {
+        matrix: recipe.matrix,
+        kind: match target {
+            MoveTarget::Layer => 0,
+            MoveTarget::Selection => 1,
+            _ => 2,
+        },
+        method: if recipe.method == Method::Nearest {
+            0
+        } else {
+            1
+        },
+    };
+    if duplicate {
+        let mut selection = s.doc.selection().clone();
+        let pixels = if target == MoveTarget::Selection {
+            selection.current = Some(super::native::affine_mask(s, &options)?);
+            let mut extracted = vec![0; s.doc.width * s.doc.height];
+            super::native::transfer(
+                s,
+                &abi::SelectionTransfer {
+                    kind: 0,
+                    x: 0,
+                    y: 0,
+                },
+                &s.doc.layers[s.doc.active].pixels,
+                [s.doc.width, s.doc.height],
+                s.doc.selection().current.as_ref(),
+                &mut extracted,
+                [s.doc.width, s.doc.height],
+            )?;
+            options.kind = 0;
+            super::native::affine_source(s, &options, &extracted)?
+        } else {
+            super::native::affine_pixels(s, &options)?
+        };
+        s.doc
+            .duplicate_affine_layer(s.doc.active, Some((pixels, selection)))?;
+    } else {
+        let (pixels, selection) = staged(s, &options)?;
+        s.doc
+            .apply_affine(pixels.as_deref(), selection, Some(recipe))?;
+    }
+    if s.atomic_depth == 0 {
+        s.transform_event = Some(
+            json!({"transform":{"target":target,"matrix":recipe.matrix,"source_bounds":bounds,"method":recipe.method,"duplicate":duplicate}}),
+        );
+    }
+    Ok(())
 }

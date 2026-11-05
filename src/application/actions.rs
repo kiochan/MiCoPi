@@ -108,6 +108,9 @@ pub enum Operation {
     TransformPixels,
     TransformPreview,
     TransformPlan,
+    TransformRepeat,
+    TransformRepeatCopy,
+    TransformState,
     Nudge,
     CanvasTrim,
     TrimBounds,
@@ -275,6 +278,10 @@ impl Operation {
                 json!({"parameters":Self::TransformPixels.schema()}),
                 vec!["parameters"],
             ),
+            Self::TransformRepeat => (
+                json!({"duplicate":{"type":"boolean","default":false,"description":"Insert a transformed copy above the source; selected targets copy selected raw pixels only. Outline-only recipes cannot duplicate."}}),
+                vec![],
+            ),
             Self::TransformPlan => return Self::TransformPixels.schema(),
             Self::Nudge => (
                 json!({"direction":{"type":"string","enum":["left","right","up","down"]},"large":{"type":"boolean","default":false},"target":{"type":"string","enum":["auto","layer","selection","selection_mask"]}}),
@@ -378,6 +385,7 @@ impl Operation {
                 | Self::ContextRead
                 | Self::State
                 | Self::TrimBounds
+                | Self::TransformState
                 | Self::TransformPlan
                 | Self::ReadSelection
                 | Self::ClipboardState

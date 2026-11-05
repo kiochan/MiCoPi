@@ -83,6 +83,20 @@ impl Document {
         Ok(())
     }
     pub fn duplicate_layer(&mut self, index: usize) -> Result<(), String> {
+        self.duplicate_affine_layer(index, None)
+    }
+    /// A transformed copy inserts staged pixels/mask without a second undo entry.
+    pub(crate) fn duplicate_affine_layer(
+        &mut self,
+        index: usize,
+        staged: Option<(Vec<u32>, crate::engine::selection::SelectionState)>,
+    ) -> Result<(), String> {
+        if let Some((pixels, selection)) = &staged {
+            if pixels.len() != self.width * self.height {
+                return Err("Invalid copied pixel count".into());
+            }
+            selection.validate(self.width, self.height)?;
+        }
         if index >= self.layers.len() {
             return Err("Layer does not exist".into());
         }
@@ -100,21 +114,33 @@ impl Document {
             LayerMetadata {
                 id: self.next_layer_id,
                 name: self.layer_metadata[index].name.clone(),
-                alpha_locked: self.layer_metadata[index].alpha_locked,
+                alpha_locked: staged.is_none() && self.layer_metadata[index].alpha_locked,
             },
         );
         let graph =
             self.reindexed_graph(&metadata, Some((self.layer_id(index), self.next_layer_id)))?;
+        let plan = graph.compile(metadata.len())?;
         self.finish();
         let before = self.composition();
         let active = self.active;
-        let layer = self.layers[index].clone();
+        let layer = if let Some((pixels, selection)) = staged {
+            self.selection = selection;
+            let source = &self.layers[index];
+            Layer {
+                pixels,
+                visible: source.visible,
+                opacity: source.opacity,
+                mode: source.mode,
+            }
+        } else {
+            self.layers[index].clone()
+        };
         self.layers.insert(index + 1, layer);
         self.layer_metadata = metadata;
         self.next_layer_id += 1;
         self.active = index + 1;
         self.graph = graph;
-        self.plan = self.graph.compile(self.layers.len())?;
+        self.plan = plan;
         self.track_layer_order();
         self.commit_composition(
             before,

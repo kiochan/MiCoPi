@@ -110,6 +110,7 @@ impl Document {
             height: self.height,
             layers: std::mem::replace(&mut self.layers, layers),
         };
+        self.last_transform = None;
         self.width = width;
         self.height = height;
         self.selection = selection;
@@ -148,8 +149,20 @@ impl Document {
         pixels: Option<&[u32]>,
         selection: crate::engine::selection::SelectionState,
     ) -> Result<(), String> {
+        self.apply_affine(pixels, selection, self.last_transform)
+    }
+    /// Publish pixels, masks and the bounded repeat recipe in the same history entry.
+    pub(crate) fn apply_affine(
+        &mut self,
+        pixels: Option<&[u32]>,
+        selection: crate::engine::selection::SelectionState,
+        recipe: Option<crate::engine::transform::Recipe>,
+    ) -> Result<(), String> {
+        if let Some(r) = recipe {
+            r.validate()?;
+        }
         self.validate_pixel_transform(pixels, &selection)?;
-        let selection_changed = self.selection != selection;
+        let selection_changed = self.selection != selection || self.last_transform != recipe;
         if !selection_changed && pixels.is_none_or(|p| p == self.layers[self.active].pixels) {
             return Ok(());
         }
@@ -170,6 +183,7 @@ impl Document {
             self.write_region(0, 0, self.width, self.height, p);
         }
         self.selection = selection;
+        self.last_transform = recipe;
         self.finish();
         Ok(())
     }
@@ -218,6 +232,7 @@ impl Document {
             height: self.height,
             layers: std::mem::replace(&mut self.layers, layers),
         };
+        self.last_transform = None;
         self.width = width;
         self.height = height;
         self.composite = vec![0; width * height];

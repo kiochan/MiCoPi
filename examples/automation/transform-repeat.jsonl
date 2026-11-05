@@ -1,0 +1,10 @@
+{"action":"canvas.new","args":{"width":96,"height":64}}
+{"action":"native.checkerboard","args":{"cell":8}}
+{"action":"selection.shape","args":{"kind":"rectangle","x":32,"y":24,"width":8,"height":8}}
+{"action":"canvas.transform","args":{"target":"selection","translate_x":8,"angle":15,"pivot_x":48,"pivot_y":32}}
+{"action":"canvas.transform.state","args":{}}
+{"action":"canvas.transform.repeat_copy","args":{}}
+{"action":"canvas.transform.repeat","args":{"duplicate":true}}
+{"action":"replay.verify","args":{}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}

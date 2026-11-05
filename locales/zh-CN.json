@@ -1017,5 +1017,8 @@
   "Pivot change exceeds transform limits": "中心点调整超出变换范围",
   "Inspect Free Transform Geometry": "查看自由变换几何信息",
   "Layer transform requires nontransparent pixels": "图层变换需要非透明像素",
-  "Apply Free Transform": "应用自由变换"
+  "Apply Free Transform": "应用自由变换",
+  "Repeat Last Transform": "重复上次变换",
+  "Repeat Transform with Copy": "复制并重复变换",
+  "Inspect Last Transform": "查看上次变换"
 }

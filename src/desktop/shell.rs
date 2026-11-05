@@ -68,6 +68,8 @@ impl Studio {
                                         (10164, "Paste"),
                                         (10165, "Paste in Place"),
                                         (10184, "Free Transform…"),
+                                        (10185, "Repeat Last Transform"),
+                                        (10186, "Repeat Transform with Copy"),
                                         (10144, "Canvas Size…"),
                                         (10145, "Crop Canvas…"),
                                         (42, "New Layer"),

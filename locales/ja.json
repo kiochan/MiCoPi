@@ -1017,5 +1017,8 @@
   "Pivot change exceeds transform limits": "基準点の変更が変形の範囲を超えています",
   "Inspect Free Transform Geometry": "自由変形のジオメトリを確認",
   "Layer transform requires nontransparent pixels": "レイヤーの変形には不透明度のあるピクセルが必要です",
-  "Apply Free Transform": "自由変形を適用"
+  "Apply Free Transform": "自由変形を適用",
+  "Repeat Last Transform": "前回の変形を繰り返す",
+  "Repeat Transform with Copy": "複製して変形を繰り返す",
+  "Inspect Last Transform": "前回の変形を確認"
 }

@@ -40,6 +40,8 @@ def main():
     ],edges=[{'from':0,'to':1,'input':0},{'from':1,'to':2,'input':0}]))))
     commands=commands[:2]+[dict(action='pipeline.run',args=dict(atomic=True,steps=[dict(id=f'paint_{i}',**command) for i,command in enumerate(commands[2:])]))]
     commands.extend([
+        dict(action='canvas.transform',args=dict(target='layer',translate_x=4.5,angle=7,pivot_x=320,pivot_y=210)),
+        dict(action='canvas.transform.repeat_copy',args={}),
         dict(action='history.undo',args={}),dict(action='history.redo',args={}),
         dict(action='document.save',args=dict(path=str(project))),
         dict(action='replay.verify',args={}),
@@ -99,6 +101,8 @@ def main():
                 assert process.poll() is None and time.monotonic()<deadline,'GUI startup failed'
                 time.sleep(.05)
             call('document.open',dict(path=str(project)))
+            assert call('canvas.transform.state',{})['available']
+            assert len(call('canvas.state',{})['layers'])==2
             assert call('replay.verify',{})['valid']
             assert base64.b64decode(call('canvas.snapshot',{})['data'])==expected
             assert base64.b64decode(call('replay.snapshot',{})['data'])==expected

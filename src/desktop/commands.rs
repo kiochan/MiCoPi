@@ -599,6 +599,17 @@ impl Studio {
                         10175 => {
                             self.editor.core("toolbox.mode.move", serde_json::json!({}));
                         }
+                        10185 | 10186 => {
+                            self.editor.core(
+                                if id == 10185 {
+                                    "canvas.transform.repeat"
+                                } else {
+                                    "canvas.transform.repeat_copy"
+                                },
+                                serde_json::json!({}),
+                            );
+                            self.editor.sync_from_session();
+                        }
                         10184 => {
                             self.editor
                                 .core("canvas.transform.open", serde_json::json!({}));

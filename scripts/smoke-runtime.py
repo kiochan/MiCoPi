@@ -117,6 +117,11 @@ def main():
         dict(action="history.undo", args={}),
         dict(action="canvas.transform.plan", args=dict(target="selection",translate_x=3.5,translate_y=-2,scale_x=.8,scale_y=.9,angle=17)),
         dict(action="canvas.transform", args=dict(target="selection",translate_x=3.5,translate_y=-2,scale_x=.8,scale_y=.9,angle=17)),
+        dict(action="canvas.transform.state", args={}),
+        dict(action="canvas.transform.repeat", args={}),
+        dict(action="history.undo", args={}),
+        dict(action="canvas.transform.repeat_copy", args={}),
+        dict(action="history.undo", args={}),
         dict(action="history.undo", args={}),
         dict(action="canvas.transform", args=dict(target="selection_mask",flip_x=True,angle=90,method="nearest")),
         dict(action="history.undo", args={}),
@@ -221,8 +226,8 @@ def main():
     tools = next(r for r in replies if r["id"] == 2)["result"]["tools"]
     assert any(t["name"] == "quick.blue_stroke" for t in tools), "Custom plugin missing from MCP tools"
     assert any(t["name"] == "native.invert" for t in tools), "Native DLL action missing from MCP tools"
-    for name in ("layer.merge_down", "layer.merge_visible", "layer.flatten", "layer.stamp_visible", "selection.wand", "selection.grow", "selection.similar"):
-        assert any(t["name"] == name for t in tools), f"Layer consolidation action missing from MCP tools: {name}"
+    for name in ("canvas.transform.repeat", "canvas.transform.repeat_copy", "canvas.transform.state", "layer.merge_down", "layer.merge_visible", "layer.flatten", "layer.stamp_visible", "selection.wand", "selection.grow", "selection.similar"):
+        assert any(t["name"] == name for t in tools), f"Shared document action missing from MCP tools: {name}"
     assert any(r["uri"]=="micopi://state/ai_assistant.context" for r in next(r for r in replies if r["id"]==40101)["result"]["resources"])
     context=json.loads(next(r for r in replies if r["id"]==40102)["result"]["contents"][0]["text"])
     assert context["resources"]["native_paint.stats"]["ok"]

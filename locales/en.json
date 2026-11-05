@@ -1017,5 +1017,8 @@
   "Pivot change exceeds transform limits": "Pivot change exceeds transform limits",
   "Inspect Free Transform Geometry": "Inspect Free Transform Geometry",
   "Layer transform requires nontransparent pixels": "Layer transform requires nontransparent pixels",
-  "Apply Free Transform": "Apply Free Transform"
+  "Apply Free Transform": "Apply Free Transform",
+  "Repeat Last Transform": "Repeat Last Transform",
+  "Repeat Transform with Copy": "Repeat Transform with Copy",
+  "Inspect Last Transform": "Inspect Last Transform"
 }

@@ -62,3 +62,5 @@ pub use movement_preferences::{MoveTarget, MovementPreferences};
 mod affine_tests;
 #[cfg(test)]
 mod movement_tests;
+#[cfg(test)]
+mod transform_repeat_tests;

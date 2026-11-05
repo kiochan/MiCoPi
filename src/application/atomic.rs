@@ -110,6 +110,8 @@ impl Operation {
                 | Self::CanvasSize
                 | Self::MovePixels
                 | Self::TransformPixels
+                | Self::TransformRepeat
+                | Self::TransformRepeatCopy
                 | Self::Nudge
                 | Self::CanvasTrim
                 | Self::ImageSize

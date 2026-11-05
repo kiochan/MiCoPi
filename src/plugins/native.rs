@@ -2701,6 +2701,13 @@ pub(crate) fn move_mask(
 }
 
 pub(crate) fn affine_pixels(s: &Session, o: &abi::Affine) -> Result<Vec<u32>, String> {
+    affine_source(s, o, &s.doc.layers[s.doc.active].pixels)
+}
+pub(crate) fn affine_source(
+    s: &Session,
+    o: &abi::Affine,
+    pixels: &[u32],
+) -> Result<Vec<u32>, String> {
     let kernel = s
         .registry
         .native_plugins
@@ -2708,7 +2715,9 @@ pub(crate) fn affine_pixels(s: &Session, o: &abi::Affine) -> Result<Vec<u32>, St
         .and_then(|p| p.affine)
         .and_then(|a| a.pixels)
         .ok_or("Painting DLL does not support affine sampling")?;
-    let pixels = &s.doc.layers[s.doc.active].pixels;
+    if pixels.len() != s.doc.width * s.doc.height {
+        return Err("Invalid affine source dimensions".into());
+    }
     let source = abi::Pixels {
         data: pixels.as_ptr() as *mut u32,
         len: pixels.len(),

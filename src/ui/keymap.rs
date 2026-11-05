@@ -574,6 +574,24 @@ pub static COMMANDS: &[Command] = &[
         10174
     ),
     c!(
+        "canvas.transform.repeat",
+        "Repeat Last Transform",
+        "Edit",
+        "repeat transform again matrix",
+        UiCommand(10185),
+        "Ctrl+Shift+T",
+        10185
+    ),
+    c!(
+        "canvas.transform.repeat_copy",
+        "Repeat Transform with Copy",
+        "Edit",
+        "repeat transform duplicate pattern copy",
+        UiCommand(10186),
+        "Ctrl+Alt+Shift+T",
+        10186
+    ),
+    c!(
         "canvas.transform.open",
         "Free Transform…",
         "Edit",
@@ -1755,6 +1773,8 @@ impl Keymap {
                         | "layer.via_cut"
                         | "canvas.image_size"
                         | "canvas.transform.open"
+                        | "canvas.transform.repeat"
+                        | "canvas.transform.repeat_copy"
                 )
                 || command.id.starts_with("clipboard.system_")
                 || command.id == "toolbox.mode.move"
@@ -1854,6 +1874,8 @@ mod tests {
             ("movement.left", "Left"),
             ("movement.right.large", "Shift+Right"),
             ("canvas.transform.open", "Ctrl+T"),
+            ("canvas.transform.repeat", "Ctrl+Shift+T"),
+            ("canvas.transform.repeat_copy", "Ctrl+Alt+Shift+T"),
         ] {
             let i = COMMANDS.iter().position(|c| c.id == id).unwrap();
             let p = serde_json::json!({"keybindings":{"plugin.custom.older":key}}).to_string();

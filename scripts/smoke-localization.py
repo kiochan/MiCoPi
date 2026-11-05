@@ -171,6 +171,19 @@ def main():
             screenshot(f'{language}-free-transform.png')
             assert base64.b64decode(call('canvas.snapshot',{})['data'])==expected
             call('ui.dispatch',dict(id='command',value='Cancel'))
+            call('canvas.transform',dict(target='selection',translate_x=12,translate_y=-4,scale_x=.8,scale_y=.8,angle=17))
+            assert call('canvas.transform.state',{})['available']
+            layer_count=len(call('canvas.state',{})['layers'])
+            call('ui.dispatch',dict(id='command',value=dict(UiCommand=10186)))
+            deadline=time.monotonic()+10
+            while len(call('canvas.state',{})['layers'])!=layer_count+1:
+                assert process.poll() is None and time.monotonic()<deadline,'Repeat copy timeout'
+                time.sleep(.05)
+            time.sleep(.2)
+            screenshot(f'{language}-transform-repeat.png')
+            call('history.undo',{})
+            call('history.undo',{})
+            assert base64.b64decode(call('canvas.snapshot',{})['data'])==expected
             if locked: call('history.undo',{})
             call('layer.via_copy',{})
             time.sleep(.15)

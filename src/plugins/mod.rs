@@ -37,6 +37,11 @@ pub(crate) fn execute(
     use crate::application::Operation::*;
     match op {
         MovePixels | Nudge => movement::execute(session, op, args),
+        TransformRepeat | TransformRepeatCopy => affine::repeat(
+            session,
+            op == TransformRepeatCopy || args["duplicate"] == true,
+        ),
+        TransformState => Ok(affine::repeat_state(session)),
         TransformPixels => affine::execute(session, args),
         TransformPreview => affine::request_preview(session, args),
         TransformPlan => affine::describe(session, args),

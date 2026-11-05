@@ -1017,5 +1017,8 @@
   "Pivot change exceeds transform limits": "기준점 변경이 변형 범위를 벗어납니다",
   "Inspect Free Transform Geometry": "자유 변형 기하 정보 확인",
   "Layer transform requires nontransparent pixels": "레이어 변형에는 투명하지 않은 픽셀이 필요합니다",
-  "Apply Free Transform": "자유 변형 적용"
+  "Apply Free Transform": "자유 변형 적용",
+  "Repeat Last Transform": "마지막 변형 반복",
+  "Repeat Transform with Copy": "복제하여 변형 반복",
+  "Inspect Last Transform": "마지막 변형 확인"
 }

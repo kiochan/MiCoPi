@@ -9,6 +9,8 @@ use std::{
 };
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Composition {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_transform: Option<super::transform::Recipe>,
     pub graph: Graph,
     pub layers: Vec<(bool, u8, BlendMode)>,
     #[serde(default)]
@@ -39,6 +41,9 @@ pub struct LayerMetadata {
 }
 impl Composition {
     pub fn validate_layer_metadata(&self) -> Result<(), String> {
+        if let Some(recipe) = self.last_transform {
+            recipe.validate()?;
+        }
         if self.graph.linked {
             let branches = self.graph.stack_branches(self.layers.len())?;
             for (branch, (_, _, mode)) in branches.iter().zip(&self.layers) {
@@ -161,6 +166,7 @@ pub struct Brush {
     pub erase: bool,
 }
 pub struct Document {
+    last_transform: Option<super::transform::Recipe>,
     selection: super::selection::SelectionState,
     layer_metadata: Vec<LayerMetadata>,
     next_layer_id: u64,
@@ -244,6 +250,7 @@ impl Document {
         let graph = Graph::linked_from_layers(&layers);
         let plan = graph.compile(1).unwrap();
         Self {
+            last_transform: None,
             layer_metadata: vec![LayerMetadata {
                 id: 1,
                 name: String::new(),
@@ -298,6 +305,7 @@ impl Document {
     }
     pub fn composition(&self) -> Composition {
         Composition {
+            last_transform: self.last_transform,
             selection: self.selection.clone(),
             layer_metadata: self.layer_metadata.clone(),
             next_layer_id: self.next_layer_id,
@@ -309,6 +317,9 @@ impl Document {
                 .map(|l| (l.visible, l.opacity, l.mode))
                 .collect(),
         }
+    }
+    pub fn last_transform(&self) -> Option<super::transform::Recipe> {
+        self.last_transform
     }
     pub fn selection(&self) -> &super::selection::SelectionState {
         &self.selection
@@ -329,6 +340,7 @@ impl Document {
         Ok(())
     }
     pub(crate) fn restore_composition(&mut self, state: Composition) {
+        self.last_transform = state.last_transform;
         self.selection = state.selection;
         self.layer_metadata = if state.layer_metadata.is_empty() {
             (0..self.layers.len())
@@ -367,6 +379,7 @@ impl Document {
             tiles: BTreeMap::new(),
             metadata_bytes: before.graph.nodes.len() * 160
                 + before.selection.memory_bytes()
+                + std::mem::size_of_val(&before.last_transform)
                 + before.graph.edges.len() * 16
                 + before.workflow.bytes()
                 + before.layers.len() * 8
@@ -894,6 +907,7 @@ impl Document {
             *state = before;
             e.metadata_bytes = state.graph.nodes.len() * 160
                 + state.selection.memory_bytes()
+                + std::mem::size_of_val(&state.last_transform)
                 + state.graph.edges.len() * 16
                 + state.workflow.bytes()
                 + state.layers.len() * 8

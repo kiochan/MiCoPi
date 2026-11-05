@@ -142,7 +142,15 @@ impl Session {
             self.replay_error = None;
             self.replay_identity = self.doc.identity;
         }
-        let context = if success && matches!(op, Some(Operation::TransformPixels)) {
+        let context = if success
+            && matches!(
+                op,
+                Some(
+                    Operation::TransformPixels
+                        | Operation::TransformRepeat
+                        | Operation::TransformRepeatCopy
+                )
+            ) {
             self.transform_event.take()
         } else if success && matches!(op, Some(Operation::MovePixels | Operation::Nudge)) {
             Some(
