@@ -4,6 +4,7 @@ mod affine;
 mod geometry;
 mod input;
 mod movement;
+mod projective;
 mod raster;
 mod resample;
 mod selection;

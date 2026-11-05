@@ -1023,5 +1023,22 @@
   "Inspect Last Transform": "前回の変形を確認",
   "Skew": "ゆがみ",
   "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.": "辺のひし形をドラッグしてゆがめます。Shift で 5 度刻みに調整します。",
-  "Combined transform exceeds affine limits": "変形の組み合わせがアフィン変換の上限を超えています"
+  "Combined transform exceeds affine limits": "変形の組み合わせがアフィン変換の上限を超えています",
+  "Edit Perspective Corners": "遠近変形の角を編集",
+  "Perspective Corners": "遠近変形の角",
+  "Reset Transform": "変形をリセット",
+  "Drag corners independently, edges to move a side, or inside to move the quadrilateral.": "角を個別にドラッグし、辺で片側を移動し、内側で四辺形全体を移動します。",
+  "Shift constrains perspective handle movement to one axis.": "Shift で遠近変形ハンドルの移動を一軸に制限します。",
+  "Invalid perspective corner coordinates": "遠近変形の角の座標が無効です",
+  "Perspective corners must form a nondegenerate convex quadrilateral": "遠近変形の角は退化しない凸四辺形を構成する必要があります",
+  "Degenerate perspective mapping": "遠近変形の写像が退化しています",
+  "Transform crosses the projective horizon": "変形が射影の地平線を横切っています",
+  "Invalid or unsupported projective matrix": "射影行列が無効か対応範囲外です",
+  "Perspective corners cannot be combined with affine controls": "遠近変形の角とアフィン変形の設定は同時に指定できません",
+  "Painting DLL does not support projective sampling": "描画 DLL は射影サンプリングに対応していません",
+  "Native projective pixel sampling failed": "ネイティブ射影ピクセルサンプリングに失敗しました",
+  "Painting DLL does not support projective mask sampling": "描画 DLL は射影マスクサンプリングに対応していません",
+  "Native projective mask sampling failed": "ネイティブ射影マスクサンプリングに失敗しました",
+  "Invalid projective source dimensions": "射影元のサイズが無効です",
+  "Finish the current contact before perspective editing": "現在の入力を終了してから遠近変形を編集してください"
 }

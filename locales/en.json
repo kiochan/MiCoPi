@@ -1023,5 +1023,22 @@
   "Inspect Last Transform": "Inspect Last Transform",
   "Skew": "Skew",
   "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.": "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.",
-  "Combined transform exceeds affine limits": "Combined transform exceeds affine limits"
+  "Combined transform exceeds affine limits": "Combined transform exceeds affine limits",
+  "Edit Perspective Corners": "Edit Perspective Corners",
+  "Perspective Corners": "Perspective Corners",
+  "Reset Transform": "Reset Transform",
+  "Drag corners independently, edges to move a side, or inside to move the quadrilateral.": "Drag corners independently, edges to move a side, or inside to move the quadrilateral.",
+  "Shift constrains perspective handle movement to one axis.": "Shift constrains perspective handle movement to one axis.",
+  "Invalid perspective corner coordinates": "Invalid perspective corner coordinates",
+  "Perspective corners must form a nondegenerate convex quadrilateral": "Perspective corners must form a nondegenerate convex quadrilateral",
+  "Degenerate perspective mapping": "Degenerate perspective mapping",
+  "Transform crosses the projective horizon": "Transform crosses the projective horizon",
+  "Invalid or unsupported projective matrix": "Invalid or unsupported projective matrix",
+  "Perspective corners cannot be combined with affine controls": "Perspective corners cannot be combined with affine controls",
+  "Painting DLL does not support projective sampling": "Painting DLL does not support projective sampling",
+  "Native projective pixel sampling failed": "Native projective pixel sampling failed",
+  "Painting DLL does not support projective mask sampling": "Painting DLL does not support projective mask sampling",
+  "Native projective mask sampling failed": "Native projective mask sampling failed",
+  "Invalid projective source dimensions": "Invalid projective source dimensions",
+  "Finish the current contact before perspective editing": "Finish the current contact before perspective editing"
 }

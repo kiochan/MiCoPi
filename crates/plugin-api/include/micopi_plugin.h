@@ -207,6 +207,17 @@ typedef struct {
     int32_t (*bounds)(const MicopiPixels *, MicopiTrimBounds *);
 } MicopiAffineApi;
 const MicopiAffineApi *micopi_affine_v1(void);
+/* Optional finite forward homography. Same kinds/methods as affine.
+   x'=(m0*x+m1*y+m2)/(m6*x+m7*y+m8), likewise y' with m3..m5.
+   Samples behind the forward horizon are transparent. */
+typedef struct { uint32_t kind, method; double matrix[9]; } MicopiProjective;
+typedef struct {
+    uint32_t abi_version, struct_size;
+    int32_t (*pixels)(const MicopiProjective *, const MicopiPixels *, const MicopiCoverage *, MicopiPixels *);
+    int32_t (*mask)(const MicopiProjective *, const MicopiCoverage *, uint8_t *, size_t);
+} MicopiProjectiveApi;
+const MicopiProjectiveApi *micopi_projective_v1(void);
+
 #ifdef __cplusplus
 }
 #endif

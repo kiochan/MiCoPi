@@ -2,6 +2,7 @@
 pub mod color;
 pub mod document;
 pub mod graph;
+pub mod homography;
 pub mod input;
 mod linked_graph;
 pub mod replay;

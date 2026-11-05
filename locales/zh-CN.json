@@ -1023,5 +1023,22 @@
   "Inspect Last Transform": "查看上次变换",
   "Skew": "斜切",
   "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.": "拖动边中点的菱形进行斜切。按住 Shift 以 5° 步进。",
-  "Combined transform exceeds affine limits": "组合变换超出了仿射变换的限制"
+  "Combined transform exceeds affine limits": "组合变换超出了仿射变换的限制",
+  "Edit Perspective Corners": "编辑透视角点",
+  "Perspective Corners": "透视角点",
+  "Reset Transform": "重置变换",
+  "Drag corners independently, edges to move a side, or inside to move the quadrilateral.": "独立拖动角点、拖动边移动一侧，或在内部拖动整个四边形。",
+  "Shift constrains perspective handle movement to one axis.": "按住 Shift 将透视手柄的移动限制为单一方向。",
+  "Invalid perspective corner coordinates": "透视角点坐标无效",
+  "Perspective corners must form a nondegenerate convex quadrilateral": "透视角点必须组成非退化的凸四边形",
+  "Degenerate perspective mapping": "透视映射已退化",
+  "Transform crosses the projective horizon": "变换跨越了投影地平线",
+  "Invalid or unsupported projective matrix": "投影矩阵无效或超出支持范围",
+  "Perspective corners cannot be combined with affine controls": "透视角点不能与仿射参数同时设置",
+  "Painting DLL does not support projective sampling": "绘画 DLL 不支持投影采样",
+  "Native projective pixel sampling failed": "原生投影像素采样失败",
+  "Painting DLL does not support projective mask sampling": "绘画 DLL 不支持投影蒙版采样",
+  "Native projective mask sampling failed": "原生投影蒙版采样失败",
+  "Invalid projective source dimensions": "投影源尺寸无效",
+  "Finish the current contact before perspective editing": "请先结束当前笔触或平移，再进行透视编辑"
 }

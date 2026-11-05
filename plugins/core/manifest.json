@@ -169,6 +169,15 @@
                   "nearest",
                   "bilinear"
                 ]
+              },
+              "denominator": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 3,
+                "items": {
+                  "type": "number"
+                },
+                "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
               }
             },
             "required": [
@@ -3466,6 +3475,15 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "denominator": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number"
+            },
+            "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
           }
         },
         "required": [
@@ -3479,7 +3497,8 @@
           "width",
           "height",
           "revision",
-          "drawing"
+          "drawing",
+          "denominator"
         ]
       }
     },
@@ -3523,6 +3542,15 @@
               "nearest",
               "bilinear"
             ]
+          },
+          "denominator": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number"
+            },
+            "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
           }
         },
         "required": [
@@ -3638,6 +3666,15 @@
               "nearest",
               "bilinear"
             ]
+          },
+          "denominator": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "number"
+            },
+            "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
           }
         },
         "required": [

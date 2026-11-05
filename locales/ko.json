@@ -1023,5 +1023,22 @@
   "Inspect Last Transform": "마지막 변형 확인",
   "Skew": "기울이기",
   "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.": "가장자리 마름모를 드래그하여 기울입니다. Shift를 누르면 5도씩 조절합니다.",
-  "Combined transform exceeds affine limits": "변형 조합이 아핀 변환 한도를 초과합니다"
+  "Combined transform exceeds affine limits": "변형 조합이 아핀 변환 한도를 초과합니다",
+  "Edit Perspective Corners": "원근 모서리 편집",
+  "Perspective Corners": "원근 모서리",
+  "Reset Transform": "변형 초기화",
+  "Drag corners independently, edges to move a side, or inside to move the quadrilateral.": "모서리를 개별적으로 드래그하고, 가장자리로 한 변을, 내부로 사각형 전체를 이동합니다.",
+  "Shift constrains perspective handle movement to one axis.": "Shift를 누르면 원근 핸들 이동을 한 축으로 제한합니다.",
+  "Invalid perspective corner coordinates": "원근 모서리 좌표가 잘못되었습니다",
+  "Perspective corners must form a nondegenerate convex quadrilateral": "원근 모서리는 퇴화하지 않은 볼록 사각형을 이루어야 합니다",
+  "Degenerate perspective mapping": "원근 매핑이 퇴화했습니다",
+  "Transform crosses the projective horizon": "변형이 투영 지평선을 가로지릅니다",
+  "Invalid or unsupported projective matrix": "투영 행렬이 잘못되었거나 지원 범위를 벗어났습니다",
+  "Perspective corners cannot be combined with affine controls": "원근 모서리와 아핀 변형 설정을 함께 지정할 수 없습니다",
+  "Painting DLL does not support projective sampling": "페인팅 DLL이 투영 샘플링을 지원하지 않습니다",
+  "Native projective pixel sampling failed": "네이티브 투영 픽셀 샘플링에 실패했습니다",
+  "Painting DLL does not support projective mask sampling": "페인팅 DLL이 투영 마스크 샘플링을 지원하지 않습니다",
+  "Native projective mask sampling failed": "네이티브 투영 마스크 샘플링에 실패했습니다",
+  "Invalid projective source dimensions": "투영 원본 크기가 잘못되었습니다",
+  "Finish the current contact before perspective editing": "현재 입력을 끝낸 다음 원근을 편집하세요"
 }

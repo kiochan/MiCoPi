@@ -2,7 +2,7 @@
 use super::*;
 use crate::desktop::tests::{frame, studio};
 use serde_json::json;
-fn app() -> Studio {
+pub(super) fn app() -> Studio {
     let mut app = studio();
     app.editor.session = crate::application::Session::new(
         crate::plugins::Registry::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"))
@@ -23,14 +23,14 @@ fn app() -> Studio {
     app.editor.sync_from_session();
     app
 }
-fn locate(shape: &Shape, text: &str) -> Option<Pos2> {
+pub(super) fn locate(shape: &Shape, text: &str) -> Option<Pos2> {
     match shape {
         Shape::Text(t) if t.galley.text() == text => Some(t.pos + t.galley.size() * 0.5),
         Shape::Vec(v) => v.iter().find_map(|s| locate(s, text)),
         _ => None,
     }
 }
-fn click(app: &mut Studio, ctx: &Context, p: Pos2, time: f64) {
+pub(super) fn click(app: &mut Studio, ctx: &Context, p: Pos2, time: f64) {
     for (n, pressed) in [true, false].into_iter().enumerate() {
         frame(
             app,

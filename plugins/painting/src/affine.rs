@@ -132,12 +132,33 @@ unsafe extern "C" fn pixels(
     if o.is_null() || s.is_null() || c.is_null() || d.is_null() {
         return abi::ERROR;
     }
-    let (o, s, c, d) = (&*o, &*s, &*c, &mut *d);
+    let (o, s, c, d) = (&*o, &*s, &*c, &*d);
     let Some(inv) = inverse(o) else {
         return abi::ERROR;
     };
-    if o.kind == 2
-        || !layout(s.width, s.height, s.stride, s.len)
+    render_pixels(
+        s,
+        c,
+        d,
+        o.kind,
+        o.method,
+        o.matrix == [1., 0., 0., 0., 1., 0.],
+        |x, y| Some(coordinate(&inv, x, y)),
+    )
+}
+pub(super) unsafe fn render_pixels(
+    s: &abi::Pixels,
+    c: &abi::Coverage,
+    d: &abi::Pixels,
+    kind: u32,
+    method: u32,
+    identity: bool,
+    map: impl Fn(usize, usize) -> Option<(f64, f64)>,
+) -> i32 {
+    if kind > 1 || method > 1 {
+        return abi::ERROR;
+    }
+    if !layout(s.width, s.height, s.stride, s.len)
         || !layout(d.width, d.height, d.stride, d.len)
         || (s.width, s.height) != (d.width, d.height)
         || (s.origin_x, s.origin_y, d.origin_x, d.origin_y) != (0, 0, 0, 0)
@@ -145,7 +166,7 @@ unsafe extern "C" fn pixels(
     {
         return abi::ERROR;
     }
-    if o.kind == 0 {
+    if kind == 0 {
         if !c.data.is_null() || c.len != 0 || c.width != 0 || c.height != 0 || c.stride != 0 {
             return abi::ERROR;
         }
@@ -157,7 +178,7 @@ unsafe extern "C" fn pixels(
     }
     let src = Source {
         pixels: std::slice::from_raw_parts(s.data, s.len),
-        mask: if o.kind == 1 {
+        mask: if kind == 1 {
             Some((std::slice::from_raw_parts(c.data, c.len), c.stride as usize))
         } else {
             None
@@ -167,15 +188,13 @@ unsafe extern "C" fn pixels(
         stride: s.stride as usize,
     };
     let out = std::slice::from_raw_parts_mut(d.data, d.len);
-    let identity = o.matrix == [1., 0., 0., 0., 1., 0.];
     for y in 0..src.height {
         for x in 0..src.width {
             let base = src.pixels[y * src.stride + x];
             let value = if identity {
                 base
             } else {
-                let (sx, sy) = coordinate(&inv, x, y);
-                let moving = src.sample(o.method, sx, sy);
+                let moving = map(x, y).map_or(0, |(sx, sy)| src.sample(method, sx, sy));
                 if let Some((mask, stride)) = src.mask {
                     let rest = cleared(base, mask[y * stride + x]);
                     if moving >> 24 == 0 {
@@ -205,7 +224,22 @@ unsafe extern "C" fn mask(
     let Some(inv) = inverse(o) else {
         return abi::ERROR;
     };
-    if o.kind == 0
+    render_mask(s, out, len, o.kind, o.method, |x, y| {
+        Some(coordinate(&inv, x, y))
+    })
+}
+pub(super) unsafe fn render_mask(
+    s: &abi::Coverage,
+    out: *mut u8,
+    len: usize,
+    kind: u32,
+    method: u32,
+    map: impl Fn(usize, usize) -> Option<(f64, f64)>,
+) -> i32 {
+    if kind > 2 || method > 1 {
+        return abi::ERROR;
+    }
+    if kind == 0
         || !layout(s.width, s.height, s.stride, s.len)
         || len != s.width as usize * s.height as usize
         || !disjoint(s.data, s.len, out, len)
@@ -218,8 +252,11 @@ unsafe extern "C" fn mask(
     let at = |x, y| index(x, y, w, h, s.stride as usize).map_or(0, |i| u64::from(src[i]));
     for y in 0..h {
         for x in 0..w {
-            let (sx, sy) = coordinate(&inv, x, y);
-            dest[y * w + x] = if o.method == 0 {
+            let Some((sx, sy)) = map(x, y) else {
+                dest[y * w + x] = 0;
+                continue;
+            };
+            dest[y * w + x] = if method == 0 {
                 at(sx.floor() as i64, sy.floor() as i64) as u8
             } else {
                 let (ix, iy, weights) = weights(sx, sy);

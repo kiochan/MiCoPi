@@ -66,3 +66,6 @@ mod movement_tests;
 mod skew_tests;
 #[cfg(test)]
 mod transform_repeat_tests;
+
+#[cfg(test)]
+mod perspective_tests;

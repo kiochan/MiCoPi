@@ -41,6 +41,7 @@ def main():
     commands=commands[:2]+[dict(action='pipeline.run',args=dict(atomic=True,steps=[dict(id=f'paint_{i}',**command) for i,command in enumerate(commands[2:])]))]
     commands.extend([
         dict(action='canvas.transform',args=dict(target='layer',translate_x=4.5,angle=7,skew_x=12,skew_y=-8,pivot_x=320,pivot_y=210)),
+        dict(action='canvas.transform',args=dict(target='layer',quad=[[60,50],[580,75],[550,370],[80,350]])),
         dict(action='canvas.transform.repeat_copy',args={}),
         dict(action='history.undo',args={}),dict(action='history.redo',args={}),
         dict(action='document.save',args=dict(path=str(project))),

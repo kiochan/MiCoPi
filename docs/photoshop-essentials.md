@@ -17,7 +17,7 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 | Drawing | Native DLL tools, pressure, stabilization, spacing, pressure curve, size/shape cursor | Rich tips/dynamics and additional painting tools |
 | Layers | Stable IDs, rename/duplicate/reorder/delete, opacity, visibility, alpha lock, merge/flatten/stamp | Masks, clipping, groups and multi-selection |
 | Selection/editing | Document masks, gestures, color matching, edge processing, selected painting and internal transfers | System clipboard and selection transforms |
-| Geometry | Anchored framing/crop, orthogonal geometry, Image Size/Trim, Move and affine Free Transform/repeat/skew | Off-canvas storage and perspective |
+| Geometry | Anchored framing/crop, orthogonal geometry, Image Size/Trim, Move and affine Free Transform/repeat/skew | Off-canvas storage and richer project metadata |
 | Composition | Linked layer/filter/blend graphs and explicit free graphs | More adjustments, filters and mask-aware composition |
 | Files | PNG/JPEG/BMP import, PNG export, projects and verified replay | Rich export and layered interchange |
 | Workspace | Independent/docked/tabbed windows, Tools/Options, searchable settings and shortcuts | Guides, snapping, view rotation and multiple documents |
@@ -68,7 +68,7 @@ Acceptance: preview/cancel leaves pixels untouched; selection is visible and beh
 - [x] Transform selected raw content and its current mask together, or transform only the selection outline; preserve the previous Reselect mask.
 - [x] Add persisted, undoable document-space transform repeat and selected/whole-layer copy-repeat, shared by configurable PS commands, public state, nodes, MCP and headless.
 - [x] Add bounded ordered local X/Y skew with numeric controls, reversible mouse/pen edge handles, skew-aware scaling and the existing native matrix/repeat/history contracts.
-- [ ] Add perspective with finite invertible homographies, native sampling, interactive four-corner previews, portable repeat recipes and shared atomic/node/MCP/headless contracts.
+- [x] Add bounded finite convex perspective through an independent native sampler, interactive four-corner/edge previews, persistent world homographies and shared atomic/node/MCP/headless contracts. Preserve old affine/recording prefixes; explicitly reject crossed, degenerate and horizon-crossing source bounds.
 - [ ] Add new-document presets, background/resolution metadata and useful export sizing.
 
 Acceptance: coordinate units, pivots, bounds, resampling and clipping are specified; right-angle operations retain exact stored pixels; preview never publishes provisional outcomes; structural identities, graph references, undo and replay remain valid.

@@ -5,6 +5,8 @@ use crate::{
     plugins::affine::{self, Method, Parameters},
 };
 use std::time::Duration;
+#[path = "transform_perspective.rs"]
+mod perspective;
 pub(super) struct Draft {
     source: (u64, u64, u64),
     pub(super) params: Parameters,
@@ -87,16 +89,15 @@ fn skew_drag(
     Some(next)
 }
 fn quad(p: Parameters, b: [usize; 4]) -> Option<[Pos2; 4]> {
-    let (m, _) = p.matrix(b).ok()?;
+    let (mapping, _) = p.mapping(b).ok()?;
     Some(
-        [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]].map(|[x, y]| {
-            pos2(
-                (m[0] * x as f64 + m[1] * y as f64 + m[2]) as f32,
-                (m[3] * x as f64 + m[4] * y as f64 + m[5]) as f32,
-            )
-        }),
+        mapping
+            .corners(b)
+            .ok()?
+            .map(|[x, y]| pos2(x as f32, y as f32)),
     )
 }
+
 fn inside(p: Pos2, q: [Pos2; 4]) -> bool {
     let cross: Vec<_> = (0..4)
         .map(|i| {
@@ -137,6 +138,9 @@ impl Draft {
             && self.error.is_empty()
     }
     fn rotate_point(&self, zoom: f32, size: f32) -> Option<Pos2> {
+        if self.params.quad.is_some() {
+            return None;
+        }
         let q = quad(self.params, self.bounds)?;
         let top = q[0] + (q[1] - q[0]) * 0.5;
         let center = q[0] + (q[2] - q[0]) * 0.5;
@@ -287,15 +291,17 @@ impl Editor {
                     .is_some_and(|v| v.distance(q) * self.zoom < size * 0.5)
                 {
                     Some(Handle::Rotate)
-                } else if d.params.matrix(d.bounds).is_ok_and(|(_, pivot)| {
-                    pos2(
-                        (pivot[0] + d.params.translate_x) as f32,
-                        (pivot[1] + d.params.translate_y) as f32,
-                    )
-                    .distance(q)
-                        * self.zoom
-                        < size * 0.4
-                }) {
+                } else if d.params.quad.is_none()
+                    && d.params.matrix(d.bounds).is_ok_and(|(_, pivot)| {
+                        pos2(
+                            (pivot[0] + d.params.translate_x) as f32,
+                            (pivot[1] + d.params.translate_y) as f32,
+                        )
+                        .distance(q)
+                            * self.zoom
+                            < size * 0.4
+                    })
+                {
                     Some(Handle::Pivot)
                 } else if inside(q, corners) {
                     Some(Handle::Move)
@@ -310,90 +316,104 @@ impl Editor {
             } else if phase == 1 || phase == 2 {
                 if let Some(drag) = &d.drag {
                     let mut p = drag.params;
-                    let (_, pivot) = p.matrix(d.bounds).unwrap();
-                    let center = pos2(
-                        (pivot[0] + p.translate_x) as f32,
-                        (pivot[1] + p.translate_y) as f32,
-                    );
-                    match drag.handle {
-                        Handle::Pivot => {
-                            let (m, _) = drag.params.matrix(d.bounds).unwrap();
-                            let det = m[0] * m[4] - m[1] * m[3];
-                            let (x, y) = (q.x as f64 - m[2], q.y as f64 - m[5]);
-                            let point = [(m[4] * x - m[1] * y) / det, (-m[3] * x + m[0] * y) / det];
-                            if let Some(next) = relocate_pivot(drag.params, d.bounds, Some(point)) {
-                                p = next;
-                            }
-                        }
-                        Handle::Move => {
-                            let mut delta = q - drag.start;
-                            if mods.shift {
-                                if delta.x.abs() > delta.y.abs() {
-                                    delta.y = 0.;
-                                } else {
-                                    delta.x = 0.;
+                    if p.quad.is_some() {
+                        p = perspective::drag(p, d.bounds, drag.handle, drag.start, q, mods.shift)
+                            .unwrap_or(d.params);
+                    } else {
+                        let (_, pivot) = p.matrix(d.bounds).unwrap();
+                        let center = pos2(
+                            (pivot[0] + p.translate_x) as f32,
+                            (pivot[1] + p.translate_y) as f32,
+                        );
+                        match drag.handle {
+                            Handle::Pivot => {
+                                let (m, _) = drag.params.matrix(d.bounds).unwrap();
+                                let det = m[0] * m[4] - m[1] * m[3];
+                                let (x, y) = (q.x as f64 - m[2], q.y as f64 - m[5]);
+                                let point =
+                                    [(m[4] * x - m[1] * y) / det, (-m[3] * x + m[0] * y) / det];
+                                if let Some(next) =
+                                    relocate_pivot(drag.params, d.bounds, Some(point))
+                                {
+                                    p = next;
                                 }
                             }
-                            p.translate_x = (p.translate_x + delta.x as f64).clamp(-8192., 8192.);
-                            p.translate_y = (p.translate_y + delta.y as f64).clamp(-8192., 8192.);
-                        }
-                        Handle::Rotate => {
-                            let a = drag.start - center;
-                            let b = q - center;
-                            let mut angle =
-                                p.angle + (b.y.atan2(b.x) - a.y.atan2(a.x)).to_degrees() as f64;
-                            if mods.shift {
-                                angle = (angle / 15.).round() * 15.;
+                            Handle::Move => {
+                                let mut delta = q - drag.start;
+                                if mods.shift {
+                                    if delta.x.abs() > delta.y.abs() {
+                                        delta.y = 0.;
+                                    } else {
+                                        delta.x = 0.;
+                                    }
+                                }
+                                p.translate_x =
+                                    (p.translate_x + delta.x as f64).clamp(-8192., 8192.);
+                                p.translate_y =
+                                    (p.translate_y + delta.y as f64).clamp(-8192., 8192.);
                             }
-                            p.angle = (angle + 180.).rem_euclid(360.) - 180.;
-                        }
-                        Handle::Skew(i) => {
-                            if let Some(next) =
-                                skew_drag(drag.params, d.bounds, i, q - drag.start, mods.shift)
-                            {
-                                p = next;
+                            Handle::Rotate => {
+                                let a = drag.start - center;
+                                let b = q - center;
+                                let mut angle =
+                                    p.angle + (b.y.atan2(b.x) - a.y.atan2(a.x)).to_degrees() as f64;
+                                if mods.shift {
+                                    angle = (angle / 15.).round() * 15.;
+                                }
+                                p.angle = (angle + 180.).rem_euclid(360.) - 180.;
                             }
-                        }
-                        Handle::Corner(i) => {
-                            let corner = [
-                                [d.bounds[0], d.bounds[1]],
-                                [d.bounds[2], d.bounds[1]],
-                                [d.bounds[2], d.bounds[3]],
-                                [d.bounds[0], d.bounds[3]],
-                            ][i];
-                            let v = q - center;
-                            let den = [corner[0] as f64 - pivot[0], corner[1] as f64 - pivot[1]];
-                            let local = p.unskew([v.x as f64, v.y as f64]);
-                            if den[0].abs() > 1e-6 {
-                                let s = local[0] / den[0];
-                                p.scale_x = s.abs().clamp(0.01, 100.);
-                                p.flip_x = s < 0.;
+                            Handle::Skew(i) => {
+                                if let Some(next) =
+                                    skew_drag(drag.params, d.bounds, i, q - drag.start, mods.shift)
+                                {
+                                    p = next;
+                                }
                             }
-                            if den[1].abs() > 1e-6 {
-                                let s = local[1] / den[1];
-                                p.scale_y = s.abs().clamp(0.01, 100.);
-                                p.flip_y = s < 0.;
-                            }
-                            if d.locked || mods.shift {
-                                let factors = [
-                                    p.scale_x / drag.params.scale_x,
-                                    p.scale_y / drag.params.scale_y,
-                                ];
-                                let factor = if (factors[0] - 1.).abs() >= (factors[1] - 1.).abs() {
-                                    factors[0]
-                                } else {
-                                    factors[1]
-                                };
-                                let factor = factor.clamp(
-                                    (0.01 / drag.params.scale_x).max(0.01 / drag.params.scale_y),
-                                    (100. / drag.params.scale_x).min(100. / drag.params.scale_y),
-                                );
-                                p.scale_x = drag.params.scale_x * factor;
-                                p.scale_y = drag.params.scale_y * factor;
+                            Handle::Corner(i) => {
+                                let corner = [
+                                    [d.bounds[0], d.bounds[1]],
+                                    [d.bounds[2], d.bounds[1]],
+                                    [d.bounds[2], d.bounds[3]],
+                                    [d.bounds[0], d.bounds[3]],
+                                ][i];
+                                let v = q - center;
+                                let den =
+                                    [corner[0] as f64 - pivot[0], corner[1] as f64 - pivot[1]];
+                                let local = p.unskew([v.x as f64, v.y as f64]);
+                                if den[0].abs() > 1e-6 {
+                                    let s = local[0] / den[0];
+                                    p.scale_x = s.abs().clamp(0.01, 100.);
+                                    p.flip_x = s < 0.;
+                                }
+                                if den[1].abs() > 1e-6 {
+                                    let s = local[1] / den[1];
+                                    p.scale_y = s.abs().clamp(0.01, 100.);
+                                    p.flip_y = s < 0.;
+                                }
+                                if d.locked || mods.shift {
+                                    let factors = [
+                                        p.scale_x / drag.params.scale_x,
+                                        p.scale_y / drag.params.scale_y,
+                                    ];
+                                    let factor =
+                                        if (factors[0] - 1.).abs() >= (factors[1] - 1.).abs() {
+                                            factors[0]
+                                        } else {
+                                            factors[1]
+                                        };
+                                    let factor = factor.clamp(
+                                        (0.01 / drag.params.scale_x)
+                                            .max(0.01 / drag.params.scale_y),
+                                        (100. / drag.params.scale_x)
+                                            .min(100. / drag.params.scale_y),
+                                    );
+                                    p.scale_x = drag.params.scale_x * factor;
+                                    p.scale_y = drag.params.scale_y * factor;
+                                }
                             }
                         }
                     }
-                    if p.matrix(d.bounds).is_ok() {
+                    if p.mapping(d.bounds).is_ok() {
                         d.params = p;
                     }
                 }
@@ -421,7 +441,11 @@ impl Editor {
                         .iter()
                         .any(|c| c.distance(q) * self.zoom < size * 0.5)
                 }) {
-                    CursorIcon::ResizeNwSe
+                    if d.params.quad.is_some() {
+                        CursorIcon::Crosshair
+                    } else {
+                        CursorIcon::ResizeNwSe
+                    }
                 } else if quad(d.params, d.bounds).is_some_and(|corners| {
                     (0..4).any(|i| edge(corners, i).distance(q) * self.zoom < size * 0.4)
                 }) {
@@ -429,15 +453,16 @@ impl Editor {
                 } else if d
                     .rotate_point(self.zoom, size)
                     .is_some_and(|r| r.distance(q) * self.zoom < size * 0.5)
-                    || d.params.matrix(d.bounds).is_ok_and(|(_, p)| {
-                        pos2(
-                            (p[0] + d.params.translate_x) as f32,
-                            (p[1] + d.params.translate_y) as f32,
-                        )
-                        .distance(q)
-                            * self.zoom
-                            < size * 0.4
-                    })
+                    || (d.params.quad.is_none()
+                        && d.params.matrix(d.bounds).is_ok_and(|(_, p)| {
+                            pos2(
+                                (p[0] + d.params.translate_x) as f32,
+                                (p[1] + d.params.translate_y) as f32,
+                            )
+                            .distance(q)
+                                * self.zoom
+                                < size * 0.4
+                        }))
                 {
                     CursorIcon::Crosshair
                 } else {
@@ -491,7 +516,13 @@ impl Editor {
             );
             painter.circle_filled(screen(r), size, color);
         }
-        if let Ok((_, p)) = d.params.matrix(d.bounds) {
+        if let Some((_, p)) = d
+            .params
+            .quad
+            .is_none()
+            .then(|| d.params.matrix(d.bounds).ok())
+            .flatten()
+        {
             let p = screen(pos2(
                 (p[0] + d.params.translate_x) as f32,
                 (p[1] + d.params.translate_y) as f32,
@@ -557,6 +588,10 @@ impl Editor {
                             .max(a.control_height * 2.),
                     )
                     .show(ui, |ui| {
+                        if d.params.quad.is_some() {
+                            ui.label(tr("Drag corners independently, edges to move a side, or inside to move the quadrilateral."));
+                            ui.weak(tr("Shift constrains perspective handle movement to one axis."));
+                        }else {
                         ui.label(tr(
                             "Drag inside to move, corners to scale, or the round handle to rotate.",
                         ));
@@ -569,6 +604,7 @@ impl Editor {
                         ui.weak(tr(
                             "Drag edge diamonds to skew. Shift snaps skew to 5 degrees.",
                         ));
+                        }
                         ui.add_space(a.item_spacing);
                         let mut target = d.params.target.unwrap();
                         ui.horizontal_wrapped(|ui| {
@@ -602,6 +638,10 @@ impl Editor {
                                 }
                             }
                         }
+                        perspective::mode(ui,&mut d);
+                        if let Some(quad)=&mut d.params.quad {
+                            perspective::controls(ui,quad,a.item_spacing);
+                        }else {
                         Grid::new("transform-values")
                             .spacing(vec2(a.item_spacing * 2., a.item_spacing))
                             .show(ui, |ui| {
@@ -712,6 +752,7 @@ impl Editor {
                                 }
                             }
                         });
+                        }
                         ui.horizontal_wrapped(|ui| {
                             ui.label(tr("Sampling"));
                             ComboBox::from_id_salt("transform-method")
@@ -743,7 +784,7 @@ impl Editor {
                                 tr("Document changed; reopen Free Transform."),
                             );
                         }
-                        let matrix = d.params.matrix(d.bounds);
+                        let matrix = d.params.mapping(d.bounds);
                         if let Err(e) = &matrix {
                             ui.colored_label(c.accent, tr(e));
                         }
@@ -753,7 +794,7 @@ impl Editor {
                         allowed = !stale
                             && d.bounds_valid
                             && d.error.is_empty()
-                            && matrix.is_ok_and(|(m, _)| m != [1., 0., 0., 0., 1., 0.]);
+                            && matrix.is_ok_and(|(m, _)| !m.identity());
                     });
                 ui.add_space(a.item_spacing);
                 ui.horizontal(|ui| {
@@ -855,3 +896,7 @@ impl Editor {
 #[cfg(test)]
 #[path = "transform_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "transform_perspective_tests.rs"]
+mod perspective_tests;

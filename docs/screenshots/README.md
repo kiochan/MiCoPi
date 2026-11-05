@@ -7,6 +7,7 @@ These are actual application captures, not interface mockups. Current images com
 | [Atomic workflow](atomic-workflow.png) | Default atomic execution control in the plugin node editor |
 | [Verified replay](replay.png) | Event timeline and read-only recorded outcome preview |
 | [Selection to layer](selection-to-layer.png) | Actual selected-pixel layer extraction, with the source preserved and the new layer active |
+| [Perspective corners](free-transform-perspective.png) | Four editable corner positions, edge handles and a cached native projective preview |
 | [Free Transform skew](free-transform-skew.png) | Native idle skew preview, edge diamonds, ordered X/Y controls and fixed Apply/Cancel actions |
 | [Canvas trim](trim-canvas.png) | Cached trim preview, selected sides and resulting dimensions beside visible artwork |
 | [Image size](image-size.png) | Actual aspect-locked image sizing dialog with native sampling choices |
@@ -43,3 +44,6 @@ Older screenshots live in [archive](archive/README.md) for historical reference.
 
 
 `free-transform-skew.png` was reviewed from the English `scripts/smoke-localization.py` Release capture on 2026-11-05, alongside Chinese, Japanese and Korean captures. It shows combined scale, rotation and X/Y skew of selected raw pixels with a transformed selection preview. The committed snapshot remains unchanged until Apply; parameter controls scroll separately from Apply/Cancel in short viewports.
+
+
+`free-transform-perspective.png` was reviewed from the English Release `scripts/smoke-localization.py` capture on 2026-11-05, alongside Chinese, Japanese and Korean captures. It shows a selected-pixel projective draft with four numeric corner rows. The control frame and idle preview remain provisional; the same smoke run confirms that Cancel preserves PNG bytes and project/workflow state.

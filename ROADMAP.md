@@ -57,6 +57,7 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 - [x] Add Image Size with aspect locking, native nearest/bilinear/area sampling, selection resampling, atomic undo and outcome replay. Area averages shrinking footprints with bounded row buffers.
 - [x] Add DLL document quarter/half turns and flips, preserving layer identities and fractional selection masks; centered layer quarter turns explicitly clip to the current frame.
 - [x] Add layer Merge Down, Merge Visible, Stamp Visible and transparent-canvas flattening with explicit graph/lock contracts, undo, atomic rollback and verified replay.
+- [x] Add independent native perspective sampling, finite convex four-corner controls, persistent homogeneous repeat recipes, shared preview/node/MCP/headless execution and verified atomic outcomes.
 - [x] Add ordered local X/Y skew through the shared affine action, numeric controls and reversible mouse/pen edge handles, preserving cached previews, repeat, undo and verified outcomes.
 - [x] Add document-owned transform recipes, exact-matrix repeat and selected/whole-layer copy-repeat with configurable PS bindings, one undo/outcome, public state and shared nodes/MCP/headless execution. Clear recipes on changed canvas geometry and restore them with undo.
 - [ ] Add layer groups with explicit reference and history behavior.

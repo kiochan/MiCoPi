@@ -540,3 +540,45 @@ pub type AffinePixelsFn =
 pub type AffineMaskFn = unsafe extern "C" fn(*const Affine, *const Coverage, *mut u8, usize) -> i32;
 pub type AffineEntry = unsafe extern "C" fn() -> *const AffineApi;
 pub type AffineBoundsFn = unsafe extern "C" fn(*const Pixels, *mut TrimBounds) -> i32;
+
+/// Independent optional homography sampler. Existing affine layouts remain unchanged.
+pub const PROJECTIVE_SYMBOL: &[u8] = b"micopi_projective_v1\0";
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ProjectiveApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub pixels: Option<ProjectivePixelsFn>,
+    pub mask: Option<ProjectiveMaskFn>,
+}
+/// Row-major finite forward homography in document-edge coordinates.
+/// Kinds/methods match Affine. Inverse samples behind the forward horizon are transparent.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Projective {
+    pub kind: u32,
+    pub method: u32,
+    pub matrix: [f64; 9],
+}
+pub type ProjectivePixelsFn =
+    unsafe extern "C" fn(*const Projective, *const Pixels, *const Coverage, *mut Pixels) -> i32;
+pub type ProjectiveMaskFn =
+    unsafe extern "C" fn(*const Projective, *const Coverage, *mut u8, usize) -> i32;
+pub type ProjectiveEntry = unsafe extern "C" fn() -> *const ProjectiveApi;
+
+#[cfg(all(test, target_pointer_width = "64"))]
+mod transform_layout_tests {
+    use super::*;
+    use std::mem::{offset_of, size_of};
+    #[test]
+    fn independent_projective_table_preserves_the_published_affine_layout() {
+        assert_eq!(size_of::<Affine>(), 56);
+        assert_eq!(size_of::<AffineApi>(), 32);
+        assert_eq!(offset_of!(AffineApi, bounds), 24);
+        assert_eq!(size_of::<Projective>(), 80);
+        assert_eq!(offset_of!(Projective, matrix), 8);
+        assert_eq!(size_of::<ProjectiveApi>(), 24);
+        assert_eq!(offset_of!(ProjectiveApi, pixels), 8);
+        assert_eq!(offset_of!(ProjectiveApi, mask), 16);
+    }
+}
