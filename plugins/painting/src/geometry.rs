@@ -1,6 +1,6 @@
 //! Exact orthogonal permutations, tiled for source/destination locality. No allocation.
 use micopi_plugin_api as abi;
-fn layout(width: u32, height: u32, stride: u32, len: usize) -> bool {
+pub(super) fn layout(width: u32, height: u32, stride: u32, len: usize) -> bool {
     width > 0
         && height > 0
         && width <= 4096
@@ -13,7 +13,7 @@ fn layout(width: u32, height: u32, stride: u32, len: usize) -> bool {
 fn options(o: &abi::Geometry) -> bool {
     o.kind <= 4 && o.x.unsigned_abs() <= 4096 && o.y.unsigned_abs() <= 4096
 }
-fn disjoint<T>(a: *const T, an: usize, b: *mut T, bn: usize) -> bool {
+pub(super) fn disjoint<T>(a: *const T, an: usize, b: *mut T, bn: usize) -> bool {
     if a.is_null()
         || b.is_null()
         || a as usize % std::mem::align_of::<T>() != 0

@@ -1,0 +1,9 @@
+{"action": "canvas.new", "args": {"width": 96, "height": 64}}
+{"action": "native.checkerboard", "args": {"cell": 8}}
+{"action": "selection.shape", "args": {"kind": "ellipse", "x": 8, "y": 8, "width": 40, "height": 24}}
+{"action": "canvas.image_size", "args": {"width": 192, "method": "nearest"}}
+{"action": "history.undo", "args": {}}
+{"action": "canvas.image_size", "args": {"height": 100}}
+{"action": "canvas.image_size", "args": {"width": 120, "height": 90, "lock_aspect": false, "method": "bilinear"}}
+{"action": "replay.verify", "args": {}}
+{"action": "canvas.export", "args": {"path": "target/image-size.png"}}

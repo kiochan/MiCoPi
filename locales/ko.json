@@ -939,5 +939,14 @@
   "Flip Canvas Horizontally": "캔버스 좌우 뒤집기",
   "Flip Canvas Vertically": "캔버스 상하 뒤집기",
   "Rotate Layer 90° Clockwise": "레이어 시계 방향으로 90° 회전",
-  "Rotate Layer 90° Counterclockwise": "레이어 반시계 방향으로 90° 회전"
+  "Rotate Layer 90° Counterclockwise": "레이어 반시계 방향으로 90° 회전",
+  "Image Size": "이미지 크기",
+  "Image Size…": "이미지 크기…",
+  "Scale every layer and selection. Apply commits one edit.": "모든 레이어와 선택 영역을 조정합니다. 적용 시 한 번의 편집으로 기록합니다.",
+  "Lock Aspect Ratio": "종횡비 고정",
+  "Resampling": "리샘플링",
+  "Bilinear": "쌍선형",
+  "Nearest Neighbor": "최근접 이웃",
+  "Nearest preserves pixel edges. Bilinear softens edges and preserves transparency.": "최근접은 픽셀 경계를 유지하고 쌍선형은 투명도를 고려해 부드럽게 합니다.",
+  "Derived image dimensions must be between 1 and 4096 pixels": "계산된 이미지 크기는 1~4096픽셀이어야 합니다"
 }

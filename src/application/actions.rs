@@ -104,6 +104,7 @@ pub enum Operation {
     State,
     New,
     CanvasSize,
+    ImageSize,
     Crop,
     Open,
     Save,
@@ -246,6 +247,10 @@ impl Operation {
             Self::New => (
                 json!({"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096}}),
                 vec!["width", "height"],
+            ),
+            Self::ImageSize => (
+                json!({"width":{"type":"integer","minimum":1,"maximum":4096,"description":"Target width; with lock_aspect use exactly one dimension."},"height":{"type":"integer","minimum":1,"maximum":4096,"description":"Target height; with lock_aspect use exactly one dimension."},"lock_aspect":{"type":"boolean","default":true,"description":"Preserve source ratio; supply exactly one dimension. When false supply both."},"method":{"type":"string","enum":["bilinear","nearest"],"default":"bilinear"}}),
+                vec![],
             ),
             Self::CanvasSize => (
                 json!({"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096},"anchor":{"type":"string","enum":["top_left","top","top_right","left","center","right","bottom_left","bottom","bottom_right"]}}),

@@ -7,6 +7,7 @@ These are actual application captures, not interface mockups. Current images com
 | [Atomic workflow](atomic-workflow.png) | Default atomic execution control in the plugin node editor |
 | [Verified replay](replay.png) | Event timeline and read-only recorded outcome preview |
 | [Selection to layer](selection-to-layer.png) | Actual selected-pixel layer extraction, with the source preserved and the new layer active |
+| [Image size](image-size.png) | Actual aspect-locked image sizing dialog with native sampling choices |
 | [Canvas quarter turn](canvas-quarter-turn.png) | Actual clockwise document rotation, transformed selection and navigator preview |
 | [Session clipboard](clipboard.png) | Actual shared paste parameter form; coordinates are optional and execution is explicit |
 | [Selection outline](selection.png) | Command-generated ellipse overlay and active-selection status, independent of exported pixels |
@@ -33,3 +34,5 @@ Older screenshots live in [archive](archive/README.md) for historical reference.
 `floating-windows.png` and `native-tools.png` show the independent native Canvas and Tools windows captured by `scripts/smoke-windows.py`. The workbench variants show their default docked arrangement with a layered landscape. All captures use the application renderer.
 
 `canvas-quarter-turn.png` was reviewed from the English `scripts/smoke-localization.py` capture on 2026-11-05. It shows the real application after `canvas.rotate_90_cw`; the mask, two source layers and navigator retain the shared document state.
+
+`image-size.png` was reviewed from the English `scripts/smoke-localization.py` capture on 2026-11-05, alongside its Korean capture. It shows the real Image Size dialog; opening/editing the form does not execute a resample.

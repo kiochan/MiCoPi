@@ -430,3 +430,24 @@ pub type GeometryPixelsFn =
 pub type GeometryMaskFn =
     unsafe extern "C" fn(*const Geometry, *const Coverage, *mut u8, usize, u32, u32) -> i32;
 pub type GeometryEntry = unsafe extern "C" fn() -> *const GeometryApi;
+
+/// Independent optional image resampling extension. All callbacks are synchronous.
+pub const RESAMPLE_SYMBOL: &[u8] = b"micopi_resample_v1\0";
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct ResampleApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub pixels: Option<ResamplePixelsFn>,
+    pub mask: Option<ResampleMaskFn>,
+}
+/// Method: 0 nearest pixel center, 1 bilinear premultiplied alpha in encoded RGB.
+#[repr(C)]
+pub struct Resample {
+    pub method: u32,
+}
+pub type ResamplePixelsFn =
+    unsafe extern "C" fn(*const Resample, *const Pixels, *mut Pixels) -> i32;
+pub type ResampleMaskFn =
+    unsafe extern "C" fn(*const Resample, *const Coverage, *mut u8, usize, u32, u32) -> i32;
+pub type ResampleEntry = unsafe extern "C" fn() -> *const ResampleApi;

@@ -118,7 +118,7 @@ def main():
             time.sleep(.15)
             screenshot(f'{language}-plugin-panel.png')
             call('window.command', dict(panel='layers',operation='focus'))
-            for command, name in [(10144, 'canvas-size'), (10145, 'canvas-crop')]:
+            for command, name in [(10144, 'canvas-size'), (10145, 'canvas-crop'), (10173, 'image-size')]:
                 call('ui.dispatch', dict(id='command', value=dict(UiCommand=command)))
                 time.sleep(.15)
                 screenshot(f'{language}-{name}.png')

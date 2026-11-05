@@ -48,3 +48,6 @@ mod system_clipboard_tests;
 
 #[cfg(test)]
 mod geometry_tests;
+
+#[cfg(test)]
+mod resample_tests;

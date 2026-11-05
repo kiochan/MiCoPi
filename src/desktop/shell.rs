@@ -86,7 +86,7 @@ impl Studio {
                                 (
                                     "Image",
                                     vec![
-                                        (10144,"Canvas Size…"),(10145,"Crop Canvas…"),
+                                        (10173,"Image Size…"),(10144,"Canvas Size…"),(10145,"Crop Canvas…"),
                                         (10166,"Rotate Canvas 90° Clockwise"),(10167,"Rotate Canvas 90° Counterclockwise"),
                                         (10168,"Rotate Canvas 180°"),(10169,"Flip Canvas Horizontally"),(10170,"Flip Canvas Vertically"),
                                     ],

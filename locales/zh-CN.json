@@ -939,5 +939,14 @@
   "Flip Canvas Horizontally": "水平翻转画布",
   "Flip Canvas Vertically": "垂直翻转画布",
   "Rotate Layer 90° Clockwise": "顺时针旋转图层 90°",
-  "Rotate Layer 90° Counterclockwise": "逆时针旋转图层 90°"
+  "Rotate Layer 90° Counterclockwise": "逆时针旋转图层 90°",
+  "Image Size": "图像大小",
+  "Image Size…": "图像大小…",
+  "Scale every layer and selection. Apply commits one edit.": "缩放所有图层和选区。应用后记录为一次操作。",
+  "Lock Aspect Ratio": "锁定宽高比",
+  "Resampling": "重采样",
+  "Bilinear": "双线性",
+  "Nearest Neighbor": "最近邻",
+  "Nearest preserves pixel edges. Bilinear softens edges and preserves transparency.": "最近邻保留像素边缘；双线性柔化边缘并保持透明度。",
+  "Derived image dimensions must be between 1 and 4096 pixels": "等比计算后的尺寸必须在 1 至 4096 像素之间"
 }

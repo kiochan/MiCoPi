@@ -48,3 +48,30 @@ The painting DLL's optional `micopi_geometry_v1` table supplies tiled, allocatio
 MiCoPi currently stores each layer within the document frame: layer quarter turns **clip out-of-frame pixels**. Undo restores them, but a reverse quarter turn after clipping cannot recover them. Use document rotation to retain all content. Off-canvas storage/Reveal All and interactive pivot/free transform remain planned. See [the runnable geometry example](../examples/automation/geometry.jsonl).
 
 The Image menu uses intrinsic label/keycap layout and configured spacing so long English/CJK titles do not overlap shortcut badges. Tests cover asymmetric and strided buffers, tile boundaries, fractional masks, missing/truncated tables, compressed-mask limits, locks, structural identity, undo/redo, atomic/journal failure, inert workflow editing, project reopening and verified outcomes.
+
+## Image size and resampling
+
+![Aspect-locked Image Size dialog in the actual application](screenshots/image-size.png)
+
+Use **Image > Image Size…** (**Ctrl+Alt+I**, configurable) to scale every layer and both current/Reselect selection masks. Aspect lock is on initially; changing either dimension derives the other from the source ratio, rounded to the nearest integer with half ties upward. Unlock to set dimensions independently. The dialog is inert until Apply: Cancel/Escape/close leaves pixels and history untouched. Reopen it if its document identity or dimensions changed. The configured appearance metrics determine dialog width and gaps. Explicit older shortcut preferences take priority over the new default.
+
+`canvas.image_size` is document-atomic and returns the typed `canvas.state` result. It shares command search, workflow nodes, JSONL, MCP and headless execution. The action accepts:
+
+| Parameter | Contract |
+| --- | --- |
+| `width`, `height` | Integer pixels, 1–4096. With aspect lock supply **exactly one**; with lock off supply both. |
+| `lock_aspect` | Defaults to `true`; derive the omitted dimension from the current source ratio. |
+| `method` | `bilinear` (default) or `nearest`. |
+
+```json
+{"action":"canvas.image_size","args":{"width":1600,"method":"nearest"}}
+{"action":"canvas.image_size","args":{"width":1200,"height":900,"lock_aspect":false,"method":"bilinear"}}
+```
+
+Derived dimensions outside 1–4096, missing/ambiguous dimensions, unknown arguments/methods, stale expected revisions and the existing 64 Mi-pixel all-layer budget reject before output allocation/publication. Derived zero or oversized dimensions are rejected rather than silently clamped. An identical size preserves every raw stored word and adds no undo entry.
+
+Sampling maps destination pixel centers into the source. Nearest uses `floor((destination+0.5)*source_size/target_size)` with edge clamping; the selected raw 32-bit word, including hidden RGB, is copied exactly. Bilinear uses the four neighboring source centers with clamped edges and exact rational fixed-point weights. Alpha is interpolated, RGB is weighted by source alpha then unpremultiplied; rounded zero-alpha results have RGB zero. Channel and alpha rounding is half-up. Filtering uses the document's existing encoded 8-bit RGB values, not linear-light/ICC color management. Masks use the same nearest or bilinear coordinates, independently interpolating coverage bytes.
+
+Bilinear smooths enlargement and small reductions but is **not an area/anti-aliasing filter for substantial downscaling**. A higher-quality sampler remains planned and separately measured. No command promises lossless downsampling; undo retains the original buffers.
+
+Hidden and transparency-locked layers participate because this changes document coordinates. Names, IDs, active layer, visibility, opacity, blend/lock flags and image/workflow graphs are retained. Source filters are not baked or scaled: their parameter values remain unchanged and they render against the resampled sources. All masks/outputs are staged and validated before one structural undo entry and verified outcome event. A failed later layer, missing optional DLL capability, oversized compressed mask, atomic batch or partial journal write leaves the previous committed document/history intact. Replay restores outcomes without executing a sampler. See [the runnable example](../examples/automation/image-size.jsonl) and [native extension](native-plugins.md#optional-image-resampling-table).

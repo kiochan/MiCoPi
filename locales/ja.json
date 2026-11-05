@@ -939,5 +939,14 @@
   "Flip Canvas Horizontally": "キャンバスを左右反転",
   "Flip Canvas Vertically": "キャンバスを上下反転",
   "Rotate Layer 90° Clockwise": "レイヤーを時計回りに90°回転",
-  "Rotate Layer 90° Counterclockwise": "レイヤーを反時計回りに90°回転"
+  "Rotate Layer 90° Counterclockwise": "レイヤーを反時計回りに90°回転",
+  "Image Size": "画像サイズ",
+  "Image Size…": "画像サイズ…",
+  "Scale every layer and selection. Apply commits one edit.": "全レイヤーと選択範囲を拡大・縮小します。適用は一回の編集になります。",
+  "Lock Aspect Ratio": "縦横比を固定",
+  "Resampling": "再サンプリング",
+  "Bilinear": "バイリニア",
+  "Nearest Neighbor": "ニアレストネイバー",
+  "Nearest preserves pixel edges. Bilinear softens edges and preserves transparency.": "ニアレストは画素の境界を保持し、バイリニアは透明度を考慮して滑らかにします。",
+  "Derived image dimensions must be between 1 and 4096 pixels": "算出後の画像サイズは 1～4096 ピクセルにしてください"
 }

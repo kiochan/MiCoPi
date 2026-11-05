@@ -3,6 +3,7 @@
 mod geometry;
 mod input;
 mod raster;
+mod resample;
 mod selection;
 use input::{Dynamics, Sample, Stabilizer};
 use micopi_plugin_api as abi;

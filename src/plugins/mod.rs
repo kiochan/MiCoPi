@@ -20,6 +20,7 @@ mod geometry;
 mod layer_transfer;
 mod layers;
 mod painting;
+pub(crate) mod resample;
 mod selection;
 mod system;
 mod system_clipboard;
@@ -32,6 +33,7 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        ImageSize => resample::execute(session, args),
         RotateCanvasClockwise
         | RotateCanvasCounterclockwise
         | RotateCanvasHalf

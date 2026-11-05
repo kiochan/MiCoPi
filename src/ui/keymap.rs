@@ -484,6 +484,15 @@ pub static COMMANDS: &[Command] = &[
         10165
     ),
     c!(
+        "canvas.image_size",
+        "Image Size…",
+        "Image",
+        "resize scale resample aspect resolution",
+        UiCommand(10173),
+        "Ctrl+Alt+I",
+        10173
+    ),
+    c!(
         "canvas.rotate_90_cw",
         "Rotate Canvas 90° Clockwise",
         "Image",
@@ -1641,7 +1650,10 @@ impl Keymap {
             .collect();
         for (i, command) in COMMANDS.iter().enumerate() {
             if (command.id.starts_with("toolbox.mode.selection_")
-                || matches!(command.id, "layer.via_copy" | "layer.via_cut")
+                || matches!(
+                    command.id,
+                    "layer.via_copy" | "layer.via_cut" | "canvas.image_size"
+                )
                 || command.id.starts_with("clipboard.system_"))
                 && !explicit.contains(command.id)
             {
@@ -1927,8 +1939,9 @@ mod tests {
         assert!(map.bindings[cut].is_empty());
     }
     #[test]
-    fn system_clipboard_defaults_yield_to_explicit_older_bindings() {
+    fn image_size_and_system_clipboard_defaults_yield_to_explicit_older_bindings() {
         for (id, key) in [
+            ("canvas.image_size", "Ctrl+Alt+I"),
             ("clipboard.system_copy", "Ctrl+C"),
             ("clipboard.system_copy_merged", "Ctrl+Shift+C"),
             ("clipboard.system_cut", "Ctrl+X"),

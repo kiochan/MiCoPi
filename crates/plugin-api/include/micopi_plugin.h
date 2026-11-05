@@ -160,6 +160,16 @@ typedef struct {
     int32_t (*mask)(const MicopiGeometry *, const MicopiCoverage *, uint8_t *, size_t, uint32_t, uint32_t);
 } MicopiGeometryApi;
 const MicopiGeometryApi *micopi_geometry_v1(void);
+/* Independent optional image resampling table. Same bounded disjoint storage as
+   geometry; target dimensions determine scaling. Method 0 nearest center,
+   1 bilinear with premultiplied alpha in encoded RGB. Equal dimensions copy raw. */
+typedef struct { uint32_t method; } MicopiResample;
+typedef struct {
+    uint32_t abi_version, struct_size;
+    int32_t (*pixels)(const MicopiResample *, const MicopiPixels *, MicopiPixels *);
+    int32_t (*mask)(const MicopiResample *, const MicopiCoverage *, uint8_t *, size_t, uint32_t, uint32_t);
+} MicopiResampleApi;
+const MicopiResampleApi *micopi_resample_v1(void);
 #ifdef __cplusplus
 }
 #endif
