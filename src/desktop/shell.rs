@@ -67,6 +67,7 @@ impl Studio {
                                         (10163, "Cut"),
                                         (10164, "Paste"),
                                         (10165, "Paste in Place"),
+                                        (10184, "Free Transform…"),
                                         (10144, "Canvas Size…"),
                                         (10145, "Crop Canvas…"),
                                         (42, "New Layer"),

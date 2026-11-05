@@ -13,6 +13,7 @@ pub fn panel_key(id: &str) -> u32 {
     })
 }
 
+pub(crate) mod affine;
 pub(crate) mod clipboard;
 mod compositing;
 mod document;
@@ -36,6 +37,9 @@ pub(crate) fn execute(
     use crate::application::Operation::*;
     match op {
         MovePixels | Nudge => movement::execute(session, op, args),
+        TransformPixels => affine::execute(session, args),
+        TransformPreview => affine::request_preview(session, args),
+        TransformPlan => affine::describe(session, args),
         CanvasTrim | TrimBounds => trim::execute(session, op, args),
         ImageSize => resample::execute(session, args),
         RotateCanvasClockwise

@@ -157,6 +157,21 @@ def main():
             time.sleep(.15)
             screenshot(f'{language}-canvas-quarter-turn.png')
             call('history.undo',{})
+            # Preview requests preserve committed artwork and revision. Temporarily
+            # unlock only this isolated fixture so selected pixels can be transformed.
+            state=call('canvas.state',{})
+            locked=state['layers'][state['active_layer']]['alpha_locked']
+            if locked: call('layer.set',dict(alpha_locked=False))
+            call('canvas.transform.open',{})
+            time.sleep(.15)
+            revision=call('canvas.state',{})['revision']
+            call('canvas.transform.configure',dict(parameters=dict(target='selection',translate_x=12,translate_y=-4,scale_x=.8,scale_y=.8,angle=17)))
+            assert call('canvas.state',{})['revision']==revision
+            time.sleep(.5)
+            screenshot(f'{language}-free-transform.png')
+            assert base64.b64decode(call('canvas.snapshot',{})['data'])==expected
+            call('ui.dispatch',dict(id='command',value='Cancel'))
+            if locked: call('history.undo',{})
             call('layer.via_copy',{})
             time.sleep(.15)
             screenshot(f'{language}-selection-to-layer.png')

@@ -64,8 +64,9 @@ Acceptance: preview/cancel leaves pixels untouched; selection is visible and beh
 - [x] Add transparent/corner-color trim with tolerance, selected sides, cached read-only preview and shared atomic document actions. Analyze visible merged artwork; crop every raw layer and both selection masks with undo/replay.
 - [ ] Add Reveal All after bounded off-canvas layer storage is available; clipped historical pixels are not live off-canvas content.
 - [x] Add Move/nudge for active layers, selected pixels or selection outlines, with validated searchable steps, configurable V/arrow/Shift-arrow commands and a reversible outline drag. Publish one atomic pixel/mask outcome on release; clip beyond the frame and retain undo. Off-canvas storage/free transform remain planned. See [Move and nudge](canvas-editing.md#move-and-nudge).
-- [ ] Add Free Transform translate, scale, rotate and flip with a reversible preview and explicit commit/cancel.
-- [ ] Add transform repeat, selection-aware transforms and subsequent skew/perspective where the data model supports them.
+- [x] Add native Free Transform translation, scale, clockwise rotation and flips, with explicit pivots, nearest/bilinear sampling, mouse/pen handles, reversible idle raster previews and apply/cancel. Retain atomic undo/replay and clip to the current frame. See [Free Transform](canvas-editing.md#free-transform).
+- [x] Transform selected raw content and its current mask together, or transform only the selection outline; preserve the previous Reselect mask.
+- [ ] Add transform repeat and subsequent skew/perspective with explicit parameter/history contracts.
 - [ ] Add new-document presets, background/resolution metadata and useful export sizing.
 
 Acceptance: coordinate units, pivots, bounds, resampling and clipping are specified; right-angle operations retain exact stored pixels; preview never publishes provisional outcomes; structural identities, graph references, undo and replay remain valid.

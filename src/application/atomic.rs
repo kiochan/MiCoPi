@@ -109,6 +109,7 @@ impl Operation {
                 | Self::Stroke
                 | Self::CanvasSize
                 | Self::MovePixels
+                | Self::TransformPixels
                 | Self::Nudge
                 | Self::CanvasTrim
                 | Self::ImageSize

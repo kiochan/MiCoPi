@@ -105,6 +105,9 @@ pub enum Operation {
     New,
     CanvasSize,
     MovePixels,
+    TransformPixels,
+    TransformPreview,
+    TransformPlan,
     Nudge,
     CanvasTrim,
     TrimBounds,
@@ -264,6 +267,15 @@ impl Operation {
                 json!({"dx":{"type":"integer","minimum":-4096,"maximum":4096},"dy":{"type":"integer","minimum":-4096,"maximum":4096},"target":{"type":"string","enum":["auto","layer","selection","selection_mask"],"description":"Defaults to movement preferences; auto moves selected pixels when a selection exists, otherwise the active layer."}}),
                 vec!["dx", "dy"],
             ),
+            Self::TransformPixels => (
+                json!({"target":{"type":"string","enum":["auto","layer","selection","selection_mask"]},"translate_x":{"type":"number","minimum":-8192,"maximum":8192,"default":0},"translate_y":{"type":"number","minimum":-8192,"maximum":8192,"default":0},"scale_x":{"type":"number","minimum":0.01,"maximum":100,"default":1},"scale_y":{"type":"number","minimum":0.01,"maximum":100,"default":1},"angle":{"type":"number","minimum":-360,"maximum":360,"default":0,"description":"Clockwise degrees in document coordinates."},"flip_x":{"type":"boolean","default":false},"flip_y":{"type":"boolean","default":false},"pivot_x":{"type":"number","minimum":-8192,"maximum":8192,"description":"Document-edge pivot; supply both coordinates or neither (source bounds center)."},"pivot_y":{"type":"number","minimum":-8192,"maximum":8192},"method":{"type":"string","enum":["nearest","bilinear"],"default":"bilinear"}}),
+                vec![],
+            ),
+            Self::TransformPreview => (
+                json!({"parameters":Self::TransformPixels.schema()}),
+                vec!["parameters"],
+            ),
+            Self::TransformPlan => return Self::TransformPixels.schema(),
             Self::Nudge => (
                 json!({"direction":{"type":"string","enum":["left","right","up","down"]},"large":{"type":"boolean","default":false},"target":{"type":"string","enum":["auto","layer","selection","selection_mask"]}}),
                 vec!["direction"],
@@ -366,6 +378,7 @@ impl Operation {
                 | Self::ContextRead
                 | Self::State
                 | Self::TrimBounds
+                | Self::TransformPlan
                 | Self::ReadSelection
                 | Self::ClipboardState
                 | Self::SystemClipboardState

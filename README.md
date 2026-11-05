@@ -18,6 +18,8 @@ Canvas size, exact all-layer crop, document quarter/half turns and flips preserv
 
 **Move (V)** drags an outline and commits on release. Move the active layer, selected pixels or only the selection outline; arrow/Shift-arrow steps are configurable in searchable Settings. Off-frame pixels are clipped and restored by undo. Actions also run through nodes, MCP and headless. See [Move and nudge](docs/canvas-editing.md#move-and-nudge).
 
+**Free Transform (Ctrl+T)** supports numeric and mouse/pen move, scale, rotation, flips and pivots, with cancellable cached pixel previews and one undo/event. The same native action runs through nodes, MCP and headless. Pixels outside the current frame clip; transform repeat and skew/perspective remain planned. See [Free Transform](docs/canvas-editing.md#free-transform).
+
 The [unified plugin system](docs/plugin-system.md) exposes package versions, compatibility, dependencies and lifecycle status in Settings and automation. Enable/disable plans resolve dependencies before saving; activation takes effect after restart. Plugins can provide isolated language catalogs that hot-reload while the app runs.
 
 ## Why MiCoPi
@@ -46,7 +48,7 @@ Read the illustrated [design philosophy](docs/philosophy.md), follow the [roadma
 
 Layers support renaming, reordering, deletion and selection-aware **Layer via Copy (Ctrl+J)** / **Layer via Cut (Ctrl+Shift+J)**. Without a selection, Ctrl+J duplicates the whole layer. Layers also support Merge Down (**Ctrl+E**), Merge Visible (**Ctrl+Shift+E**), Stamp Visible (**Ctrl+Alt+Shift+E**) and transparent-canvas flattening. Exact flips, 180° rotation and integer offsets are also available. See [Layer editing](docs/layer-editing.md).
 
-Current limits: one document per session; no Wintab, free transforms, layer groups or watercolor engine. Native plugin DLLs execute inside the host process.
+Current limits: one document per session; no Wintab, off-canvas layer storage, layer groups or watercolor engine. Native plugin DLLs execute inside the host process.
 
 Schema-described rectangle, ellipse and polygon [selections](docs/selections.md) support combinations, native drawing/action clipping, undo and replay. The Tools strip offers rectangle/ellipse marquees and freehand/polygonal lassos with reversible previews. PS-style selection shortcuts are configurable; [Session clipboard](docs/clipboard.md) copy/cut/paste commands are available; Windows PNG/DIB clipboard commands and PS copy/cut/paste bindings are implemented; native roundtrip interoperability validation remains pending on this restricted test host.
 

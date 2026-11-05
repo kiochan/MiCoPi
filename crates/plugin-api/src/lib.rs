@@ -514,3 +514,29 @@ pub type MovePixelsFn =
     unsafe extern "C" fn(*const Move, *const Pixels, *const Coverage, *mut Pixels) -> i32;
 pub type MoveMaskFn = unsafe extern "C" fn(*const Move, *const Coverage, *mut u8, usize) -> i32;
 pub type MoveEntry = unsafe extern "C" fn() -> *const MoveApi;
+
+/// Optional frame-bounded affine sampling with immutable sources and disjoint outputs.
+pub const AFFINE_SYMBOL: &[u8] = b"micopi_affine_v1\0";
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct AffineApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub pixels: Option<AffinePixelsFn>,
+    pub mask: Option<AffineMaskFn>,
+    pub bounds: Option<AffineBoundsFn>,
+}
+/// Kind 0 layer, 1 selected pixels, 2 mask only. Method 0 nearest, 1 bilinear.
+/// Forward edge coordinates: x'=m0*x+m1*y+m2; y'=m3*x+m4*y+m5.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Affine {
+    pub kind: u32,
+    pub method: u32,
+    pub matrix: [f64; 6],
+}
+pub type AffinePixelsFn =
+    unsafe extern "C" fn(*const Affine, *const Pixels, *const Coverage, *mut Pixels) -> i32;
+pub type AffineMaskFn = unsafe extern "C" fn(*const Affine, *const Coverage, *mut u8, usize) -> i32;
+pub type AffineEntry = unsafe extern "C" fn() -> *const AffineApi;
+pub type AffineBoundsFn = unsafe extern "C" fn(*const Pixels, *mut TrimBounds) -> i32;

@@ -574,6 +574,15 @@ pub static COMMANDS: &[Command] = &[
         10174
     ),
     c!(
+        "canvas.transform.open",
+        "Free Transform…",
+        "Edit",
+        "transform scale rotate flip pivot",
+        UiCommand(10184),
+        "Ctrl+T",
+        10184
+    ),
+    c!(
         "canvas.image_size",
         "Image Size…",
         "Image",
@@ -1742,7 +1751,10 @@ impl Keymap {
             if (command.id.starts_with("toolbox.mode.selection_")
                 || matches!(
                     command.id,
-                    "layer.via_copy" | "layer.via_cut" | "canvas.image_size"
+                    "layer.via_copy"
+                        | "layer.via_cut"
+                        | "canvas.image_size"
+                        | "canvas.transform.open"
                 )
                 || command.id.starts_with("clipboard.system_")
                 || command.id == "toolbox.mode.move"
@@ -1841,6 +1853,7 @@ mod tests {
             ("toolbox.mode.move", "V"),
             ("movement.left", "Left"),
             ("movement.right.large", "Shift+Right"),
+            ("canvas.transform.open", "Ctrl+T"),
         ] {
             let i = COMMANDS.iter().position(|c| c.id == id).unwrap();
             let p = serde_json::json!({"keybindings":{"plugin.custom.older":key}}).to_string();

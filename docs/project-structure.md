@@ -63,9 +63,13 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/application/atomic.rs` | Shared-tile rollback checkpoints and atomic action capability checks |
 | `src/application/replay.rs` | Recording boundaries, project persistence and replay actions |
 | `src/engine/document.rs` | Pixels, composition and copy-on-write undo tiles |
+| `src/engine/canvas_editing.rs` | Staged geometry, shared transform validation/publication and borrowed-source preview composition |
 | `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
 | `src/engine/selection.rs` | Immutable coverage storage, bounded encoding and shared selection snapshots |
 | `src/application/movement_preferences.rs`, `src/application/movement_tests.rs` | Validated move targets/steps, public state and shared history/replay regressions |
+| `src/plugins/affine.rs`, `src/application/affine_tests.rs` | Shared affine plans, staged outputs, borrowed-source preview composition and action/history/replay contracts |
+| `plugins/painting/src/affine.rs` | Allocation-free inverse affine sampling with transparent edges and independent references |
+| `plugins/canvas/transform.rs`, `plugins/canvas/transform_tests.rs` | Reversible numeric/handle drafts, idle textures, source guards and UI regressions |
 | `src/plugins/movement.rs` | Atomic movement orchestration, resolved targets, staged masks/pixels and compact context |
 | `plugins/painting/src/movement.rs` | Allocation-free integer layer/selected-pixel/mask kernels and native references |
 | `plugins/canvas/movement.rs` | Cached outline drag, source guards, cancellation and Tool Options adapter |
@@ -79,7 +83,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `plugins/canvas/geometry.rs` | Compiled framing, crop and aspect-locked image sizing dialogs |
 | `plugins/canvas/trim.rs` | Compiled trim controls, revision guards and parameter-cached read-only bounds preview |
 | `src/plugins/trim.rs` | Shared trim options, result metadata and all-layer frame publication |
-| `plugins/painting/src/trim.rs` | Allocation-free merged-pixel trim bounds with native reference/rejection checks |
+| `plugins/painting/src/trim.rs` | Allocation-free alpha/corner bounds, also reused for raw-layer transform handles |
 | `src/plugins/geometry.rs` | Shared exact-geometry orchestration, staged masks/layers and lock/selection guards |
 | `plugins/painting/src/geometry.rs` | Allocation-free tiled orthogonal pixel and coverage permutations |
 | `src/engine/canvas_editing.rs` | Dimensioned framing/geometry publication and shared-buffer structural history |

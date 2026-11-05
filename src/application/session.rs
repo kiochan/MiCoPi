@@ -200,6 +200,7 @@ pub struct Event {
 pub struct Session {
     pub(crate) system_clipboard: Option<Box<dyn crate::platform::clipboard::SystemClipboard>>,
     pub(crate) system_clipboard_event: Option<Value>,
+    pub(crate) transform_event: Option<Value>,
     pub(crate) clipboard: Option<std::sync::Arc<crate::plugins::clipboard::Payload>>,
     pub(crate) pointer_checkpoint: Option<(
         super::atomic::Checkpoint,
@@ -298,6 +299,7 @@ impl Session {
             clipboard: None,
             system_clipboard: None,
             system_clipboard_event: None,
+            transform_event: None,
             ui_effects: VecDeque::new(),
             stroke: Default::default(),
             events: VecDeque::with_capacity(512),
@@ -487,6 +489,7 @@ impl Session {
                                     | Operation::WorkflowRun
                                     | Operation::Pointer
                                     | Operation::CaptureWorkspace
+                                    | Operation::TransformPreview
                                     | Operation::ReplayExport
                                     | Operation::ReplayFrames
                                     | Operation::ReplayRecover

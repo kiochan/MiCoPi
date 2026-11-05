@@ -1,0 +1,9 @@
+{"action":"canvas.new","args":{"width":256,"height":192}}
+{"action":"brush.set","args":{"color":"#b58ae0","radius":16,"pressure_size":true,"stabilizer":0.35}}
+{"action":"canvas.stroke","args":{"points":[{"x":32,"y":120,"pen":true,"pressure":0.2,"time":0},{"x":128,"y":48,"pen":true,"pressure":1,"time":30},{"x":220,"y":120,"pen":true,"pressure":0.3,"time":60}]}}
+{"action":"selection.shape","args":{"kind":"ellipse","x":24,"y":20,"width":180,"height":140}}
+{"action":"canvas.transform.plan","args":{"target":"selection","translate_x":12,"translate_y":-4,"scale_x":0.8,"scale_y":0.8,"angle":17,"method":"bilinear"}}
+{"action":"canvas.transform","args":{"target":"selection","translate_x":12,"translate_y":-4,"scale_x":0.8,"scale_y":0.8,"angle":17,"method":"bilinear"}}
+{"action":"replay.verify","args":{}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}

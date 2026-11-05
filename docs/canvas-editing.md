@@ -132,3 +132,42 @@ All movement clips to the existing frame; it does not retain live off-canvas pix
 Pixel moves require a visible active layer. Transparency locking rejects changed alpha or changed hidden words in fully transparent pixels before publishing masks or pixels. Names, IDs, graph/filter parameters, opacity and blend flags stay unchanged. Outputs and bounded compressed masks are staged before a single tiled pixel/composition undo entry. Atomic or journal failure restores pixels, masks and history. Replay restores verified outcomes without executing the DLL; compact event context records resolved target and offsets, not per-drag samples. See [the optional native table](native-plugins.md#optional-integer-movement-table).
 
 On this test host, a release kernel-only run on 4096² pixels took 23.75 ms for whole-layer movement and 297.80 ms for fractional selected movement. These single-run measurements exclude allocation, mask encoding, host history, composition and recording; they are not frame-rate or tablet-latency promises. Kernels allocate no scratch; the host stages one pixel output (up to 64 MiB) and, when needed, one mask output (up to 16 MiB), in addition to bounded tiled history/rollback/replay costs.
+
+## Free Transform
+
+![Cached Free Transform preview and handles beside the committed artwork](screenshots/free-transform.png)
+
+Open **Edit > Free Transform… (Ctrl+T)** or search for the command. New defaults yield to older explicit shortcuts. Choose the active raw layer, selected pixels or the selection outline. Drag inside the frame to translate, corners to scale, and the round handle to rotate. Shift constrains translation to one axis, locks corner aspect ratio, or snaps rotation to 15° steps. Numeric controls provide independent scale, flips, clockwise angle and pivot coordinates; drag the crosshair to relocate the pivot, or reset it to the source bounds center with **Center Pivot**. Moving/recentering the pivot compensates translation to preserve the current artwork mapping. Direct action arguments instead describe the complete final mapping.
+
+Control-frame gestures update parameters only. After interaction stops for 150 ms, the optional raster preview samples the original committed pixels and composes against borrowed untouched layers with the same filters/blends as Apply. It reuses one texture and caches the mask contour; no source layers are cloned, history entries created or outcomes written for individual MOVE samples. While dragging, the source artwork remains visible under the live control frame. Preview checkbox changes display only; pixel snapshots, exports and project saves continue to read the committed document. Cancel/Escape/close discards the draft. Losing input focus or pen contact cancels the current handle drag; an external document/revision/layer change hides cached pixels and requires reopening. Apply submits one shared action with an expected revision; pending previews never become document state.
+
+| Action | Contract |
+| --- | --- |
+| `canvas.transform.plan` | Read-only source bounds, pivot, matrix, corners, frame, revision and drawing flag; no rasterization, stroke finishing, history or event mutation |
+| `canvas.transform` | Atomic pixel/mask operation returning typed `canvas.state`; available to JSONL, MCP, workflows and headless |
+| `canvas.transform.open` | Desktop-only preview command, bound to configurable Ctrl+T |
+| `canvas.transform.configure` | Desktop-only `{parameters: {...}}` request that opens/configures the preview and returns `{queued:true}` without changing revision or public document state |
+
+Geometry queries accept the same arguments and inspect committed/provisional source pixels without executing a sampler; `drawing: true` identifies an ongoing contact. Results describe geometry, not pixel-change or sampler-availability guarantees. `source_bounds` uses exclusive `[x0,y0,x1,y1]`, `pivot_x`/`pivot_y` are scalar document coordinates and `corners` contains four transformed edge points. Use expected revisions when applying a plan.
+
+Configure replaces the draft parameters; omitted fields use the same defaults as the pixel action. Presentation requests explicitly return `ui_unavailable` in headless mode and cannot join atomic document groups. They are asynchronous; opening the window may separately synchronize the local view through existing view actions. Use the pixel action for automation results, not a presentation request. Workflow editing is inert until explicitly run. See [the runnable example](../examples/automation/transform.jsonl).
+
+| Pixel argument | Default / bounds |
+| --- | --- |
+| `target` | Effective movement preferences; `auto`, `layer`, `selection`, `selection_mask` |
+| `translate_x`, `translate_y` | 0, document pixels within ±8192; positive right/down |
+| `scale_x`, `scale_y` | 1, factors 0.01–100; 1 means 100%. Flips are separate. |
+| `angle` | 0, clockwise degrees within ±360 |
+| `flip_x`, `flip_y` | false; mirror before rotation |
+| `pivot_x`, `pivot_y` | Both omitted for the source bounds center, or both supplied within ±8192 document-edge pixels |
+| `method` | `bilinear` or `nearest` |
+
+For source point `q`, pivot `p`, signed scales `S` and clockwise rotation `R`, the forward edge-coordinate mapping is `q' = p + translation + R * S * (q - p)`. Pixel centers are at `(x+0.5,y+0.5)`. Layer control bounds/default pivots use the active raw pixels with alpha greater than zero; hidden RGB, opacity and filters do not enlarge them. Empty raw layers reject layer transforms. The entire raw frame is still sampled, including hidden RGB outside the handle box. Selected targets use positive-coverage mask bounds. Quarter/half turns snap their sine/cosine coefficients exactly. A rectangular layer rotated about its geometric center may have half-pixel alignment when side parities differ; the existing exact layer-quarter-turn commands retain their separate pixel-aligned framing contract.
+
+Nearest chooses `floor(source_edge_coordinate)` and treats out-of-frame samples as transparent. Bilinear samples around source pixel centers with independently rounded 16-bit fractional weights, interpolates alpha and alpha-weighted encoded RGB, then unpremultiplies with half-up channel/alpha rounding. Missing neighbors are transparent rather than clamped. Exact aligned samples retain stored words, including hidden RGB; fractional zero-alpha results are canonical zero. This is encoded 8-bit RGB interpolation, not linear-light/ICC processing or an area filter for large reductions.
+
+Selected pixels are extracted with coverage before sampling, cleared at their original location and source-over composited once onto that cleared base; transformed coverage becomes the current mask. The destination mask is not applied a second time. Outline-only transforms leave all layer words untouched. Previous Reselect coverage remains fixed. Layer mode ignores the selection and keeps it fixed. Empty active selections reject selected modes. Identity matrices retain raw words and add no undo entry.
+
+The output frame is unchanged; outside pixels are clipped, not stored off canvas. Undo restores them. Pixel transforms require a visible active layer and reject changes to locked transparency/hidden words; outline-only transforms work with hidden/locked layers. Layer IDs, names, active layer, filter/graph parameters, opacity and blend flags remain intact. Stage outputs and bounded masks before one tiled pixel/composition undo entry; atomic and partial journal failures restore source pixels, masks and history. Verified replay restores outcomes without invoking the DLL. Compact context records the resolved target, source bounds, pivot and forward matrix. Reveal All, transform repeat and skew/perspective controls remain planned.
+
+On this host, one release kernel-only 4096² run measured whole-layer nearest/bilinear at 125/438 ms and selected nearest/bilinear at 309/699 ms. Kernels allocate no scratch; measurements exclude host allocation, mask compression, composition, texture upload, undo and recording. Host staging is bounded by one active-layer pixel output (up to 64 MiB), mask coverage (up to 16 MiB) and a preview composite (up to 64 MiB), plus display/texture and existing compositor/history budgets. These cold costs motivate idle preview caching; they do not describe pen latency or physical tablet compatibility. No dependencies were added. See [the native table](native-plugins.md#optional-affine-sampling-table).

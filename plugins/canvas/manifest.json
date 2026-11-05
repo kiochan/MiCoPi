@@ -11,5 +11,40 @@
       "title": "Canvas",
       "builtin": "canvas"
     }
+  ],
+  "actions": [
+    {
+      "id": "canvas.transform.open",
+      "title": "Free Transform…",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "transform.open",
+            "value": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "canvas.transform.configure",
+      "title": "Configure Free Transform Preview",
+      "operation": "transform_preview",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "queued"
+        ]
+      }
+    }
   ]
 }

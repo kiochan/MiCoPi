@@ -196,6 +196,17 @@ typedef struct {
     int32_t (*mask)(const MicopiMove *, const MicopiCoverage *, uint8_t *, size_t);
 } MicopiMoveApi;
 const MicopiMoveApi *micopi_move_v1(void);
+/* Optional affine sampling. Kind 0 layer, 1 selected pixels, 2 mask only.
+   Method 0 nearest, 1 bilinear. Forward document-edge matrix:
+   x'=m[0]*x+m[1]*y+m[2], y'=m[3]*x+m[4]*y+m[5]. */
+typedef struct { uint32_t kind, method; double matrix[6]; } MicopiAffine;
+typedef struct {
+    uint32_t abi_version, struct_size;
+    int32_t (*pixels)(const MicopiAffine *, const MicopiPixels *, const MicopiCoverage *, MicopiPixels *);
+    int32_t (*mask)(const MicopiAffine *, const MicopiCoverage *, uint8_t *, size_t);
+    int32_t (*bounds)(const MicopiPixels *, MicopiTrimBounds *);
+} MicopiAffineApi;
+const MicopiAffineApi *micopi_affine_v1(void);
 #ifdef __cplusplus
 }
 #endif

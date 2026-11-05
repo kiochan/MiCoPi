@@ -1,6 +1,72 @@
-//! Integer canvas framing: copy retained rows, without sampling or color processing.
+//! Staged canvas geometry, frame-bounded pixel/mask publication and isolated previews.
 use super::*;
 impl Document {
+    /// Cold preview composition borrows untouched layers; no document/history/cache mutation.
+    #[cfg(feature = "desktop")]
+    pub(crate) fn preview_pixel_transform(
+        &self,
+        active: Option<&[u32]>,
+        selection: &crate::engine::selection::SelectionState,
+    ) -> Result<Vec<u32>, String> {
+        self.validate_pixel_transform(active, selection)?;
+        let source = |i: usize| {
+            if i == self.active {
+                active.unwrap_or(&self.layers[i].pixels)
+            } else {
+                &self.layers[i].pixels
+            }
+        };
+        let mut result = vec![0; self.width * self.height];
+        if self.requires_renderer() {
+            let renderer = self
+                .renderer
+                .as_ref()
+                .ok_or("Compositor DLL is not loaded")?;
+            let layers: Vec<_> = self
+                .layers
+                .iter()
+                .enumerate()
+                .map(|(i, l)| micopi_plugin_api::CompositeLayer {
+                    data: source(i).as_ptr(),
+                    len: source(i).len(),
+                    opacity: l.opacity as u32,
+                    visible: l.visible as u32,
+                    mode: l.mode as u32,
+                })
+                .collect();
+            let mut out = micopi_plugin_api::Pixels {
+                data: result.as_mut_ptr(),
+                len: result.len(),
+                width: self.width as u32,
+                height: self.height as u32,
+                stride: self.width as u32,
+                origin_x: 0,
+                origin_y: 0,
+            };
+            renderer.render(
+                if self.graph.enabled && (!self.graph.linked || self.graph.has_filters()) {
+                    &self.plan
+                } else {
+                    &[]
+                },
+                &layers,
+                self.width as u32,
+                self.height as u32,
+                &mut out,
+            )?;
+        } else {
+            for (i, c) in result.iter_mut().enumerate() {
+                for (n, l) in self.layers.iter().enumerate().filter(|(_, l)| l.visible) {
+                    let p = source(n)[i];
+                    *c = over(
+                        *c,
+                        (p & 0xffffff) | (((p >> 24) * l.opacity as u32 / 255) << 24),
+                    );
+                }
+            }
+        }
+        Ok(result)
+    }
     /// Publish fully staged structural geometry, moving original buffers into undo.
     pub(crate) fn replace_geometry(
         &mut self,
@@ -53,11 +119,11 @@ impl Document {
         self.commit_composition(before, Some(LayerChange::Canvas(Arc::new(saved))));
         Ok(())
     }
-    /// Publish staged pixels and selection under one tiled history entry.
-    pub(crate) fn apply_movement(
-        &mut self,
+    /// Validate staged frame-bounded transforms before publication or preview.
+    pub(crate) fn validate_pixel_transform(
+        &self,
         pixels: Option<&[u32]>,
-        selection: crate::engine::selection::SelectionState,
+        selection: &crate::engine::selection::SelectionState,
     ) -> Result<(), String> {
         selection.validate(self.width, self.height)?;
         if let Some(p) = pixels {
@@ -74,6 +140,15 @@ impl Document {
                 return Err("Movement would change locked layer transparency".into());
             }
         }
+        Ok(())
+    }
+    /// Publish staged pixels and selection under one tiled history entry.
+    pub(crate) fn apply_movement(
+        &mut self,
+        pixels: Option<&[u32]>,
+        selection: crate::engine::selection::SelectionState,
+    ) -> Result<(), String> {
+        self.validate_pixel_transform(pixels, &selection)?;
         let selection_changed = self.selection != selection;
         if !selection_changed && pixels.is_none_or(|p| p == self.layers[self.active].pixels) {
             return Ok(());

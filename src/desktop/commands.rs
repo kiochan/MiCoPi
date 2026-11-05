@@ -599,6 +599,10 @@ impl Studio {
                         10175 => {
                             self.editor.core("toolbox.mode.move", serde_json::json!({}));
                         }
+                        10184 => {
+                            self.editor
+                                .core("canvas.transform.open", serde_json::json!({}));
+                        }
                         10176..=10183 => {
                             let i = id - 10176;
                             self.editor.core("canvas.nudge",serde_json::json!({"direction":(["left","right","up","down"][(i%4) as usize]),"large":i>=4}));
@@ -841,6 +845,7 @@ impl Studio {
                     self.editor.command_form = None;
                     self.editor.new_open = false;
                     self.editor.geometry = None;
+                    self.editor.transform = None;
                     self.editor.finish_stroke();
                 }
             }

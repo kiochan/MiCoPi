@@ -98,6 +98,17 @@ unsafe fn decode_move_table(pointer: *const abi::MoveApi) -> Result<abi::MoveApi
     }
     Ok(std::ptr::read_unaligned(pointer))
 }
+unsafe fn decode_affine_table(pointer: *const abi::AffineApi) -> Result<abi::AffineApi, String> {
+    if pointer.is_null() {
+        return Err("Null affine table".into());
+    }
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.abi_version != 1 || header.struct_size < std::mem::size_of::<abi::AffineApi>() as u32
+    {
+        return Err("Incompatible affine ABI".into());
+    }
+    Ok(std::ptr::read_unaligned(pointer))
+}
 unsafe fn decode_trim_table(pointer: *const abi::TrimApi) -> Result<abi::TrimApi, String> {
     if pointer.is_null() {
         return Err("Null trim table".into());
@@ -164,6 +175,21 @@ impl Module {
             }
             let entry = std::mem::transmute::<*mut c_void, abi::MoveEntry>(address);
             decode_move_table(entry()).map(Some)
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(None)
+        }
+    }
+    unsafe fn affine_api(&self) -> Result<Option<abi::AffineApi>, String> {
+        #[cfg(windows)]
+        {
+            let address = GetProcAddress(self.handle as *mut c_void, abi::AFFINE_SYMBOL.as_ptr());
+            if address.is_null() {
+                return Ok(None);
+            }
+            let entry = std::mem::transmute::<*mut c_void, abi::AffineEntry>(address);
+            decode_affine_table(entry()).map(Some)
         }
         #[cfg(not(windows))]
         {
@@ -366,6 +392,7 @@ pub struct NativePlugin {
     geometry: Option<abi::GeometryApi>,
     trim: Option<abi::TrimApi>,
     movement: Option<abi::MoveApi>,
+    affine: Option<abi::AffineApi>,
     resample: Option<abi::ResampleApi>,
     resample_features: u32,
     compositor: Option<abi::CompositorApi>,
@@ -434,6 +461,7 @@ impl NativePlugin {
         let geometry = unsafe { module.geometry_api()? };
         let trim = unsafe { module.trim_api()? };
         let movement = unsafe { module.move_api()? };
+        let affine = unsafe { module.affine_api()? };
         let (resample, resample_features) = match unsafe { module.resample_api()? } {
             Some((api, features)) => (Some(api), features),
             None => (None, 0),
@@ -477,6 +505,7 @@ impl NativePlugin {
                 geometry,
                 trim,
                 movement,
+                affine,
                 resample,
                 resample_features,
                 compositor,
@@ -1077,6 +1106,146 @@ mod tests {
         s.apply(Action::new("canvas.rotate_90_cw", json!({})))
             .unwrap();
         assert_eq!((s.doc.width, s.doc.height), (8, 12));
+    }
+    #[test]
+    fn affine_optional_table_and_callback_failures_preserve_sources_and_other_capabilities() {
+        let header = abi::Header {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::Header>() as u32,
+        };
+        unsafe {
+            assert!(decode_affine_table(std::ptr::null()).is_err());
+            assert!(decode_affine_table((&header as *const abi::Header).cast()).is_err());
+        }
+        let mut table = abi::AffineApi {
+            bounds: None,
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::AffineApi>() as u32 - 1,
+            pixels: None,
+            mask: None,
+        };
+        unsafe {
+            assert!(decode_affine_table(&table).is_err());
+            table.struct_size += 1;
+            assert!(decode_affine_table(&table).is_ok());
+            table.abi_version = 2;
+            assert!(decode_affine_table(&table).is_err());
+        }
+        unsafe extern "C" fn mask_ok(
+            _: *const abi::Affine,
+            _: *const abi::Coverage,
+            out: *mut u8,
+            len: usize,
+        ) -> i32 {
+            std::slice::from_raw_parts_mut(out, len).fill(0);
+            abi::OK
+        }
+        unsafe extern "C" fn mask_bad(
+            _: *const abi::Affine,
+            _: *const abi::Coverage,
+            _: *mut u8,
+            _: usize,
+        ) -> i32 {
+            abi::ERROR
+        }
+        unsafe extern "C" fn pixel_bad(
+            _: *const abi::Affine,
+            _: *const abi::Pixels,
+            _: *const abi::Coverage,
+            _: *mut abi::Pixels,
+        ) -> i32 {
+            abi::ERROR
+        }
+        for kind in 0..4 {
+            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins");
+            let mut registry = super::super::Registry::load(&root).unwrap();
+            Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+                .unwrap()
+                .affine = match kind {
+                0 => None,
+                1 => Some(abi::AffineApi {
+                    bounds: None,
+                    abi_version: 1,
+                    struct_size: std::mem::size_of::<abi::AffineApi>() as u32,
+                    pixels: None,
+                    mask: None,
+                }),
+                _ => Some(abi::AffineApi {
+                    bounds: None,
+                    abi_version: 1,
+                    struct_size: std::mem::size_of::<abi::AffineApi>() as u32,
+                    pixels: Some(pixel_bad),
+                    mask: Some(if kind == 2 { mask_bad } else { mask_ok }),
+                }),
+            };
+            let mut s = Session::new(registry).unwrap();
+            s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+                .unwrap();
+            s.apply(Action::new("layer.fill_color", json!({"color":"#aa77dd"})))
+                .unwrap();
+            s.apply(Action::new(
+                "selection.shape",
+                json!({"kind":"rectangle","x":1,"y":1,"width":4,"height":3}),
+            ))
+            .unwrap();
+            let state = s.state();
+            let original = s.doc.layers[0].pixels.clone();
+            let composition = s.doc.composition();
+            let history = s.doc.history_bytes();
+            assert!(s
+                .apply(Action::new(
+                    "canvas.transform",
+                    json!({"translate_x":1,"target":"selection"})
+                ))
+                .is_err());
+            assert_eq!(s.state(), state);
+            assert_eq!(s.doc.layers[0].pixels, original);
+            assert_eq!(s.doc.composition(), composition);
+            assert_eq!(s.doc.history_bytes(), history);
+            s.apply(Action::new(
+                "canvas.move",
+                json!({"dx":1,"dy":0,"target":"layer"}),
+            ))
+            .unwrap();
+        }
+    }
+    #[test]
+    fn affine_invalid_native_content_bounds_reject_queries_and_mutations() {
+        unsafe extern "C" fn bad(_: *const abi::Pixels, out: *mut abi::TrimBounds) -> i32 {
+            *out = abi::TrimBounds {
+                x: u32::MAX,
+                y: 0,
+                width: u32::MAX,
+                height: 1,
+            };
+            abi::OK
+        }
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins");
+        let mut registry = super::super::Registry::load(&root).unwrap();
+        Arc::get_mut(registry.native_plugins.get_mut("painting").unwrap())
+            .unwrap()
+            .affine
+            .as_mut()
+            .unwrap()
+            .bounds = Some(bad);
+        let mut s = Session::new(registry).unwrap();
+        s.apply(Action::new("canvas.new", json!({"width":12,"height":8})))
+            .unwrap();
+        s.apply(Action::new("layer.fill_color", json!({"color":"#aa77dd"})))
+            .unwrap();
+        let state = s.state();
+        let pixels = s.doc.layers[0].pixels.clone();
+        let history = s.doc.history_bytes();
+        for id in ["canvas.transform.plan", "canvas.transform"] {
+            assert!(s
+                .apply(Action::new(id, json!({"target":"layer","angle":90})))
+                .unwrap_err()
+                .message
+                .contains("invalid content bounds"));
+            assert_eq!(s.state(), state);
+            assert_eq!(s.doc.layers[0].pixels, pixels);
+            assert_eq!(s.doc.history_bytes(), history);
+        }
     }
     #[test]
     fn movement_callback_failures_discard_staged_masks_and_pixels() {
@@ -2529,4 +2698,115 @@ pub(crate) fn move_mask(
         return Err("Native selection movement failed".into());
     }
     crate::engine::selection::Mask::new(s.doc.width, s.doc.height, result)
+}
+
+pub(crate) fn affine_pixels(s: &Session, o: &abi::Affine) -> Result<Vec<u32>, String> {
+    let kernel = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.affine)
+        .and_then(|a| a.pixels)
+        .ok_or("Painting DLL does not support affine sampling")?;
+    let pixels = &s.doc.layers[s.doc.active].pixels;
+    let source = abi::Pixels {
+        data: pixels.as_ptr() as *mut u32,
+        len: pixels.len(),
+        width: s.doc.width as u32,
+        height: s.doc.height as u32,
+        stride: s.doc.width as u32,
+        origin_x: 0,
+        origin_y: 0,
+    };
+    let mut result = vec![0; pixels.len()];
+    let mut output = abi::Pixels {
+        data: result.as_mut_ptr(),
+        len: result.len(),
+        ..source
+    };
+    let mask = if o.kind == 1 {
+        coverage(
+            s.doc
+                .selection()
+                .current
+                .as_ref()
+                .ok_or("Selected movement requires an active selection")?,
+        )
+    } else {
+        abi::Coverage {
+            data: std::ptr::null(),
+            len: 0,
+            width: 0,
+            height: 0,
+            stride: 0,
+        }
+    };
+    if unsafe { kernel(o, &source, &mask, &mut output) } != abi::OK {
+        return Err("Native affine pixel sampling failed".into());
+    }
+    Ok(result)
+}
+pub(crate) fn affine_mask(
+    s: &Session,
+    o: &abi::Affine,
+) -> Result<crate::engine::selection::Mask, String> {
+    let kernel = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.affine)
+        .and_then(|a| a.mask)
+        .ok_or("Painting DLL does not support affine mask sampling")?;
+    let mask = coverage(
+        s.doc
+            .selection()
+            .current
+            .as_ref()
+            .ok_or("Selection movement requires an active selection")?,
+    );
+    let mut result = vec![0; s.doc.width * s.doc.height];
+    if unsafe { kernel(o, &mask, result.as_mut_ptr(), result.len()) } != abi::OK {
+        return Err("Native affine mask sampling failed".into());
+    }
+    crate::engine::selection::Mask::new(s.doc.width, s.doc.height, result)
+}
+
+pub(crate) fn affine_bounds(s: &Session) -> Result<[usize; 4], String> {
+    let kernel = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|p| p.affine)
+        .and_then(|p| p.bounds)
+        .ok_or("Painting DLL does not support affine content bounds")?;
+    let data = &s.doc.layers[s.doc.active].pixels;
+    let source = abi::Pixels {
+        data: data.as_ptr() as *mut u32,
+        len: data.len(),
+        width: s.doc.width as u32,
+        height: s.doc.height as u32,
+        stride: s.doc.width as u32,
+        origin_x: 0,
+        origin_y: 0,
+    };
+    let mut out = abi::TrimBounds::default();
+    if unsafe { kernel(&source, &mut out) } != abi::OK {
+        return Err("Native transform bounds failed".into());
+    }
+    if out == abi::TrimBounds::default() {
+        return Err("Layer transform requires nontransparent pixels".into());
+    }
+    if out.width == 0
+        || out.height == 0
+        || u64::from(out.x) + u64::from(out.width) > s.doc.width as u64
+        || u64::from(out.y) + u64::from(out.height) > s.doc.height as u64
+    {
+        return Err("Native transform returned invalid content bounds".into());
+    }
+    Ok([
+        out.x as usize,
+        out.y as usize,
+        (out.x + out.width) as usize,
+        (out.y + out.height) as usize,
+    ])
 }

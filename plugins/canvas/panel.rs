@@ -351,6 +351,10 @@ impl Editor {
         let layer = ui.layer_id();
         let ctx = ui.ctx().clone();
         let on_canvas = |p: Pos2| bounds.contains(p) && ctx.layer_id_at(p) == Some(layer);
+        if self.transform.is_some() {
+            self.transform_input(ui, bounds, layer, &events, mods);
+            self.packets.clear();
+        }
         let mut packets = std::mem::take(&mut self.packets);
         let pen_frame = self.pen_active
             || packets
@@ -495,7 +499,7 @@ impl Editor {
         let painter = ui.painter().with_clip_rect(bounds);
         // A recessed stage sits inside the card between the tab row and the zoom strip.
         painter.rect_filled(bounds, 0, c.stage);
-        if let Some(texture) = &self.texture {
+        if let Some(texture) = self.transform_texture().or(self.texture.as_ref()) {
             for (offset, blur, alpha) in [([0, 2], 6, 0.6), ([0, 14], 40, 1.)] {
                 painter.add(
                     Shadow {
@@ -517,7 +521,7 @@ impl Editor {
         self.movement_preview(&painter, c.accent);
         self.crop_outline(&painter, c.accent);
         self.selection_preview(&painter);
-        if let Some((_, texture)) = &self.selection_texture {
+        if let Some(texture) = self.transform_mask() {
             painter.image(
                 texture.id(),
                 self.image_rect,
@@ -525,6 +529,7 @@ impl Editor {
                 Color32::WHITE,
             );
         }
+        self.transform_outline(&painter, c.accent);
         if !self.blocked {
             if let Some((a, b)) = self.area_drag {
                 let screen = |q: Pos2| self.image_rect.min + q.to_vec2() * self.zoom;

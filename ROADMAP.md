@@ -12,11 +12,11 @@ This roadmap starts from the **0.21.0 implementation and subsequent work on main
 - Verified outcome replay, compact MCRPLY02 events, atomic document groups and legacy recording support.
 - Linked layer composition with per-layer plugin filters, synchronized structural edits and an explicit legacy/free graph mode.
 - Brush spacing and minimum pressure opacity; connected/whole-layer color fill with expansion/contraction and feathering; repeated/reflected gradients.
-- Stable layer IDs, exact layer transforms, transparency locking, color fills, anchored canvas sizing and all-layer crop with history and outcome replay.
+- Stable layer IDs, exact layer transforms, transparency locking, color fills, anchored framing/crop, Image Size/Trim, Move/nudge and affine Free Transform with cancellable previews, history and outcome replay.
 - Unified package metadata, host compatibility checks, lifecycle diagnostics and dependency-aware enable/disable plans shared by Settings and automation.
 - English-only embedding; external Chinese, Japanese and Korean catalogs with profile overrides, owner-scoped plugin catalogs and background hot reload.
 
-Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no verified system-clipboard interoperability, free transforms or layer groups. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
+Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no verified system-clipboard interoperability, off-canvas layer storage or layer groups. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
 
 ## Delivery order
 

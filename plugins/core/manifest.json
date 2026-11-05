@@ -3224,6 +3224,232 @@
           "layers"
         ]
       }
+    },
+    {
+      "id": "canvas.transform",
+      "title": "Apply Free Transform",
+      "operation": "transform_pixels",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "dirty": {
+            "type": "boolean"
+          },
+          "selected_tool": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object"
+          },
+          "view": {
+            "type": "object"
+          },
+          "layers": {
+            "type": "array"
+          },
+          "selection": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "can_reselect": {
+                "type": "boolean"
+              }
+            }
+          },
+          "selection_sampling": {
+            "type": "object",
+            "properties": {
+              "tolerance": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "default": 32
+              },
+              "contiguous": {
+                "type": "boolean",
+                "default": true
+              },
+              "sample_merged": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "selection_defaults": {
+            "type": "object",
+            "properties": {
+              "tolerance": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "default": 32
+              },
+              "contiguous": {
+                "type": "boolean",
+                "default": true
+              },
+              "sample_merged": {
+                "type": "boolean",
+                "default": false
+              }
+            }
+          },
+          "movement_defaults": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "layer",
+                  "selection",
+                  "selection_mask"
+                ]
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "large_step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              }
+            },
+            "required": [
+              "target",
+              "step",
+              "large_step"
+            ],
+            "additionalProperties": false
+          },
+          "movement_options": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "layer",
+                  "selection",
+                  "selection_mask"
+                ]
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "large_step": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              }
+            },
+            "required": [
+              "target",
+              "step",
+              "large_step"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "width",
+          "height",
+          "revision",
+          "dirty",
+          "parameters",
+          "layers"
+        ]
+      }
+    },
+    {
+      "id": "canvas.transform.plan",
+      "title": "Inspect Free Transform Geometry",
+      "operation": "transform_plan",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": [
+              "layer",
+              "selection",
+              "selection_mask"
+            ]
+          },
+          "source_bounds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4096
+            }
+          },
+          "matrix": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "pivot_x": {
+            "type": "number"
+          },
+          "pivot_y": {
+            "type": "number"
+          },
+          "corners": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "identity_matrix": {
+            "type": "boolean"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "target",
+          "source_bounds",
+          "matrix",
+          "pivot_x",
+          "pivot_y",
+          "corners",
+          "identity_matrix",
+          "width",
+          "height",
+          "revision",
+          "drawing"
+        ]
+      }
     }
   ],
   "states": [

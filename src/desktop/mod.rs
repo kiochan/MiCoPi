@@ -10,6 +10,8 @@ mod canvas_geometry;
 mod canvas_movement;
 #[path = "../../plugins/canvas/selection.rs"]
 mod canvas_selection;
+#[path = "../../plugins/canvas/transform.rs"]
+mod canvas_transform;
 #[path = "../../plugins/color/panel.rs"]
 mod color;
 mod commands;
@@ -127,6 +129,7 @@ pub(super) struct Editor {
     command_form: Option<plugin_commands::CommandForm>,
     area_mode: u8,
     movement_gesture: Option<canvas_movement::Gesture>,
+    transform: Option<canvas_transform::Draft>,
     selection_gesture: Option<selection_gesture::Gesture>,
     selection_combine: &'static str,
     area_tolerance: u32,
@@ -284,6 +287,7 @@ impl Editor {
             input_owned: false,
             area_mode: 0,
             movement_gesture: None,
+            transform: None,
             selection_gesture: None,
             selection_combine: "replace",
             area_tolerance: 0,
@@ -804,6 +808,26 @@ impl Studio {
                         self.editor.area_mode = mode;
                     }
                 }
+                Some("transform.open") => self.editor.open_transform(),
+                Some("transform.parameters") => {
+                    if let Ok(mut params) = serde_json::from_value::<
+                        crate::plugins::affine::Parameters,
+                    >(effect["value"].clone())
+                    {
+                        if self.editor.transform.is_none() {
+                            self.editor.open_transform();
+                        }
+                        params.target = Some(crate::plugins::movement::resolved_target(
+                            &self.editor.session,
+                            params
+                                .target
+                                .unwrap_or(self.editor.session.movement_options().target),
+                        ));
+                        if let Some(d) = &mut self.editor.transform {
+                            d.params = params;
+                        }
+                    }
+                }
                 Some("selection.options") | Some("movement.options") => self.editor.finish_stroke(),
                 Some("selection.combine") => {
                     if let Some(mode) = match effect["value"].as_str() {
@@ -1000,6 +1024,7 @@ impl Studio {
             || self.editor.palette.is_some()
             || self.editor.new_open
             || self.editor.geometry.is_some()
+            || self.editor.transform.is_some()
             || self.editor.command_form.is_some()
             || self.replay.open;
         if self.editor.blocked && self.editor.movement_gesture.is_some() {
@@ -1109,6 +1134,7 @@ impl Studio {
         self.editor.palette_ui(ctx);
         self.new_document_window(ctx);
         self.editor.canvas_geometry_window(ctx);
+        self.editor.transform_window(ctx);
         self.run_actions(ctx);
         if !ctx.input(|i| i.focused)
             && self.editor.input_owned

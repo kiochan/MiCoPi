@@ -12,7 +12,7 @@ fn matches(pixel: u32, reference: u32, o: &abi::Trim) -> bool {
             .all(|s| ((pixel >> s) & 255).abs_diff((reference >> s) & 255) <= o.tolerance)
     }
 }
-unsafe extern "C" fn bounds(
+pub(super) unsafe extern "C" fn bounds(
     o: *const abi::Trim,
     s: *const abi::Pixels,
     out: *mut abi::TrimBounds,

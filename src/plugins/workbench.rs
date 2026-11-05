@@ -94,6 +94,15 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         }
         Ui => {
             let id = args["id"].as_str().unwrap();
+            if matches!(id, "transform.open" | "transform.parameters") && s.runtime != "desktop" {
+                return Err(ActionError::new("ui_unavailable","Free Transform controls require the desktop; use canvas.transform for headless editing"));
+            }
+            if id == "transform.parameters" {
+                let p: super::affine::Parameters = serde_json::from_value(args["value"].clone())
+                    .map_err(|e| ActionError::new("invalid_arguments", e.to_string()))?;
+                p.matrix([0, 0, 1, 1])
+                    .map_err(|e| ActionError::new("invalid_arguments", e))?;
+            }
             let selection_tool = id == "selection.combine"
                 || id == "selection.options"
                 || (id == "painting.mode"

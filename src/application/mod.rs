@@ -59,4 +59,6 @@ mod movement_preferences;
 pub use movement_preferences::{MoveTarget, MovementPreferences};
 
 #[cfg(test)]
+mod affine_tests;
+#[cfg(test)]
 mod movement_tests;
