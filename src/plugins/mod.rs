@@ -51,6 +51,10 @@ pub(crate) fn execute(
         TransformPlan => affine::describe(session, args),
         CanvasTrim | TrimBounds => trim::execute(session, op, args),
         ImageSize => resample::execute(session, args),
+        ImageSizePlan => {
+            let plan = crate::application::image_size::plan(&session.doc, &args)?;
+            Ok(plan.state(session.revision, session.is_drawing()))
+        }
         RotateCanvasClockwise
         | RotateCanvasCounterclockwise
         | RotateCanvasHalf

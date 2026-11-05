@@ -82,7 +82,10 @@ mod png_density_tests;
 
 #[cfg(test)]
 mod export_tests;
+pub(crate) mod image_size;
 pub(crate) mod output_size;
 #[cfg(test)]
 mod physical_creation_tests;
+#[cfg(test)]
+mod physical_resample_tests;
 pub(crate) mod units;

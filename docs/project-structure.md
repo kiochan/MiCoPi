@@ -70,6 +70,8 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/homography.rs`, `src/application/perspective_tests.rs` | Finite convex quad geometry, horizon validation and projective action/history/persistence contracts |
 | `src/application/output_size.rs`, `src/application/export_tests.rs` | Pure output-unit/aspect planning and shared export/history/transport contracts |
 | `src/application/units.rs`, `src/application/creation.rs`, `src/application/physical_creation_tests.rs` | Shared bounded physical-unit conversion, creation plans without raster allocation and lifecycle/persistence regressions |
+| `src/application/image_size.rs`, `src/application/physical_resample_tests.rs` | Unit-aware all-layer/mask sizing plans, source-dependent limits and atomic resampling/replay contracts |
+| `plugins/canvas/image_size.rs` | Compiled physical Image Size draft, density/revision guards, shared planning and responsive controls |
 | `src/plugins/export.rs` | Borrowed composed-frame sampling, preview/file orchestration and compact artifact context |
 | `plugins/canvas/export.rs` | Compiled export draft, explicit cached preview, source guards and responsive controls |
 | `src/application/png_io.rs`, `src/application/png_density_tests.rs` | Bounded PNG scanning, shared density encoding, legacy-byte and persistence/transport regressions |

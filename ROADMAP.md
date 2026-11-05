@@ -77,7 +77,8 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 - [x] Preserve exact PNG density in native document metadata, import/export and recorded-state output, including unknown/asymmetric axes and strict bounded validation.
 - [x] Add shared PNG export sizing in pixels/physical units/percent, native composed-frame sampling, read-only previews, artifact digests and source-preserving desktop controls.
 - [x] Add shared New Canvas plans and pixel/millimeter/inch input, preserving pixel presets, legacy metadata and verified creation lifecycle outcomes.
-- [ ] Add physical-unit input to Image Size; improve dirty-state and save/recovery feedback.
+- [x] Add Image Size physical-unit input, all-layer/mask plans, exact-density conversion and revision-guarded desktop controls.
+- [ ] Improve dirty-state and save/recovery feedback.
 
 **Acceptance:** an artist can create, select, transform and organize a small illustration, save/reopen it, undo/redo its structural edits and replay the same visible results. GUI, MCP and headless actions produce matching pixels for shared fixtures. Graph references remain valid after layer changes.
 

@@ -494,6 +494,13 @@ impl Editor {
                         self.session.revision,
                     );
                 }
+                if let Some(draft) = self.geometry.as_mut() {
+                    draft.accept_local_view(
+                        self.session.doc.identity,
+                        before,
+                        self.session.revision,
+                    );
+                }
                 if let Some(draft) = self.export_draft.as_mut() {
                     draft.accept_local_view(
                         self.session.doc.identity,

@@ -51,22 +51,32 @@ The Image menu uses intrinsic label/keycap layout and configured spacing so long
 
 ## Image size and resampling
 
-![Aspect-locked Image Size dialog in the actual application](screenshots/image-size.png)
+![Image Size unit selector, exact density and all-layer buffer plan in the actual application](screenshots/image-size.png)
 
-Use **Image > Image Size…** (**Ctrl+Alt+I**, configurable) to scale every layer and both current/Reselect selection masks. Aspect lock is on initially; changing either dimension derives the other from the source ratio, rounded to the nearest integer with half ties upward. Unlock to set dimensions independently. The dialog is inert until Apply: Cancel/Escape/close leaves pixels and history untouched. Reopen it if its document identity or dimensions changed. The configured appearance metrics determine dialog width and gaps. Explicit older shortcut preferences take priority over the new default.
+Use **Image > Image Size…** (**Ctrl+Alt+I**, configurable) to scale every layer and both current/Reselect selection masks. Enter pixels, millimeters or inches. Aspect lock is on initially; convert the requested axis to pixels, then derive the other from the source **pixel ratio**, rounded to the nearest integer with half ties upward. Unlock to set dimensions independently. A shared read-only plan reports resolved dimensions, physical size and all-layer/mask buffer estimates before Apply. Cancel/Escape/close leaves pixels and history untouched. Reopen the dialog after an external edit, including a density-only resolution change. Successful local fit-view updates may advance its revision guard only when no intervening external revision occurred. Spacing follows the configured appearance metrics; controls scroll separately from Apply/Cancel. Explicit older shortcut preferences take priority over the default.
 
-`canvas.image_size` is document-atomic and returns the typed `canvas.state` result. It shares command search, workflow nodes, JSONL, MCP and headless execution. The action accepts:
+`canvas.image_size` is document-atomic and returns the typed `canvas.state` result. `canvas.image_size.plan` accepts the same arguments and is read-only: it does not sample, allocate raster buffers, finish a contact, change revision/history or append an operation. Both share command search, schema-derived workflow nodes, JSONL, MCP and headless execution. The actions accept:
 
 | Parameter | Contract |
 | --- | --- |
-| `width`, `height` | Integer pixels, 1–4096. With aspect lock supply **exactly one**; with lock off supply both. |
+| `width`, `height` | Positive dimensions in `unit`. Pixels must be integers, including integer-valued JSON numbers. Physical inputs round half up to whole pixels; each final side must be 1–4096, without clamping. With aspect lock supply **exactly one**; with lock off supply both. |
+| `unit` | `px` (default), `mm` or `in`. Physical inputs use exact current X/Y density independently; legacy scalar PPI is known. Unknown PNG units or zero axes require a deliberate `canvas.resolution` change first. |
 | `lock_aspect` | Defaults to `true`; derive the omitted dimension from the current source ratio. |
 | `method` | `bilinear` (default), `nearest` or `area` (area averaging on shrinking axes, bilinear on enlarging axes). |
 
 ```json
 {"action":"canvas.image_size","args":{"width":1600,"method":"nearest"}}
 {"action":"canvas.image_size","args":{"width":1200,"height":900,"lock_aspect":false,"method":"bilinear"}}
+{"action":"canvas.image_size.plan","args":{"width":25.4,"unit":"mm","method":"area"}}
 ```
+
+Physical sizing preserves the document's exact density metadata. It resamples pixels rather than changing PPI, and accepts no output-only resolution override. With unequal metric axes, equal physical width/height can require unequal pixel counts; aspect locking still retains the source pixel ratio. Switching desktop units preserves the resolved pixel dimensions. Use [document resolution](document-setup.md) for an explicit metadata-only change, or [PNG export sizing](export-sizing.md) to resize only an external copy.
+
+The plan returns `source_width`, `source_height`, `width`, `height`, `method`, `identity`, `document_info`, `layer_count`, `mask_count`, `revision` and `drawing`. Buffer estimates describe target uncompressed storage: `estimated_layer_bytes` is pixels × layers × 4, `estimated_mask_bytes` is pixels × current/previous mask count, and `estimated_composite_bytes` is pixels × 4. `estimated_staged_bytes` is layer plus mask bytes for a resize, or zero for identity. These are not peak-memory estimates: source storage, shared undo/replay tiles, compressed mask caches, native row buffers and desktop textures add separate costs. Plans enforce the existing budget of 64 × 1024 × 1024 pixels across all layers, without allocating those buffers or predicting mask-compression success. See the [physical sizing example](../examples/automation/physical-image-size.jsonl).
+
+Complete literal parameter shape, pixel integrality and unit-independent bounds are checked before earlier pipeline steps execute. Source-dependent aspect, density and layer/mask budgets are resolved against the state at that step, so a preceding New Canvas or resolution command can intentionally establish the context. Result references retain the pipeline's dynamic failure and partial-completion semantics.
+
+Plans can inspect a live provisional contact. Mutating Image Size now rejects active contacts with `stroke_active`, avoiding implicit stroke completion before a later native/encoding failure. Desktop finishes its local contact before opening the dialog; automation clients should explicitly finish their own stream before applying a resize.
 
 Derived dimensions outside 1–4096, missing/ambiguous dimensions, unknown arguments/methods, stale expected revisions and the existing 64 Mi-pixel all-layer budget reject before output allocation/publication. Derived zero or oversized dimensions are rejected rather than silently clamped. An identical size preserves every raw stored word and adds no undo entry.
 

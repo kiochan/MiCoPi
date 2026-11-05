@@ -118,6 +118,7 @@ pub enum Operation {
     CanvasTrim,
     TrimBounds,
     ImageSize,
+    ImageSizePlan,
     Crop,
     Open,
     Save,
@@ -188,6 +189,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if matches!(self, Self::ImageSize | Self::ImageSizePlan) {
+            return super::image_size::schema();
+        }
         if matches!(self, Self::New | Self::NewPlan) {
             return super::creation::schema();
         }
@@ -272,10 +276,6 @@ impl Operation {
             Self::DocumentResolution => (
                 json!({"resolution_ppi":{"type":"integer","minimum":1,"maximum":2400,"description":"Square pixels per inch; replaces imported PNG density without resampling. Writes physical density even for an explicit 72 PPI."}}),
                 vec!["resolution_ppi"],
-            ),
-            Self::ImageSize => (
-                json!({"width":{"type":"integer","minimum":1,"maximum":4096,"description":"Target width; with lock_aspect use exactly one dimension."},"height":{"type":"integer","minimum":1,"maximum":4096,"description":"Target height; with lock_aspect use exactly one dimension."},"lock_aspect":{"type":"boolean","default":true,"description":"Preserve source ratio; supply exactly one dimension. When false supply both."},"method":{"type":"string","enum":["bilinear","nearest","area"],"default":"bilinear","description":"Area averages exact footprints on shrinking axes and uses bilinear on enlarging axes."}}),
-                vec![],
             ),
             Self::CanvasTrim | Self::TrimBounds => (
                 json!({"mode":{"type":"string","enum":["transparent","top_left","bottom_right"],"default":"transparent","description":"Analyze the visible merged image; corner modes match its corner RGBA."},"tolerance":{"type":"integer","minimum":0,"maximum":255,"default":0,"description":"Removable alpha threshold, or maximum RGBA channel difference for corner modes."},"top":{"type":"boolean","default":true},"right":{"type":"boolean","default":true},"bottom":{"type":"boolean","default":true},"left":{"type":"boolean","default":true,"description":"At least one of top/right/bottom/left must be true."}}),
@@ -400,6 +400,7 @@ impl Operation {
                 | Self::ContextRead
                 | Self::State
                 | Self::NewPlan
+                | Self::ImageSizePlan
                 | Self::DocumentInfo
                 | Self::TrimBounds
                 | Self::TransformState

@@ -1,5 +1,15 @@
 //! Cold physical-unit conversion. Pixel bounds apply after positive half-up rounding.
+use crate::engine::document_info::Info;
 use serde::{Deserialize, Serialize};
+
+/// Exact metric axes, or the document's scalar default. Unknown PNG units stay unknown.
+pub(crate) fn pixels_per_inch(info: Info) -> Option<[f64; 2]> {
+    match info.png_density {
+        Some(d) if d.metric() => Some([d.xppu as f64 * 0.0254, d.yppu as f64 * 0.0254]),
+        None => Some([info.resolution_ppi as f64; 2]),
+        _ => None,
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum Unit {

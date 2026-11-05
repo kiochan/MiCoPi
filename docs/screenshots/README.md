@@ -13,7 +13,7 @@ These are actual application captures, not interface mockups. Current images com
 | [PNG density](png-density.png) | Imported unequal density and the explicit metadata-only resolution replacement contract |
 | [PNG export sizing](export-sizing.png) | Source-preserving output dimensions, sampling, density and explicit preview controls |
 | [New canvas](new-canvas.png) | Configurable preset, unit selector, resolved pixel size, editable background and physical-resolution controls |
-| [Image size](image-size.png) | Actual aspect-locked image sizing dialog with native sampling choices |
+| [Image size](image-size.png) | Unit-aware Image Size with inherited unequal density, native sampling and all-layer/mask estimates |
 | [Canvas quarter turn](canvas-quarter-turn.png) | Actual clockwise document rotation, transformed selection and navigator preview |
 | [Session clipboard](clipboard.png) | Actual shared paste parameter form; coordinates are optional and execution is explicit |
 | [Selection outline](selection.png) | Command-generated ellipse overlay and active-selection status, independent of exported pixels |
@@ -41,7 +41,7 @@ Older screenshots live in [archive](archive/README.md) for historical reference.
 
 `canvas-quarter-turn.png` was reviewed from the English `scripts/smoke-localization.py` capture on 2026-11-05. It shows the real application after `canvas.rotate_90_cw`; the mask, two source layers and navigator retain the shared document state.
 
-`image-size.png` was reviewed from the English `scripts/smoke-localization.py` capture on 2026-11-05, alongside its Japanese capture. It shows the real Image Size dialog with nearest/bilinear/area guidance; the default remains bilinear. Opening/editing the form does not execute a resample. The smoke check also applies area reduction and restores through GUI Undo.
+`image-size.png` is the English final Release capture from `scripts/smoke-physical-resample.py` on 2026-11-05; all four language captures were reviewed. It shows the unit selector, retained unequal metric density, all-layer/mask buffer estimates and fixed Apply/Cancel footer. The default remains bilinear. Opening/canceling preserves source pixels and document info; the same run verifies actual physical resampling across transports, projects and plugin-independent replay. Library checks cover area reduction, GUI Undo, extreme-density unit roundtrips and narrow CJK layouts.
 
 `trim-canvas.png` was reviewed from the English `scripts/smoke-localization.py` capture on 2026-11-05, alongside its Japanese capture. The draggable controls leave the central artwork visible and retain configured outer spacing. The source frame remains 320×256 while the read-only preview proposes 256×192; Cancel preserves the document.
 

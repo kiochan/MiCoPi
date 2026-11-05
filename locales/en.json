@@ -1119,5 +1119,20 @@
   "Derived dimensions must be between 1 and 4096 pixels": "Derived dimensions must be between 1 and 4096 pixels",
   "Physical dimensions require known density or an explicit resolution": "Physical dimensions require known density or an explicit resolution",
   "Resolution cannot be null": "Resolution cannot be null",
-  "Resolution must be an integer between 1 and 2400 PPI": "Resolution must be an integer between 1 and 2400 PPI"
+  "Resolution must be an integer between 1 and 2400 PPI": "Resolution must be an integer between 1 and 2400 PPI",
+  "Plan Image Size": "Plan Image Size",
+  "Layer Buffers": "Layer Buffers",
+  "Selection Buffers": "Selection Buffers",
+  "Composite Buffer": "Composite Buffer",
+  "Staged Edit Buffers": "Staged Edit Buffers",
+  "Dimensions are unchanged; Apply leaves the document unchanged.": "Dimensions are unchanged; Apply leaves the document unchanged.",
+  "Output sizes only. History, source pixels and plugin scratch buffers use additional memory.": "Output sizes only. History, source pixels and plugin scratch buffers use additional memory.",
+  "Resolution is inherited. Use Document Resolution to change print density.": "Resolution is inherited. Use Document Resolution to change print density.",
+  "Aspect ratio follows pixel dimensions, including images with different horizontal and vertical densities.": "Aspect ratio follows pixel dimensions, including images with different horizontal and vertical densities.",
+  "Physical units require known density. Set Document Resolution first.": "Physical units require known density. Set Document Resolution first.",
+  "Image dimensions cannot be null": "Image dimensions cannot be null",
+  "With aspect lock supply exactly one dimension; otherwise supply both": "With aspect lock supply exactly one dimension; otherwise supply both",
+  "Image dimensions must be positive and no more than 1000000000 units": "Image dimensions must be positive and no more than 1000000000 units",
+  "Image size exceeds document pixel budget": "Image size exceeds document pixel budget",
+  "Source Size": "Source Size"
 }

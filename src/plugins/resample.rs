@@ -3,7 +3,6 @@ use crate::{
     application::{ActionError, ActionResult, Session},
     engine::selection::SelectionState,
 };
-use micopi_plugin_api as abi;
 use serde_json::Value;
 /// Round positive aspect dimensions half up; reject, rather than clamp, invalid results.
 pub(crate) fn dimensions(
@@ -28,27 +27,14 @@ pub(crate) fn dimensions(
     Ok(result)
 }
 fn run(s: &mut Session, args: Value) -> Result<(), String> {
-    let [w, h] = dimensions(
-        [s.doc.width, s.doc.height],
-        args["width"].as_f64().map(|v| v as usize),
-        args["height"].as_f64().map(|v| v as usize),
-        args["lock_aspect"].as_bool().unwrap_or(true),
-    )?;
-    if w * h * s.doc.layers.len() > 64 * 1024 * 1024 {
-        return Err("Image size exceeds document pixel budget".into());
-    }
+    let plan = crate::application::image_size::plan(&s.doc, &args).map_err(|e| e.message)?;
+    let (w, h) = (plan.width, plan.height);
     s.finish_stroke();
     // Preserve raw words and history for an identity resize, including old plugins.
     if (w, h) == (s.doc.width, s.doc.height) {
         return Ok(());
     }
-    let options = abi::Resample {
-        method: match args["method"].as_str() {
-            Some("nearest") => 0,
-            Some("area") => 2,
-            _ => 1,
-        },
-    };
+    let options = plan.method.native();
     let state = s.doc.selection();
     let transform = |mask: &Option<crate::engine::selection::Mask>| {
         mask.as_ref()
@@ -70,6 +56,12 @@ fn run(s: &mut Session, args: Value) -> Result<(), String> {
     s.doc.replace_geometry(w, h, pixels, selection)
 }
 pub(crate) fn execute(s: &mut Session, args: Value) -> ActionResult {
+    if s.stroke.active() || s.pointer_checkpoint.is_some() {
+        return Err(ActionError::new(
+            "stroke_active",
+            "Finish the current contact before changing image size",
+        ));
+    }
     run(s, args).map_err(|e| ActionError::new("image_size", e))?;
     Ok(s.state())
 }

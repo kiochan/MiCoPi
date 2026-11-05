@@ -590,6 +590,9 @@ impl Session {
                 // subset. Reject literal creation errors before earlier steps run.
                 super::creation::plan(&action.args)?;
             }
+            if matches!(op, Operation::ImageSize | Operation::ImageSizePlan) {
+                super::image_size::validate(&action.args)?;
+            }
             out.push((action.action.clone(), Some(op), action.args.clone()));
         } else if definition.native.is_some() {
             out.push((action.action.clone(), None, action.args.clone()));

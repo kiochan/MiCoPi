@@ -1,6 +1,6 @@
 //! Cold output sizing shared by desktop forms, action schemas and automation.
 use crate::application::{
-    units::{rounded_pixels, Unit},
+    units::{pixels_per_inch, rounded_pixels, Unit},
     ActionError,
 };
 use crate::engine::document_info::Info;
@@ -115,11 +115,7 @@ pub(crate) fn plan(source: [usize; 2], mut info: Info, args: &Value) -> Result<P
         }
         source
     } else {
-        let ppi = match info.png_density {
-            Some(d) if d.metric() => Some([d.xppu as f64 * 0.0254, d.yppu as f64 * 0.0254]),
-            None => Some([info.resolution_ppi as f64; 2]),
-            _ => None,
-        };
+        let ppi = pixels_per_inch(info);
         let convert = |number: Option<f64>, axis: usize| -> Result<Option<usize>, ActionError> {
             number
                 .map(|v| {

@@ -771,6 +771,190 @@
       }
     },
     {
+      "id": "canvas.image_size.plan",
+      "title": "Plan Image Size",
+      "operation": "image_size_plan",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "source_width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "source_height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "bilinear",
+              "nearest",
+              "area"
+            ]
+          },
+          "identity": {
+            "type": "boolean"
+          },
+          "document_info": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "resolution_ppi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2400,
+                "description": "Editable nominal scalar; inspect per-axis PPI for exact imported metric density. Setting this replaces imported density."
+              },
+              "initial_background": {
+                "type": "string",
+                "description": "Creation fill intent, not a permanent compositing background."
+              },
+              "width_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_explicit": {
+                "type": "boolean",
+                "description": "An explicit document resolution also writes PNG density at 72 PPI."
+              },
+              "png_density": {
+                "type": "object",
+                "properties": {
+                  "xppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "yppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "meter",
+                      "unspecified"
+                    ]
+                  }
+                },
+                "required": [
+                  "xppu",
+                  "yppu",
+                  "unit"
+                ],
+                "additionalProperties": false,
+                "description": "Exact imported PNG pHYs. Zero axes or unspecified units have no known physical size."
+              },
+              "physical_size_known": {
+                "type": "boolean"
+              },
+              "resolution_source": {
+                "type": "string",
+                "enum": [
+                  "png",
+                  "document"
+                ]
+              },
+              "resolution_ppi_x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_ppi_y": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "width",
+              "height",
+              "resolution_ppi",
+              "initial_background",
+              "physical_size_known",
+              "resolution_source"
+            ]
+          },
+          "layer_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16
+          },
+          "mask_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "boolean"
+          },
+          "estimated_layer_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "estimated_mask_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "estimated_composite_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "estimated_staged_bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "source_width",
+          "source_height",
+          "width",
+          "height",
+          "method",
+          "identity",
+          "document_info",
+          "layer_count",
+          "mask_count",
+          "revision",
+          "drawing",
+          "estimated_layer_bytes",
+          "estimated_mask_bytes",
+          "estimated_composite_bytes",
+          "estimated_staged_bytes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "canvas.resize",
       "title": "Resize canvas without scaling",
       "operation": "canvas_size"

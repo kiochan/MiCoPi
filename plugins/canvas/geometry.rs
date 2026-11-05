@@ -1,5 +1,7 @@
 //! Canvas framing controls; all commits go through public document actions.
 use super::*;
+#[path = "image_size.rs"]
+mod image_size;
 #[path = "trim.rs"]
 mod trim;
 pub(super) struct CanvasDialog {
@@ -7,10 +9,7 @@ pub(super) struct CanvasDialog {
     source: [usize; 2],
     crop: bool,
     trim: Option<trim::TrimDraft>,
-    image_size: bool,
-    lock_aspect: bool,
-    width_axis: bool,
-    method: usize,
+    image_size: Option<image_size::Draft>,
     x: usize,
     y: usize,
     width: usize,
@@ -19,13 +18,12 @@ pub(super) struct CanvasDialog {
 }
 
 impl CanvasDialog {
-    fn image_dimensions(&self) -> Result<[usize; 2], String> {
-        crate::plugins::resample::dimensions(
-            self.source,
-            (!self.lock_aspect || self.width_axis).then_some(self.width),
-            (!self.lock_aspect || !self.width_axis).then_some(self.height),
-            self.lock_aspect,
-        )
+    pub(super) fn accept_local_view(&mut self, identity: u64, before: u64, after: u64) {
+        if self.identity == identity {
+            if let Some(draft) = self.image_size.as_mut() {
+                draft.accept_local_view(before, after);
+            }
+        }
     }
 }
 
@@ -116,109 +114,6 @@ mod tests {
         assert_eq!(app.editor.session.doc.layers[0].pixels[0], 0);
     }
     #[test]
-    fn image_size_dialog_is_inert_until_apply_and_updates_dimensioned_texture() {
-        let mut app = studio();
-        app.editor.session = crate::application::Session::new(
-            crate::plugins::Registry::load(
-                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
-            )
-            .unwrap(),
-        )
-        .unwrap();
-        app.editor
-            .core("canvas.new", serde_json::json!({"width":12,"height":8}));
-        app.editor
-            .core("native.checkerboard", serde_json::json!({"cell":2}));
-        let ctx = Context::default();
-        let size = vec2(960., 680.);
-        frame(&mut app, &ctx, size, vec![], 0.);
-        app.editor.actions.push(Action::UiCommand(10173));
-        app.run_actions(&ctx);
-        let d = app.editor.geometry.as_mut().unwrap();
-        assert!(d.image_size);
-        d.width = 6;
-        d.height = 4;
-        d.method = 2;
-        assert_eq!(d.image_dimensions().unwrap(), [6, 4]);
-        let pixels = app.editor.session.doc.layers[0].pixels.clone();
-        for t in 1..4 {
-            frame(&mut app, &ctx, size, vec![], t as f64);
-        }
-        assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
-        let out = frame(&mut app, &ctx, size, vec![], 4.);
-        let point = out
-            .shapes
-            .iter()
-            .find_map(|s| label(&s.shape, "Apply"))
-            .unwrap();
-        frame(
-            &mut app,
-            &ctx,
-            size,
-            vec![
-                Event::PointerMoved(point),
-                Event::PointerButton {
-                    pos: point,
-                    button: PointerButton::Primary,
-                    pressed: true,
-                    modifiers: Modifiers::NONE,
-                },
-                Event::PointerButton {
-                    pos: point,
-                    button: PointerButton::Primary,
-                    pressed: false,
-                    modifiers: Modifiers::NONE,
-                },
-            ],
-            5.,
-        );
-        assert!(app.editor.geometry.is_none());
-        assert_eq!(
-            (app.editor.session.doc.width, app.editor.session.doc.height),
-            (6, 4)
-        );
-        frame(&mut app, &ctx, size, vec![], 6.);
-        assert_eq!(app.editor.texture.as_ref().unwrap().size(), [6, 4]);
-        app.editor.core("history.undo", serde_json::json!({}));
-        assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
-        app.editor.open_image_size();
-        app.editor.geometry.as_mut().unwrap().height = 17;
-        app.editor.geometry.as_mut().unwrap().width_axis = false;
-        assert_eq!(
-            app.editor
-                .geometry
-                .as_ref()
-                .unwrap()
-                .image_dimensions()
-                .unwrap(),
-            [26, 17]
-        );
-        frame(
-            &mut app,
-            &ctx,
-            size,
-            vec![Event::Key {
-                key: Key::Escape,
-                physical_key: Some(Key::Escape),
-                pressed: true,
-                repeat: false,
-                modifiers: Modifiers::NONE,
-            }],
-            7.,
-        );
-        assert!(app.editor.geometry.is_none());
-        assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
-        app.editor.open_image_size();
-        app.editor
-            .core("canvas.rotate_90_cw", serde_json::json!({}));
-        let out = frame(&mut app, &ctx, size, vec![], 8.);
-        assert!(out.shapes.iter().any(|s| label(
-            &s.shape,
-            "The canvas changed. Reopen this dialog."
-        )
-        .is_some()));
-    }
-    #[test]
     fn crop_dialog_cancel_and_stale_source_never_modify_the_document() {
         let mut app = studio();
         app.editor
@@ -300,20 +195,13 @@ impl Editor {
             source: [self.session.doc.width, self.session.doc.height],
             crop,
             trim: None,
-            image_size: false,
-            lock_aspect: true,
-            width_axis: true,
-            method: 0,
+            image_size: None,
             x: 0,
             y: 0,
             width: self.session.doc.width,
             height: self.session.doc.height,
             anchor: 4,
         });
-    }
-    pub(super) fn open_image_size(&mut self) {
-        self.open_canvas_geometry(false);
-        self.geometry.as_mut().unwrap().image_size = true;
     }
     pub(super) fn crop_outline(&self, painter: &Painter, color: Color32) {
         if let Some(d) = &self.geometry {
@@ -358,186 +246,113 @@ impl Editor {
             self.trim_canvas_window(ctx, d);
             return;
         }
+        if d.image_size.is_some() {
+            self.image_size_window(ctx, d);
+            return;
+        }
         let stale = d.identity != self.session.doc.identity
             || d.source != [self.session.doc.width, self.session.doc.height];
         let mut open = true;
         let mut apply = false;
         let mut cancel = false;
         let a = self.settings.ui.clone();
-        Window::new(tr(if d.image_size {
-            "Image Size"
-        } else if d.crop {
-            "Crop Canvas"
-        } else {
-            "Canvas Size"
-        }))
-        .id(Id::new("canvas-geometry"))
-        .open(&mut open)
-        .collapsible(false)
-        .resizable(false)
-        .default_width(a.control_height * 14.)
-        .min_width(a.control_height * 14.)
-        .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
-        .show(ctx, |ui| {
-            ui.weak(tr(if d.image_size {
-                "Scale every layer and selection. Apply commits one edit."
-            } else if d.crop {
-                "Crop all layers to a pixel rectangle."
-            } else {
-                "Reframe all layers without scaling. New space is transparent."
-            }));
-            ui.add_space(a.panel_padding);
-            Grid::new("canvas-geometry-fields")
-                .num_columns(2)
-                .show(ui, |ui| {
-                    if d.crop {
-                        ui.label("X");
+        Window::new(tr(if d.crop { "Crop Canvas" } else { "Canvas Size" }))
+            .id(Id::new("canvas-geometry"))
+            .open(&mut open)
+            .collapsible(false)
+            .resizable(false)
+            .default_width(a.control_height * 14.)
+            .min_width(a.control_height * 14.)
+            .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
+            .show(ctx, |ui| {
+                ui.weak(tr(if d.crop {
+                    "Crop all layers to a pixel rectangle."
+                } else {
+                    "Reframe all layers without scaling. New space is transparent."
+                }));
+                ui.add_space(a.panel_padding);
+                Grid::new("canvas-geometry-fields")
+                    .num_columns(2)
+                    .show(ui, |ui| {
+                        if d.crop {
+                            ui.label("X");
+                            ui.add(
+                                DragValue::new(&mut d.x)
+                                    .range(0..=d.source[0] - 1)
+                                    .suffix(" px"),
+                            );
+                            ui.end_row();
+                            ui.label("Y");
+                            ui.add(
+                                DragValue::new(&mut d.y)
+                                    .range(0..=d.source[1] - 1)
+                                    .suffix(" px"),
+                            );
+                            ui.end_row();
+                            d.width = d.width.min(d.source[0] - d.x);
+                            d.height = d.height.min(d.source[1] - d.y);
+                        }
+                        ui.label(tr("Width"));
                         ui.add(
-                            DragValue::new(&mut d.x)
-                                .range(0..=d.source[0] - 1)
-                                .suffix(" px"),
-                        );
-                        ui.end_row();
-                        ui.label("Y");
-                        ui.add(
-                            DragValue::new(&mut d.y)
-                                .range(0..=d.source[1] - 1)
-                                .suffix(" px"),
-                        );
-                        ui.end_row();
-                        d.width = d.width.min(d.source[0] - d.x);
-                        d.height = d.height.min(d.source[1] - d.y);
-                    }
-                    ui.label(tr("Width"));
-                    let width_changed = ui
-                        .add(
                             DragValue::new(&mut d.width)
                                 .range(1..=if d.crop { d.source[0] - d.x } else { 4096 })
                                 .suffix(" px"),
-                        )
-                        .changed();
-                    if d.image_size && d.lock_aspect && width_changed {
-                        d.width_axis = true;
-                        if let Ok([_, h]) = crate::plugins::resample::dimensions(
-                            d.source,
-                            Some(d.width),
-                            None,
-                            true,
-                        ) {
-                            d.height = h;
-                        }
-                    }
-                    ui.end_row();
-                    ui.label(tr("Height"));
-                    let height_changed = ui
-                        .add(
+                        );
+                        ui.end_row();
+                        ui.label(tr("Height"));
+                        ui.add(
                             DragValue::new(&mut d.height)
                                 .range(1..=if d.crop { d.source[1] - d.y } else { 4096 })
                                 .suffix(" px"),
-                        )
-                        .changed();
-                    if d.image_size && d.lock_aspect && height_changed {
-                        d.width_axis = false;
-                        if let Ok([w, _]) = crate::plugins::resample::dimensions(
-                            d.source,
-                            None,
-                            Some(d.height),
-                            true,
-                        ) {
-                            d.width = w;
-                        }
-                    }
-                    ui.end_row();
-                });
-            if d.image_size {
-                if ui
-                    .checkbox(&mut d.lock_aspect, tr("Lock Aspect Ratio"))
-                    .changed()
-                    && d.lock_aspect
-                {
-                    d.width_axis = true;
-                    if let Ok([_, h]) =
-                        crate::plugins::resample::dimensions(d.source, Some(d.width), None, true)
-                    {
-                        d.height = h;
-                    }
+                        );
+                        ui.end_row();
+                    });
+                if !d.crop {
+                    ui.add_space(a.panel_padding);
+                    ui.label(tr("Anchor"));
+                    Grid::new("canvas-anchor")
+                        .spacing(vec2(4., 4.))
+                        .show(ui, |ui| {
+                            for (i, label) in LABELS.iter().enumerate() {
+                                if ui.selectable_label(d.anchor == i, tr(*label)).clicked() {
+                                    d.anchor = i;
+                                }
+                                if i % 3 == 2 {
+                                    ui.end_row();
+                                }
+                            }
+                        });
+                }
+                ui.add_space(a.panel_padding);
+                ui.weak(tr(
+                    "Pixels outside the new canvas are removed. Undo restores them.",
+                ));
+                let dimensions: Result<[usize; 2], String> = Ok([d.width, d.height]);
+                let valid = !stale
+                    && dimensions.as_ref().is_ok_and(|[w, h]| {
+                        w * h * self.session.doc.layers.len() <= 64 * 1024 * 1024
+                    });
+                if stale {
+                    ui.colored_label(
+                        Color32::LIGHT_RED,
+                        tr("The canvas changed. Reopen this dialog."),
+                    );
+                } else if !valid {
+                    ui.colored_label(
+                        Color32::LIGHT_RED,
+                        tr("Canvas size exceeds document limits"),
+                    );
                 }
                 ui.horizontal(|ui| {
-                    ui.label(tr("Resampling"));
-                    ComboBox::from_id_salt("image-resampling")
-                        .selected_text(tr(match d.method {
-                            0 => "Bilinear",
-                            1 => "Nearest Neighbor",
-                            _ => "Area (Downscale)",
-                        }))
-                        .show_ui(ui, |ui| {
-                            ui.selectable_value(&mut d.method, 0, tr("Bilinear"));
-                            ui.selectable_value(&mut d.method, 1, tr("Nearest Neighbor"));
-                            ui.selectable_value(&mut d.method, 2, tr("Area (Downscale)"));
-                        });
+                    apply = ui.add_enabled(valid, Button::new(tr("Apply"))).clicked();
+                    cancel = ui.button(tr("Cancel")).clicked();
                 });
-            }
-            if !d.crop && !d.image_size {
-                ui.add_space(a.panel_padding);
-                ui.label(tr("Anchor"));
-                Grid::new("canvas-anchor")
-                    .spacing(vec2(4., 4.))
-                    .show(ui, |ui| {
-                        for (i, label) in LABELS.iter().enumerate() {
-                            if ui.selectable_label(d.anchor == i, tr(*label)).clicked() {
-                                d.anchor = i;
-                            }
-                            if i % 3 == 2 {
-                                ui.end_row();
-                            }
-                        }
-                    });
-            }
-            ui.add_space(a.panel_padding);
-            ui.weak(tr(if d.image_size {
-                "Nearest keeps pixel edges. Bilinear smooths. Area preserves detail when shrinking."
-            } else {
-                "Pixels outside the new canvas are removed. Undo restores them."
-            }));
-            let dimensions = if d.image_size {
-                d.image_dimensions()
-            } else {
-                Ok([d.width, d.height])
-            };
-            let valid = !stale
-                && dimensions
-                    .as_ref()
-                    .is_ok_and(|[w, h]| w * h * self.session.doc.layers.len() <= 64 * 1024 * 1024);
-            if stale {
-                ui.colored_label(
-                    Color32::LIGHT_RED,
-                    tr("The canvas changed. Reopen this dialog."),
-                );
-            } else if !valid {
-                ui.colored_label(
-                    Color32::LIGHT_RED,
-                    tr("Canvas size exceeds document limits"),
-                );
-            }
-            ui.horizontal(|ui| {
-                apply = ui.add_enabled(valid, Button::new(tr("Apply"))).clicked();
-                cancel = ui.button(tr("Cancel")).clicked();
             });
-        });
         if ctx.input(|i| i.key_pressed(Key::Escape)) {
             cancel = true;
         }
         if apply {
-            let (action, args) = if d.image_size {
-                let mut args = serde_json::json!({"lock_aspect":d.lock_aspect,"method":match d.method {0=>"bilinear",1=>"nearest",_=>"area"}});
-                if !d.lock_aspect || d.width_axis {
-                    args["width"] = serde_json::json!(d.width);
-                }
-                if !d.lock_aspect || !d.width_axis {
-                    args["height"] = serde_json::json!(d.height);
-                }
-                ("canvas.image_size", args)
-            } else if d.crop {
+            let (action, args) = if d.crop {
                 (
                     "canvas.crop",
                     serde_json::json!({"x":d.x,"y":d.y,"width":d.width,"height":d.height}),
