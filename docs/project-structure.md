@@ -152,7 +152,7 @@ Capture fixtures exercise asynchronous presentation and file publication indepen
 
 Generated smoke captures, extracted packages, benchmarks and artwork from examples belong under ignored `target/test-output/` or `target/example-output/`. Only reviewed screenshots are promoted to `docs/screenshots/`; portable deliverables stay under ignored `dist/`.
 
-`scripts/collect-licenses.py` owns locked, offline notice staging; `scripts/licenses/` contains reviewed upstream legal-text supplements and their provenance pins. `scripts/test-collect-licenses.py` covers archive validation, declared coverage, staging rollback and package admission. Generated dependency notices and `LICENSES.json` belong in the ignored portable staging tree, not alongside the source supplements. See [the collection contract](../scripts/licenses/README.md).
+`scripts/collect-licenses.py` owns locked, offline notice staging; `scripts/licenses/` contains reviewed upstream legal-text supplements and their provenance pins. `scripts/test-collect-licenses.py` covers archive validation, declared coverage, staging rollback and package admission; `scripts/test-package.py` checks relative links against the files actually distributed. Generated dependency notices and `LICENSES.json` belong in the ignored portable staging tree, not alongside the source supplements. The full collection contract is `scripts/licenses/README.md` in the source checkout.
 
 ## Documentation and screenshots
 

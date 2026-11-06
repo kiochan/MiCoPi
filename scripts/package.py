@@ -3,10 +3,63 @@ import argparse
 import importlib.util
 from pathlib import Path
 import json
+import posixpath
+import re
 import tomllib
+from urllib.parse import unquote, urlsplit
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
+LINK = re.compile(r'!?\[[^\]]*\]\((<[^>]+>|[^\s)]+)(?:\s+"[^"]*")?\)')
+
+
+def markdown_without_fences(text):
+    """Exclude backtick/tilde fenced samples before applying the repository link regex."""
+    fence = None
+    lines = []
+    for line in text.splitlines(keepends=True):
+        match = re.match(r'^ {0,3}(`{3,}|~{3,})(.*)$', line)
+        if fence is not None:
+            if match and match[1][0] == fence[0] and len(match[1]) >= fence[1] and not match[2].strip():
+                fence = None
+        elif match:
+            fence = (match[1][0], len(match[1]))
+        else:
+            lines.append(line)
+    return ''.join(lines)
+
+
+def validate_markdown_links(entries):
+    """Resolve links against the virtual ZIP contents, never the source checkout."""
+    names = set(entries)
+    directories = {'.'}
+    for name in names:
+        if not name or name.startswith('/') or '\\' in name or name == '..' or name.startswith('../') or posixpath.normpath(name) != name:
+            raise ValueError(f'Invalid virtual archive path: {name}')
+        parent = posixpath.dirname(name)
+        while parent:
+            directories.add(parent)
+            parent = posixpath.dirname(parent)
+    errors = []
+    for name, source in sorted(entries.items()):
+        if not name.lower().endswith('.md'):
+            continue
+        data = source if isinstance(source, bytes) else source.read_bytes()
+        text = markdown_without_fences(data.decode('utf-8-sig'))
+        for match in LINK.finditer(text):
+            href = match[1].strip('<>')
+            parsed = urlsplit(href)
+            if parsed.scheme or parsed.netloc or not parsed.path:
+                continue
+            path = unquote(parsed.path)
+            target = posixpath.normpath(path.lstrip('/') if path.startswith('/')
+                                        else posixpath.join(posixpath.dirname(name), path))
+            if target == '..' or target.startswith('../'):
+                errors.append(f'{name}: link target escapes archive: {href}')
+            elif target not in names and target not in directories:
+                errors.append(f'{name}: missing archived link target: {href}')
+    if errors:
+        raise ValueError('Portable Markdown link validation failed:\n' + '\n'.join(errors))
 
 
 def package(dist: Path, output: Path):
@@ -60,6 +113,7 @@ def package(dist: Path, output: Path):
         raise FileNotFoundError('Missing staged licenses; run scripts/build.ps1 first')
     for path in licenses:
         add(path, path.relative_to(dist).as_posix())
+    validate_markdown_links(entries)
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for name, source in sorted(entries.items()):
