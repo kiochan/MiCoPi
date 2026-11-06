@@ -72,6 +72,7 @@ impl Document {
     /// Read-only semantic and allocation planning, including provisional contacts.
     /// No pixels are read/rendered or copied and no history/contact is completed.
     pub fn selected_merge_plan(&self, ids: &[u64]) -> Result<SelectedMergePlan, String> {
+        self.require_mask_aware_edit()?;
         Ok(self.prepare_selected_merge(ids)?.summary)
     }
 
@@ -268,6 +269,7 @@ impl Document {
     }
 
     pub fn merge_selected(&mut self, ids: &[u64]) -> Result<u64, String> {
+        self.require_mask_aware_edit()?;
         let merge = self.prepare_selected_merge(ids)?;
         let pixels = self.render_group_bake(&merge.projection)?;
         let layer_id = merge.summary.layer_id;

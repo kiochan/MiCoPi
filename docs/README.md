@@ -17,6 +17,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Selected-only Merge](selected-merge.md) | Explicit raster targets, common-parent projection, placement/visibility plans, optional review and atomic baking |
 | [Layer Groups](layer-groups.md) | Nested compositing policies, typed entries, hierarchy commands, node views and native capability compatibility |
 | [Pass Through](pass-through.md) | Parent-backdrop composition, once-only group opacity, Mix nodes, baking boundaries and versioned compatibility |
+| [Raster Mask Storage](raster-mask-storage.md) | Implemented A8 document/history/composition, MICOPI04 and verified replay foundation; public mask editing remains planned |
 | [Color Blend Modes](blend-modes.md) | The 26-mode catalog, RGB/alpha semantics, family menus, availability and legacy DLL compatibility |
 | [Clipboard](clipboard.md) | Internal transfers, Windows PNG/DIB adapter, limits, external effects and native verification status |
 | [Selections](selections.md) | Marquee/lasso gestures, color commands, native clipping, history and limits |
@@ -46,6 +47,6 @@ The technical documentation is maintained in English. The project overview is al
 
 | Design | Status |
 | --- | --- |
-| [Paintable Raster Masks](raster-masks-design.md) | Planned document/history/replay and UI integration; native A8 prerequisites are separate from feature availability |
+| [Paintable Raster Masks](raster-masks-design.md) | Native and document/event foundations implemented; complete editing, registered mask contracts and UI remain planned |
 
 Runnable material is indexed in [Examples](../examples/README.md); actual application captures are indexed in [Screenshots](screenshots/README.md). See [Contributing](../CONTRIBUTING.md) and [Changelog](../CHANGELOG.md) for the collaboration process and release history.

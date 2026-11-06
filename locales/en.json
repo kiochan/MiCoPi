@@ -1333,5 +1333,13 @@
   "Select between two and sixteen unique existing layer IDs to merge": "Select between two and sixteen unique existing layer IDs to merge",
   "Selected-layer merge requires linked layer composition; use Flatten Image to bake a free graph": "Selected-layer merge requires linked layer composition; use Flatten Image to bake a free graph",
   "Selected merge exceeds the document pixel limit": "Selected merge exceeds the document pixel limit",
-  "Selected merge review requires the desktop; use layer.merge_selected.plan and layer.merge_selected for headless editing": "Selected merge review requires the desktop; use layer.merge_selected.plan and layer.merge_selected for headless editing"
+  "Selected merge review requires the desktop; use layer.merge_selected.plan and layer.merge_selected for headless editing": "Selected merge review requires the desktop; use layer.merge_selected.plan and layer.merge_selected for headless editing",
+  "Mask": "Mask",
+  "Coverage": "Coverage",
+  "Apply Mask": "Apply Mask",
+  "Masked Backdrop Mix": "Masked Backdrop Mix",
+  "Raw A8 Coverage": "Raw A8 Coverage",
+  "This operation requires mask-aware editing support; the document and raster masks are unchanged": "This operation requires mask-aware editing support; the document and raster masks are unchanged",
+  "Raster masks require linked layer/filter composition": "Raster masks require linked layer/filter composition",
+  "Select a layer to edit its pixels; document mask painting is not available yet": "Select a layer to edit its pixels; document mask painting is not available yet"
 }

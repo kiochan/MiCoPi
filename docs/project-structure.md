@@ -63,6 +63,11 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/application/atomic.rs` | Shared-tile rollback checkpoints and atomic action capability checks |
 | `src/application/replay.rs` | Recording boundaries, project persistence and replay actions |
 | `src/engine/document.rs` | Pixels, composition and copy-on-write undo tiles |
+| `src/engine/raster_masks.rs`, `src/engine/raster_mask_editing.rs` | Bounded stable-ID mask metadata, raw uniform/dense A8 storage, contact leases and independent byte-tile history |
+| `src/engine/raster_mask_project.rs` | MICOPI04 byte-plane directory, strict payload validation and cold uniform canonicalization |
+| `src/engine/mask_composition.rs`, `src/engine/mask_composition_tests.rs`, `src/engine/mask_graph_tests.rs` | Generated layer/group coverage gates, cached descriptors, typed ports and exact composition/budget checks |
+| `src/engine/mask_boundary.rs`, `src/application/mask_boundary.rs` | Temporary guards for mask-unaware structural, geometric and transfer edits before public mask integration |
+| `src/engine/raster_mask_tests.rs`, `src/application/raster_mask_tests.rs` | Raw storage/history/project regressions, target boundaries and Session rollback/persistence checks |
 | `src/engine/canvas_editing.rs` | Staged geometry, shared transform validation/publication and borrowed-source preview composition |
 | `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
 | `src/engine/group_merge.rs`, `src/application/group_merge_tests.rs`, `scripts/smoke-group-merge.py` | Staged subtree/visible-group baking, retained hidden branches and shared action/history/replay verification |
@@ -84,7 +89,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/homography.rs`, `src/application/perspective_tests.rs` | Finite convex quad geometry, horizon validation and projective action/history/persistence contracts |
 | `src/application/output_size.rs`, `src/application/export_tests.rs` | Pure output-unit/aspect planning and shared export/history/transport contracts |
 | `src/application/units.rs`, `src/application/creation.rs`, `src/application/physical_creation_tests.rs` | Shared bounded physical-unit conversion, creation plans without raster allocation and lifecycle/persistence regressions |
-| `src/application/image_size.rs`, `src/application/physical_resample_tests.rs` | Unit-aware all-layer/mask sizing plans, source-dependent limits and atomic resampling/replay contracts |
+| `src/application/image_size.rs`, `src/application/physical_resample_tests.rs` | Unit-aware all-layer/selection-coverage sizing plans, source-dependent limits and atomic resampling/replay contracts |
 | `plugins/canvas/image_size.rs` | Compiled physical Image Size draft, density/revision guards, shared planning and responsive controls |
 | `src/plugins/export.rs` | Borrowed composed-frame sampling, preview/file orchestration and compact artifact context |
 | `plugins/canvas/export.rs` | Compiled export draft, explicit cached preview, source guards and responsive controls |
@@ -100,21 +105,21 @@ The `engine` directory contains shared document structures and the image graph m
 | `plugins/painting/src/affine.rs` | Allocation-free inverse affine sampling with transparent edges and independent references |
 | `plugins/canvas/transform_perspective.rs`, `plugins/canvas/transform_perspective_tests.rs` | Compiled four-corner controls, provisional gestures, affine-frame conversion and viewport checks |
 | `plugins/canvas/transform.rs`, `plugins/canvas/transform_tests.rs` | Reversible numeric/handle drafts, idle textures, source guards and UI regressions |
-| `src/plugins/movement.rs` | Atomic movement orchestration, resolved targets, staged masks/pixels and compact context |
+| `src/plugins/movement.rs` | Atomic movement orchestration, resolved targets, staged selection coverage/pixels and compact context |
 | `plugins/painting/src/movement.rs` | Allocation-free integer layer/selected-pixel/mask kernels and native references |
 | `plugins/canvas/movement.rs` | Cached outline drag, source guards, cancellation and Tool Options adapter |
 | `src/application/selection_sampling.rs` | Configured selection defaults, session control overrides and compact public state |
 | `src/plugins/layer_transfer.rs` | Selection-to-layer orchestration through native extraction/placement and one host-owned undo entry |
 | `src/platform/clipboard/` | Bounded PNG/DIB image codecs, desktop resource adapter and Win32 memory/window ownership |
 | `src/plugins/system_clipboard.rs` | Explicit system transfers, verified origin hints, public state and external-effect audit context |
-| `src/plugins/resample.rs` | Image dimensions/aspect validation and staged all-layer/mask resampling publication |
+| `src/plugins/resample.rs` | Image dimensions/aspect validation and staged all-layer/selection-coverage resampling publication |
 | `plugins/painting/src/resample.rs` | Rational pixel-center nearest/bilinear sampling and bounded axis plans |
 | `plugins/painting/src/resample/area.rs` | Exact shrinking footprints, per-axis linear enlargement and bounded streaming premultiplied sums |
 | `plugins/canvas/geometry.rs` | Compiled framing, crop and aspect-locked image sizing dialogs |
 | `plugins/canvas/trim.rs` | Compiled trim controls, revision guards and parameter-cached read-only bounds preview |
 | `src/plugins/trim.rs` | Shared trim options, result metadata and all-layer frame publication |
 | `plugins/painting/src/trim.rs` | Allocation-free alpha/corner bounds, also reused for raw-layer transform handles |
-| `src/plugins/geometry.rs` | Shared exact-geometry orchestration, staged masks/layers and lock/selection guards |
+| `src/plugins/geometry.rs` | Shared exact-geometry orchestration, staged selection coverage/layers and lock/selection guards |
 | `plugins/painting/src/geometry.rs` | Allocation-free tiled orthogonal pixel and coverage permutations |
 | `src/engine/canvas_editing.rs` | Dimensioned framing/geometry publication and shared-buffer structural history |
 | `src/plugins/clipboard.rs` | Bounded Session clipboard ownership, transfer actions and public summaries |
@@ -127,6 +132,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `plugins/canvas/selection_gesture.rs` | Bounded marquee/lasso previews and single-action completion adapters |
 | `src/engine/linked_graph.rs` | Validated layer-stack topology, per-layer filter branches and metadata-only synchronization |
 | `src/engine/replay.rs` | Journal storage, compressed tile/metadata encoding and integrity verification |
+| `src/engine/replay/masks.rs`, `src/engine/replay/mask_tests.rs` | Separate A8 byte-cell deltas/references, verified restoration, legacy hashes and failure/persistence regressions |
 | `plugins/replay/panel.rs` | Read-only time-lapse presentation |
 | `plugins/replay/manifest.json` | Public action/state registration for automation and workflow nodes |
 
@@ -134,7 +140,7 @@ The host owns transaction and verification rules. Plugins own drawing and proces
 
 ## Tests and local output
 
-Native A8 prerequisites live in the existing SDK/header, `plugins/painting/src/raster.rs` and `plugins/compositing/src/masks.rs`. `src/plugins/native_masks_tests.rs` checks negotiation and dispatch; `tests/fixtures/native-layout.c`, `scripts/check-native-abi.py` and `scripts/smoke-native-masks.py` check C/C++ layouts and actual DLL behavior. The planned document byte-plane, history and replay ownership is specified in [Raster Masks Design](raster-masks-design.md); these native components alone do not provide application masks.
+Native A8 prerequisites live in the existing SDK/header, `plugins/painting/src/raster.rs` and `plugins/compositing/src/masks.rs`. `src/plugins/native_masks_tests.rs` checks negotiation and dispatch; `tests/fixtures/native-layout.c`, `scripts/check-native-abi.py` and `scripts/smoke-native-masks.py` check C/C++ layouts and actual DLL behavior. The implemented document byte-plane/history/project/replay foundation is specified in [Raster Mask Storage](raster-mask-storage.md). Public mask painting, commands, property effects, complete geometry/structural integration and thumbnail controls remain planned in [Raster Masks Design](raster-masks-design.md); the full feature is not yet available.
 
 Unit tests stay near their implementation. Shared support lives under `tests/reference/`, ABI rejection fixtures under `tests/fixtures/native-incompatible/`, and historical recording fixtures under `tests/fixtures/replay/`. Keep each binary fixture with its provenance and expected hashes. See [Development](development.md) for commands and `tests/README.md` for shared support.
 

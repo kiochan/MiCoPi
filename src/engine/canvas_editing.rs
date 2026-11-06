@@ -8,6 +8,7 @@ impl Document {
         active: Option<&[u32]>,
         selection: &crate::engine::selection::SelectionState,
     ) -> Result<Vec<u32>, String> {
+        self.require_mask_aware_edit()?;
         self.validate_pixel_transform(active, selection)?;
         let source = |i: usize| {
             if i == self.active {
@@ -88,6 +89,7 @@ impl Document {
         selection: crate::engine::selection::SelectionState,
         info: crate::engine::document_info::Info,
     ) -> Result<(), String> {
+        self.require_mask_aware_edit()?;
         info.validate()?;
         if width == 0
             || height == 0
@@ -124,6 +126,7 @@ impl Document {
             width: self.width,
             height: self.height,
             layers: std::mem::replace(&mut self.layers, layers),
+            mask_planes: std::mem::take(&mut self.mask_planes),
         };
         self.last_transform = None;
         self.document_info = info;
@@ -142,6 +145,9 @@ impl Document {
         pixels: Option<&[u32]>,
         selection: &crate::engine::selection::SelectionState,
     ) -> Result<(), String> {
+        if pixels.is_some() {
+            self.require_mask_aware_edit()?;
+        }
         selection.validate(self.width, self.height)?;
         if let Some(p) = pixels {
             if self.pixel_locked(self.active) {
@@ -198,6 +204,8 @@ impl Document {
                 layer_change: None,
                 layer: self.active,
                 tiles: BTreeMap::new(),
+                mask_tiles: BTreeMap::new(),
+                mask_change: None,
                 composition: None,
                 metadata_bytes: 0,
             }
@@ -212,6 +220,7 @@ impl Document {
     }
     /// Preserve document coordinates within a new frame. Positive offsets move content right/down.
     pub fn reframe(&mut self, width: usize, height: usize, dx: i32, dy: i32) -> Result<(), String> {
+        self.require_mask_aware_edit()?;
         if width == 0
             || height == 0
             || width > MAX_SIDE
@@ -254,6 +263,7 @@ impl Document {
             width: self.width,
             height: self.height,
             layers: std::mem::replace(&mut self.layers, layers),
+            mask_planes: std::mem::take(&mut self.mask_planes),
         };
         self.last_transform = None;
         self.width = width;

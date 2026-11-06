@@ -8,6 +8,7 @@ pub(super) struct GroupPlan {
     pub graph: Option<Graph>,
     pub visible: [bool; MAX_LAYERS],
     pub nodes: BTreeMap<u64, u32>,
+    pub masked_layers: [bool; MAX_LAYERS],
 }
 impl Document {
     pub fn has_groups(&self) -> bool {
@@ -36,6 +37,12 @@ impl Document {
         Ok(())
     }
     pub fn ensure_graph_renderer(&self) -> Result<(), String> {
+        if self.has_raster_masks() {
+            self.validate_mask_storage()?;
+            // Restored metadata can be inspected without a DLL, but editing or
+            // publishing a project must validate the complete generated plan.
+            self.prepare_raster_mask_plan(self.mask_state(), true)?;
+        }
         self.ensure_blend_modes(
             &self.graph,
             self.groups.as_ref(),
@@ -127,22 +134,89 @@ impl Document {
         next: u64,
         require: bool,
     ) -> Result<GroupPlan, String> {
+        let opacities: Vec<_> = metadata
+            .iter()
+            .map(|m| {
+                self.layer_index(m.id)
+                    .map_or(255, |i| self.layers[i].opacity)
+            })
+            .collect();
+        self.prepare_group_plan_with_masks(
+            graph,
+            groups,
+            metadata,
+            modes,
+            &opacities,
+            next,
+            self.mask_state(),
+            require,
+        )
+    }
+    pub(super) fn prepare_group_plan_with_masks(
+        &self,
+        graph: &Graph,
+        groups: Option<&GroupTree>,
+        metadata: &[LayerMetadata],
+        modes: &[BlendMode],
+        opacities: &[u8],
+        next: u64,
+        masks: &super::super::raster_masks::MaskState,
+        require: bool,
+    ) -> Result<GroupPlan, String> {
         if require {
             self.ensure_blend_modes(graph, groups, modes)?;
             self.ensure_mix_capability(graph, groups)?;
         }
         let ids: Vec<_> = metadata.iter().map(|m| m.id).collect();
+        if ids.is_empty()
+            || ids.len() > MAX_LAYERS
+            || modes.len() != ids.len()
+            || opacities.len() != ids.len()
+        {
+            return Err("Layer composition metadata does not match raster identities".into());
+        }
+        let group_ids: Vec<_> =
+            groups.map_or_else(Vec::new, |tree| tree.groups.iter().map(|g| g.id).collect());
+        masks.validate(self.width, self.height, &ids, &group_ids)?;
+        let mask_ids: Vec<_> = masks.items.iter().map(|m| m.id).collect();
+        let mut masked_layers = [false; MAX_LAYERS];
+        if !masks.items.is_empty() {
+            if !graph.linked {
+                return Err("Raster masks require linked layer-filter composition".into());
+            }
+            if require {
+                self.ensure_raster_mask_renderer()?;
+                Self::ensure_raster_mask_properties(masks)?;
+            }
+            for (i, id) in ids.iter().enumerate() {
+                masked_layers[i] = masks.items.iter().any(|m| {
+                    m.enabled && m.owner == super::super::raster_masks::MaskOwner::Layer { id: *id }
+                });
+            }
+        }
         if let Some(tree) = groups {
             if require {
                 self.ensure_group_renderer()?;
             }
             tree.validate(&ids, next)?;
-            let (effective, nodes) = tree.compile_graph_details(graph, &ids, modes)?;
+            let (effective, nodes) =
+                tree.compile_graph_masked_details(graph, &ids, modes, opacities, masks)?;
             Ok(GroupPlan {
-                plan: effective.compile(ids.len())?,
+                plan: effective.compile_with_masks(ids.len(), &mask_ids)?,
                 graph: Some(effective),
                 visible: tree.effective_visibility(&ids),
                 nodes,
+                masked_layers,
+            })
+        } else if !masks.items.is_empty() {
+            let effective =
+                super::mask_composition::masked_flat_graph(graph, &ids, modes, opacities, masks)?;
+            Ok(GroupPlan {
+                plan: effective.compile_with_masks(ids.len(), &mask_ids)?,
+                graph: Some(effective),
+                visible: [true; MAX_LAYERS],
+                nodes: BTreeMap::new(),
+                masked_layers,
             })
         } else {
             Ok(GroupPlan {
@@ -150,6 +224,7 @@ impl Document {
                 graph: None,
                 visible: [true; MAX_LAYERS],
                 nodes: BTreeMap::new(),
+                masked_layers,
             })
         }
     }
@@ -158,6 +233,7 @@ impl Document {
         self.effective_graph = prepared.graph;
         self.group_visibility = prepared.visible;
         self.group_nodes = prepared.nodes;
+        self.masked_layers = prepared.masked_layers;
         self.groups_revision = self.groups_revision.wrapping_add(1);
     }
     pub(super) fn refresh_group_cache(&mut self) -> Result<(), String> {
@@ -496,6 +572,7 @@ impl Document {
         Ok(())
     }
     pub fn group_duplicate(&mut self, id: u64) -> Result<u64, String> {
+        self.require_mask_aware_edit()?;
         self.ensure_group_renderer()?;
         let mut tree = self.tree();
         let source = tree.clone();
@@ -655,7 +732,24 @@ impl Document {
                 .map(|id| self.layer_metadata[self.layer_index(*id).unwrap()].clone())
                 .collect();
             let graph = self.reindexed_graph(&metadata, None)?;
-            let plan = graph.compile(ids.len())?;
+            let modes: Vec<_> = ids
+                .iter()
+                .map(|id| self.layers[self.layer_index(*id).unwrap()].mode)
+                .collect();
+            let opacities: Vec<_> = ids
+                .iter()
+                .map(|id| self.layers[self.layer_index(*id).unwrap()].opacity)
+                .collect();
+            let prepared = self.prepare_group_plan_with_masks(
+                &graph,
+                None,
+                &metadata,
+                &modes,
+                &opacities,
+                self.next_group_id,
+                self.mask_state(),
+                self.has_raster_masks(),
+            )?;
             let order: Vec<_> = ids
                 .iter()
                 .map(|id| self.layer_index(*id).unwrap())
@@ -673,7 +767,7 @@ impl Document {
             self.active = self.layer_index(active_id).unwrap();
             self.normalize_layer_selection();
             self.graph = graph;
-            self.plan = plan;
+            self.install_group_plan(prepared);
             self.track_layer_order();
             self.commit_composition(
                 before,
@@ -694,8 +788,11 @@ impl Document {
         {
             return Err("Invalid raster permutation".into());
         }
-        if self.has_groups() {
-            let tree = self.tree().reordered(ids)?;
+        if self.has_groups() || self.has_raster_masks() {
+            let tree = self
+                .has_groups()
+                .then(|| self.tree().reordered(ids))
+                .transpose()?;
             let metadata: Vec<_> = ids
                 .iter()
                 .map(|id| self.layer_metadata[self.layer_index(*id).unwrap()].clone())
@@ -704,13 +801,19 @@ impl Document {
                 .iter()
                 .map(|id| self.layers[self.layer_index(*id).unwrap()].mode)
                 .collect();
+            let opacities: Vec<_> = ids
+                .iter()
+                .map(|id| self.layers[self.layer_index(*id).unwrap()].opacity)
+                .collect();
             let graph = self.reindexed_graph(&metadata, None)?;
-            self.prepare_group_plan(
+            self.prepare_group_plan_with_masks(
                 &graph,
-                Some(&tree),
+                tree.as_ref(),
                 &metadata,
                 &modes,
+                &opacities,
                 self.next_group_id,
+                self.mask_state(),
                 true,
             )?;
         }

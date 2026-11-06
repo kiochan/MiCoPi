@@ -51,6 +51,7 @@ impl Document {
             return Err("Select between one and sixteen unique existing layer IDs".into());
         }
         let current = self.layer_id(self.active);
+        let explicit_active = active.is_some();
         let active = active.unwrap_or_else(|| {
             if ids.contains(&current) {
                 current
@@ -62,6 +63,9 @@ impl Document {
             return Err("The active layer must belong to the layer selection".into());
         }
         self.active = self.layer_index(active).unwrap();
+        if explicit_active {
+            self.raster_masks.target = super::super::raster_masks::PaintTarget::LayerPixels;
+        }
         self.selected_layer_ids = ids.to_vec();
         self.normalize_layer_selection();
         Ok(())
@@ -69,6 +73,7 @@ impl Document {
     pub fn select_layer(&mut self, index: usize) {
         self.active = index;
         self.selected_layer_ids.clear();
+        self.raster_masks.target = super::super::raster_masks::PaintTarget::LayerPixels;
     }
     pub(super) fn normalize_layer_selection(&mut self) {
         self.selected_layer_ids = (0..self.layers.len())
@@ -104,6 +109,8 @@ impl Document {
             self.undo.push(Edit {
                 layer: self.active,
                 tiles: BTreeMap::new(),
+                mask_tiles: BTreeMap::new(),
+                mask_change: None,
                 composition: None,
                 metadata_bytes: 0,
                 layer_change: None,

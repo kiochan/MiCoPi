@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     fs::{File, OpenOptions},
     io::{Read, Seek, SeekFrom, Write},
     path::{Path, PathBuf},
@@ -18,6 +18,9 @@ use std::{
     },
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
+#[cfg(test)]
+mod mask_tests;
+mod masks;
 
 pub const MAGIC: &[u8; 8] = b"MCRPLY02";
 pub const MAX_ARCHIVE: usize = 1024 * 1024 * 1024;
@@ -108,6 +111,24 @@ impl Metadata {
             .selection
             .validate(self.width, self.height)
             .map_err(bad)?;
+        if !self.composition.raster_masks.is_default() {
+            let layers: Vec<_> = self
+                .composition
+                .layer_metadata
+                .iter()
+                .map(|layer| layer.id)
+                .collect();
+            let groups: Vec<_> = self
+                .composition
+                .groups
+                .as_ref()
+                .map(|tree| tree.groups.iter().map(|group| group.id).collect())
+                .unwrap_or_default();
+            self.composition
+                .raster_masks
+                .validate(self.width, self.height, &layers, &groups)
+                .map_err(bad)?;
+        }
         self.composition.workflow.validate_structure()?;
         Parameters::default().patched(&serde_json::to_value(&self.parameters)?)?;
         Ok(())
@@ -207,6 +228,7 @@ pub struct State {
     pub metadata: Metadata,
     layers: Vec<Vec<Cell>>,
     surface: Vec<Cell>,
+    masks: masks::Grids,
 }
 impl State {
     pub(crate) fn restore_document(&self, doc: &mut Document) {
@@ -238,6 +260,11 @@ impl State {
         }
         doc.active = m.active;
         doc.restore_composition(m.composition.clone());
+        doc.restore_mask_storage(
+            &m.composition.raster_masks,
+            |id| masks::uniform(&self.masks[&id]),
+            |id, output| masks::fill(&self.masks[&id], m, output),
+        );
         doc.dirty = m.dirty;
         doc.render_error = m.render_error.clone();
         doc.composite.resize(m.width * m.height, 0);
@@ -257,6 +284,11 @@ impl State {
         doc.replay_tiles = (0..self.layers.len())
             .flat_map(|l| (0..m.count()).map(move |t| (l, t)))
             .collect();
+        doc.replay_mask_tiles = self
+            .masks
+            .keys()
+            .flat_map(|id| (0..m.count()).map(move |tile| (*id, tile)))
+            .collect();
     }
     pub fn digest(&self) -> Hash {
         let mut h = Sha256::new();
@@ -264,6 +296,17 @@ impl State {
         for grid in self.layers.iter().chain(std::iter::once(&self.surface)) {
             for c in grid {
                 h.update(c.digest);
+            }
+        }
+        if !self.masks.is_empty() {
+            h.update(b"MiCoPi/A8-state/v1\0");
+            h.update((self.masks.len() as u32).to_le_bytes());
+            for (id, grid) in &self.masks {
+                h.update(id.to_le_bytes());
+                h.update((grid.len() as u32).to_le_bytes());
+                for cell in grid {
+                    h.update(cell.digest);
+                }
             }
         }
         h.finalize().into()
@@ -331,6 +374,20 @@ impl State {
         if (doc.width, doc.height, doc.active) != (m.width, m.height, m.active)
             || composition != m.composition
         {
+            return false;
+        }
+        if doc.validate_mask_storage().is_err()
+            || self.masks.len() != m.composition.raster_masks.items.len()
+        {
+            return false;
+        }
+        if !self.masks.iter().all(|(id, grid)| {
+            grid.iter().enumerate().all(|(tile, cell)| {
+                doc.mask_plane(*id).is_ok_and(|plane| {
+                    masks::Block::read(plane, m, tile).cell().digest == cell.digest
+                })
+            })
+        }) {
             return false;
         }
         self.layers.iter().zip(&doc.layers).all(|(grid, layer)| {
@@ -416,6 +473,14 @@ pub struct Event {
     metadata_delta: Option<Value>,
     replace: bool,
     changes: Vec<Change>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    mask_version: Option<u32>,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "masks::deserialize_changes"
+    )]
+    mask_changes: Vec<masks::Change>,
 }
 impl Event {
     fn metadata(&self, previous: Option<&State>) -> Result<Metadata, ActionError> {
@@ -499,17 +564,34 @@ impl Event {
                 }
             }
         }
+        masks::compact(&mut self.mask_changes, Some(previous), current);
         Ok(())
     }
     fn apply(&self, previous: Option<&State>) -> Result<State, ActionError> {
         let metadata = self.metadata(previous)?;
         metadata.validate()?;
+        let masks_used = !metadata.composition.raster_masks.is_default()
+            || previous.is_some_and(|state| !state.metadata.composition.raster_masks.is_default());
+        if self.mask_version != masks_used.then_some(1)
+            || !masks_used && !self.mask_changes.is_empty()
+        {
+            return Err(bad("Missing, unsupported or redundant A8 replay extension"));
+        }
+        if previous.is_some_and(|state| {
+            state.metadata.composition.raster_masks.next_id
+                > metadata.composition.raster_masks.next_id
+        }) {
+            return Err(bad("Mask allocator moved backwards"));
+        }
         if self.before != previous.map(State::digest).unwrap_or([0; 32]) {
             return Err(bad("Replay state before-hash mismatch"));
         }
         let m = &metadata;
         let count = m.count();
         let n = m.composition.layers.len();
+        if self.mask_changes.len() > m.composition.raster_masks.items.len() * count {
+            return Err(bad("Too many A8 tile changes for this frame"));
+        }
         let empty = Cell {
             block: Arc::new(Block { pixels: vec![] }),
             digest: [0; 32],
@@ -519,6 +601,7 @@ impl Event {
                 metadata: m.clone(),
                 layers: vec![vec![empty.clone(); count]; n],
                 surface: vec![empty; count],
+                masks: BTreeMap::new(),
             }
         } else {
             let old = previous.ok_or_else(|| bad("Missing replay genesis"))?;
@@ -532,6 +615,7 @@ impl Event {
             next.metadata = m.clone();
             next
         };
+        state.masks = masks::seed(previous, m);
         let mut seen = BTreeSet::new();
         let mut resolved = Vec::with_capacity(self.changes.len());
         for change in &self.changes {
@@ -547,11 +631,26 @@ impl Event {
                 state.layers[change.layer][change.tile] = cell;
             }
         }
+        let mut mask_seen = BTreeSet::new();
+        let mut mask_resolved = Vec::with_capacity(self.mask_changes.len());
+        let mask_previous = masks::same_dimensions(previous, m).map(|old| &old.masks);
+        for change in &self.mask_changes {
+            if change.tile >= count
+                || !state.masks.contains_key(&change.mask_id)
+                || !mask_seen.insert((change.mask_id, change.tile))
+            {
+                return Err(bad("Invalid or duplicate A8 replay tile"));
+            }
+            let cell = change.resolve(mask_previous, &mask_resolved, m)?;
+            mask_resolved.push(cell.clone());
+            state.masks.get_mut(&change.mask_id).unwrap()[change.tile] = cell;
+        }
         if state
             .layers
             .iter()
             .chain(std::iter::once(&state.surface))
             .any(|grid| grid.iter().any(|c| c.block.pixels.is_empty()))
+            || !masks::complete(&state.masks, m)
             || state.digest() != self.after
         {
             return Err(bad("Replay state after-hash mismatch"));
@@ -671,6 +770,7 @@ impl Journal {
                 metadata: metadata.clone(),
                 layers: vec![],
                 surface: vec![],
+                masks: BTreeMap::new(),
             },
             head: [0; 32],
             length: 8,
@@ -701,6 +801,20 @@ impl Journal {
         error: Option<String>,
     ) -> Result<Prepared, ActionError> {
         metadata.validate()?;
+        doc.validate_mask_storage().map_err(bad)?;
+        if (metadata.width, metadata.height) != (doc.width, doc.height)
+            || metadata.composition.raster_masks != *doc.mask_state()
+        {
+            return Err(bad(
+                "Recording metadata differs from the raw A8 document frame",
+            ));
+        }
+        if !self.entries.is_empty()
+            && self.state.metadata.composition.raster_masks.next_id
+                > metadata.composition.raster_masks.next_id
+        {
+            return Err(bad("Mask allocator moved backwards"));
+        }
         doc.compose();
         if let Some(error) = &doc.render_error {
             return Err(ActionError::new(
@@ -773,6 +887,44 @@ impl Journal {
                 });
             }
         }
+        let mut mask_changes = vec![];
+        let mask_previous = masks::same_dimensions(Some(&self.state), &metadata);
+        let mut mask_touched = std::mem::take(&mut doc.replay_mask_tiles);
+        for mask in &metadata.composition.raster_masks.items {
+            if self.entries.is_empty()
+                || mask_previous.is_none_or(|state| !state.masks.contains_key(&mask.id))
+            {
+                mask_touched.extend((0..count).map(|tile| (mask.id, tile)));
+            }
+        }
+        for (mask_id, tile) in mask_touched {
+            if tile >= count
+                || !metadata
+                    .composition
+                    .raster_masks
+                    .items
+                    .iter()
+                    .any(|mask| mask.id == mask_id)
+            {
+                continue;
+            }
+            let block = masks::Block::read(doc.mask_plane(mask_id).map_err(bad)?, &metadata, tile);
+            if mask_previous
+                .and_then(|state| state.masks.get(&mask_id)?.get(tile))
+                .is_none_or(|old| hash(&block.bytes) != old.digest)
+            {
+                mask_changes.push(masks::Change {
+                    mask_id,
+                    tile,
+                    block: Some(block),
+                    reuse: None,
+                    xor: false,
+                });
+            }
+        }
+        let mask_version = (!metadata.composition.raster_masks.is_default()
+            || !self.state.metadata.composition.raster_masks.is_default())
+        .then_some(1);
         let mut event = Event {
             sequence: self.entries.len(),
             elapsed_ms: self
@@ -787,6 +939,8 @@ impl Journal {
             metadata_delta: None,
             replace,
             changes,
+            mask_version,
+            mask_changes,
         };
         let empty = Cell {
             block: Arc::new(Block { pixels: vec![0] }),
@@ -797,12 +951,21 @@ impl Journal {
                 metadata,
                 layers: vec![vec![empty.clone(); count]; n],
                 surface: vec![empty; count],
+                masks: BTreeMap::new(),
             }
         } else {
             let mut s = self.state.clone();
             s.metadata = metadata;
             s
         };
+        state.masks = masks::seed(
+            if self.entries.is_empty() {
+                None
+            } else {
+                Some(&self.state)
+            },
+            &state.metadata,
+        );
         for change in &event.changes {
             let block = change.block.as_ref().unwrap();
             let cell = Cell {
@@ -814,6 +977,13 @@ impl Journal {
             } else {
                 state.layers[change.layer][change.tile] = cell;
             }
+        }
+        for change in &event.mask_changes {
+            let cell = change.block.as_ref().unwrap().clone().cell();
+            state.masks.get_mut(&change.mask_id).unwrap()[change.tile] = cell;
+        }
+        if !masks::complete(&state.masks, &state.metadata) {
+            return Err(bad("Incomplete A8 recording snapshot"));
         }
         event.after = state.digest();
         event.compact(&self.state, &mut state)?;
@@ -934,7 +1104,12 @@ impl Journal {
         for i in start..self.entries.len().min(start.saturating_add(limit.min(256))) {
             let e = self.event(i)?;
             let summary = &self.entries[i];
-            out.push(json!({"sequence":i,"elapsed_ms":e.elapsed_ms,"source":e.source,"success":e.success,"error":e.error,"before":hex(&e.before),"after":hex(&e.after),"hash":hex(&summary.hash),"visual":summary.visual,"changed_tiles":e.changes.len()}));
+            let mut row = json!({"sequence":i,"elapsed_ms":e.elapsed_ms,"source":e.source,"success":e.success,"error":e.error,"before":hex(&e.before),"after":hex(&e.after),"hash":hex(&summary.hash),"visual":summary.visual,"changed_tiles":e.changes.len()});
+            if let Some(version) = e.mask_version {
+                row["mask_version"] = json!(version);
+                row["changed_mask_tiles"] = json!(e.mask_changes.len());
+            }
+            out.push(row);
         }
         Ok(json!({"events":out,"total":self.entries.len()}))
     }
@@ -1010,6 +1185,8 @@ impl Journal {
             if legacy
                 && (event.metadata.is_none()
                     || event.metadata_delta.is_some()
+                    || event.mask_version.is_some()
+                    || !event.mask_changes.is_empty()
                     || event
                         .changes
                         .iter()

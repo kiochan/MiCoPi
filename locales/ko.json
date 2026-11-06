@@ -1333,5 +1333,13 @@
   "Select between two and sixteen unique existing layer IDs to merge": "병합할 기존 레이어 ID를 중복 없이 2~16개 지정하세요.",
   "Selected-layer merge requires linked layer composition; use Flatten Image to bake a free graph": "선택 레이어 병합에는 레이어 연동 합성이 필요합니다. 자유 합성 그래프를 굽기 위해서는 이미지 병합을 사용하세요.",
   "Selected merge exceeds the document pixel limit": "선택 레이어 병합이 문서 픽셀 한도를 초과합니다.",
-  "Selected merge review requires the desktop; use layer.merge_selected.plan and layer.merge_selected for headless editing": "병합 검토 UI는 데스크톱 전용입니다. 헤드리스 편집에는 layer.merge_selected.plan과 layer.merge_selected를 사용하세요."
+  "Selected merge review requires the desktop; use layer.merge_selected.plan and layer.merge_selected for headless editing": "병합 검토 UI는 데스크톱 전용입니다. 헤드리스 편집에는 layer.merge_selected.plan과 layer.merge_selected를 사용하세요.",
+  "Mask": "마스크",
+  "Coverage": "커버리지",
+  "Apply Mask": "마스크 적용",
+  "Masked Backdrop Mix": "마스크 배경 혼합",
+  "Raw A8 Coverage": "원본 A8 커버리지",
+  "This operation requires mask-aware editing support; the document and raster masks are unchanged": "이 작업은 아직 마스크 편집을 지원하지 않습니다. 문서와 래스터 마스크는 변경되지 않았습니다",
+  "Raster masks require linked layer/filter composition": "래스터 마스크에는 연결된 레이어 및 필터 합성이 필요합니다",
+  "Select a layer to edit its pixels; document mask painting is not available yet": "픽셀을 편집할 레이어를 선택하세요. 문서 마스크 그리기는 아직 사용할 수 없습니다"
 }

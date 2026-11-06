@@ -11,12 +11,12 @@ pub(crate) fn is_project(path: &Path) -> Result<bool, ActionError> {
     std::fs::File::open(path)?
         .take(8)
         .read_to_end(&mut header)?;
-    Ok(
-        matches!(header.as_slice(), b"MICOPI01" | b"MICOPI02" | b"MICOPI03")
-            || path
-                .extension()
-                .is_some_and(|e| e.eq_ignore_ascii_case("mcp")),
-    )
+    Ok(matches!(
+        header.as_slice(),
+        b"MICOPI01" | b"MICOPI02" | b"MICOPI03" | b"MICOPI04"
+    ) || path
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("mcp")))
 }
 pub fn open(path: &Path) -> Result<Document, ActionError> {
     if is_project(path)? {

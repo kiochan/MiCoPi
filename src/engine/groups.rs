@@ -310,8 +310,29 @@ impl GroupTree {
         ids: &[u64],
         modes: &[BlendMode],
     ) -> Result<(Graph, BTreeMap<u64, u32>), String> {
+        self.compile_graph_masked_details(
+            source,
+            ids,
+            modes,
+            &vec![255; ids.len()],
+            &super::raster_masks::MaskState::default(),
+        )
+    }
+    /// Generated actual composition uses stable mask IDs; the source linked
+    /// graph continues to own only raster/filter/blend identities.
+    pub fn compile_graph_masked_details(
+        &self,
+        source: &Graph,
+        ids: &[u64],
+        modes: &[BlendMode],
+        opacities: &[u8],
+        masks: &super::raster_masks::MaskState,
+    ) -> Result<(Graph, BTreeMap<u64, u32>), String> {
         if !source.linked {
             return Err("Groups require linked layer-filter composition".into());
+        }
+        if modes.len() != ids.len() || opacities.len() != ids.len() {
+            return Err("Layer composition metadata does not match raster identities".into());
         }
         let branches = source.stack_branches(ids.len())?;
         let mut graph = Graph {
@@ -340,12 +361,56 @@ impl GroupTree {
         let zero_id = zero.id;
         graph.nodes.push(zero);
         let mut group_nodes = BTreeMap::new();
+        fn coverage(
+            masks: &super::raster_masks::MaskState,
+            owner: super::raster_masks::MaskOwner,
+            graph: &mut Graph,
+            next: &mut u64,
+        ) -> Result<Option<u32>, String> {
+            let Some(mask) = masks.items.iter().find(|m| m.owner == owner && m.enabled) else {
+                return Ok(None);
+            };
+            let node = fresh(
+                next,
+                NodeKind::MaskSource { mask_id: mask.id },
+                "mask_source",
+            )?;
+            let id = node.id;
+            graph.nodes.push(node);
+            Ok(Some(id))
+        }
+        fn apply(
+            image: u32,
+            coverage: u32,
+            opacity: f32,
+            graph: &mut Graph,
+            next: &mut u64,
+        ) -> Result<u32, String> {
+            let node = fresh(next, NodeKind::ApplyMask { opacity }, "apply_mask")?;
+            graph.edges.extend([
+                Edge {
+                    from: image,
+                    to: node.id,
+                    input: 0,
+                },
+                Edge {
+                    from: coverage,
+                    to: node.id,
+                    input: 1,
+                },
+            ]);
+            let id = node.id;
+            graph.nodes.push(node);
+            Ok(id)
+        }
         fn build(
             tree: &GroupTree,
             items: &[GroupItem],
             source: &Graph,
             ids: &[u64],
             modes: &[BlendMode],
+            opacities: &[u8],
+            masks: &super::raster_masks::MaskState,
             branches: &[super::linked_graph::Branch],
             graph: &mut Graph,
             next: &mut u64,
@@ -364,6 +429,8 @@ impl GroupTree {
                             source,
                             ids,
                             modes,
+                            opacities,
+                            masks,
                             branches,
                             graph,
                             next,
@@ -371,16 +438,25 @@ impl GroupTree {
                             last,
                             group_nodes,
                         )?;
+                        let mask = coverage(
+                            masks,
+                            super::raster_masks::MaskOwner::Group { id: g.id },
+                            graph,
+                            next,
+                        )?;
+                        let opacity = if g.visible {
+                            g.opacity as f32 / 255.
+                        } else {
+                            0.
+                        };
                         let mix = fresh(
                             next,
-                            NodeKind::Mix {
-                                opacity: if g.visible {
-                                    g.opacity as f32 / 255.
-                                } else {
-                                    0.
-                                },
+                            if mask.is_some() {
+                                NodeKind::MaskedMix { opacity }
+                            } else {
+                                NodeKind::Mix { opacity }
                             },
-                            "mix",
+                            if mask.is_some() { "masked_mix" } else { "mix" },
                         )?;
                         group_nodes.insert(g.id, mix.id);
                         graph.edges.extend([
@@ -395,6 +471,13 @@ impl GroupTree {
                                 input: 1,
                             },
                         ]);
+                        if let Some(mask) = mask {
+                            graph.edges.push(Edge {
+                                from: mask,
+                                to: mix.id,
+                                input: 2,
+                            });
+                        }
                         last = mix.id;
                         graph.nodes.push(mix);
                         continue;
@@ -420,31 +503,48 @@ impl GroupTree {
                                 graph.nodes.push(filter.clone());
                             }
                         }
+                        if let Some(mask) = coverage(
+                            masks,
+                            super::raster_masks::MaskOwner::Layer { id: item.id },
+                            graph,
+                            next,
+                        )? {
+                            head = apply(head, mask, opacities[index] as f32 / 255., graph, next)?;
+                        }
                         (head, modes[index], 1.)
                     }
                     ItemKind::Group => {
                         let g = tree.group(item.id)?;
-                        (
-                            build(
-                                tree,
-                                &g.children,
-                                source,
-                                ids,
-                                modes,
-                                branches,
-                                graph,
-                                next,
-                                zero,
-                                zero,
-                                group_nodes,
-                            )?,
-                            g.blend_mode,
-                            if g.visible {
-                                g.opacity as f32 / 255.
-                            } else {
-                                0.
-                            },
-                        )
+                        let head = build(
+                            tree,
+                            &g.children,
+                            source,
+                            ids,
+                            modes,
+                            opacities,
+                            masks,
+                            branches,
+                            graph,
+                            next,
+                            zero,
+                            zero,
+                            group_nodes,
+                        )?;
+                        let opacity = if g.visible {
+                            g.opacity as f32 / 255.
+                        } else {
+                            0.
+                        };
+                        if let Some(mask) = coverage(
+                            masks,
+                            super::raster_masks::MaskOwner::Group { id: g.id },
+                            graph,
+                            next,
+                        )? {
+                            (apply(head, mask, opacity, graph, next)?, g.blend_mode, 1.)
+                        } else {
+                            (head, g.blend_mode, opacity)
+                        }
                     }
                 };
                 let blend = fresh(next, NodeKind::Blend { mode, opacity }, "blend")?;
@@ -474,6 +574,8 @@ impl GroupTree {
             source,
             ids,
             modes,
+            opacities,
+            masks,
             &branches,
             &mut graph,
             &mut next,
@@ -502,18 +604,64 @@ impl GroupTree {
                 .filter_map(|e| layout.get(&e.from).copied())
                 .collect::<Vec<(usize, f32)>>();
             let column = inputs.iter().map(|v| v.0 + 1).max().unwrap_or(0);
+            let mask_owner = if let NodeKind::MaskSource { mask_id } = node.data {
+                masks
+                    .items
+                    .iter()
+                    .find(|mask| mask.id == mask_id)
+                    .map(|mask| mask.owner)
+            } else {
+                None
+            };
             let row = match node.data {
                 NodeKind::Layer { index } => index as f32 * 240.,
                 NodeKind::Transparent => -160.,
+                NodeKind::MaskSource { .. } => match mask_owner {
+                    Some(super::raster_masks::MaskOwner::Layer { id }) => ids
+                        .iter()
+                        .position(|value| *value == id)
+                        .map_or(0., |index| index as f32 * 240. + 140.),
+                    Some(super::raster_masks::MaskOwner::Group { id }) => {
+                        let indices: Vec<_> = self
+                            .descendants(GroupItem::group(id))?
+                            .iter()
+                            .filter_map(|id| ids.iter().position(|value| value == id))
+                            .collect();
+                        let mut depth = 0;
+                        let mut parent = self.parent(GroupItem::group(id))?;
+                        while parent != 0 {
+                            depth += 1;
+                            parent = self.parent(GroupItem::group(parent))?;
+                        }
+                        indices
+                            .iter()
+                            .map(|index| *index as f32 * 240.)
+                            .sum::<f32>()
+                            / (indices.len().max(1) as f32)
+                            + 140.
+                            + depth as f32 * 140.
+                    }
+                    None => 0.,
+                },
                 _ if !inputs.is_empty() => {
                     inputs.iter().map(|v| v.1).sum::<f32>() / inputs.len() as f32
                 }
                 _ => 0.,
             };
-            node.position = [column as f32 * 260., row];
+            node.position = [
+                match mask_owner {
+                    Some(super::raster_masks::MaskOwner::Layer { .. }) => -260.,
+                    Some(super::raster_masks::MaskOwner::Group { .. }) => -520.,
+                    None => column as f32 * 260.,
+                },
+                row,
+            ];
             layout.insert(node.id, (column, row));
         }
-        graph.compile(ids.len())?;
+        graph.compile_with_masks(
+            ids.len(),
+            &masks.items.iter().map(|mask| mask.id).collect::<Vec<_>>(),
+        )?;
         Ok((graph, group_nodes))
     }
     pub fn memory_bytes(&self) -> usize {

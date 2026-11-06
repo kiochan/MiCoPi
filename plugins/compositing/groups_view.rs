@@ -151,7 +151,7 @@ impl EffectiveView {
             }
         });
         ui.weak(tr("Groups and layer filters are shown as they are composed. Edit layer filters in Layer Filters; edit groups in Layers."));
-        if !self.renderer {
+        if !self.renderer && !self.names.is_empty() {
             ui.colored_label(
                 ui.visuals().warn_fg_color,
                 tr("Group rendering requires a compatible compositor."),
@@ -238,6 +238,9 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
         if let NodeKind::Layer { index } = node.data {
             return self.document.layer_name(index);
         }
+        if let NodeKind::MaskSource { mask_id } = node.data {
+            return format!("{} #{mask_id}", localize("Mask"));
+        }
         localize(node.data.title())
     }
     fn show_header(
@@ -263,7 +266,19 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
     }
     fn show_input(&mut self, pin: &InPin, ui: &mut Ui, snarl: &mut Snarl<Node>) -> PinInfo {
         ui.label(tr(
-            if matches!(snarl[pin.id.node].data, NodeKind::Mix { .. }) {
+            if matches!(snarl[pin.id.node].data, NodeKind::MaskedMix { .. }) {
+                match pin.id.input {
+                    0 => "Before",
+                    1 => "After",
+                    _ => "Coverage",
+                }
+            } else if matches!(snarl[pin.id.node].data, NodeKind::ApplyMask { .. }) {
+                if pin.id.input == 0 {
+                    "Image"
+                } else {
+                    "Coverage"
+                }
+            } else if matches!(snarl[pin.id.node].data, NodeKind::Mix { .. }) {
                 if pin.id.input == 0 {
                     "Before"
                 } else {
@@ -281,8 +296,14 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
         ));
         PinInfo::circle().with_fill(ui.visuals().selection.stroke.color)
     }
-    fn show_output(&mut self, _: &OutPin, ui: &mut Ui, _: &mut Snarl<Node>) -> PinInfo {
-        ui.label(tr("Image"));
+    fn show_output(&mut self, pin: &OutPin, ui: &mut Ui, snarl: &mut Snarl<Node>) -> PinInfo {
+        ui.label(tr(
+            if matches!(snarl[pin.id.node].data, NodeKind::MaskSource { .. }) {
+                "Coverage"
+            } else {
+                "Image"
+            },
+        ));
         PinInfo::circle().with_fill(ui.visuals().selection.stroke.color)
     }
     fn has_body(&mut self, _: &Node) -> bool {
@@ -349,6 +370,14 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
                         ui.label(format!("{:.0}%", opacity * 100.));
                     }
                 }
+                NodeKind::MaskSource { .. } => {
+                    ui.weak(tr("Raw A8 Coverage"));
+                }
+                NodeKind::ApplyMask { opacity } | NodeKind::MaskedMix { opacity } => {
+                    if !self.names.contains_key(&snarl[id].id) {
+                        ui.label(format!("{}: {:.0}%", localize("Opacity"), opacity * 100.));
+                    }
+                }
                 NodeKind::Output => {
                     ui.weak(tr("Canvas Output"));
                 }
@@ -371,7 +400,7 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
 mod tests {
     use super::*;
     use crate::desktop::tests::studio;
-    fn fixture() -> (Studio, u64) {
+    fn ungrouped_fixture() -> Studio {
         let mut app = studio();
         app.editor.session = crate::application::Session::new(
             crate::plugins::Registry::load(
@@ -384,6 +413,10 @@ mod tests {
             .editor
             .core("canvas.new", json!({"width":12,"height":8})));
         assert!(app.editor.core("layer.add", json!({})));
+        app
+    }
+    fn fixture() -> (Studio, u64) {
+        let mut app = ungrouped_fixture();
         let ids = app.editor.session.doc.selected_layer_ids();
         let group = app
             .editor
@@ -691,6 +724,185 @@ mod tests {
             );
         }
         assert_eq!(app.editor.session.state(), state);
+        assert_eq!(app.editor.session.doc.history_bytes(), history);
+    }
+    #[test]
+    fn generated_mask_gates_keep_typed_coverage_wires_and_refresh_without_editing() {
+        use crate::engine::raster_masks::MaskOwner;
+        let (mut app, group) = fixture();
+        assert!(app.editor.core(
+            "group.set",
+            json!({"group_id":group,"compositing":"pass_through","opacity":0.5})
+        ));
+        let layer_id = app.editor.session.doc.layer_id(1);
+        let layer_mask = app
+            .editor
+            .session
+            .doc
+            .create_mask(MaskOwner::Layer { id: layer_id }, 192)
+            .unwrap();
+        let group_mask = app
+            .editor
+            .session
+            .doc
+            .create_mask(MaskOwner::Group { id: group }, 128)
+            .unwrap();
+        let state = app.editor.session.state();
+        let source = app.editor.session.doc.graph.clone();
+        let history = app.editor.session.doc.history_bytes();
+        let mut view = EffectiveView::default();
+        view.refresh(&mut app.editor);
+        assert!(view.error.is_empty(), "{}", view.error);
+        let effective = app.editor.session.doc.effective_graph().unwrap();
+        assert_eq!(view.snarl.nodes().count(), effective.nodes.len());
+        assert_eq!(view.snarl.wires().count(), effective.edges.len());
+        let ids: BTreeMap<_, _> = view
+            .snarl
+            .node_ids()
+            .map(|(id, node)| (node.id, id))
+            .collect();
+        let mut viewer = EffectiveViewer {
+            document: &app.editor.session.doc,
+            names: &view.names,
+            width: 160.,
+            viewport: Rect::EVERYTHING,
+            fit: false,
+        };
+        for node in &effective.nodes {
+            assert_eq!(viewer.inputs(node), node.data.inputs());
+            assert_eq!(
+                viewer.outputs(node),
+                usize::from(!matches!(node.data, NodeKind::Output))
+            );
+            if let NodeKind::MaskSource { mask_id } = node.data {
+                assert_eq!(
+                    viewer.title(node),
+                    format!("{} #{mask_id}", localize("Mask"))
+                );
+            }
+        }
+        for (kind, input) in [
+            (NodeKind::ApplyMask { opacity: 1. }, 1),
+            (NodeKind::MaskedMix { opacity: 1. }, 2),
+        ] {
+            let target = effective
+                .nodes
+                .iter()
+                .find(|node| std::mem::discriminant(&node.data) == std::mem::discriminant(&kind))
+                .unwrap();
+            let edge = effective
+                .edges
+                .iter()
+                .find(|edge| edge.to == target.id && edge.input == input)
+                .unwrap();
+            assert!(view.snarl.wires().any(|(from, to)| {
+                from.node == ids[&edge.from]
+                    && to.node == ids[&target.id]
+                    && to.input == input as usize
+            }));
+            assert!(matches!(
+                effective
+                    .nodes
+                    .iter()
+                    .find(|node| node.id == edge.from)
+                    .unwrap()
+                    .data,
+                NodeKind::MaskSource { .. }
+            ));
+        }
+        assert_eq!(app.editor.session.state(), state);
+        assert_eq!(app.editor.session.doc.graph, source);
+        assert_eq!(app.editor.session.doc.history_bytes(), history);
+        for id in [layer_mask, group_mask] {
+            let mut metadata = app
+                .editor
+                .session
+                .doc
+                .mask_state()
+                .items
+                .iter()
+                .find(|mask| mask.id == id)
+                .unwrap()
+                .clone();
+            metadata.enabled = false;
+            app.editor
+                .session
+                .doc
+                .update_mask_metadata(metadata)
+                .unwrap();
+        }
+        view.refresh(&mut app.editor);
+        assert!(view.error.is_empty(), "{}", view.error);
+        assert!(!view.snarl.nodes().any(|node| matches!(
+            node.data,
+            NodeKind::MaskSource { .. } | NodeKind::ApplyMask { .. } | NodeKind::MaskedMix { .. }
+        )));
+        assert!(view
+            .snarl
+            .nodes()
+            .any(|node| matches!(node.data, NodeKind::Mix { .. })));
+        assert_eq!(
+            app.editor
+                .session
+                .doc
+                .mask_plane(layer_mask)
+                .unwrap()
+                .sample(0),
+            192
+        );
+        assert_eq!(
+            app.editor
+                .session
+                .doc
+                .mask_plane(group_mask)
+                .unwrap()
+                .sample(0),
+            128
+        );
+    }
+    #[test]
+    fn flat_masks_open_actual_composition_without_replacing_the_editable_source() {
+        let mut app = ungrouped_fixture();
+        app.editor
+            .session
+            .doc
+            .create_mask(crate::engine::raster_masks::MaskOwner::Layer { id: 1 }, 128)
+            .unwrap();
+        assert!(!app.editor.session.doc.has_groups());
+        let state = app.editor.session.state();
+        let source = app.editor.session.doc.graph.clone();
+        let history = app.editor.session.doc.history_bytes();
+        let ctx = Context::default();
+        theme::fonts(&ctx);
+        theme::apply(&ctx, &app.editor.settings.ui);
+        for frame in 0..4 {
+            let _ = ctx.run(
+                RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1100., 800.))),
+                    time: Some(frame as f64),
+                    ..Default::default()
+                },
+                |ctx| {
+                    CentralPanel::default().show(ctx, |ui| app.editor.nodes_ui(ui));
+                },
+            );
+        }
+        assert!(!app.editor.nodes.layer_filters);
+        let shown = &app.editor.nodes.effective.snarl;
+        assert!(shown
+            .nodes()
+            .any(|node| matches!(node.data, NodeKind::MaskSource { mask_id: 1 })));
+        assert!(shown
+            .nodes()
+            .any(|node| matches!(node.data, NodeKind::ApplyMask { .. })));
+        assert!(!shown
+            .nodes()
+            .any(|node| matches!(node.data, NodeKind::Transparent)));
+        let effective = app.editor.session.doc.effective_graph().unwrap();
+        assert_eq!(shown.nodes().count(), effective.nodes.len());
+        assert_eq!(shown.wires().count(), effective.edges.len());
+        assert_eq!(app.editor.session.state(), state);
+        assert_eq!(app.editor.session.doc.graph, source);
         assert_eq!(app.editor.session.doc.history_bytes(), history);
     }
 }

@@ -3,6 +3,9 @@ use micopi_plugin_api as abi;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 pub const MAX_NODES: usize = 64;
+#[cfg(test)]
+#[path = "mask_graph_tests.rs"]
+mod mask_graph_tests;
 pub fn schema() -> serde_json::Value {
     use serde_json::json;
     let id = json!({"type":"integer","minimum":0,"maximum":4294967295u64});
@@ -10,11 +13,12 @@ pub fn schema() -> serde_json::Value {
         "enabled":{"type":"boolean"},"linked":{"type":"boolean","default":false,"description":"A validated layer-stack chain; structural layer edits keep its branches synchronized"},
         "nodes":{"type":"array","maxItems":64,"items":{"type":"object","required":["id","position","kind"],"additionalProperties":false,"properties":{
             "node_type":{"type":"string"},"id":id,"position":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-1000000,"maximum":1000000}},
-            "kind":{"type":"string","enum":["layer","filter","blend","mix","output","transparent"]},"index":{"type":"integer","minimum":0,"maximum":15},
+            "kind":{"type":"string","enum":["layer","filter","blend","mix","output","transparent","mask_source","apply_mask","masked_mix"]},"index":{"type":"integer","minimum":0,"maximum":15},
+            "mask_id":{"type":"integer","minimum":1,"maximum":4294967295u64},
             "filter":{"type":"string","enum":Filter::ALL},"amount":{"type":"number","minimum":-1,"maximum":1},
             "mode":{"type":"string","enum":BlendMode::ALL},"opacity":{"type":"number","minimum":0,"maximum":1}
         }}},
-        "edges":{"type":"array","maxItems":128,"items":{"type":"object","required":["from","to","input"],"additionalProperties":false,"properties":{"from":id,"to":id,"input":{"type":"integer","minimum":0,"maximum":1}}}}
+        "edges":{"type":"array","maxItems":192,"items":{"type":"object","required":["from","to","input"],"additionalProperties":false,"properties":{"from":id,"to":id,"input":{"type":"integer","minimum":0,"maximum":2}}}}
     }})
 }
 
@@ -254,15 +258,45 @@ pub enum NodeKind {
     Filter { filter: Filter, amount: f32 },
     Blend { mode: BlendMode, opacity: f32 },
     Mix { opacity: f32 },
+    MaskSource { mask_id: u64 },
+    ApplyMask { opacity: f32 },
+    MaskedMix { opacity: f32 },
     Output,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PortDomain {
+    Image,
+    Coverage,
 }
 impl NodeKind {
     pub fn inputs(&self) -> usize {
         match self {
-            Self::Layer { .. } | Self::Transparent => 0,
-            Self::Blend { .. } | Self::Mix { .. } => 2,
+            Self::Layer { .. } | Self::Transparent | Self::MaskSource { .. } => 0,
+            Self::Blend { .. } | Self::Mix { .. } | Self::ApplyMask { .. } => 2,
+            Self::MaskedMix { .. } => 3,
             _ => 1,
         }
+    }
+    pub fn output_domain(&self) -> PortDomain {
+        if matches!(self, Self::MaskSource { .. }) {
+            PortDomain::Coverage
+        } else {
+            PortDomain::Image
+        }
+    }
+    pub fn input_domain(&self, port: usize) -> Option<PortDomain> {
+        if port >= self.inputs() {
+            return None;
+        }
+        Some(
+            if matches!(self, Self::ApplyMask { .. }) && port == 1
+                || matches!(self, Self::MaskedMix { .. }) && port == 2
+            {
+                PortDomain::Coverage
+            } else {
+                PortDomain::Image
+            },
+        )
     }
     pub fn title(&self) -> String {
         match self {
@@ -271,6 +305,9 @@ impl NodeKind {
             Self::Filter { filter, .. } => filter.title().into(),
             Self::Blend { mode, .. } => format!("Blend · {}", mode.title()),
             Self::Mix { .. } => "Backdrop Mix".into(),
+            Self::MaskSource { mask_id } => format!("Mask #{mask_id}"),
+            Self::ApplyMask { .. } => "Apply Mask".into(),
+            Self::MaskedMix { .. } => "Masked Backdrop Mix".into(),
             Self::Output => "Canvas Output".into(),
         }
     }
@@ -399,7 +436,45 @@ impl Graph {
         graph
     }
     pub fn compile(&self, layer_count: usize) -> Result<Vec<abi::CompositeNode>, String> {
-        if self.nodes.len() > MAX_NODES || self.edges.len() > MAX_NODES * 2 {
+        self.compile_with_masks(layer_count, &[])
+    }
+    /// Stable IDs resolve to the supplied descriptor order only at cold compilation.
+    /// The editable linked Layer Filters model does not contain generated mask gates.
+    pub fn compile_with_masks(
+        &self,
+        layer_count: usize,
+        mask_ids: &[u64],
+    ) -> Result<Vec<abi::CompositeNode>, String> {
+        if mask_ids.is_empty()
+            && self.nodes.iter().any(|n| {
+                matches!(
+                    n.data,
+                    NodeKind::MaskSource { .. }
+                        | NodeKind::ApplyMask { .. }
+                        | NodeKind::MaskedMix { .. }
+                )
+            })
+        {
+            return Err("Mask nodes require a document mask descriptor context".into());
+        }
+        if mask_ids.len() > super::raster_masks::MAX_MASKS
+            || mask_ids
+                .iter()
+                .enumerate()
+                .any(|(i, id)| *id == 0 || *id > u32::MAX as u64 || mask_ids[..i].contains(id))
+        {
+            return Err("Invalid mask descriptor identities".into());
+        }
+        let edge_limit = if self
+            .nodes
+            .iter()
+            .any(|n| matches!(n.data, NodeKind::MaskedMix { .. }))
+        {
+            MAX_NODES * 3
+        } else {
+            MAX_NODES * 2
+        };
+        if self.nodes.len() > MAX_NODES || self.edges.len() > edge_limit {
             return Err("Node or edge limit exceeded".into());
         }
         if self.nodes.is_empty() {
@@ -421,12 +496,18 @@ impl Graph {
                 NodeKind::Layer { index } if index >= layer_count => {
                     return Err("Node references a missing layer".into())
                 }
+                NodeKind::MaskSource { mask_id } if !mask_ids.contains(&mask_id) => {
+                    return Err("Node references a missing raster mask".into())
+                }
                 NodeKind::Filter { filter, amount }
                     if !amount.is_finite() || !(filter.minimum()..=1.).contains(&amount) =>
                 {
                     return Err("Invalid filter parameters".into())
                 }
-                NodeKind::Blend { opacity, .. } | NodeKind::Mix { opacity }
+                NodeKind::Blend { opacity, .. }
+                | NodeKind::Mix { opacity }
+                | NodeKind::ApplyMask { opacity }
+                | NodeKind::MaskedMix { opacity }
                     if !opacity.is_finite() || !(0. ..=1.).contains(&opacity) =>
                 {
                     return Err("Invalid blend opacity".into())
@@ -440,7 +521,7 @@ impl Graph {
             }
         }
         let output = output.ok_or("Missing canvas output")?;
-        let mut inputs = vec![[None; 2]; self.nodes.len()];
+        let mut inputs = vec![[None; 3]; self.nodes.len()];
         for e in &self.edges {
             let from = *ids.get(&e.from).ok_or("Edge source does not exist")?;
             let to = *ids.get(&e.to).ok_or("Edge destination does not exist")?;
@@ -450,11 +531,16 @@ impl Graph {
             {
                 return Err("Invalid edge port or multiple outputs connected to one input".into());
             }
+            if self.nodes[to].data.input_domain(e.input as usize)
+                != Some(self.nodes[from].data.output_domain())
+            {
+                return Err("Image and mask coverage ports are not interchangeable".into());
+            }
         }
         fn visit(
             i: usize,
             nodes: &[Node],
-            inputs: &[[Option<usize>; 2]],
+            inputs: &[[Option<usize>; 3]],
             visiting: &mut BTreeSet<usize>,
             done: &mut BTreeSet<usize>,
             order: &mut Vec<usize>,
@@ -553,6 +639,27 @@ impl Graph {
                         a: input(0),
                         b: input(1),
                         mode: 0,
+                        amount: opacity,
+                    },
+                    NodeKind::MaskSource { mask_id } => abi::CompositeNode {
+                        kind: 6,
+                        a: mask_ids.iter().position(|id| *id == mask_id).unwrap() as u32,
+                        b: 0,
+                        mode: 0,
+                        amount: 0.,
+                    },
+                    NodeKind::ApplyMask { opacity } => abi::CompositeNode {
+                        kind: 7,
+                        a: input(0),
+                        b: input(1),
+                        mode: 0,
+                        amount: opacity,
+                    },
+                    NodeKind::MaskedMix { opacity } => abi::CompositeNode {
+                        kind: 8,
+                        a: input(0),
+                        b: input(1),
+                        mode: input(2),
                         amount: opacity,
                     },
                     NodeKind::Output => abi::CompositeNode {

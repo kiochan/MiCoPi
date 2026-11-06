@@ -218,6 +218,18 @@ impl Session {
             self.doc
                 .replay_tiles
                 .extend((0..self.doc.layers.len()).flat_map(|l| (0..count).map(move |id| (l, id))));
+            let mask_ids: Vec<_> = self
+                .doc
+                .mask_state()
+                .items
+                .iter()
+                .map(|mask| mask.id)
+                .collect();
+            self.doc.replay_mask_tiles.extend(
+                mask_ids
+                    .into_iter()
+                    .flat_map(|mask_id| (0..count).map(move |tile| (mask_id, tile))),
+            );
             let preparation = (|| {
                 self.replay_ensure()?;
                 let meta = self.replay_metadata();

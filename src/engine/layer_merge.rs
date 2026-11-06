@@ -71,6 +71,7 @@ impl Document {
     /// Bake supported layer stacks. Flatten preserves the transparent canvas;
     /// Merge Down bakes a pair in isolation, using normal blending above a backdrop.
     pub fn merge_layers(&mut self, operation: MergeLayers, index: usize) -> Result<(), String> {
+        self.require_mask_aware_edit()?;
         if index >= self.layers.len() {
             return Err("Layer does not exist".into());
         }

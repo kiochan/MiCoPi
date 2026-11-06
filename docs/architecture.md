@@ -56,7 +56,7 @@ Desktop Sessions also own a cold external clipboard adapter bound to the root wi
 
 ## Persistence and presentation
 
-MICOPI03 projects save layer pixels, blend properties, image/workflow metadata and a sealed verified event journal; MICOPI01/02 remain readable. The undo stack is not persisted; the replay journal is independent. See [Verified Replay](replay.md). Image decoding checks dimensions before allocation; PNG export preserves alpha.
+MICOPI03 projects save layer pixels, blend properties, image/workflow metadata and a sealed verified event journal when mask state has never been used; MICOPI01/02 remain readable. The raster-mask storage foundation selects MICOPI04 for nondefault mask metadata and stores raw A8 planes outside bounded composition JSON. Its separate byte-tile history and outcome namespace preserve legacy default bytes/hashes and permit DLL-free restoration. Generated coverage gates represent layer and group masks in Actual Composition; editable source filters remain separate. Density/feather, public mask controls and complete mask-aware editing remain pending, with explicit rejection at unsupported boundaries. See [Raster-mask storage](raster-mask-storage.md). The undo stack is not persisted; the replay journal is independent. See [Verified Replay](replay.md). Image decoding checks dimensions before allocation; PNG export preserves alpha.
 
 Project headers are recognized independently of the filename extension; renamed projects retain their save path when opened. Layer creation is a structural undo entry that restores the previous active layer and invalidates the old redo branch.
 

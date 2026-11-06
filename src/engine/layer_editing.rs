@@ -3,6 +3,7 @@ use super::*;
 impl Document {
     /// Simulate only bounded graph/identity metadata before a multi-target copy.
     pub(crate) fn preflight_layer_duplicates(&self, selected: &[u64]) -> Result<(), String> {
+        self.require_mask_aware_edit()?;
         let count = self.layers.len() + selected.len();
         if count > MAX_LAYERS
             || self.width * self.height * count > 64 * 1024 * 1024
@@ -65,6 +66,7 @@ impl Document {
         Ok(())
     }
     pub(crate) fn preflight_layer_deletions(&self, selected: &[u64]) -> Result<(), String> {
+        self.require_mask_aware_edit()?;
         if selected.len() >= self.layers.len() {
             return Err("The final layer cannot be deleted".into());
         }
@@ -177,6 +179,7 @@ impl Document {
         index: usize,
         staged: Option<(Vec<u32>, crate::engine::selection::SelectionState)>,
     ) -> Result<(), String> {
+        self.require_mask_aware_edit()?;
         if let Some((pixels, selection)) = &staged {
             if pixels.len() != self.width * self.height {
                 return Err("Invalid copied pixel count".into());
@@ -381,6 +384,24 @@ impl Document {
         let moved = metadata.remove(index);
         metadata.insert(to, moved);
         let graph = self.reindexed_graph(&metadata, None)?;
+        let modes: Vec<_> = metadata
+            .iter()
+            .map(|m| self.layers[self.layer_index(m.id).unwrap()].mode)
+            .collect();
+        let opacities: Vec<_> = metadata
+            .iter()
+            .map(|m| self.layers[self.layer_index(m.id).unwrap()].opacity)
+            .collect();
+        let prepared = self.prepare_group_plan_with_masks(
+            &graph,
+            None,
+            &metadata,
+            &modes,
+            &opacities,
+            self.next_group_id,
+            self.mask_state(),
+            self.has_raster_masks(),
+        )?;
         self.finish();
         let before = self.composition();
         let active = self.active;
@@ -391,7 +412,7 @@ impl Document {
         self.active = self.layer_index(selected).unwrap();
         self.normalize_layer_selection();
         self.graph = graph;
-        self.plan = self.graph.compile(self.layers.len())?;
+        self.install_group_plan(prepared);
         self.track_layer_order();
         self.commit_composition(
             before,
@@ -404,6 +425,7 @@ impl Document {
         Ok(())
     }
     pub fn delete_layer(&mut self, index: usize) -> Result<(), String> {
+        self.require_mask_aware_edit()?;
         if index >= self.layers.len() {
             return Err("Layer does not exist".into());
         }

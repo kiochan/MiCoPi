@@ -72,6 +72,11 @@ impl StrokeEngine {
             let painting = matches!(kind, ToolKind::Brush | ToolKind::Eraser);
             if painting {
                 super::PixelAccess::Pixels.require(&s.doc, s.doc.active)?;
+                if s.doc.has_raster_masks() {
+                    s.doc
+                        .ensure_graph_renderer()
+                        .map_err(|error| ActionError::new("mask_renderer", error))?;
+                }
                 if s.doc.alpha_locked(s.doc.active) && (kind == ToolKind::Eraser || p.eraser) {
                     return Err(ActionError::new(
                         "alpha_locked",

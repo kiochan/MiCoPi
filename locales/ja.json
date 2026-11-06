@@ -1333,5 +1333,13 @@
   "Select between two and sixteen unique existing layer IDs to merge": "結合する既存レイヤーの ID を重複なしで 2～16 個指定してください。",
   "Selected-layer merge requires linked layer composition; use Flatten Image to bake a free graph": "選択レイヤー結合にはレイヤー連動合成が必要です。自由合成グラフは「画像を統合」で焼き込んでください。",
   "Selected merge exceeds the document pixel limit": "選択レイヤーの結合によりドキュメントのピクセル上限を超えます。",
-  "Selected merge review requires the desktop; use layer.merge_selected.plan and layer.merge_selected for headless editing": "結合の確認 UI はデスクトップ専用です。ヘッドレス編集には layer.merge_selected.plan と layer.merge_selected を使用してください。"
+  "Selected merge review requires the desktop; use layer.merge_selected.plan and layer.merge_selected for headless editing": "結合の確認 UI はデスクトップ専用です。ヘッドレス編集には layer.merge_selected.plan と layer.merge_selected を使用してください。",
+  "Mask": "マスク",
+  "Coverage": "カバレッジ",
+  "Apply Mask": "マスクを適用",
+  "Masked Backdrop Mix": "マスク付き背景ミックス",
+  "Raw A8 Coverage": "元の A8 カバレッジ",
+  "This operation requires mask-aware editing support; the document and raster masks are unchanged": "この操作のマスク対応は未実装です。ドキュメントとラスターマスクは変更されていません",
+  "Raster masks require linked layer/filter composition": "ラスターマスクにはリンクされたレイヤーとフィルターの合成が必要です",
+  "Select a layer to edit its pixels; document mask painting is not available yet": "ピクセルを編集するレイヤーを選択してください。ドキュメントのマスク描画は未実装です"
 }

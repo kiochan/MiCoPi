@@ -417,6 +417,7 @@ impl Session {
             }
             self.remaining_actions -= 1;
             let read_only = self.registry.actions[&id].is_read_only();
+            self.validate_mask_boundary(op, &args)?;
             let recording = !read_only
                 && !op.is_some_and(Operation::is_replay)
                 && op != Some(Operation::Pointer);

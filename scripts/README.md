@@ -12,6 +12,7 @@ Run these tools from the repository root. Downloaded toolchains, builds, capture
 | smoke-runtime.py | Compare JSONL, MCP and GUI pixels; exercise input/settings |
 | smoke-workflows.py | Verify plugin nodes, workflow execution and project persistence |
 | smoke-localization.py | Check four-language switching, settings and unchanged document data |
+| smoke-raster-masks.py | Verify A8 storage/composition, safe edit boundaries, legacy compatibility and DLL-free replay; optional GUI captures |
 | check-repository.py | Validate local Markdown links, example JSON and tracked-file boundaries |
 
 ```powershell
@@ -23,6 +24,6 @@ python scripts/smoke-localization.py
 python scripts/package.py
 ```
 
-The three GUI smoke checks create their own isolated profiles and close only their own test process. Use `--cli` and `--gui` to select debug binaries when iterating. `package.py` packages already built binaries; it does not download dependencies, rebuild the application or publish anything.
+GUI smoke checks create their own isolated profiles and close only their own test process. Use `--cli` and `--gui` to select debug binaries when iterating. `package.py` packages already built binaries; it does not download dependencies, rebuild the application or publish anything.
 
 See [Development](../docs/development.md) for prerequisites and [Project Structure](../docs/project-structure.md) for ownership rules.

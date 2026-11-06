@@ -64,7 +64,9 @@ Layers support renaming, reordering, deletion and selection-aware **Layer via Co
 
 [Layer Groups](docs/layer-groups.md) provide nested visibility, opacity, Isolated or [Pass Through](docs/pass-through.md) composition, subtree operations and an actual-composition node view. Pass Through blends children against the parent backdrop and applies group opacity to the combined change; the isolated blend mode is retained. Ctrl+G groups selected siblings; painting remains on the active raster. Merge Group accepts isolated targets, including nested Pass Through children; grouped Merge Visible preserves hidden branches and folders. Groups share commands, projects, atomic history and verified replay with MCP/headless.
 
-Current limits: one document per session; no Wintab, off-canvas layer storage, raster/clipping masks or watercolor engine. Native plugin DLLs execute inside the host process.
+Current limits: one document per session; no Wintab, off-canvas layer storage, complete raster/clipping mask editing or watercolor engine. Native plugin DLLs execute inside the host process.
+
+The [raster-mask storage foundation](docs/raster-mask-storage.md) can preserve and compose bounded A8 planes in versioned projects and verified replay. Paintable mask controls, density/feather and complete mask-aware editing are still in progress; this foundation does not make the full mask feature available.
 
 Schema-described rectangle, ellipse and polygon [selections](docs/selections.md) support combinations, native drawing/action clipping, undo and replay. The Tools strip offers rectangle/ellipse marquees and freehand/polygonal lassos with reversible previews. PS-style selection shortcuts are configurable; [Session clipboard](docs/clipboard.md) copy/cut/paste commands are available; Windows PNG/DIB clipboard commands and PS copy/cut/paste bindings are implemented; native roundtrip interoperability validation remains pending on this restricted test host.
 

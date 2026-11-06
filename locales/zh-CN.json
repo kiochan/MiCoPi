@@ -1333,5 +1333,13 @@
   "Select between two and sixteen unique existing layer IDs to merge": "请选择 2 至 16 个已存在且不重复的图层 ID 进行合并。",
   "Selected-layer merge requires linked layer composition; use Flatten Image to bake a free graph": "选中图层合并需要关联图层合成；自由合成图请使用“拼合图像”进行烘焙。",
   "Selected merge exceeds the document pixel limit": "合并选中图层会超出文档像素上限。",
-  "Selected merge review requires the desktop; use layer.merge_selected.plan and layer.merge_selected for headless editing": "合并规划界面需要桌面应用；headless 请使用 layer.merge_selected.plan 和 layer.merge_selected。"
+  "Selected merge review requires the desktop; use layer.merge_selected.plan and layer.merge_selected for headless editing": "合并规划界面需要桌面应用；headless 请使用 layer.merge_selected.plan 和 layer.merge_selected。",
+  "Mask": "蒙版",
+  "Coverage": "覆盖率",
+  "Apply Mask": "应用蒙版",
+  "Masked Backdrop Mix": "蒙版背景混合",
+  "Raw A8 Coverage": "原始 A8 覆盖率",
+  "This operation requires mask-aware editing support; the document and raster masks are unchanged": "此操作尚未支持蒙版编辑；文档和栅格蒙版均未更改",
+  "Raster masks require linked layer/filter composition": "栅格蒙版需要链接的图层／滤镜合成",
+  "Select a layer to edit its pixels; document mask painting is not available yet": "请选择图层以编辑其像素；文档蒙版绘画尚未接入"
 }

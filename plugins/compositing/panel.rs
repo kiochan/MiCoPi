@@ -989,7 +989,7 @@ impl Editor {
             state.effective = Default::default();
             state.load(&self.session.doc, false, &self.plugin_nodes);
         }
-        let groups = self.session.doc.has_groups();
+        let groups = self.session.doc.has_groups() || self.session.doc.has_raster_masks();
         if groups && !state.had_groups {
             state.layer_filters = false;
         }

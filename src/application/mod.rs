@@ -3,6 +3,7 @@ mod actions;
 mod atomic;
 pub mod codec;
 pub(crate) mod creation;
+mod mask_boundary;
 pub mod pipeline;
 pub(crate) mod png_io;
 pub mod replay;
@@ -43,6 +44,8 @@ mod linked_graph_tests;
 mod pass_through_tests;
 #[cfg(test)]
 mod pipeline_tests;
+#[cfg(test)]
+mod raster_mask_tests;
 #[cfg(test)]
 mod replay_tests;
 #[cfg(test)]

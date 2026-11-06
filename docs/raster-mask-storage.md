@@ -1,0 +1,118 @@
+# Raster mask storage and verified outcomes
+
+The document foundation for raster masks is implemented: stable ownership, raw A8 planes, byte-tile Undo, mask-aware image composition, a binary project payload and verified replay. This is delivery gate 2 of [Raster Masks Design](raster-masks-design.md), following the [native A8 prerequisites](native-plugins.md#optional-native-mask-composition).
+
+**Paintable document masks are not yet a public feature.** There are no registered mask creation/property/painting commands, mask workflow actions or Layers mask-thumbnail controls. The typed desktop/Session A8 contact route, density/feather effects and complete structural/geometry integration remain planned. Engine APIs and regression fixtures exercise the foundation without advertising those pending operations as available.
+
+![Release workbench showing a stored mask fixture and generated Actual Composition](screenshots/raster-mask-foundation.png)
+
+This real Release capture shows a loaded regression project with layer, Isolated group and Pass Through group masks. Actual Composition displays generated gates; the Layers panel does not yet provide mask painting controls. The fitted graph is an overview; zoom in to inspect its typed coverage ports.
+
+## Ownership and limits
+
+`application::Session` remains the mutable document owner. `engine::Document` owns metadata, raw sample storage, history and verified surfaces. Painting and composition algorithms remain in native plugins. Mutable raster planes are independent of the immutable compressed `selection::Mask` used for pixel selections.
+
+`Composition.raster_masks` contains a version-1 `MaskState`:
+
+| Field | Meaning |
+| --- | --- |
+| `version` | Required; currently `1` |
+| `items` | Required list of `MaskMetadata`, sorted by increasing mask ID |
+| `next_id` | Required allocator; `0` only for unused default state |
+| `target` | `{"kind":"layer_pixels"}` by default, or `{"kind":"mask","id":...}` |
+
+Each item has a positive mask `id` and an explicitly tagged `owner`: `{"kind":"layer","id":...}` or `{"kind":"group","id":...}`. Layer and group IDs occupy different namespaces, so layer 1 and group 1 may each own a mask. An owner has at most one mask. Mask and owner IDs use the existing positive 32-bit stable-ID range; the mask allocator can advance one past that range to represent exhaustion.
+
+Item defaults are `enabled: true`, `linked: true`, `density: 255` and `feather_radius_px: 0`. Those defaults and the default target are omitted when serialized. The entire `raster_masks` field is omitted only when its version, empty items, unused allocator and target are all default. Explicit metadata requires `version`, `items` and `next_id`; unknown fields are rejected. No raw byte samples enter composition JSON.
+
+Committed Undo retains the highest allocated mask ID, including after the last mask is removed. A failed atomic operation restores its exact previous allocator. Verified outcome restoration also restores the recorded allocator exactly, independently of the current document's later allocations.
+
+The bounds are:
+
+- At most 32 masks, with one plane per metadata ID in the same sorted order.
+- Canvas dimensions from 1 through 4096 pixels per side.
+- At most 64 MiB of logical A8 samples across masks, using checked `width × height × count` arithmetic. This is separate from the existing raster-pixel budget.
+- Density stored as a byte and feather radius bounded to 256 pixels. These metadata bounds do not imply that the density/feather rendering effects are implemented.
+
+Every raw mask has the current canvas dimensions. Zero hides and 255 reveals. `SamplePlane::Uniform(u8)` stores a constant plane without a frame-sized allocation; `Dense(Vec<u8>)` stores exactly one byte per canvas pixel. Uniform storage still consumes its full logical sample budget. Raw planes, eventual effective-coverage caches and contact leases are separate responsibilities.
+
+## Engine edits, contacts and history
+
+Cold engine helpers create/delete masks, update metadata, replace an entire plane and choose a paint target. They validate ownership and dimensions; renderer-dependent mutations also preflight composition/capability requirements before publishing changes. These are engine-level building blocks for future registered commands, rather than a second public editing workflow.
+
+`begin_mask_stroke(id)` resolves a visible owner and materializes a uniform plane once at DOWN. Its cached `MaskLease` carries document identity, mask ID, direct storage slot and storage epoch. Each new contact advances the epoch, including when an existing dense allocation is reused; a lease from a previous contact cannot become valid again. Storage replacement, removal or restoration invalidates leases independently of content revisions.
+
+`prepare_mask_region` and `mask_region` use scalar lease checks and a direct slot. A scoped `A8Pixels` descriptor carries byte length, dimensions, stride and canvas origin for the synchronous native loan. Callers must not retain its pointer or reenter the document while using it. No per-MOVE metadata serialization, discovery, file I/O or whole-plane copying is introduced. The dense pointer stays stable for that contact.
+
+The existing `Edit` and Undo/Redo stack now have an independent `(mask_id, tile_index)` byte namespace. Each touched 64 by 64 tile is captured once per contact, including exact smaller edge tiles. RGBA layer indices and the composite-surface sentinel are unchanged. Mask edits use content revisions and ordinary document damage regions, while replay has a separate dirty-byte-tile set.
+
+Structural create/delete/replace history owns removed planes through shared immutable history records. It moves dense allocations instead of embedding samples in composition snapshots. Atomic checkpoints share byte cells and history records; they do not clone a full live plane for every operation. Failed publication restores the raw samples, metadata, target, allocator, contact state, history and verified composite. Restoration reuses compatible dense allocations, retains uniform planes and never invokes a renderer or a DLL command.
+
+Paint-target selection is metadata without a separate pixel Undo entry. Explicit `layer.select` and `layer.selection.set` with `active_layer_id` select layer pixels, including when the same layer is already active. A multi-selection change without an explicit active layer preserves the paint target. Existing RGBA loans reject a mask target with `mask_target_pending`; they do not silently redirect writes into A8 storage.
+
+## Generated composition
+
+Masks require linked layer/filter composition and a compositor with the optional mask capability. The host compiles generated `MaskSource`, `ApplyMask` and `MaskedMix` nodes with typed coverage ports and stable mask IDs. Source Layer Filters remain editable source data; generated Actual Composition is a separate view and cannot be submitted as that source graph.
+
+A layer's enabled mask gates its filtered result and combines with layer opacity once. An isolated group mask gates the completed isolated result. A Pass Through group mask gates the completed before/after change with group opacity once. Disabling source filters preserves the mask and group composition gates. Disabled masks reveal fully. Composition passes fixed-size raw-plane descriptors through cached slots; it does not materialize uniform masks or rebuild JSON per damage update.
+
+Generated masks retain the existing graph bounds, including 64 nodes and the native instruction/value budget. A flat stack of sixteen masked rasters without extra filter nodes fits the 64-node bound; additional filters or nested boundaries can exceed it and are rejected before mutation. Preflight validates coverage/image port domains, owner identities, dimensions, capabilities and declared modes, including hidden and disabled branches.
+
+Rendering currently supports only `density: 255` and `feather_radius_px: 0`. Nondefault bounded metadata can be retained by storage and verified outcome restoration, but renderer-dependent edits and live rendering reject it explicitly. This also applies to hidden or disabled masks. Raw engine project load/save remains archival and DLL-independent; normal Session project publication preflights renderer capabilities and supported effects. Replay can display a recorded verified surface without evaluating those pending effects.
+
+## MICOPI04 project format
+
+Projects that have ever allocated mask state use the eight-byte ASCII magic `MICOPI04`, including allocator-only state after the last mask is deleted or its creation is undone. A document whose mask state has never been used retains the exact MICOPI02 writer path without a recording and MICOPI03 path with a recording. Existing MICOPI01/02/03 files remain readable. Older project readers reject the new magic rather than silently dropping masks.
+
+All integers below are unsigned little-endian. The existing raster prefix is retained:
+
+```text
+magic                         8 bytes: MICOPI04
+width, height                 u32, u32
+raster_count, active_index    u32, u32
+for each raster:
+    visible, opacity          u8, u8
+    pixels                    width * height * 4 bytes, existing u32 encoding
+metadata_length               u32, at most 1 MiB
+composition_metadata          metadata_length bytes of UTF-8 JSON
+mask_count                    u32, equal to metadata item count
+for each mask in metadata ID order:
+    mask_id                   u64
+    encoding                  u8: 0 = uniform, 1 = dense A8
+    payload_length            u32
+    payload                   1 byte for uniform; width * height for dense
+replay_length                 u64, at most 1 GiB; 0 means no recording
+replay                        replay_length bytes
+```
+
+Every expected ID must occur exactly once and in order. The loader rejects unknown encodings, wrong sample lengths, missing/extra/duplicate IDs, invalid owners/targets, overflow, excessive logical samples, truncation and trailing bytes. Raw A8 payloads are outside the 1 MiB metadata block. Signature detection and native-project destination protection recognize MICOPI04.
+
+On the cold save path, an all-constant dense plane is written with the same one-byte uniform encoding as a uniform plane. The writer scans without allocating another image or changing the live plane, its pointer, content revision, history or dirty regions. This prevents a no-op/materialized or undone stroke from expanding a uniform project plane to a full frame on disk. Arbitrary dense samples remain raw bytes in this project payload.
+
+Saving validates every plane before creating a replacement file. It writes a same-directory temporary file, syncs it and uses the existing atomic replacement path. An invalid mask state or failed replacement does not overwrite an existing project. Session saves additionally rescan all raw A8 tiles at the full verification boundary and validate the embedded recording's final raw planes against the project when opening it.
+
+## Replay extension
+
+The archive magic remains `MCRPLY02`. Events have an optional `mask_version: 1` marker and separate `mask_changes`, keyed by stable mask ID and tile index. The marker is required when current or previous metadata has used mask state, including allocator-only events. Unused defaults omit both additions, preserving historical event bytes and hashes. Older strict event readers reject the extension instead of ignoring it.
+
+Byte blocks use bounded canonical Base64, uniform one-byte storage, references to earlier A8 changes in the same event and sparse XOR deltas against the same mask/tile in the previous frame. A8 and RGBA reference tables never overlap. The existing archive Deflate compression and journal limits remain in force: 1 GiB per archive, one million events and 512 MiB decoded per event.
+
+Replay state shares immutable byte tile cells. The state digest adds the separate `MiCoPi/A8-state/v1` domain, sorted mask IDs and byte-cell digests only when masks exist. Allocator-only state is still present in metadata. Unchanged A8 grids survive raster-count replacement; a canvas-dimension change requires complete new mask coverage. Metadata removes deleted mask IDs, and new IDs require all their tiles. Edge lengths, duplicate tiles, invalid/forward/cross-namespace references, unsupported markers and backwards allocator movement are rejected before publication.
+
+Playback, checkpoint rollback and embedded-history matching include the raw A8 planes as well as metadata, layers and the recorded surface. Playback restores verified samples and pixels without loading tools/compositor DLLs or executing actions again. Journal failure tests cover partial writes, rewind and continued verification.
+
+## Temporary editing boundaries
+
+Existing mask-unaware operations reject a document with mask items before changing it. Session reports `mask_editing_pending`; lower-level document publication and mutable geometric loans also have guards. Rejection happens before completing an active Brush or Hand contact.
+
+The guarded families include canvas sizing/resampling/crop/trim/rotation/flips, pixel movement and transforms, layer rotation/duplication/deletion/transfer, batch layer edits, group structural edits, merges/stamp/flatten and cut/paste transfers. Corresponding mutation plans/previews are guarded as well. Switching to an unlinked image graph is rejected. These boundaries are deliberately broader than the future linked/unlinked rules; they are removed only as each operation gains mask-aware atomic staging, history and verified outcomes.
+
+Ordinary permitted pixel edits with the layer-pixel target, read-only inspection, selection operations, supported composition properties, export, project persistence and verified replay retain their own contracts. Presence of a mask does not grant pixel permissions or bypass layer locks. The future mask-specific contact policy remains separate from RGBA access declarations.
+
+## Verification and next gate
+
+Focused regressions cover metadata namespaces/budgets, byte tile boundaries and pointer reuse, structural Undo and monotonic IDs, no-effect preflight, target selection, allocator rollback, constant/dense project equivalence, malformed payloads, graph domains/budgets, exact masked layer/group composition, old wire hashes, byte deltas/references, DLL-free restoration, journal failure and embedded raw-plane matching. They live in `src/engine/raster_mask_tests.rs`, `src/engine/replay/mask_tests.rs`, `src/engine/mask_graph_tests.rs`, `src/engine/mask_composition_tests.rs` and `src/application/raster_mask_tests.rs`.
+
+`scripts/smoke-raster-masks.py` independently writes the binary fixture, compares integer layer/group references across JSONL, MCP and the desktop, checks safe rejections and unchanged raw planes, then verifies saved projects and DLL-free replay. It also tests previous-host rejection when `--baseline-cli` is available and captures English, Chinese, Japanese and Korean Actual Composition views. See [Development](development.md#raster-mask-document-foundation-checks) for measured storage and binary costs.
+
+The next gate completes document painting, properties and every structural/geometry boundary, followed by registered contracts and multilingual UI. See [Raster Masks Design](raster-masks-design.md#delivery-and-acceptance-gates) and the [Roadmap](../ROADMAP.md). Synthetic pointer and pixel fixtures do not establish physical tablet compatibility.

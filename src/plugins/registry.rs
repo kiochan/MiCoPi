@@ -172,6 +172,23 @@ impl PixelAccess {
         document: &crate::engine::Document,
         index: usize,
     ) -> Result<(), ActionError> {
+        if self != Self::None
+            && matches!(
+                document.mask_state().target,
+                crate::engine::raster_masks::PaintTarget::Mask { .. }
+            )
+        {
+            return Err(ActionError::new(
+                "mask_target_pending",
+                "Select a layer to edit its pixels; document mask painting is not available yet",
+            ));
+        }
+        if self == Self::Geometry && document.has_raster_masks() {
+            return Err(ActionError::new(
+                "mask_editing_pending",
+                crate::engine::MASK_EDITING_PENDING,
+            ));
+        }
         if self != Self::None && document.pixel_locked(index) {
             return Err(ActionError::new(
                 "pixel_locked",

@@ -35,6 +35,11 @@ pub struct Composition {
         skip_serializing_if = "super::selection::SelectionState::is_default"
     )]
     pub selection: super::selection::SelectionState,
+    #[serde(
+        default,
+        skip_serializing_if = "super::raster_masks::MaskState::is_default"
+    )]
+    pub raster_masks: super::raster_masks::MaskState,
 }
 fn is_false(value: &bool) -> bool {
     !*value
@@ -123,7 +128,7 @@ impl Composition {
             return Err("Invalid group allocator".into());
         }
         if self.layer_metadata.is_empty() {
-            if self.groups.is_some() {
+            if self.groups.is_some() || !self.raster_masks.is_default() {
                 return Err("Group trees require stable raster identities".into());
             }
             return if self.next_layer_id == 0 {
@@ -158,6 +163,18 @@ impl Composition {
                 &self.layers.iter().map(|v| v.2).collect::<Vec<_>>(),
             )?;
         }
+        self.raster_masks.validate_owners(
+            &self
+                .layer_metadata
+                .iter()
+                .map(|item| item.id)
+                .collect::<Vec<_>>(),
+            &self
+                .groups
+                .as_ref()
+                .map(|tree| tree.groups.iter().map(|group| group.id).collect::<Vec<_>>())
+                .unwrap_or_default(),
+        )?;
         Ok(())
     }
 }
@@ -176,10 +193,23 @@ pub struct Layer {
 struct Edit {
     layer: usize,
     tiles: BTreeMap<usize, Arc<Vec<u32>>>,
+    mask_tiles: BTreeMap<(u64, usize), Arc<Vec<u8>>>,
+    mask_change: Option<MaskChange>,
     composition: Option<Composition>,
     metadata_bytes: usize,
     layer_change: Option<LayerChange>,
     group: Option<HistoryGroup>,
+}
+#[derive(Clone)]
+enum MaskChange {
+    Toggle {
+        slot: usize,
+        removed: Option<Arc<super::raster_masks::MaskPlane>>,
+    },
+    Replace {
+        slot: usize,
+        saved: Arc<super::raster_masks::MaskPlane>,
+    },
 }
 #[derive(Clone)]
 struct HistoryGroup {
@@ -215,6 +245,7 @@ struct CanvasState {
     width: usize,
     height: usize,
     layers: Vec<Layer>,
+    mask_planes: Vec<super::raster_masks::MaskPlane>,
 }
 #[derive(Clone)]
 pub(crate) struct HistoryCheckpoint {
@@ -230,16 +261,38 @@ pub(crate) struct HistoryCheckpoint {
     history_group: Option<HistoryGroup>,
     next_group_id: u64,
     dirty: bool,
+    mask_storage_epoch: u64,
+    mask_revisions: Vec<(u64, u64)>,
+    mask_contact: Option<super::raster_masks::MaskLease>,
+    next_mask_id: u64,
 }
 impl Edit {
     fn bytes(&self) -> usize {
         self.tiles.values().map(|v| v.len() * 4).sum::<usize>()
+            + self.mask_tiles.values().map(|v| v.len()).sum::<usize>()
+            + self.mask_change.as_ref().map_or(0, |change| match change {
+                MaskChange::Toggle { removed, .. } => removed
+                    .as_ref()
+                    .map_or(0, |plane| plane.samples.memory_bytes()),
+                MaskChange::Replace { saved, .. } => saved.samples.memory_bytes(),
+            })
             + self.metadata_bytes
             + self.layer_change.as_ref().map_or(0, |c| match c {
                 LayerChange::Toggle { removed, .. } => {
                     removed.as_ref().map_or(0, |l| l.pixels.len() * 4)
                 }
-                LayerChange::Canvas(state) => state.layers.iter().map(|l| l.pixels.len() * 4).sum(),
+                LayerChange::Canvas(state) => {
+                    state
+                        .layers
+                        .iter()
+                        .map(|l| l.pixels.len() * 4)
+                        .sum::<usize>()
+                        + state
+                            .mask_planes
+                            .iter()
+                            .map(|plane| plane.samples.memory_bytes())
+                            .sum::<usize>()
+                }
                 LayerChange::Replace { saved, .. } => {
                     saved.iter().map(|(_, l)| l.pixels.len() * 4).sum()
                 }
@@ -270,8 +323,14 @@ pub struct Document {
     selected_layer_ids: Vec<u64>,
     groups: Option<super::groups::GroupTree>,
     next_group_id: u64,
+    raster_masks: super::raster_masks::MaskState,
+    mask_planes: Vec<super::raster_masks::MaskPlane>,
+    mask_storage_epoch: u64,
+    mask_contact: Option<super::raster_masks::MaskLease>,
+    pub(crate) replay_mask_tiles: std::collections::BTreeSet<(u64, usize)>,
     effective_graph: Option<Graph>,
     group_visibility: [bool; MAX_LAYERS],
+    masked_layers: [bool; MAX_LAYERS],
     group_nodes: BTreeMap<u64, u32>,
     groups_revision: u64,
     pub(crate) replay_tiles: std::collections::BTreeSet<(usize, usize)>,
@@ -333,6 +392,14 @@ impl Document {
             history_group: self.history_group.clone(),
             next_group_id: self.next_group_id,
             dirty: self.dirty,
+            mask_storage_epoch: self.mask_storage_epoch,
+            mask_revisions: self
+                .mask_planes
+                .iter()
+                .map(|plane| (plane.id, plane.content_revision))
+                .collect(),
+            mask_contact: self.mask_contact,
+            next_mask_id: self.raster_masks.next_id,
         }
     }
     pub(crate) fn restore_history(&mut self, saved: HistoryCheckpoint) {
@@ -348,6 +415,14 @@ impl Document {
         self.history_group = saved.history_group;
         self.next_group_id = saved.next_group_id;
         self.dirty = saved.dirty;
+        self.mask_storage_epoch = saved.mask_storage_epoch;
+        self.mask_contact = saved.mask_contact;
+        self.raster_masks.next_id = saved.next_mask_id;
+        for (id, revision) in saved.mask_revisions {
+            if let Some(plane) = self.mask_planes.iter_mut().find(|plane| plane.id == id) {
+                plane.content_revision = revision;
+            }
+        }
     }
     pub fn new(width: usize, height: usize) -> Self {
         assert!(width > 0 && height > 0 && width <= MAX_SIDE && height <= MAX_SIDE);
@@ -373,8 +448,14 @@ impl Document {
             selected_layer_ids: Vec::new(),
             groups: None,
             next_group_id: 1,
+            raster_masks: Default::default(),
+            mask_planes: Vec::new(),
+            mask_storage_epoch: 0,
+            mask_contact: None,
+            replay_mask_tiles: Default::default(),
             effective_graph: None,
             group_visibility: [true; MAX_LAYERS],
+            masked_layers: [false; MAX_LAYERS],
             group_nodes: BTreeMap::new(),
             groups_revision: 0,
             selection: Default::default(),
@@ -420,7 +501,8 @@ impl Document {
         self.replay_surface = Some([0, 0, self.width, self.height]);
     }
     pub fn requires_renderer(&self) -> bool {
-        self.has_groups()
+        self.has_raster_masks()
+            || self.has_groups()
             || (self.graph.enabled && (!self.graph.linked || self.graph.has_filters()))
             || self.layers.iter().any(|l| l.mode != BlendMode::Normal)
     }
@@ -448,6 +530,7 @@ impl Document {
                 self.next_group_id
             },
             graph: self.graph.clone(),
+            raster_masks: self.raster_masks.clone(),
             layers: self
                 .layers
                 .iter()
@@ -512,6 +595,9 @@ impl Document {
         self.document_info = state.document_info;
         self.last_transform = state.last_transform;
         self.selection = state.selection;
+        let next_mask_id = self.raster_masks.next_id.max(state.raster_masks.next_id);
+        self.raster_masks = state.raster_masks;
+        self.raster_masks.next_id = next_mask_id;
         self.selected_layer_ids = state.selected_layer_ids;
         self.groups = state.groups;
         self.next_group_id = self.next_group_id.max(state.next_group_id).max(1);
@@ -554,10 +640,13 @@ impl Document {
             layer_change,
             layer,
             tiles: BTreeMap::new(),
+            mask_tiles: BTreeMap::new(),
+            mask_change: None,
             metadata_bytes: before.graph.nodes.len() * 160
                 + before.groups.as_ref().map_or(0, |g| g.memory_bytes())
                 + before.selected_layer_ids.len() * 8
                 + before.selection.memory_bytes()
+                + before.raster_masks.memory_bytes()
                 + std::mem::size_of_val(&before.last_transform)
                 + std::mem::size_of_val(&before.document_info)
                 + before.graph.edges.len() * 16
@@ -732,12 +821,16 @@ impl Document {
         } else {
             self.graph.clone()
         };
-        let prepared = self.prepare_group_plan(
+        let mut opacities: Vec<_> = self.layers.iter().map(|layer| layer.opacity).collect();
+        opacities[index] = opacity;
+        let prepared = self.prepare_group_plan_with_masks(
             &graph,
             self.groups.as_ref(),
             &self.layer_metadata,
             &modes,
+            &opacities,
             self.next_group_id,
+            &self.raster_masks,
             true,
         )?;
         self.finish();
@@ -809,8 +902,13 @@ impl Document {
                         origin_x: x0 as u32,
                         origin_y: y0 as u32,
                     };
-                    self.render_error = renderer
-                        .render(
+                    self.render_error = if self.has_raster_masks() {
+                        self.render_masked_composition(
+                            &mut layers[..self.layers.len()],
+                            &mut pixels,
+                        )
+                    } else {
+                        renderer.render(
                             if self.has_groups()
                                 || self.graph.enabled
                                     && (!self.graph.linked || self.graph.has_filters())
@@ -824,7 +922,8 @@ impl Document {
                             self.height as u32,
                             &mut pixels,
                         )
-                        .err();
+                    }
+                    .err();
                     return;
                 }
                 self.render_error = Some("Compositor DLL is not loaded".into());
@@ -884,6 +983,8 @@ impl Document {
             layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
+            mask_tiles: BTreeMap::new(),
+            mask_change: None,
             composition: None,
             metadata_bytes: 0,
         });
@@ -921,6 +1022,7 @@ impl Document {
         self.dirty = dirty;
         self.last = None;
         self.last_brush = None;
+        self.mask_contact = None;
     }
     pub(crate) fn locked_region_empty(&self, x: usize, y: usize, w: usize, h: usize) -> bool {
         self.alpha_locked(self.active)
@@ -982,6 +1084,8 @@ impl Document {
             layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
+            mask_tiles: BTreeMap::new(),
+            mask_change: None,
             composition: None,
             metadata_bytes: 0,
         });
@@ -1093,7 +1197,11 @@ impl Document {
     }
     pub fn finish(&mut self) {
         if let Some(edit) = self.stroke.take() {
-            if !edit.tiles.is_empty() || edit.composition.is_some() {
+            if !edit.tiles.is_empty()
+                || !edit.mask_tiles.is_empty()
+                || edit.mask_change.is_some()
+                || edit.composition.is_some()
+            {
                 self.dirty = true;
                 if let Some(group) = &mut self.history_group {
                     group.edits.push(edit);
@@ -1106,6 +1214,7 @@ impl Document {
         }
         self.last = None;
         self.last_brush = None;
+        self.mask_contact = None;
     }
     pub fn history_bytes(&self) -> usize {
         self.undo
@@ -1168,12 +1277,15 @@ impl Document {
                                 width: self.width,
                                 height: self.height,
                                 layers: std::mem::take(&mut self.layers),
+                                mask_planes: std::mem::take(&mut self.mask_planes),
                             }),
                         );
                         let old = Arc::unwrap_or_clone(old);
                         self.width = old.width;
                         self.height = old.height;
                         self.layers = old.layers;
+                        self.mask_planes = old.mask_planes;
+                        self.bump_mask_storage_epoch();
                         self.composite = vec![0; self.width * self.height];
                         self.replay_tiles.clear();
                     }
@@ -1198,12 +1310,16 @@ impl Document {
                 }
                 self.track_layer_order();
             }
+            if let Some(change) = &mut e.mask_change {
+                self.swap_mask_change(change);
+            }
             self.restore_composition(state.clone());
             *state = before;
             e.metadata_bytes = state.graph.nodes.len() * 160
                 + state.groups.as_ref().map_or(0, |g| g.memory_bytes())
                 + state.selected_layer_ids.len() * 8
                 + state.selection.memory_bytes()
+                + state.raster_masks.memory_bytes()
                 + std::mem::size_of_val(&state.last_transform)
                 + std::mem::size_of_val(&state.document_info)
                 + state.graph.edges.len() * 16
@@ -1233,6 +1349,7 @@ impl Document {
                 }
             }
         }
+        self.swap_mask_tiles(&mut e.mask_tiles);
         self.invalidate();
         self.dirty = true;
         e
@@ -1370,6 +1487,8 @@ impl Document {
             layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
+            mask_tiles: BTreeMap::new(),
+            mask_change: None,
             composition: None,
             metadata_bytes: 0,
         });
@@ -1425,6 +1544,8 @@ impl Document {
             layer_change: None,
             layer: self.active,
             tiles: BTreeMap::new(),
+            mask_tiles: BTreeMap::new(),
+            mask_change: None,
             composition: None,
             metadata_bytes: 0,
         });
@@ -1446,6 +1567,13 @@ impl Document {
         replay: Option<&[u8]>,
     ) -> io::Result<()> {
         self.finish();
+        self.validate_mask_storage().map_err(io::Error::other)?;
+        if replay.is_some_and(|bytes| bytes.len() > super::replay::MAX_ARCHIVE) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Project replay exceeds the supported limit",
+            ));
+        }
         let metadata = serde_json::to_vec(&self.composition()).map_err(io::Error::other)?;
         if metadata.len() > 1024 * 1024 {
             return Err(io::Error::new(
@@ -1456,7 +1584,9 @@ impl Document {
         // Same-directory temp + rename keeps an existing project intact on write failure.
         let tmp = path.with_extension("mcp.tmp");
         let mut f = std::fs::File::create(&tmp)?;
-        f.write_all(if replay.is_some() {
+        f.write_all(if self.mask_storage_used() {
+            b"MICOPI04"
+        } else if replay.is_some() {
             b"MICOPI03"
         } else {
             b"MICOPI02"
@@ -1474,7 +1604,9 @@ impl Document {
         }
         f.write_all(&(metadata.len() as u32).to_le_bytes())?;
         f.write_all(&metadata)?;
-        if let Some(bytes) = replay {
+        if self.mask_storage_used() {
+            self.write_mask_project_suffix(&mut f, replay)?;
+        } else if let Some(bytes) = replay {
             f.write_all(&(bytes.len() as u64).to_le_bytes())?;
             f.write_all(bytes)?;
         }
@@ -1494,7 +1626,11 @@ impl Document {
                 "Invalid or oversized Micopi project",
             )
         };
-        if &magic != b"MICOPI01" && &magic != b"MICOPI02" && &magic != b"MICOPI03" {
+        if &magic != b"MICOPI01"
+            && &magic != b"MICOPI02"
+            && &magic != b"MICOPI03"
+            && &magic != b"MICOPI04"
+        {
             return Err(bad());
         }
         let mut dims = [0usize; 4];
@@ -1522,6 +1658,17 @@ impl Document {
             || (&magic == b"MICOPI03"
                 && (size < base + 4 + 8
                     || size > base + 4 + 1024 * 1024 + 8 + super::replay::MAX_ARCHIVE as u64))
+            || (&magic == b"MICOPI04"
+                && (size < base + 4 + 4 + 8
+                    || size
+                        > base
+                            + 4
+                            + 1024 * 1024
+                            + 4
+                            + 32 * 13
+                            + super::raster_masks::MASK_SAMPLE_LIMIT as u64
+                            + 8
+                            + super::replay::MAX_ARCHIVE as u64))
         {
             return Err(bad());
         }
@@ -1559,7 +1706,7 @@ impl Document {
         // A legacy project did not opt into linked semantics. Preserve its exact metadata.
         doc.graph = Graph::default();
         doc.plan.clear();
-        if &magic == b"MICOPI02" || &magic == b"MICOPI03" {
+        if &magic == b"MICOPI02" || &magic == b"MICOPI03" || &magic == b"MICOPI04" {
             let mut length = [0u8; 4];
             f.read_exact(&mut length)?;
             let length = u32::from_le_bytes(length) as usize;
@@ -1575,10 +1722,19 @@ impl Document {
             state.validate_layer_metadata().map_err(|_| bad())?;
             state.validate_layer_selection(a).map_err(|_| bad())?;
             state.selection.validate(w, h).map_err(|_| bad())?;
+            state
+                .raster_masks
+                .validate_dimensions(w, h)
+                .map_err(|_| bad())?;
+            if state.raster_masks.is_default() == (&magic == b"MICOPI04") {
+                return Err(bad());
+            }
             state.graph.compile(n).map_err(|_| bad())?;
             state.workflow.validate_structure().map_err(|_| bad())?;
             doc.restore_composition(state);
-            if &magic == b"MICOPI03" {
+            if &magic == b"MICOPI04" {
+                doc.read_mask_project_suffix(&mut f, size - base - 4 - length as u64)?;
+            } else if &magic == b"MICOPI03" {
                 let mut length_bytes = [0; 8];
                 f.read_exact(&mut length_bytes)?;
                 let replay_length = u64::from_le_bytes(length_bytes);
@@ -1592,6 +1748,7 @@ impl Document {
                 doc.replay_data = Some(bytes);
             }
         }
+        doc.validate_mask_storage().map_err(|_| bad())?;
         Ok(doc)
     }
 }
@@ -1609,12 +1766,21 @@ mod layer_editing;
 mod layer_merge;
 #[path = "layer_selection.rs"]
 mod layer_selection;
+#[path = "mask_composition.rs"]
+mod mask_composition;
 #[path = "mix.rs"]
 mod mix;
+#[path = "raster_mask_editing.rs"]
+mod raster_mask_editing;
+#[path = "raster_mask_project.rs"]
+mod raster_mask_project;
 #[path = "selected_merge.rs"]
 mod selected_merge;
 pub use layer_merge::MergeLayers;
 pub use selected_merge::SelectedMergePlan;
+#[cfg(test)]
+#[path = "raster_mask_tests.rs"]
+mod raster_mask_tests;
 #[cfg(test)]
 #[path = "document_tests.rs"]
 mod tests;
