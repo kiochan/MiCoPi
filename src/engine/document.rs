@@ -1599,6 +1599,8 @@ impl Document {
 mod canvas_editing;
 #[path = "group_editing.rs"]
 mod group_editing;
+#[path = "group_merge.rs"]
+mod group_merge;
 #[path = "layer_editing.rs"]
 mod layer_editing;
 #[path = "layer_merge.rs"]

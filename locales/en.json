@@ -1211,6 +1211,7 @@
   "Ungroup": "Ungroup",
   "Delete Group and Contents": "Delete Group and Contents",
   "Duplicate Group": "Duplicate Group",
+  "Merge Group": "Merge Group",
   "Select Group Layers": "Select Group Layers",
   "Group Selected Layers": "Group Selected Layers",
   "New Empty Group": "New Empty Group",
@@ -1265,5 +1266,11 @@
   "Raster move would split a group subtree; move or reparent a tree item instead": "Raster move would split a group subtree; move or reparent a tree item instead",
   "Group opacity applies when the adjustment is released.": "Group opacity applies when the adjustment is released.",
   "Group changed during the opacity adjustment. Reset the draft to continue.": "Group changed during the opacity adjustment. Reset the draft to continue.",
-  "Reset Opacity Draft": "Reset Opacity Draft"
+  "Reset Opacity Draft": "Reset Opacity Draft",
+  "An empty group has no raster layers to merge": "An empty group has no raster layers to merge",
+  "Group merge exceeds the document pixel limit": "Group merge exceeds the document pixel limit",
+  "There are no effectively visible raster layers to merge": "There are no effectively visible raster layers to merge",
+  "Finish the current contact before merging grouped layers": "Finish the current contact before merging grouped layers",
+  "Layer identity limit reached": "Layer identity limit reached",
+  "Unlock layer transparency before merging these layers": "Unlock layer transparency before merging these layers"
 }

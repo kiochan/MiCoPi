@@ -63,6 +63,7 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 - [x] Add ordered local X/Y skew through the shared affine action, numeric controls and reversible mouse/pen edge handles, preserving cached previews, repeat, undo and verified outcomes.
 - [x] Add document-owned transform recipes, exact-matrix repeat and selected/whole-layer copy-repeat with configurable PS bindings, one undo/outcome, public state and shared nodes/MCP/headless execution. Clear recipes on changed canvas geometry and restore them with undo.
 - [x] Add versioned stable-ID isolated groups, nested appearance, typed subtree operations, cached composition/visibility and deterministic undo/replay.
+- [x] Add staged Group Merge and grouped Merge Visible, retaining outer appearance or hidden branches/group skeletons as appropriate, with one structural undo/outcome and shared schema/workflow/MCP/headless execution.
 - [x] Make implemented structural/multi-layer edits undoable with buffer ownership and explicit batch undo groups, separately from atomic failure rollback.
 - [x] Add bounded selection persistence, native shape/combine commands, PS selection shortcuts and drawing/action output clipping.
 - [x] Add direct rectangle/ellipse marquee and freehand/polygonal lasso gestures, reversible previews and connected-fill selection traversal.

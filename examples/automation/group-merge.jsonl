@@ -1,0 +1,26 @@
+{"action":"canvas.new","args":{"width":128,"height":96,"background":"#FDF7EF"}}
+{"action":"layer.rename","args":{"name":"Paper"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Colors"}}
+{"action":"layer.fill_color","args":{"color":"#657ACB"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Shading"}}
+{"action":"layer.fill_color","args":{"color":"#D986B5"}}
+{"action":"layer.set","args":{"opacity":0.45,"blend_mode":"screen"}}
+{"action":"group.create","args":{"members":[{"kind":"layer","id":2},{"kind":"layer","id":3}],"name":"Character colors"}}
+{"action":"group.set","args":{"group_id":1,"opacity":0.7,"blend_mode":"multiply"}}
+{"action":"layer.add","args":{"parent_id":0}}
+{"action":"layer.rename","args":{"name":"Hidden sketch"}}
+{"action":"layer.set","args":{"visible":false,"pixel_locked":true}}
+{"action":"group.create","args":{"members":[{"kind":"group","id":1},{"kind":"layer","id":4}],"name":"Illustration"}}
+{"action":"group.set","args":{"group_id":2,"opacity":0.85}}
+{"action":"canvas.export","args":{"path":"target/example-output/group-merge-before.png"}}
+{"action":"group.merge","args":{"group_id":1}}
+{"action":"canvas.export","args":{"path":"target/example-output/group-merge-raster.png"}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}
+{"action":"layer.merge_visible","args":{}}
+{"action":"group.query","args":{}}
+{"action":"layer.query","args":{}}
+{"action":"canvas.export","args":{"path":"target/example-output/group-merge-visible.png"}}
+{"action":"replay.verify","args":{}}

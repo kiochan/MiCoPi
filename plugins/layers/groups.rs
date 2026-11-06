@@ -672,10 +672,12 @@ impl Editor {
                 self.group_move_menu_ui(ui, group, &data, pending);
                 for (command, title) in [
                     ("group.duplicate", "Duplicate Group"),
+                    ("group.merge", "Merge Group"),
                     ("group.ungroup", "Ungroup"),
                     ("group.delete", "Delete Group and Contents"),
                 ] {
                     let enabled = match command {
+                        "group.merge" => !group.layer_ids.is_empty(),
                         "group.delete" => group.layer_ids.len() < self.session.doc.layers.len(),
                         "group.duplicate" => {
                             self.session.doc.layers.len() + group.layer_ids.len() <= 16
@@ -898,7 +900,7 @@ impl Editor {
                 }
                 if matches!(
                     command.as_str(),
-                    "group.delete" | "group.ungroup" | "group.select_layers"
+                    "group.delete" | "group.ungroup" | "group.select_layers" | "group.merge"
                 ) {
                     self.focus_group_ui(ctx, None);
                 }
@@ -1174,6 +1176,207 @@ mod tests {
             crate::application::Action::new("group.ungroup", json!({"group_id":copy}))
         ));
         assert_eq!(app.editor.focused_group_ui(&ctx), None);
+    }
+    #[test]
+    fn group_merge_menu_targets_inspected_group_and_returns_to_raster_properties() {
+        let (mut app, group, ids) = fixture();
+        assert!(app.editor.core("layer.select", json!({"layer_id":ids[0]})));
+        assert!(app
+            .editor
+            .core("layer.fill_color", json!({"color":"#cc3366"})));
+        assert!(app.editor.core("layer.select", json!({"layer_id":ids[2]})));
+        assert!(app
+            .editor
+            .core("layer.fill_color", json!({"color":"#99bbdd"})));
+        let paper = app.editor.session.doc.layers[app.editor.session.doc.active]
+            .pixels
+            .clone();
+        let ctx = Context::default();
+        let size = vec2(244., 1100.);
+        app.editor.focus_group_ui(&ctx, Some(group));
+        let before = app.editor.session.doc.composition();
+        let mut stale = crate::application::Action::new("group.merge", json!({"group_id":group}));
+        stale.expected_revision = Some(app.editor.session.revision - 1);
+        assert!(!app.editor.dispatch_group_ui(&ctx, stale));
+        assert!(app.editor.status.contains("revision_conflict"));
+        assert_eq!(app.editor.session.doc.composition(), before);
+        assert_eq!(app.editor.focused_group_ui(&ctx), Some(group));
+        assert_eq!(
+            app.editor
+                .session
+                .doc
+                .layer_id(app.editor.session.doc.active),
+            ids[2]
+        );
+        let mut output = frame(&mut app, &ctx, size, vec![], 0.);
+        for n in 1..3 {
+            output = frame(&mut app, &ctx, size, vec![], n as f64);
+        }
+        assert!(output
+            .shapes
+            .iter()
+            .any(|shape| label(&shape.shape, "Painting Layer: Paper").is_some()));
+        let menu = output
+            .shapes
+            .iter()
+            .find_map(|shape| label(&shape.shape, "Group Actions"))
+            .unwrap();
+        let click = |point| {
+            vec![
+                Event::PointerMoved(point),
+                Event::PointerButton {
+                    pos: point,
+                    button: PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Modifiers::NONE,
+                },
+                Event::PointerButton {
+                    pos: point,
+                    button: PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Modifiers::NONE,
+                },
+            ]
+        };
+        frame(&mut app, &ctx, size, click(menu), 3.);
+        let output = frame(&mut app, &ctx, size, vec![], 4.);
+        let merge = output
+            .shapes
+            .iter()
+            .find_map(|shape| label(&shape.shape, "Merge Group"))
+            .unwrap();
+        app.editor.session.replay_boundary().unwrap();
+        let events = app
+            .editor
+            .session
+            .replay_journal(false)
+            .unwrap()
+            .entries
+            .len();
+        let revision = app.editor.session.revision;
+        frame(&mut app, &ctx, size, click(merge), 5.);
+        assert_eq!(
+            app.editor.session.revision,
+            revision + 1,
+            "{}",
+            app.editor.status
+        );
+        assert_eq!(app.editor.focused_group_ui(&ctx), None);
+        assert!(!app.editor.session.doc.has_groups());
+        assert_eq!(app.editor.session.doc.layers.len(), 2);
+        assert_eq!(
+            app.editor
+                .session
+                .doc
+                .layer_name(app.editor.session.doc.active),
+            "Ink Group"
+        );
+        assert!(!ids.contains(
+            &app.editor
+                .session
+                .doc
+                .layer_id(app.editor.session.doc.active)
+        ));
+        assert_eq!(
+            app.editor.session.doc.layers[app.editor.session.doc.layer_index(ids[2]).unwrap()]
+                .pixels,
+            paper
+        );
+        let journal = app.editor.session.replay_journal(false).unwrap();
+        assert_eq!(journal.entries.len(), events + 1);
+        let recorded = journal.events(events, 1).unwrap();
+        assert_eq!(recorded["events"][0]["source"]["action"], "group.merge");
+        assert_eq!(
+            recorded["events"][0]["source"]["args"],
+            json!({"group_id":group})
+        );
+        let output = frame(&mut app, &ctx, size, vec![], 6.);
+        assert!(!output
+            .shapes
+            .iter()
+            .any(|shape| label(&shape.shape, "Group Properties").is_some()));
+        assert!(output
+            .shapes
+            .iter()
+            .any(|shape| label(&shape.shape, "Ink Group").is_some()));
+    }
+    #[test]
+    fn empty_group_merge_is_disabled_in_each_language() {
+        let old = crate::i18n::current();
+        for language in crate::i18n::Language::ALL {
+            let (mut app, _, _) = fixture();
+            let group = app
+                .editor
+                .session
+                .apply(crate::application::Action::new(
+                    "group.create",
+                    json!({"members":[],"name":"Empty"}),
+                ))
+                .unwrap()["result"]["group_id"]
+                .as_u64()
+                .unwrap();
+            app.editor.settings.ui.language = language;
+            let ctx = Context::default();
+            let size = vec2(244., 1100.);
+            app.editor.focus_group_ui(&ctx, Some(group));
+            let mut output = frame(&mut app, &ctx, size, vec![], 0.);
+            for n in 1..3 {
+                output = frame(&mut app, &ctx, size, vec![], n as f64);
+            }
+            let title = crate::i18n::text_in(language, "Group Actions");
+            let menu = output
+                .shapes
+                .iter()
+                .find_map(|shape| label(&shape.shape, &title))
+                .unwrap();
+            let click = |point| {
+                vec![
+                    Event::PointerMoved(point),
+                    Event::PointerButton {
+                        pos: point,
+                        button: PointerButton::Primary,
+                        pressed: true,
+                        modifiers: Modifiers::NONE,
+                    },
+                    Event::PointerButton {
+                        pos: point,
+                        button: PointerButton::Primary,
+                        pressed: false,
+                        modifiers: Modifiers::NONE,
+                    },
+                ]
+            };
+            frame(&mut app, &ctx, size, click(menu), 3.);
+            let output = frame(&mut app, &ctx, size, vec![], 4.);
+            let title = crate::i18n::text_in(language, "Merge Group");
+            let (clip, merge) = output
+                .shapes
+                .iter()
+                .find_map(|shape| label(&shape.shape, &title).map(|point| (shape.clip_rect, point)))
+                .unwrap();
+            assert!(clip.contains(merge), "{language:?}: Merge Group is clipped");
+            let before = app.editor.session.state();
+            let events = app
+                .editor
+                .session
+                .replay_journal(false)
+                .unwrap()
+                .entries
+                .len();
+            frame(&mut app, &ctx, size, click(merge), 5.);
+            assert_eq!(app.editor.session.state(), before);
+            assert_eq!(app.editor.focused_group_ui(&ctx), Some(group));
+            assert_eq!(
+                app.editor
+                    .session
+                    .replay_journal(false)
+                    .unwrap()
+                    .entries
+                    .len(),
+                events
+            );
+        }
+        crate::i18n::set_language(old);
     }
     #[test]
     fn group_opacity_multiframe_drag_commits_one_revision_event_and_undo_on_release() {

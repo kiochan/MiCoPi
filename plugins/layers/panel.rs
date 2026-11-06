@@ -327,7 +327,9 @@ impl Editor {
         ctx: Option<&Context>,
     ) {
         for mut action in pending {
-            if self.input_owned || self.drawing || self.panning.is_some() {
+            let requires_idle = action.action.starts_with("group.")
+                || action.action == "layer.merge_visible" && self.session.doc.has_groups();
+            if !requires_idle && (self.input_owned || self.drawing || self.panning.is_some()) {
                 self.finish_stroke();
             }
             // A pending active-name commit may precede this explicit batch.
@@ -585,6 +587,12 @@ impl Editor {
             ui.separator();
         }
         let protected = |i| self.session.doc.alpha_locked(i) || self.session.doc.pixel_locked(i);
+        let visible: Vec<_> = (0..count)
+            .filter(|&i| self.session.doc.layer_visible(i))
+            .collect();
+        let required_visible = if grouped { 1 } else { 2 };
+        let merge_visible =
+            visible.len() >= required_visible && visible.iter().all(|&i| !protected(i));
         for (command, title, args, enabled) in [
             (
                 "layer.duplicate",
@@ -686,14 +694,7 @@ impl Editor {
                 "layer.merge_visible",
                 "Merge Visible",
                 serde_json::json!({}),
-                self.session.doc.layers.iter().filter(|l| l.visible).count() > 1
-                    && self
-                        .session
-                        .doc
-                        .layers
-                        .iter()
-                        .enumerate()
-                        .all(|(i, l)| !l.visible || !protected(i)),
+                merge_visible,
             ),
             (
                 "layer.flatten",
@@ -1865,7 +1866,7 @@ mod tests {
         ));
         (app, ids)
     }
-    fn menu_click(app: &mut Studio, title: &str) -> crate::application::Action {
+    fn menu_choice(app: &mut Studio, title: &str) -> Option<crate::application::Action> {
         let ctx = Context::default();
         theme::fonts(&ctx);
         theme::apply(&ctx, &app.editor.settings.ui);
@@ -1918,7 +1919,10 @@ mod tests {
                 assert!(point.is_some(), "missing menu action {title}");
             }
         }
-        chosen.unwrap_or_else(|| panic!("menu click did not dispatch {title}"))
+        chosen
+    }
+    fn menu_click(app: &mut Studio, title: &str) -> crate::application::Action {
+        menu_choice(app, title).unwrap_or_else(|| panic!("menu click did not dispatch {title}"))
     }
     #[test]
     fn layers_ctrl_toggle_and_shift_ranges_keep_active_and_filter_boundaries_explicit() {
@@ -2206,6 +2210,349 @@ mod tests {
         app.editor.dispatch_layer_pending(vec![action]);
         assert_eq!(app.editor.session.state(), before);
         assert!(app.editor.status.contains("revision_conflict"));
+    }
+    #[test]
+    fn layers_pending_group_actions_keep_locally_owned_brush_and_hand_contacts_intact() {
+        fn contact_samples(editor: &mut Editor, start: usize) -> Vec<Value> {
+            let journal = editor.session.replay_journal(false).unwrap();
+            let events = journal
+                .events(start, journal.entries.len() - start)
+                .unwrap();
+            let mut samples = events["events"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|event| event["source"]["kind"] == "pointer")
+                .flat_map(|event| event["source"]["samples"].as_array().unwrap().clone())
+                .collect::<Vec<_>>();
+            samples.extend(
+                serde_json::to_value(&editor.session.replay_samples)
+                    .unwrap()
+                    .as_array()
+                    .unwrap()
+                    .clone(),
+            );
+            samples
+        }
+        for tool in [Tool::Brush, Tool::Hand] {
+            for command in [
+                "group.merge",
+                "group.set",
+                "group.move",
+                "layer.merge_visible",
+            ] {
+                let (mut app, ids) = native_multi();
+                let group = app.editor.session.apply(crate::application::Action::new(
+                    "group.create",
+                    json!({"members":[{"kind":"layer","id":ids[1]},{"kind":"layer","id":ids[2]}],"name":"Contact guard"}),
+                )).unwrap()["result"]["group_id"].as_u64().unwrap();
+                let sample = crate::application::Pointer {
+                    phase: crate::application::PointerPhase::Down,
+                    x: 3.,
+                    y: 3.,
+                    pressure: 0.3,
+                    time: 0,
+                    pen: true,
+                    eraser: false,
+                    tool_override: Some(tool),
+                    view_x: Some(300.),
+                    view_y: Some(300.),
+                };
+                app.editor.session.pointer(sample).unwrap();
+                app.editor.sync_from_session();
+                app.editor.input_owned = true;
+                app.editor.pen_active = true;
+                app.editor.pressure = sample.pressure;
+                app.editor.pen_hover = Some(pos2(300., 300.));
+                app.editor.panning = (tool == Tool::Hand).then_some(pos2(300., 300.));
+                assert!(app.editor.session.stroke.active());
+                assert!(app.editor.session.pointer_checkpoint.is_some());
+                assert_eq!(app.editor.drawing, tool == Tool::Brush);
+                let ctx = Context::default();
+                app.editor.focus_group_ui(&ctx, Some(group));
+                let action = match command {
+                    "group.set" => crate::application::Action::new(
+                        command,
+                        json!({"group_id":group,"opacity":0.5}),
+                    ),
+                    "group.move" => crate::application::Action::new(
+                        command,
+                        json!({"items":[{"kind":"group","id":group}],"parent_id":0,"index":0}),
+                    ),
+                    "layer.merge_visible" => menu_click(&mut app, "Merge Visible"),
+                    _ => crate::application::Action::new(command, json!({"group_id":group})),
+                };
+                let state = app.editor.session.state();
+                let pixels = app
+                    .editor
+                    .session
+                    .doc
+                    .layers
+                    .iter()
+                    .map(|layer| layer.pixels.clone())
+                    .collect::<Vec<_>>();
+                let history = app.editor.session.doc.history_bytes();
+                let samples = serde_json::to_value(&app.editor.session.replay_samples).unwrap();
+                let last = serde_json::to_value(app.editor.session.last_pointer).unwrap();
+                let panning = app.editor.panning;
+                let pen = (
+                    app.editor.pen_active,
+                    app.editor.pen_eraser,
+                    app.editor.pressure,
+                    app.editor.pen_hover,
+                );
+                let events = app
+                    .editor
+                    .session
+                    .replay_journal(false)
+                    .unwrap()
+                    .entries
+                    .len();
+                app.editor
+                    .dispatch_layer_pending_ui(vec![action], Some(&ctx));
+                assert!(
+                    app.editor.status.contains("stroke_active"),
+                    "{tool:?}/{command}: {}",
+                    app.editor.status
+                );
+                assert_eq!(app.editor.session.state(), state, "{tool:?}/{command}");
+                assert_eq!(
+                    app.editor
+                        .session
+                        .doc
+                        .layers
+                        .iter()
+                        .map(|layer| layer.pixels.clone())
+                        .collect::<Vec<_>>(),
+                    pixels
+                );
+                assert_eq!(app.editor.session.doc.history_bytes(), history);
+                // The journal may flush a partial pointer chunk to audit this rejected action.
+                // Recorded and still-pending samples together must retain every pressure point.
+                assert_eq!(
+                    serde_json::json!(contact_samples(&mut app.editor, events)),
+                    samples
+                );
+                assert_eq!(
+                    serde_json::to_value(app.editor.session.last_pointer).unwrap(),
+                    last
+                );
+                let journal = app.editor.session.replay_journal(false).unwrap();
+                let recorded = journal
+                    .events(events, journal.entries.len() - events)
+                    .unwrap();
+                assert_eq!(
+                    recorded["events"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .filter(|event| event["source"]["action"] == command)
+                        .count(),
+                    1
+                );
+                assert!(recorded["events"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|event| event["source"]["kind"] == "pointer")
+                    .all(|event| event["source"]["complete"] == false));
+                assert!(app.editor.input_owned);
+                assert_eq!(app.editor.drawing, tool == Tool::Brush);
+                assert_eq!(app.editor.panning, panning);
+                assert_eq!(
+                    (
+                        app.editor.pen_active,
+                        app.editor.pen_eraser,
+                        app.editor.pressure,
+                        app.editor.pen_hover
+                    ),
+                    pen
+                );
+                assert!(app.editor.session.stroke.active());
+                assert!(app.editor.session.pointer_checkpoint.is_some());
+                assert_eq!(app.editor.focused_group_ui(&ctx), Some(group));
+                app.editor
+                    .session
+                    .pointer(crate::application::Pointer {
+                        phase: crate::application::PointerPhase::Move,
+                        x: 5.,
+                        pressure: 0.85,
+                        time: 20,
+                        ..sample
+                    })
+                    .unwrap();
+                assert!(app.editor.session.stroke.active());
+                let continued = contact_samples(&mut app.editor, events);
+                assert_eq!(continued.len(), 2);
+                assert_eq!(continued[0], serde_json::to_value(sample).unwrap());
+                assert_eq!(
+                    app.editor.session.replay_samples.last().unwrap().pressure,
+                    0.85
+                );
+                app.editor
+                    .session
+                    .pointer(crate::application::Pointer {
+                        phase: crate::application::PointerPhase::Up,
+                        x: 6.,
+                        pressure: 0.4,
+                        time: 40,
+                        ..sample
+                    })
+                    .unwrap();
+                assert!(!app.editor.session.stroke.active());
+                assert!(app.editor.session.pointer_checkpoint.is_none());
+                let completed = contact_samples(&mut app.editor, events);
+                assert_eq!(completed.len(), 3);
+                assert_eq!(completed[0], continued[0]);
+                assert_eq!(completed[1], continued[1]);
+                assert_eq!(completed[2]["phase"], "up");
+                assert_eq!(completed[2]["pressure"], serde_json::json!(0.4f32));
+            }
+        }
+    }
+    #[test]
+    fn layers_merge_visible_menu_accepts_grouped_singletons_and_ignores_ancestor_hidden_locks() {
+        for singleton in [true, false] {
+            let (mut app, ids) = native_multi();
+            let members = if singleton {
+                vec![ids[1]]
+            } else {
+                vec![ids[1], ids[2]]
+            };
+            let group = app.editor.session.apply(crate::application::Action::new(
+                "group.create",json!({"members":members.iter().map(|id|json!({"kind":"layer","id":id})).collect::<Vec<_>>(),"name":"Visibility"})
+            )).unwrap()["result"]["group_id"].as_u64().unwrap();
+            if singleton {
+                for id in [ids[0], ids[2], ids[3]] {
+                    assert!(app
+                        .editor
+                        .core("layer.set", json!({"layer_id":id,"visible":false})));
+                }
+                assert!(app
+                    .editor
+                    .core("group.set", json!({"group_id":group,"opacity":0.5})));
+                assert!(app.editor.core("layer.select", json!({"layer_id":ids[1]})));
+            } else {
+                for id in &members {
+                    assert!(app.editor.core(
+                        "layer.set",
+                        json!({"layer_id":id,"pixel_locked":true,"alpha_locked":true})
+                    ));
+                }
+                assert!(app
+                    .editor
+                    .core("group.set", json!({"group_id":group,"visible":false})));
+                assert!(app.editor.core("layer.select", json!({"layer_id":ids[0]})));
+            }
+            let effective: Vec<_> = (0..app.editor.session.doc.layers.len())
+                .filter(|i| app.editor.session.doc.layer_visible(*i))
+                .map(|i| app.editor.session.doc.layer_id(i))
+                .collect();
+            assert_eq!(
+                effective,
+                if singleton {
+                    vec![ids[1]]
+                } else {
+                    vec![ids[0], ids[3]]
+                }
+            );
+            let hidden = if singleton {
+                vec![]
+            } else {
+                members
+                    .iter()
+                    .map(|id| {
+                        let i = app.editor.session.doc.layer_index(*id).unwrap();
+                        (
+                            *id,
+                            app.editor.session.doc.layers[i].pixels.clone(),
+                            LayerProperties::read(&app.editor, i),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            let action = menu_click(&mut app, "Merge Visible");
+            assert_eq!(action.action, "layer.merge_visible");
+            assert_eq!(action.args, json!({}));
+            let revision = app.editor.session.revision;
+            app.editor.session.replay_boundary().unwrap();
+            let events = app
+                .editor
+                .session
+                .replay_journal(false)
+                .unwrap()
+                .entries
+                .len();
+            app.editor
+                .dispatch_layer_pending_ui(vec![action], Some(&Context::default()));
+            assert_eq!(
+                app.editor.session.revision,
+                revision + 1,
+                "{}",
+                app.editor.status
+            );
+            assert_eq!(
+                app.editor
+                    .session
+                    .replay_journal(false)
+                    .unwrap()
+                    .entries
+                    .len(),
+                events + 1
+            );
+            let target = *effective.last().unwrap();
+            assert_eq!(
+                app.editor
+                    .session
+                    .doc
+                    .layer_id(app.editor.session.doc.active),
+                target
+            );
+            assert_eq!(
+                app.editor
+                    .session
+                    .doc
+                    .layer_parent_id(app.editor.session.doc.active),
+                0
+            );
+            if singleton {
+                assert_eq!(
+                    app.editor.session.doc.layers[app.editor.session.doc.active].opacity,
+                    255
+                );
+            }
+            for (id, pixels, properties) in hidden {
+                let index = app.editor.session.doc.layer_index(id).unwrap();
+                assert_eq!(app.editor.session.doc.layers[index].pixels, pixels);
+                assert!(LayerProperties::read(&app.editor, index) == properties);
+            }
+        }
+    }
+    #[test]
+    fn layers_merge_visible_menu_still_disables_consumed_locks_and_flat_singletons() {
+        let (mut app, ids) = native_multi();
+        for id in [ids[0], ids[2], ids[3]] {
+            assert!(app
+                .editor
+                .core("layer.set", json!({"layer_id":id,"visible":false})));
+        }
+        assert!(menu_choice(&mut app, "Merge Visible").is_none());
+        app.editor
+            .session
+            .apply(crate::application::Action::new(
+                "group.create",
+                json!({"members":[{"kind":"layer","id":ids[1]}],"name":"Protected"}),
+            ))
+            .unwrap();
+        for lock in ["pixel_locked", "alpha_locked"] {
+            let mut args = json!({"layer_id":ids[1]});
+            args[lock] = json!(true);
+            assert!(app.editor.core("layer.set", args));
+            assert!(menu_choice(&mut app, "Merge Visible").is_none());
+            let mut args = json!({"layer_id":ids[1]});
+            args[lock] = json!(false);
+            assert!(app.editor.core("layer.set", args));
+        }
     }
     #[test]
     fn layers_new_selection_and_batch_controls_keep_external_hand_contacts_intact() {

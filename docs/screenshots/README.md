@@ -18,6 +18,7 @@ These are actual application captures, not interface mockups. Current images com
 | [Multiple selected layers](layer-multi-selection.png) | Distinct selected/active layer feedback, shared properties and the selected count |
 | [Nested layer groups](layer-groups.png) | Hierarchy headers, isolated groups and the active raster painting target |
 | [Actual group composition](group-composition.png) | Read-only generated transparent, raster and isolated group blend topology |
+| [Merge Group command](group-merge.png) | Schema-derived command form for a current nonempty group, opened without executing it |
 | [Canvas quarter turn](canvas-quarter-turn.png) | Actual clockwise document rotation, transformed selection and navigator preview |
 | [Session clipboard](clipboard.png) | Actual shared paste parameter form; coordinates are optional and execution is explicit |
 | [Selection outline](selection.png) | Command-generated ellipse overlay and active-selection status, independent of exported pixels |
@@ -38,6 +39,8 @@ These are actual application captures, not interface mockups. Current images com
 The checkerboard, pen strokes and simple landscape are generated through the DLL/action pipeline. They are demonstration content rather than a benchmark or a claim about an artist's work.
 
 `layer-groups.png` and `group-composition.png` are English final Release captures from `scripts/smoke-groups.py` on 2026-11-06; all four hierarchy languages were reviewed. The artwork is generated through pressure strokes and group commands. The isolated run compares exact alpha references and JSONL/MCP/GUI pixels, nested subtree edits, source filters, undo/projects and DLL-independent replay. Opening Actual Composition preserves both graphs and artwork. Group inspection, contact continuity, opacity coalescing and narrow CJK controls also have desktop regression coverage.
+
+`group-merge.png` is the English final Release capture from `scripts/smoke-group-merge.py` on 2026-11-06; all four language captures were reviewed. A fresh Paper/Ink drawing provides a nonempty group ID 1, so the displayed form targets current content. The check waits for language/layout revisions to settle, opens/cancels the form, and preserves hierarchy, effective graph and PNG bytes. The same run verifies exact group baking across transports, output-ID workflow bindings, hidden locked sources, projects and plugin-independent replay. Real-menu/shortcut regressions separately cover disabled empty groups, local Brush/Hand continuity and grouped Merge Visible eligibility. Protocol keys and artist-owned names remain untranslated.
 
 `layer-multi-selection.png` is the English final Release capture from `scripts/smoke-layer-batch.py` on 2026-11-06; all four language captures were reviewed. Two nonadjacent layers are selected and the active painting layer has a separate outline. The isolated run checks matching batches, one-step undo, selected public state, workflows, projects and plugin-independent replay across JSONL/MCP/GUI. Desktop regressions cover Ctrl/Shift ranges, mixed properties, pending names, stale revisions, external contacts and narrow CJK layouts.
 

@@ -508,8 +508,13 @@ impl Studio {
     pub(super) fn run_actions(&mut self, ctx: &Context) {
         while !self.editor.actions.is_empty() {
             let action = self.editor.actions.remove(0);
-            self.editor.finish_stroke();
-            self.editor.pen_active = false;
+            let group_edit = matches!(action, Action::UiCommand(10200 | 10201))
+                || (matches!(action, Action::UiCommand(10147))
+                    && self.editor.session.doc.has_groups());
+            if !group_edit {
+                self.editor.finish_stroke();
+                self.editor.pen_active = false;
+            }
             let pure_ui = matches!(
                 action,
                 Action::Preferences
@@ -584,7 +589,9 @@ impl Studio {
                             self.editor.core(action, serde_json::json!({}));
                         }
                         10146..=10149 => {
-                            self.editor.finish_stroke();
+                            if !group_edit {
+                                self.editor.finish_stroke();
+                            }
                             let action = match id {
                                 10146 => "layer.merge_down",
                                 10147 => "layer.merge_visible",
@@ -909,5 +916,164 @@ fn mirror_horizontal(tree: &mut egui_dock::Tree<Panel>) {
     copy(&source, &mut target, 0, 0);
     for (node, mirrored) in tree.iter_mut().zip(target) {
         *node = mirrored;
+    }
+}
+
+#[cfg(test)]
+mod group_command_tests {
+    use super::*;
+    use crate::application::{Pointer, PointerPhase, Session, ToolKind};
+    use serde_json::json;
+
+    #[test]
+    fn group_merge_and_grouping_shortcuts_preserve_live_local_contacts_and_recorded_samples() {
+        for (key, modifiers) in [('E', CTRL | SHIFT), ('G', CTRL), ('G', CTRL | SHIFT)] {
+            for tool in [ToolKind::Brush, ToolKind::Hand] {
+                let mut app = crate::desktop::tests::studio();
+                app.editor.session = Session::new(
+                    crate::plugins::Registry::load(
+                        &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+                    )
+                    .unwrap(),
+                )
+                .unwrap();
+                app.editor.settings.keys = Keymap::default();
+                assert!(app
+                    .editor
+                    .core("canvas.new", json!({"width":12,"height":8})));
+                assert!(app.editor.core(
+                    "group.create",
+                    json!({"members":[{"kind":"layer","id":1}],"name":"Ink"})
+                ));
+                app.editor.session.parameters.stabilizer = 0.65;
+                let sample = Pointer {
+                    phase: PointerPhase::Down,
+                    x: 3.,
+                    y: 3.,
+                    pressure: 0.35,
+                    time: 0,
+                    pen: true,
+                    eraser: false,
+                    tool_override: Some(tool),
+                    view_x: Some(30.),
+                    view_y: Some(30.),
+                };
+                app.editor.session.pointer(sample).unwrap();
+                app.editor.sync_from_session();
+                app.editor.input_owned = true;
+                app.editor.pen_active = true;
+                if tool == ToolKind::Hand {
+                    app.editor.panning = Some(pos2(30., 30.));
+                }
+                let panning = app.editor.panning;
+                let state = app.editor.session.state();
+                let pixels = app.editor.session.doc.layers[0].pixels.clone();
+                let history = app.editor.session.doc.history_bytes();
+                let action = app
+                    .editor
+                    .settings
+                    .keys
+                    .resolve(key as usize, modifiers)
+                    .unwrap();
+                app.editor.actions.push(action);
+                app.run_actions(&Context::default());
+                assert!(
+                    app.editor.status.contains("stroke_active"),
+                    "{key}/{tool:?}: {}",
+                    app.editor.status
+                );
+                assert_eq!(app.editor.session.state(), state);
+                assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+                assert_eq!(app.editor.session.doc.history_bytes(), history);
+                assert!(app.editor.session.stroke.active());
+                assert!(app.editor.session.pointer_checkpoint.is_some());
+                assert!(app.editor.input_owned && app.editor.pen_active);
+                assert_eq!(app.editor.panning, panning);
+                assert_eq!(app.editor.drawing, tool == ToolKind::Brush);
+                // The rejected command records the input chunk while preserving
+                // the cached native pressure contact.
+                let events = app
+                    .editor
+                    .session
+                    .journal
+                    .as_mut()
+                    .unwrap()
+                    .events(0, 256)
+                    .unwrap();
+                let recorded = events["events"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|event| event["source"]["kind"] == "pointer")
+                    .flat_map(|event| event["source"]["samples"].as_array().unwrap().iter())
+                    .cloned()
+                    .collect::<Vec<_>>();
+                assert_eq!(recorded, [serde_json::to_value(sample).unwrap()]);
+                assert!(events["events"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|event| event["success"] == false && event["source"]["kind"] == "action"));
+                for (phase, time, pressure) in
+                    [(PointerPhase::Move, 20, 0.8), (PointerPhase::Up, 40, 0.2)]
+                {
+                    app.editor
+                        .session
+                        .pointer(Pointer {
+                            phase,
+                            time,
+                            pressure,
+                            x: 8.,
+                            y: 4.,
+                            view_x: Some(80.),
+                            view_y: Some(40.),
+                            ..sample
+                        })
+                        .unwrap();
+                }
+                assert!(!app.editor.session.stroke.active());
+                assert_eq!(
+                    app.editor
+                        .session
+                        .journal
+                        .as_mut()
+                        .unwrap()
+                        .verify(None)
+                        .unwrap()["valid"],
+                    true
+                );
+                let events = app
+                    .editor
+                    .session
+                    .journal
+                    .as_mut()
+                    .unwrap()
+                    .events(0, 256)
+                    .unwrap();
+                let recorded = events["events"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|event| event["source"]["kind"] == "pointer")
+                    .flat_map(|event| event["source"]["samples"].as_array().unwrap().iter())
+                    .collect::<Vec<_>>();
+                assert_eq!(recorded.len(), 3);
+                assert_eq!(
+                    recorded
+                        .iter()
+                        .map(|point| point["time"].as_u64().unwrap())
+                        .collect::<Vec<_>>(),
+                    [0, 20, 40]
+                );
+                assert_eq!(app.editor.session.doc.layers.len(), 1);
+                assert_eq!(
+                    app.editor.session.doc.groups_state()["groups"]
+                        .as_array()
+                        .unwrap()
+                        .len(),
+                    1
+                );
+            }
+        }
     }
 }

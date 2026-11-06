@@ -158,6 +158,7 @@ pub enum Operation {
     GroupUngroupParent,
     GroupDelete,
     GroupDuplicate,
+    GroupMerge,
     GroupSelectLayers,
     ClearLayer,
     SelectionShape,
@@ -202,6 +203,10 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::MergeVisible {
+            return json!({"type":"object","properties":{},"additionalProperties":false,
+                "description":"Bake visible artwork. In grouped documents, consume effectively visible rasters and retain the top visible raster identity as a Normal/full-opacity root result, preserving all hidden rasters, filter branches and group records. Later unhiding can interact differently with the baked root. Requires idle input for grouped documents."});
+        }
         if self == Self::AddLayer {
             return json!({"type":"object","properties":{
                 "parent_id":{"type":"integer","minimum":0,"maximum":4294967295u64,"description":"Parent group ID; zero means document root. When omitted, insert beside the active raster layer."}
@@ -218,6 +223,7 @@ impl Operation {
                 | Self::GroupUngroupParent
                 | Self::GroupDelete
                 | Self::GroupDuplicate
+                | Self::GroupMerge
                 | Self::GroupSelectLayers
         ) {
             return crate::plugins::groups::schema(self);

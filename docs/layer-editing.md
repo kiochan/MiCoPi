@@ -8,7 +8,7 @@ The Layers panel provides an editable **Layer Name**, **Layer Actions** menu and
 
 Flips, 180° rotation and offsets operate on the selected visible layer's full canvas-sized pixel buffer. Hidden layers must be made visible before a pixel edit, following the existing plugin edit contract. Offsets are signed integer pixels: positive X is right, positive Y is down. Exposed areas become transparent; out-of-bounds pixels are discarded and can be restored with undo. These operations do not resample colors. The native painting plugin must be enabled for pixel transforms.
 
-[Layer Groups](layer-groups.md) adds isolated nesting, typed hierarchy commands and an actual-composition node view. Existing leaf commands preserve membership; explicit hierarchy moves handle reparenting.
+[Layer Groups](layer-groups.md) adds isolated nesting, typed hierarchy commands and an actual-composition node view. Existing leaf commands preserve membership; explicit hierarchy moves handle reparenting. Merge Group bakes an explicitly targeted subtree, while grouped Merge Visible retains hidden content and group skeletons; see [Group baking](layer-groups.md#bake-groups-and-visible-artwork).
 
 ## Public actions
 
@@ -128,7 +128,7 @@ Pixel baking uses the existing native compositor; it must be loaded. Rendering a
 The supported contracts are explicit:
 
 - Merge Down requires both neighboring layers to be visible, without pixel or transparency locks. A pair above other layers must use Normal blending; backdrop-dependent modes require Merge Visible or Flatten Image. The pair is baked in isolation, so 8-bit alpha quantization can affect subsequent compositing over a lower backdrop.
-- Merge Visible retains hidden layers, their locks, raw pixels and filters. With only one visible layer it is a no-op; with none it fails. Its visible result matches the previous composite.
+- Merge Visible retains hidden layers, their locks, raw pixels and filters. With one visible layer in an ungrouped document it is a no-op; with none it fails. In grouped documents it bakes even one effectively visible raster, retains all group records/hidden branches and moves the result to root so group effects are not applied twice. Its visible result matches the previous composite; later revealing hidden content can interact differently with the baked result.
 - Flatten Image discards hidden layers and the editable image graph, with undo support. It **preserves canvas transparency** rather than inserting a white Photoshop Background layer. It is the explicit path for baking a free graph.
 - Merge Down, Merge Visible and Stamp Visible require linked composition, even when a free graph is disabled. Destructive merges reject pixel-locked or alpha-locked source layers; stamp leaves locked sources untouched.
 - Stamp keeps sources visible. On a transparent canvas, displaying the stamped composite above its sources can increase opacity; hide the sources when a single baked appearance is desired.

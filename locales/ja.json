@@ -1211,6 +1211,7 @@
   "Ungroup": "グループ解除",
   "Delete Group and Contents": "グループと内容を削除",
   "Duplicate Group": "グループを複製",
+  "Merge Group": "グループを結合",
   "Select Group Layers": "グループ内のレイヤーを選択",
   "Group Selected Layers": "選択したレイヤーをグループ化",
   "New Empty Group": "空のグループを作成",
@@ -1265,5 +1266,11 @@
   "Raster move would split a group subtree; move or reparent a tree item instead": "移動するとグループが分断されます。グループ全体を移動するか、親グループを変更してください。",
   "Group opacity applies when the adjustment is released.": "操作を離すとグループの不透明度が適用されます。",
   "Group changed during the opacity adjustment. Reset the draft to continue.": "不透明度の操作中にグループが変更されました。続行するには調整値をリセットしてください。",
-  "Reset Opacity Draft": "不透明度の調整をリセット"
+  "Reset Opacity Draft": "不透明度の調整をリセット",
+  "An empty group has no raster layers to merge": "空のグループには結合できるラスターレイヤーがありません。",
+  "Group merge exceeds the document pixel limit": "グループの結合によりドキュメントのピクセル上限を超えます。",
+  "There are no effectively visible raster layers to merge": "実際に表示されるラスターレイヤーがないため、結合できません。",
+  "Finish the current contact before merging grouped layers": "グループ内のレイヤーを結合する前に、現在のペン操作やドラッグを終了してください。",
+  "Layer identity limit reached": "レイヤー ID の上限に達しました。",
+  "Unlock layer transparency before merging these layers": "結合する前に対象レイヤーの透明度ロックを解除してください。"
 }

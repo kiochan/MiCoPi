@@ -40,9 +40,8 @@ pub(crate) fn execute(
     use crate::application::Operation::*;
     match op {
         GroupQuery | GroupCreate | GroupCreateSelected | GroupProperties | GroupMove
-        | GroupUngroup | GroupUngroupParent | GroupDelete | GroupDuplicate | GroupSelectLayers => {
-            groups::execute(session, op, args)
-        }
+        | GroupUngroup | GroupUngroupParent | GroupDelete | GroupDuplicate | GroupMerge
+        | GroupSelectLayers => groups::execute(session, op, args),
         LayerQuery => crate::application::layer_query::execute(session, &args),
         LayerBatch => layer_batch::execute(session, args),
         Export | Render | ExportPlan | ExportPreview | ExportDialog => {

@@ -58,7 +58,7 @@ Ctrl/Shift layer selection is separate from the active painting layer. Explicit 
 
 Layers support renaming, reordering, deletion and selection-aware **Layer via Copy (Ctrl+J)** / **Layer via Cut (Ctrl+Shift+J)**. Without a selection, Ctrl+J duplicates the whole layer. Layers also support Merge Down (**Ctrl+E**), Merge Visible (**Ctrl+Shift+E**), Stamp Visible (**Ctrl+Alt+Shift+E**) and transparent-canvas flattening. Exact flips, 180° rotation and integer offsets are also available. See [Layer editing](docs/layer-editing.md).
 
-[Layer Groups](docs/layer-groups.md) provide nested isolated visibility, opacity and blending, subtree operations and an actual-composition node view. Ctrl+G groups selected siblings; painting remains on the active raster. Groups share commands, projects, atomic history and verified replay with MCP/headless.
+[Layer Groups](docs/layer-groups.md) provide nested isolated visibility, opacity and blending, subtree operations and an actual-composition node view. Ctrl+G groups selected siblings; painting remains on the active raster. Merge Group bakes a subtree while retaining its outer appearance properties; grouped Merge Visible preserves hidden branches and folders. Groups share commands, projects, atomic history and verified replay with MCP/headless.
 
 Current limits: one document per session; no Wintab, off-canvas layer storage, raster/clipping masks or watercolor engine. Native plugin DLLs execute inside the host process.
 

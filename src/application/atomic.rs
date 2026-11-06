@@ -142,6 +142,7 @@ impl Operation {
                 | Self::GroupUngroupParent
                 | Self::GroupDelete
                 | Self::GroupDuplicate
+                | Self::GroupMerge
                 | Self::GroupSelectLayers
                 | Self::ClearLayer
                 | Self::SelectionShape

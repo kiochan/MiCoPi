@@ -5362,6 +5362,154 @@
       }
     },
     {
+      "id": "group.merge",
+      "title": "Merge Group",
+      "operation": "group_merge",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295,
+            "description": "Consumed source group identity; the replacement raster uses the separate layer_id field."
+          },
+          "groups": {
+            "type": "object",
+            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected",
+                "effective_visible",
+                "parent_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "active_layer": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295,
+            "description": "Fresh raster identity replacing the consumed source group at its sibling position."
+          }
+        },
+        "required": [
+          "groups",
+          "selected_layer_ids",
+          "layers",
+          "active_layer",
+          "revision",
+          "drawing",
+          "layer_id"
+        ]
+      }
+    },
+    {
       "id": "group.select_layers",
       "title": "Select Group Layers",
       "operation": "group_select_layers",

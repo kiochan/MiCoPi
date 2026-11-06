@@ -1211,6 +1211,7 @@
   "Ungroup": "解散图层组",
   "Delete Group and Contents": "删除图层组及其内容",
   "Duplicate Group": "复制图层组",
+  "Merge Group": "合并图层组",
   "Select Group Layers": "选择组内图层",
   "Group Selected Layers": "将选中图层编组",
   "New Empty Group": "新建空组",
@@ -1265,5 +1266,11 @@
   "Raster move would split a group subtree; move or reparent a tree item instead": "此移动会拆散图层组；请移动整个组或明确更改父级。",
   "Group opacity applies when the adjustment is released.": "调整结束后应用图层组不透明度。",
   "Group changed during the opacity adjustment. Reset the draft to continue.": "调整不透明度期间图层组已发生变化。请重置草稿后继续。",
-  "Reset Opacity Draft": "重置不透明度草稿"
+  "Reset Opacity Draft": "重置不透明度草稿",
+  "An empty group has no raster layers to merge": "空图层组没有可合并的像素图层。",
+  "Group merge exceeds the document pixel limit": "合并图层组会超出文档像素上限。",
+  "There are no effectively visible raster layers to merge": "合并范围内没有实际可见的像素图层。",
+  "Finish the current contact before merging grouped layers": "请先结束当前笔触或拖动，再合并图层组。",
+  "Layer identity limit reached": "图层 ID 已达上限。",
+  "Unlock layer transparency before merging these layers": "请先解除这些图层的透明度锁定，再进行合并。"
 }

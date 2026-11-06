@@ -58,6 +58,7 @@ Keep `src/plugins/` host integration separate from root `plugins/` feature packa
 ## Implementation conventions
 
 - Register operations and their public contracts through the shared registry. Desktop controls, command search, shortcuts, nodes and automation should dispatch the same operations instead of introducing a second editing path.
+- Preserve idle-only document guards through UI adapters: do not finish local contacts before dispatching the mutation. Recording boundaries may flush raw sample chunks while the native contact stays active; continuity checks count recorded and pending samples together.
 - Keep appearance, shortcuts, painting defaults and plugin preferences in validated `settings.json`; keep docking/native geometry in `workspace.egui.json`. Preserve existing explicit preferences and supported unknown root settings fields when saving.
 - Derive UI spacing and sizes from configured appearance metrics, use viewport DPI coordinates consistently, and check narrow/wide layouts and CJK labels. Keep schema editors and user document text independent of localization.
 - Follow existing Rust module/style conventions and `cargo fmt`. Keep refactors focused, reuse existing helpers and justify dependency additions with measured costs. Keep `Cargo.lock` tracked and use the existing native build path.

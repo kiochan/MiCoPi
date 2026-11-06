@@ -42,6 +42,7 @@ Group and raster ID namespaces are separate. A typed entry reference is `{"kind"
 | `group.ungroup` | Required `group_id`; lift children into the parent and remove the container's appearance |
 | `group.ungroup_parent` | No arguments; ungroup the active raster's parent |
 | `group.duplicate` | Required `group_id`; copy the complete subtree beside its source |
+| `group.merge` | Required `group_id`; replace the subtree with a fresh raster retaining the group's own visibility/opacity/mode; result includes `layer_id` |
 | `group.delete` | Required `group_id`; delete the container and descendants, retaining at least one document raster |
 | `group.select_layers` | Required `group_id`; select descendant rasters without creating pixel undo; reject empty groups |
 | `layer.add` | Optional `parent_id`, with zero for root; omitted means beside the active raster |
@@ -58,7 +59,19 @@ Group edits require an idle drawing or non-drawing contact. Inherited visibility
 
 Flat raster storage remains the depth-first leaf order of the tree. Reordering moves owned pixel buffers rather than cloning images. `group.move` rejects duplicate references, ancestor-plus-descendant targets, cycles and invalid final child slots. Legacy flat layer moves cannot cross parent boundaries or split subtrees; the grouped UI uses explicit sibling operations instead.
 
-Ungroup removes the group's visibility, opacity and blending; it is not an appearance-preserving bake. Group deletion follows existing structural deletion policy and may remove locked descendants, with undo. Pixel baking keeps its separate lock guards. Merge Down requires adjacent raster siblings and retains their parent. Stamp Visible adds a root raster from the real composite; Flatten bakes the real composite and removes the hierarchy. Merge Visible with groups, explicit Group Merge, multi-layer transforms, raster/clipping masks and Pass Through remain planned.
+Ungroup removes the group's visibility, opacity and blending; it is not an appearance-preserving bake. Group deletion follows existing structural deletion policy and may remove locked descendants, with undo. Pixel baking keeps its separate lock guards. Merge Down requires adjacent raster siblings and retains their parent. Stamp Visible adds a root raster from the real composite; Flatten bakes the real composite and removes the hierarchy. Multi-layer transforms, raster/clipping masks and Pass Through remain planned.
+
+### Bake groups and visible artwork
+
+![Schema-derived Merge Group command for a current nonempty target](screenshots/group-merge.png)
+
+**Group Actions > Merge Group** sends the inspected group's explicit ID, independently of the active painting layer. It renders only the group's internal child composition, including enabled filters and nested gates, then replaces the complete subtree in the same sibling slot. The new raster retains the group's name, local visibility, opacity and blend mode, receives a fresh raster ID and becomes the sole selected painting layer. The selected group's own gate and ancestor backdrop are excluded from the baked pixels; retaining its mode at the replacement boundary preserves backdrop-dependent interaction. All consumed descendants, including hidden children, are removed with their filters and recoverable through one Undo. The result starts unlocked and without a color label. Empty subtrees and pixel/alpha-locked descendants reject the operation.
+
+**Merge Visible (Ctrl+Shift+E)** on a grouped document renders the full actual composite and replaces effectively visible rasters with one Normal, full-opacity root raster. It retains the top visible raster's ID, name, color label and position-lock flag. Locally hidden or ancestor-hidden rasters retain their raw buffers, locks, parents and filter identities; all group records remain, including newly empty folders. A single visible raster still needs baking when group effects apply. No effectively visible raster is an error. Visibility here refers to eye flags and inherited visibility, not nonzero alpha or opacity.
+
+The baked root reproduces the current visible image. Later revealing preserved hidden content can interact differently with this baked result; retaining the original raw content does not preserve every hypothetical unmerged appearance. Merge Group instead consumes hidden descendants too, so lock protection covers every raster it removes. Neither operation applies the current pixel selection to its structural bake; both preserve current and Reselect masks.
+
+Both grouped commands require idle drawing and non-drawing contacts. Final identities, locks, tree order and graph budgets are validated before allocating the one required output raster. The existing compositor borrows immutable source descriptors; partial rendering failure only touches staging storage. Publication uses one structural undo, revision and verified outcome, and atomic/journal failure restores the original document. No new DLL ABI, dependency or per-MOVE work is introduced. The [group baking example](../examples/automation/group-merge.jsonl) includes nested appearance, locked hidden content, Undo/Redo, three PNG outputs and replay verification.
 
 The stored image graph remains the stable raster/filter branch model. A cached effective graph compiles those branches with the group tree and a shared transparent base. The Node Editor defaults to **Actual Composition**, showing this real topology. **Layer Filters** edits the source branches separately, with hierarchy-conflict guards. Disabling node effects bypasses filters while retaining group isolation and appearance. Free compositing cannot be combined with groups; ungroup before switching to that mode.
 

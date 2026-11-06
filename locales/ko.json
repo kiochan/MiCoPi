@@ -1211,6 +1211,7 @@
   "Ungroup": "그룹 해제",
   "Delete Group and Contents": "그룹과 내용 삭제",
   "Duplicate Group": "그룹 복제",
+  "Merge Group": "그룹 병합",
   "Select Group Layers": "그룹의 레이어 선택",
   "Group Selected Layers": "선택한 레이어 그룹화",
   "New Empty Group": "빈 그룹 만들기",
@@ -1265,5 +1266,11 @@
   "Raster move would split a group subtree; move or reparent a tree item instead": "이동하면 그룹이 분리됩니다. 그룹 전체를 이동하거나 상위 그룹을 변경하세요.",
   "Group opacity applies when the adjustment is released.": "조작을 놓으면 그룹 불투명도가 적용됩니다.",
   "Group changed during the opacity adjustment. Reset the draft to continue.": "불투명도 조작 중 그룹이 변경되었습니다. 계속하려면 조정값을 초기화하세요.",
-  "Reset Opacity Draft": "불투명도 조정값 초기화"
+  "Reset Opacity Draft": "불투명도 조정값 초기화",
+  "An empty group has no raster layers to merge": "빈 그룹에는 병합할 픽셀 레이어가 없습니다.",
+  "Group merge exceeds the document pixel limit": "그룹 병합이 문서 픽셀 한도를 초과합니다.",
+  "There are no effectively visible raster layers to merge": "실제로 표시되는 픽셀 레이어가 없어 병합할 수 없습니다.",
+  "Finish the current contact before merging grouped layers": "그룹 레이어를 병합하려면 현재 펜 입력이나 드래그를 먼저 끝내세요.",
+  "Layer identity limit reached": "레이어 ID 한도에 도달했습니다.",
+  "Unlock layer transparency before merging these layers": "병합하려면 대상 레이어의 투명도 잠금을 먼저 해제하세요."
 }

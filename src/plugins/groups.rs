@@ -27,6 +27,11 @@ pub(crate) fn schema(op: Operation) -> Value {
             json!({"items":{"type":"array","minItems":1,"maxItems":32,"items":item},"parent_id":parent,"index":{"type":"integer","minimum":0,"maximum":32}}),
             vec!["items", "parent_id", "index"],
         ),
+        GroupMerge => {
+            let mut target = id.clone();
+            target["description"] = json!("Nonempty group to bake, including hidden descendants. The fresh raster retains this group's own name, visibility, opacity and blend mode; pixel/alpha-locked descendants reject the operation. Requires an idle contact.");
+            (json!({"group_id":target}), vec!["group_id"])
+        }
         GroupUngroupParent => (json!({}), vec![]),
         _ => (json!({"group_id":id}), vec!["group_id"]),
     };
@@ -77,6 +82,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
     let id = args["group_id"].as_u64().unwrap_or(0);
     let name = args["name"].as_str().map(str::to_owned);
     let mut result_id = id;
+    let mut merged_layer = None;
     match op {
         GroupCreate | GroupCreateSelected => {
             let members: Vec<GroupItem> = if op == GroupCreateSelected {
@@ -132,6 +138,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         }
         GroupDelete => s.doc.group_delete(id).map_err(group_error)?,
         GroupDuplicate => result_id = s.doc.group_duplicate(id).map_err(group_error)?,
+        GroupMerge => merged_layer = Some(s.doc.group_merge(id).map_err(group_error)?),
         GroupSelectLayers => {
             let ids = s.doc.group_layer_ids(id).map_err(group_error)?;
             if ids.is_empty() {
@@ -150,6 +157,9 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
     let mut state = s.state();
     if result_id != 0 {
         state["group_id"] = json!(result_id);
+    }
+    if let Some(id) = merged_layer {
+        state["layer_id"] = json!(id);
     }
     Ok(state)
 }

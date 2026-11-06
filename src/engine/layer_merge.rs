@@ -77,7 +77,7 @@ impl Document {
         if self.has_groups() {
             self.ensure_group_renderer()?;
             if operation == MergeLayers::Visible {
-                return Err("Merge Visible with groups is not supported; use Flatten Image or Stamp Visible".into());
+                return self.merge_grouped_visible();
             }
             if operation == MergeLayers::Down && index > 0 {
                 let tree = self.groups.as_ref().unwrap();

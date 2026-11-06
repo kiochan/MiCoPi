@@ -42,7 +42,12 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         }
         MergeDown | MergeVisible | FlattenImage | StampVisible => {
             if op == MergeVisible && s.doc.has_groups() {
-                return Err(ActionError::new("group_boundary", "Merge Visible with groups is not supported; use Flatten Image or Stamp Visible"));
+                if s.stroke.active() || s.pointer_checkpoint.is_some() {
+                    return Err(ActionError::new(
+                        "stroke_active",
+                        "Finish the current contact before merging grouped layers",
+                    ));
+                }
             }
             use crate::engine::document::MergeLayers;
             let i = if op == MergeDown {
@@ -60,9 +65,9 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 MergeDown if i > 0 => vec![i - 1, i],
                 MergeVisible => {
                     let v: Vec<_> = (0..s.doc.layers.len())
-                        .filter(|&i| s.doc.layers[i].visible)
+                        .filter(|&i| s.doc.layer_visible(i))
                         .collect();
-                    if v.len() > 1 {
+                    if v.len() > 1 || s.doc.has_groups() {
                         v
                     } else {
                         vec![]

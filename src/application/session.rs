@@ -638,6 +638,7 @@ impl Session {
                     | Operation::GroupUngroupParent
                     | Operation::GroupDelete
                     | Operation::GroupDuplicate
+                    | Operation::GroupMerge
                     | Operation::GroupSelectLayers
             ) {
                 crate::plugins::groups::validate(op, &action.args)?;

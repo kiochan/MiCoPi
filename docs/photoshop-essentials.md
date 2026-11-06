@@ -15,7 +15,7 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 | Area | Available foundation | Main gap |
 | --- | --- | --- |
 | Drawing | Native DLL tools, pressure, stabilization, spacing, pressure curve, size/shape cursor | Rich tips/dynamics and additional painting tools |
-| Layers | Stable IDs, multi-selection/batches, nested isolated groups, locks/labels, merge/flatten/stamp | Masks, clipping, Pass Through, group baking and multi-layer transforms |
+| Layers | Stable IDs, multi-selection/batches, isolated groups/baking, locks/labels, merge/flatten/stamp | Masks, clipping, Pass Through, selected-layer merge and multi-layer transforms |
 | Selection/editing | Document masks, gestures, color matching, edge processing, selected painting and internal transfers | System clipboard and selection transforms |
 | Geometry | Anchored framing/crop, orthogonal geometry, Image Size/Trim, Move and affine Free Transform/repeat/skew | Off-canvas storage and richer project metadata |
 | Composition | Linked layer/filter/blend graphs and explicit free graphs | More adjustments, filters and mask-aware composition |
@@ -33,7 +33,7 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 - [x] Stamp visible content into a new layer without deleting source layers.
 - [x] Expose layer-menu actions, configurable PS-style shortcuts, schemas and headless examples.
 
-Delivered on 2026-11-04. See [Layer editing](layer-editing.md) for supported blend/free-graph behavior, transparent flattening and stamp opacity. Desktop/headless regression tests cover undo, rollback, native renderer failure, project persistence and verified replay; runtime smoke compares JSONL/MCP/GUI pixels. Grouped Merge Visible and Group Merge remain separate P4 work.
+Delivered on 2026-11-04. See [Layer editing](layer-editing.md) for supported blend/free-graph behavior, transparent flattening and stamp opacity. Desktop/headless regression tests cover undo, rollback, native renderer failure, project persistence and verified replay; runtime smoke compares JSONL/MCP/GUI pixels. Grouped Merge Visible and Group Merge were subsequently implemented in P4.
 
 Acceptance: source buffers and metadata return on undo; redo restores the merged state; filters are baked once; free graphs have an explicit supported path or fail before mutation; atomic failure restores document/history; saved projects and outcome replay reproduce the result. Test missing compositors and stale IDs/revisions.
 
@@ -82,7 +82,8 @@ Acceptance: coordinate units, pivots, bounds, resampling and clipping are specif
 - [x] Add persistent pixel/position locks, color labels and read-only layer search/filter through shared actions/state/nodes, typed host permissions, one undo and verified replay.
 - [x] Add stable-ID multi-layer selection and explicit property, duplicate, delete, block-order and exact pixel batch targeting, with shared actions/state/nodes, one Undo/Redo group/revision/outcome and rollback. Painting and Free Transform remain active-layer operations.
 - [x] Add versioned stable-ID isolated groups with nested visibility/opacity/blending, typed subtree operations, cached actual composition, deterministic history/replay and shared nodes/MCP/headless contracts.
-- [ ] Add explicit Group Merge and group-aware Merge Visible/selection merge with documented backdrop, hidden-content and filter-baking behavior, one undo/outcome and failure rollback.
+- [x] Add explicit Group Merge and group-aware Merge Visible with documented backdrop/hidden-content/filter behavior, one structural undo/outcome, shared typed nodes/MCP/headless execution and failure rollback. Retain the group's outer properties or the complete visible root result as appropriate; keep hidden branches/skeletons for Merge Visible.
+- [ ] Add selected-layer merge with explicit relative stacking, backdrop and parent semantics.
 - [ ] Add Pass Through groups with explicit backdrop semantics and alpha/opacity reference fixtures.
 - [ ] Expand common layer/group blend modes, including Soft/Hard Light, Color Dodge/Burn, Linear Burn and Hue/Saturation/Color/Luminosity, with native capability and alpha/color references.
 - [ ] Add raster masks, mask editing/enable/invert/density/feather and selection-to-mask conversion.
