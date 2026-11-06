@@ -378,7 +378,11 @@ impl Operation {
                 json!({"x":{"type":"integer","minimum":0,"maximum":4095},"y":{"type":"integer","minimum":0,"maximum":4095},"width":{"type":"integer","minimum":1,"maximum":4096},"height":{"type":"integer","minimum":1,"maximum":4096}}),
                 vec!["x", "y", "width", "height"],
             ),
-            Self::Open | Self::Save | Self::SettingsRead | Self::CaptureWorkspace => (
+            Self::CaptureWorkspace => (
+                json!({"path":{"type":"string","minLength":1,"description":"Capture destination, at most 32768 UTF-8 bytes"}}),
+                vec!["path"],
+            ),
+            Self::Open | Self::Save | Self::SettingsRead => (
                 json!({"path":{"type":"string","minLength":1}}),
                 vec!["path"],
             ),
@@ -427,7 +431,7 @@ impl Operation {
                 vec!["panel", "x", "y"],
             ),
             Self::WindowCapture => (
-                json!({"panel":{"type":"string"},"path":{"type":"string"}}),
+                json!({"panel":{"type":"string"},"path":{"type":"string","minLength":1,"description":"Capture destination, at most 32768 UTF-8 bytes"}}),
                 vec!["panel", "path"],
             ),
             Self::WindowLayout => (json!({"layout":{"type":"object"}}), vec!["layout"]),

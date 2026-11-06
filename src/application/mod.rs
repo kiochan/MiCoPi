@@ -6,6 +6,7 @@ pub(crate) mod creation;
 mod mask_boundary;
 pub mod pipeline;
 pub(crate) mod png_io;
+mod presentation_captures;
 pub mod replay;
 mod selection_sampling;
 mod session;

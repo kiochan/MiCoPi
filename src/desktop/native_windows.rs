@@ -1,7 +1,12 @@
 //! Native viewport presentation of plugin-owned dock trees. One Session, no pixel copies.
 use super::*;
+use super::{
+    capture::PendingCapture,
+    capture_writer::{CaptureSubmitter, Completion},
+};
 use egui_dock::{Surface, SurfaceIndex, WindowState};
 use serde_json::{json, Value};
+use std::sync::{atomic::Ordering as AtomicOrdering, Arc};
 
 pub(super) struct NativeWindow {
     pub native: Option<Native>,
@@ -77,24 +82,234 @@ pub(super) fn geometry(state: &WindowState) -> Rect {
         }),
     )
 }
+
+fn read_native_capture(
+    request: &PendingCapture,
+    viewport: ViewportId,
+    size: [u32; 2],
+    submitter: &CaptureSubmitter,
+    readback: impl FnOnce([u32; 2]) -> Arc<ColorImage>,
+) {
+    if request.claimed.load(AtomicOrdering::Acquire) {
+        return;
+    }
+    let permit = match submitter.try_reserve() {
+        Ok(Some(permit)) => permit,
+        Ok(None) => return,
+        Err(error) => {
+            if request
+                .claimed
+                .compare_exchange(false, true, AtomicOrdering::AcqRel, AtomicOrdering::Acquire)
+                .is_ok()
+            {
+                submitter.complete(Completion {
+                    request_id: request.request_id,
+                    viewport,
+                    path: request.path.clone(),
+                    token: request.token.clone(),
+                    result: Err(error),
+                });
+            }
+            return;
+        }
+    };
+    if request
+        .claimed
+        .compare_exchange(false, true, AtomicOrdering::AcqRel, AtomicOrdering::Acquire)
+        .is_err()
+    {
+        return;
+    }
+    let result =
+        capture_writer::checked_size([size[0] as usize, size[1] as usize]).and_then(|size| {
+            let image = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| readback(size)))
+                .map_err(|_| "Floating viewport screenshot readback failed".to_owned())?;
+            permit.submit(capture_writer::Job {
+                request_id: request.request_id,
+                viewport,
+                path: request.path.clone(),
+                token: request.token.clone(),
+                image,
+            })
+        });
+    if let Err(error) = result {
+        submitter.complete(Completion {
+            request_id: request.request_id,
+            viewport,
+            path: request.path.clone(),
+            token: request.token.clone(),
+            result: Err(error),
+        });
+    }
+}
+
 impl Studio {
+    pub(super) fn queue_native_capture(&mut self, value: &Value) {
+        let path = PathBuf::from(value["path"].as_str().unwrap_or_default());
+        let request_id = value["request_id"].as_u64();
+        let panel = value["panel"]
+            .as_str()
+            .and_then(|id| self.editor.session.registry.panels.get(id))
+            .map(contributed_panel);
+        let viewport = panel
+            .and_then(|panel| self.dock.find_tab(&panel))
+            .filter(|(surface, _, _)| {
+                !surface.is_main()
+                    && matches!(self.dock.get_surface(*surface), Some(Surface::Window(_, _)))
+            })
+            .map(|(surface, _, _)| ViewportId::from_hash_of(("micopi-plugin-viewport", surface.0)));
+        let pending = self
+            .pending_window_captures
+            .values()
+            .map(std::collections::VecDeque::len)
+            .sum::<usize>();
+        let error = if viewport.is_none() {
+            Some("Float the window before capturing it")
+        } else if pending >= capture::CAPTURE_QUEUE_LIMIT {
+            Some("Screenshot presentation queue is full")
+        } else {
+            None
+        };
+        if let Some(error) = error {
+            let result = Err(error.to_owned());
+            if let Some(id) = request_id {
+                self.editor.session.finish_capture(id, result);
+            } else {
+                self.editor.session.ui["windows.capture"] = json!({
+                    "path": path, "status": "failed", "error": error
+                });
+            }
+            return;
+        }
+        let mut request = PendingCapture::new(path, request_id);
+        request.panel = value["panel"].as_str().map(str::to_owned);
+        self.pending_window_captures
+            .entry(viewport.unwrap())
+            .or_default()
+            .push_back(request);
+    }
+
+    pub(super) fn finish_native_capture(&mut self, completion: &Completion) -> bool {
+        let Some(queue) = self.pending_window_captures.get_mut(&completion.viewport) else {
+            return false;
+        };
+        let Some(front) = queue.front() else {
+            return false;
+        };
+        if !front.matches(&completion.token)
+            || front.request_id != completion.request_id
+            || front.path != completion.path
+        {
+            return false;
+        }
+        queue.pop_front();
+        if queue.is_empty() {
+            self.pending_window_captures.remove(&completion.viewport);
+        }
+        if let Some(id) = completion.request_id {
+            self.editor
+                .session
+                .finish_capture(id, completion.result.clone());
+        } else {
+            self.editor.session.ui["windows.capture"] = match &completion.result {
+                Ok([width, height]) => json!({
+                    "path": completion.path,
+                    "status": "saved", "width": width, "height": height, "error": null
+                }),
+                Err(error) => json!({
+                    "path": completion.path,
+                    "status": "failed", "error": error
+                }),
+            };
+        }
+        true
+    }
+
+    fn service_native_capture_waits(&mut self, ctx: &Context, viewports: &[ViewportId]) {
+        let submitter = self.capture_writer.submitter();
+        for (viewport, queue) in &self.pending_window_captures {
+            let Some(front) = queue.front() else {
+                continue;
+            };
+            if front.claimed.load(AtomicOrdering::Acquire) {
+                // Submitted encoding is acknowledged by the worker. A timeout
+                // here could report failure before an authorized file write.
+                continue;
+            }
+            let still_in_viewport = front.panel.as_deref().is_none_or(|id| {
+                self.editor
+                    .session
+                    .registry
+                    .panels
+                    .get(id)
+                    .map(contributed_panel)
+                    .and_then(|panel| self.dock.find_tab(&panel))
+                    .is_some_and(|(surface, _, _)| {
+                        !surface.is_main()
+                            && ViewportId::from_hash_of(("micopi-plugin-viewport", surface.0))
+                                == *viewport
+                    })
+            });
+            let error = if !viewports.contains(viewport) || !still_in_viewport {
+                Some("The floating viewport closed or docked before screenshot readback")
+            } else if front.created.elapsed() >= capture::CAPTURE_TIMEOUT {
+                Some("Timed out waiting for the floating viewport screenshot")
+            } else {
+                None
+            };
+            if let Some(error) = error {
+                if front
+                    .claimed
+                    .compare_exchange(false, true, AtomicOrdering::AcqRel, AtomicOrdering::Acquire)
+                    .is_ok()
+                {
+                    submitter.complete(Completion {
+                        request_id: front.request_id,
+                        viewport: *viewport,
+                        path: front.path.clone(),
+                        token: front.token.clone(),
+                        result: Err(error.into()),
+                    });
+                }
+            }
+        }
+        if !self.pending_window_captures.is_empty() {
+            ctx.request_repaint_after_for(Duration::from_millis(16), ViewportId::ROOT);
+        }
+    }
+
     fn schedule_viewport_capture(&mut self, ctx: &Context, viewport: ViewportId) {
-        let Some(path) = self.pending_window_captures.remove(&viewport) else {
+        if ctx.viewport_id() != viewport {
+            return;
+        }
+        let Some(request) = self
+            .pending_window_captures
+            .get(&viewport)
+            .and_then(|queue| queue.front())
+            .filter(|request| !request.claimed.load(AtomicOrdering::Acquire))
+            .cloned()
+        else {
             return;
         };
-        let size = (ctx.content_rect().size() * ctx.pixels_per_point()).round();
-        let results = self.window_capture_results.clone();
-        let repaint = ctx.clone();
-        ctx.layer_painter(LayerId::new(Order::Debug,Id::new("native-window-capture"))).add(PaintCallback {
-            rect:ctx.content_rect(),
-            callback:std::sync::Arc::new(eframe::egui_glow::CallbackFn::new(move |_,painter| {
-                let image=painter.read_screen_rgba([size.x as u32,size.y as u32]);
-                let rgba:Vec<u8>=image.pixels.iter().flat_map(|c|c.to_array()).collect();
-                let result=image::save_buffer(&path,&rgba,image.width() as u32,image.height() as u32,image::ColorType::Rgba8);
-                results.lock().unwrap().push(json!({"path":path,"status":if result.is_ok() {"saved"} else {"failed"},"error":result.err().map(|e|e.to_string())}));
-                repaint.request_repaint_of(ViewportId::ROOT);
-            })),
-        });
+        let submitter = self.capture_writer.submitter();
+        let rect = ctx.viewport_rect();
+        ctx.layer_painter(LayerId::new(Order::Debug, Id::new("native-window-capture")))
+            .with_clip_rect(rect)
+            .add(PaintCallback {
+                rect,
+                callback: Arc::new(eframe::egui_glow::CallbackFn::new(move |info, painter| {
+                    // UI layout can be rerun and discard these shapes. Only the
+                    // actual paint callback claims a request, and all copies share
+                    // that claim until the matching encoder acknowledgment.
+                    read_native_capture(
+                        &request,
+                        viewport,
+                        info.screen_size_px,
+                        &submitter,
+                        |size| Arc::new(painter.read_screen_rgba(size)),
+                    );
+                })),
+            });
     }
     pub(super) fn absorb_native_surfaces(&mut self, mut local: DockState<Panel>) {
         for surface in local.iter_surfaces_mut().skip(1) {
@@ -106,9 +321,6 @@ impl Studio {
         }
     }
     pub(super) fn render_native_windows(&mut self, root: &Context) {
-        for result in std::mem::take(&mut *self.window_capture_results.lock().unwrap()) {
-            self.editor.session.ui["windows.capture"] = result;
-        }
         let drag_preview = self.group_drag_preview(root);
         if let Some((_, target)) = &drag_preview {
             Self::paint_group_drop(root, target, &self.editor.settings.ui);
@@ -119,6 +331,11 @@ impl Studio {
             .enumerate()
             .filter_map(|(i, s)| matches!(s, Surface::Window(_, _)).then_some(i))
             .collect();
+        let viewports: Vec<_> = indices
+            .iter()
+            .map(|index| ViewportId::from_hash_of(("micopi-plugin-viewport", *index)))
+            .collect();
+        self.service_native_capture_waits(root, &viewports);
         self.native_windows.retain(|i, _| indices.contains(i));
         let mut report_changed = false;
         for index in indices {
@@ -230,7 +447,11 @@ impl Studio {
                         native.drain_pen(&mut self.editor.packets);
                     }
                 }
-                ctx.send_viewport_cmd(ViewportCommand::Title(title.clone()));
+                // Preserve the unique bootstrap title until HWND discovery has
+                // succeeded, so a transient miss remains retryable next frame.
+                if window.native.is_some() {
+                    ctx.send_viewport_cmd(ViewportCommand::Title(title.clone()));
+                }
                 window.maximized = ctx.input(|i| i.viewport().maximized.unwrap_or(false));
                 window.minimized = ctx.input(|i| i.viewport().minimized.unwrap_or(false));
                 if let Some(rect) = ctx
@@ -428,5 +649,197 @@ impl Studio {
             json!({"viewport":format!("{:?}",w.viewport),"hwnd":w.native.as_ref().map(Native::window_id),
             "owner":w.native.as_ref().map(Native::owner),"focused":w.focused,"maximized":w.maximized,"minimized":w.minimized,"pixels_per_point":w.pixels_per_point,"image_rect":w.image_rect,"bounds":{"x":r.min.x,"y":r.min.y,"width":r.width(),"height":r.height()}}),
         )
+    }
+}
+
+#[cfg(test)]
+mod capture_tests {
+    use super::*;
+
+    fn floated() -> (Studio, Context, ViewportId) {
+        let mut app = crate::desktop::tests::studio();
+        let ctx = Context::default();
+        app.apply_window_command(
+            &ctx,
+            &json!({"panel":"tool-options","operation":"float","width":280,"height":300}),
+        )
+        .unwrap();
+        let (surface, _, _) = app.dock.find_tab(&Panel::ToolOptions).unwrap();
+        let viewport = ViewportId::from_hash_of(("micopi-plugin-viewport", surface.0));
+        (app, ctx, viewport)
+    }
+
+    #[test]
+    fn native_capture_survives_discarded_layout_and_acknowledges_only_its_front() {
+        let (mut app, ctx, viewport) = floated();
+        for path in ["first.png", "second.png"] {
+            app.queue_native_capture(&json!({"panel":"tool-options","path":path}));
+        }
+        let first = app.pending_window_captures[&viewport][0].clone();
+        let mut passes = 0;
+        let mut input = RawInput {
+            viewport_id: viewport,
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(280., 300.))),
+            ..Default::default()
+        };
+        input.viewports.insert(viewport, Default::default());
+        let output = ctx.run(input, |ctx| {
+            passes += 1;
+            app.schedule_viewport_capture(ctx, viewport);
+            if passes == 1 {
+                ctx.request_discard("capture layout regression");
+            }
+        });
+        assert!(passes > 1);
+        assert!(output
+            .shapes
+            .iter()
+            .any(|shape| matches!(&shape.shape, Shape::Callback(_))));
+        assert_eq!(app.pending_window_captures[&viewport].len(), 2);
+        assert!(!first.claimed.load(AtomicOrdering::Acquire));
+
+        let mut completion = Completion {
+            request_id: first.request_id,
+            viewport,
+            path: first.path.clone(),
+            token: UserData::new(()),
+            result: Err("Synthetic encoder failure".into()),
+        };
+        assert!(!app.finish_native_capture(&completion));
+        completion.token = first.token;
+        assert!(app.finish_native_capture(&completion));
+        assert_eq!(app.pending_window_captures[&viewport].len(), 1);
+        assert!(!app.finish_native_capture(&completion));
+        assert_eq!(
+            app.pending_window_captures[&viewport][0].path,
+            PathBuf::from("second.png")
+        );
+    }
+
+    #[test]
+    fn queued_native_capture_fails_if_its_panel_docks_or_reuses_another_viewport() {
+        let (mut app, ctx, viewport) = floated();
+        app.queue_native_capture(&json!({"panel":"tool-options","path":"docked.png"}));
+        app.apply_window_command(
+            &ctx,
+            &json!({"panel":"tool-options","operation":"dock_top","target":"canvas"}),
+        )
+        .unwrap();
+        // Even if a new group reuses the old viewport index, the original panel
+        // no longer belongs there and must never receive that group's image.
+        app.service_native_capture_waits(&ctx, &[viewport]);
+        let completions = app.capture_writer.drain();
+        assert_eq!(completions.len(), 1);
+        assert!(completions[0].result.is_err());
+        assert!(app.finish_native_capture(&completions[0]));
+        assert!(app.pending_window_captures.is_empty());
+        app.queue_native_capture(&json!({"panel":"tool-options","path":"not-floating.png"}));
+        assert!(app.pending_window_captures.is_empty());
+        assert_eq!(app.editor.session.ui["windows.capture"]["status"], "failed");
+    }
+
+    #[test]
+    fn submitted_native_encoding_is_not_failed_by_a_later_viewport_close() {
+        let (mut app, ctx, viewport) = floated();
+        app.queue_native_capture(&json!({"panel":"tool-options","path":"submitted.png"}));
+        app.pending_window_captures[&viewport][0]
+            .claimed
+            .store(true, AtomicOrdering::Release);
+        app.service_native_capture_waits(&ctx, &[]);
+        assert!(app.capture_writer.drain().is_empty());
+        assert_eq!(app.pending_window_captures[&viewport].len(), 1);
+    }
+
+    #[test]
+    fn identified_native_completions_and_queue_failures_preserve_recorded_public_state() {
+        let (mut app, ctx, viewport) = floated();
+        let state = app.editor.session.state();
+        let id = app
+            .editor
+            .session
+            .queue_capture(Some("tool-options"), "normal.png")
+            .unwrap();
+        app.queue_native_capture(&json!({
+            "panel":"tool-options", "path":"normal.png", "request_id":id
+        }));
+        let request = app.pending_window_captures[&viewport][0].clone();
+        assert!(app.finish_native_capture(&Completion {
+            request_id: Some(id),
+            viewport,
+            path: request.path,
+            token: request.token,
+            result: Ok([280, 300]),
+        }));
+        assert_eq!(app.editor.session.state(), state);
+        assert_eq!(
+            app.editor.session.capture_diagnostics()["last"]["status"],
+            "saved"
+        );
+        app.apply_window_command(
+            &ctx,
+            &json!({"panel":"tool-options","operation":"dock_top","target":"canvas"}),
+        )
+        .unwrap();
+        let id = app
+            .editor
+            .session
+            .queue_capture(Some("tool-options"), "docked.png")
+            .unwrap();
+        app.queue_native_capture(&json!({
+            "panel":"tool-options", "path":"docked.png", "request_id":id
+        }));
+        assert_eq!(app.editor.session.state(), state);
+        assert_eq!(
+            app.editor.session.capture_diagnostics()["last"]["status"],
+            "failed"
+        );
+        assert!(app.pending_window_captures.is_empty());
+    }
+
+    #[test]
+    fn native_readback_waits_for_capacity_and_runs_once_with_physical_dimensions() {
+        let writer = capture_writer::CaptureWriter::default();
+        let submitter = writer.submitter();
+        let first = submitter.try_reserve().unwrap().unwrap();
+        let second = submitter.try_reserve().unwrap().unwrap();
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target/test-output")
+            .join(format!(
+                "missing-native-capture-parent-{}",
+                std::process::id()
+            ))
+            .join("frame.png");
+        let request = PendingCapture::new(path, None);
+        let viewport = ViewportId::from_hash_of("native-readback-test");
+        let reads = std::cell::Cell::new(0);
+        let readback = |size| {
+            assert_eq!(size, [7, 3]);
+            reads.set(reads.get() + 1);
+            Arc::new(ColorImage::new([7, 3], vec![Color32::BLUE; 21]))
+        };
+        read_native_capture(&request, viewport, [7, 3], &submitter, readback);
+        assert_eq!(reads.get(), 0);
+        assert!(!request.claimed.load(AtomicOrdering::Acquire));
+        drop(first);
+        read_native_capture(&request, viewport, [7, 3], &submitter, readback);
+        read_native_capture(&request, viewport, [7, 3], &submitter, readback);
+        assert_eq!(reads.get(), 1);
+        assert!(request.claimed.load(AtomicOrdering::Acquire));
+        drop(second);
+    }
+
+    #[test]
+    fn invalid_native_framebuffer_fails_without_invoking_readback() {
+        let writer = capture_writer::CaptureWriter::default();
+        let submitter = writer.submitter();
+        let request = PendingCapture::new("unused.png".into(), None);
+        let viewport = ViewportId::from_hash_of("invalid-native-readback-test");
+        read_native_capture(&request, viewport, [0, 34], &submitter, |_| {
+            panic!("Invalid framebuffer dimensions must reject before GL readback")
+        });
+        let completions = writer.drain();
+        assert_eq!(completions.len(), 1);
+        assert_eq!(completions[0].token, request.token);
+        assert!(completions[0].result.is_err());
     }
 }

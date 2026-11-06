@@ -8,13 +8,13 @@ pub(super) fn studio() -> Studio {
     let applied = editor.settings.ui.clone();
     Studio {
         pending_group_drag: None,
-        window_capture_results: Default::default(),
+        capture_writer: Default::default(),
         pending_window_captures: Default::default(),
         native_windows: Default::default(),
         replay: replay::ReplayWindow::default(),
         action_server: None,
         from_core_ui: false,
-        pending_capture: None,
+        pending_captures: Default::default(),
         dock: default_dock(&applied, 1360.),
         editor,
         dock_before_focus: None,

@@ -234,6 +234,7 @@ pub struct Session {
     pub movement_defaults: super::MovementPreferences,
     pub settings_path: Option<PathBuf>,
     pub ui_effects: VecDeque<Value>,
+    pub(crate) presentation_captures: super::presentation_captures::Captures,
     pub(crate) stroke: crate::plugins::tools::StrokeEngine,
     pub(crate) events: VecDeque<Event>,
     pub(crate) sequence: u64,
@@ -303,6 +304,7 @@ impl Session {
             transform_event: None,
             export_event: None,
             ui_effects: VecDeque::new(),
+            presentation_captures: Default::default(),
             stroke: Default::default(),
             events: VecDeque::with_capacity(512),
             sequence: 0,
@@ -510,6 +512,7 @@ impl Session {
                                     | Operation::WorkflowRun
                                     | Operation::Pointer
                                     | Operation::CaptureWorkspace
+                                    | Operation::WindowCapture
                                     | Operation::TransformPreview
                                     | Operation::ExportDialog
                                     | Operation::OpenSelectedMerge

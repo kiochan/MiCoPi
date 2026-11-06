@@ -33,6 +33,7 @@ def main():
     gui = (ROOT / args.gui).resolve()
     output = ROOT / "target/test-output/runtime-smoke" / str(time.time_ns())
     output.mkdir(parents=True)
+    print(output, flush=True)
     plugins = output / "plugins"
     shutil.copytree(ROOT / "plugins", plugins)
     shutil.copytree(ROOT / "examples/plugins/quick-tools", plugins / "quick-tools")
@@ -251,7 +252,7 @@ def main():
 
     def call(action, arguments):
         result = subprocess.run([str(cli), "call", action, json.dumps(arguments), "--attach", str(endpoint)], capture_output=True, text=True, encoding="utf-8", timeout=35)
-        assert result.returncode == 0, result.stderr
+        assert result.returncode == 0, result.stderr+result.stdout
         return json.loads(result.stdout)
 
     try:
@@ -260,10 +261,32 @@ def main():
             assert process.poll() is None, "GUI exited before creating session.json"
             assert time.monotonic() < deadline, "GUI IPC startup timed out"
             time.sleep(.05)
-        for command in commands:
-            result=call(command["action"], command["args"])
-            if isinstance(result["result"],dict):
-                assert result["result"].get("ok",True), result
+        for index, command in enumerate(commands):
+            cursor = call("events.list", {})["result"]["latest"]
+            before = call("canvas.state", {})["result"]
+            try:
+                result=call(command["action"], command["args"])
+                if isinstance(result["result"],dict):
+                    assert result["result"].get("ok",True), result
+            except Exception as error:
+                def observe(action, arguments):
+                    try:
+                        return call(action, arguments)["result"]
+                    except Exception as observation_error:
+                        return dict(diagnostic_error=str(observation_error))
+                after = observe("canvas.state", {})
+                events = observe("events.list", dict(after=cursor))
+                details = dict(index=index, command_number=index+1, command=command, error=str(error), before=before,
+                               after=after, events=events)
+                path = output/"gui-command-failure.json"
+                path.write_text(json.dumps(details, ensure_ascii=False, indent=2)+"\n", encoding="utf-8")
+                active = (before["layers"][before["active_layer"]]
+                          if 0 <= before["active_layer"] < len(before["layers"]) else None)
+                print(json.dumps(dict(index=index, command=command,
+                                      selected_tool=before["selected_tool"], tool_kind=before["tool_kind"],
+                                      parameters=before["parameters"], active_layer=active,
+                                      diagnostic=str(path)), ensure_ascii=False), flush=True)
+                raise AssertionError(f"GUI command {index} ({command['action']}) failed; inspect {path}") from error
         assert call("app.describe",{})["result"]["runtime"]=="desktop"
         state = call("canvas.state", {})["result"]
         assert state["selection_defaults"] == selection_defaults

@@ -7,6 +7,8 @@ import shutil
 import subprocess
 import time
 
+from capture_checks import CaptureChecks
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -18,6 +20,7 @@ def main():
     cli, gui = (ROOT / args.cli).resolve(), (ROOT / args.gui).resolve()
     output = ROOT / 'target/test-output/localization-smoke' / str(time.time_ns())
     output.mkdir(parents=True)
+    print(output, flush=True)
     plugins, profile = output / 'plugins', output / 'profile'
     shutil.copytree(ROOT / 'plugins', plugins)
     shutil.copytree(ROOT/'examples/plugins/quick-tools', plugins/'quick-tools')
@@ -42,27 +45,25 @@ def main():
         assert p.returncode == 0, p.stderr+p.stdout
         return json.loads(p.stdout)['result']
 
+    checks = CaptureChecks(call, process)
+
     def screenshot(name):
         path = output/name
-        call('ui.capture',dict(path=str(path)))
-        deadline = time.monotonic()+10
-        while not path.exists():
-            assert time.monotonic()<deadline,'Screenshot timeout'
-            time.sleep(.05)
+        size = checks.client_size(checks.root_hwnd())
+        roots = output/'root-windows.json'
+        if not roots.exists():
+            roots.write_text(json.dumps(dict(windows=checks.root_candidates,
+                                             registry=call('window.list', {})), indent=2)+'\n', encoding='utf-8')
+        # The focused capture smoke decodes all viewport pixels. This broad
+        # localization sweep checks PNG CRCs/physical dimensions and completion.
+        checks.capture(path, size=size, decode_pixels=False)
         return path
 
     def selection_options_capture(language, width, height, tool='wand'):
-        result = call('window.command',dict(panel='tool-options',operation='float',x=60,y=80,width=width,height=height))
-        assert result['queued']
-        deadline = time.monotonic()+10
-        while call('window.list',{})['last_result']['status']=='queued':
-            assert time.monotonic()<deadline,'Selection options placement timeout'
-            time.sleep(.05)
+        checks.window('tool-options', 'float', x=60, y=80, width=width, height=height)
+        _, size = checks.ready('tool-options', (width, height))
         path=output/f'{language}-{tool}-{width}.png'
-        call('window.capture',dict(panel='tool-options',path=str(path)))
-        while not path.exists():
-            assert time.monotonic()<deadline,'Selection options capture timeout'
-            time.sleep(.05)
+        checks.capture(path, 'tool-options', size=size)
 
     try:
         deadline = time.monotonic()+20

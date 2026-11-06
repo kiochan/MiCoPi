@@ -50,8 +50,14 @@ pub fn commands(panel: &PanelDefinition) -> Vec<ActionDefinition> {
 }
 pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     if op == Operation::WindowState {
+        let captures = s.capture_diagnostics();
+        let last_capture = if captures["last"].is_null() {
+            s.ui.get("windows.capture").cloned().unwrap_or(Value::Null)
+        } else {
+            captures["last"].clone()
+        };
         return Ok(
-            json!({"runtime":s.runtime,"panels":s.registry.panels.values().collect::<Vec<_>>(),"actual":s.ui.get("windows.actual"),"last_drop":s.ui.get("windows.drop"),"last_capture":s.ui.get("windows.capture"),"last_request":s.ui.get("windows.request"),"last_result":s.ui.get("windows.result")}),
+            json!({"runtime":s.runtime,"panels":s.registry.panels.values().collect::<Vec<_>>(),"actual":s.ui.get("windows.actual"),"last_drop":s.ui.get("windows.drop"),"last_capture":last_capture,"capture_requests":captures,"last_request":s.ui.get("windows.request"),"last_result":s.ui.get("windows.result")}),
         );
     }
     if s.runtime == "desktop" && s.ui_effects.len() >= 128 {
@@ -86,8 +92,14 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
         }
         let queued = s.runtime == "desktop";
         if queued {
+            let request_id = s.queue_capture(Some(panel), args["path"].as_str().unwrap())?;
+            let mut effect = args;
+            effect["request_id"] = json!(request_id);
             s.ui_effects
-                .push_back(json!({"id":"window.capture","value":args}));
+                .push_back(json!({"id":"window.capture","value":effect}));
+            return Ok(
+                json!({"queued":true,"applied":false,"runtime":s.runtime,"request_id":request_id}),
+            );
         }
         return Ok(json!({"queued":queued,"applied":false,"runtime":s.runtime}));
     }

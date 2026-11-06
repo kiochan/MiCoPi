@@ -36,6 +36,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Plugins and Actions](plugins-and-actions.md) | Packages, manifests, JSONL, MCP and GUI attachment |
 | [Unified Plugin System](plugin-system.md) | Package metadata, compatibility, dependency plans, contribution ownership and hot-reloadable language packs |
 | [Plugin Windows](plugin-windows.md) | Independent control bar, canvas, feature adapters and registered layout commands |
+| [Capture Requests](capture-requests.md) | Asynchronous workspace/native PNG capture, request IDs, bounded queues, diagnostic polling and file/renderer boundaries |
 | [Native Plugins](native-plugins.md) | DLL lifecycle, C ABI, borrowed pixels and independent builds |
 | [AI Pipeline](ai-pipeline.md) | Discovery, public state, validated execution and partial failures |
 | [Image Nodes](node-editor.md) | Non-destructive filters and layer blending |

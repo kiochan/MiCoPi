@@ -12,6 +12,8 @@ Run these tools from the repository root. Downloaded toolchains, builds, capture
 | smoke-runtime.py | Compare JSONL, MCP and GUI pixels; exercise input/settings |
 | smoke-workflows.py | Verify plugin nodes, workflow execution and project persistence |
 | smoke-localization.py | Check four-language switching, settings and unchanged document data |
+| smoke-captures.py | Verify concurrent root/native capture identities, exact PNG sizes, terminal failures and unchanged artwork |
+| capture_checks.py | Shared owned-window readiness, capture-status and independent PNG checks for GUI smoke scripts |
 | smoke-raster-masks.py | Verify A8 storage/composition, safe edit boundaries, legacy compatibility and DLL-free replay; optional GUI captures |
 | check-repository.py | Validate local Markdown links, example JSON and tracked-file boundaries |
 

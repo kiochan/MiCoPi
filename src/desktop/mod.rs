@@ -17,6 +17,8 @@ mod canvas_new_document;
 mod canvas_selection;
 #[path = "../../plugins/canvas/transform.rs"]
 mod canvas_transform;
+mod capture;
+mod capture_writer;
 #[path = "../../plugins/color/panel.rs"]
 mod color;
 mod commands;
@@ -548,13 +550,14 @@ impl Editor {
 
 pub struct Studio {
     pending_group_drag: Option<Panel>,
-    window_capture_results: std::sync::Arc<std::sync::Mutex<Vec<serde_json::Value>>>,
-    pending_window_captures: std::collections::HashMap<ViewportId, PathBuf>,
+    capture_writer: capture_writer::CaptureWriter,
+    pending_window_captures:
+        std::collections::HashMap<ViewportId, std::collections::VecDeque<capture::PendingCapture>>,
     native_windows: std::collections::BTreeMap<usize, native_windows::NativeWindow>,
     replay: replay::ReplayWindow,
     action_server: Option<crate::automation::ipc::Server>,
     from_core_ui: bool,
-    pending_capture: Option<PathBuf>,
+    pending_captures: std::collections::VecDeque<capture::PendingCapture>,
     editor: Editor,
     dock: DockState<Panel>,
     dock_before_focus: Option<DockState<Panel>>,
@@ -565,7 +568,7 @@ pub struct Studio {
     layout_path: PathBuf,
     layout_snapshot: String,
     layout_changed: Option<Instant>,
-    preview: Option<PathBuf>,
+    preview: Option<capture::PendingCapture>,
     preview_frames: u32,
     screenshot_requested: bool,
     allow_close: bool,
@@ -675,7 +678,7 @@ impl Studio {
             let context = cc.egui_ctx.clone();
             match crate::automation::ipc::Server::start(
                 editor.settings.path.with_file_name("session.json"),
-                move || context.request_repaint(),
+                move || context.request_repaint_of(ViewportId::ROOT),
             ) {
                 Ok(server) => Some(server),
                 Err(error) => {
@@ -689,12 +692,12 @@ impl Studio {
         Self {
             action_server,
             pending_group_drag: None,
-            window_capture_results: Default::default(),
+            capture_writer: Default::default(),
             pending_window_captures: Default::default(),
             native_windows: Default::default(),
             replay: replay::ReplayWindow::default(),
             from_core_ui: false,
-            pending_capture: None,
+            pending_captures: Default::default(),
             editor,
             dock,
             dock_before_focus: None,
@@ -705,7 +708,7 @@ impl Studio {
             layout_path,
             layout_snapshot,
             layout_changed: None,
-            preview,
+            preview: preview.map(|path| capture::PendingCapture::new(path, None)),
             preview_frames: 0,
             screenshot_requested: false,
             allow_close: false,
@@ -755,22 +758,8 @@ impl Studio {
                     }
                 }
                 Some("window.capture") => {
-                    let panel = effect["value"]["panel"]
-                        .as_str()
-                        .and_then(|id| self.editor.session.registry.panels.get(id))
-                        .map(contributed_panel);
-                    let viewport = panel
-                        .and_then(|p| self.dock.find_tab(&p))
-                        .and_then(|(s, _, _)| self.native_windows.get(&s.0))
-                        .map(|w| w.viewport);
-                    if let (Some(viewport), Some(path)) =
-                        (viewport, effect["value"]["path"].as_str())
-                    {
-                        self.pending_window_captures
-                            .insert(viewport, PathBuf::from(path));
-                    } else {
-                        self.editor.status = "Float the window before capturing it".into();
-                    }
+                    self.queue_native_capture(&effect["value"]);
+                    ctx.request_repaint();
                 }
                 Some("window.layout") => {
                     let result = decode_workspace(&effect["value"].to_string());
@@ -962,8 +951,8 @@ impl Studio {
                 }
                 Some("screenshot") => {
                     if let Some(path) = effect["value"].as_str() {
-                        self.pending_capture = Some(PathBuf::from(path));
-                        ctx.send_viewport_cmd(ViewportCommand::Screenshot(UserData::default()));
+                        self.queue_root_capture(PathBuf::from(path), effect["request_id"].as_u64());
+                        ctx.request_repaint();
                     }
                 }
                 _ => {}
@@ -1421,33 +1410,7 @@ fn valid_dock(dock: &DockState<Panel>) -> bool {
 }
 impl eframe::App for Studio {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
-        if self.pending_capture.is_some() {
-            let shot = ctx.input(|i| {
-                i.events.iter().find_map(|e| {
-                    if let Event::Screenshot { image, .. } = e {
-                        Some(image.clone())
-                    } else {
-                        None
-                    }
-                })
-            });
-            if let Some(image) = shot {
-                let path = self.pending_capture.take().unwrap();
-                let mut pixels: Vec<u32> = image
-                    .pixels
-                    .iter()
-                    .map(|c| u32::from_be_bytes([c.a(), c.r(), c.g(), c.b()]))
-                    .collect();
-                if let Some(native) = &self.editor.native {
-                    match native.save_png(&path, &mut pixels, image.width(), image.height()) {
-                        Ok(()) => {
-                            self.editor.status = format!("Screenshot Saved: {}", path.display())
-                        }
-                        Err(e) => self.editor.status = e.to_string(),
-                    }
-                }
-            }
-        }
+        self.poll_captures(ctx);
         if ctx.input(|i| i.viewport().close_requested()) && !self.allow_close {
             if self.editor.session.doc.dirty {
                 ctx.send_viewport_cmd(ViewportCommand::CancelClose);
@@ -1516,32 +1479,11 @@ impl eframe::App for Studio {
             self.title = title.clone();
             ctx.send_viewport_cmd(ViewportCommand::Title(title));
         }
-        if let Some(path) = &self.preview {
+        if self.preview.is_some() {
             self.preview_frames += 1;
             if self.preview_frames >= 8 && !self.screenshot_requested {
-                ctx.send_viewport_cmd(ViewportCommand::Screenshot(UserData::default()));
+                self.request_preview_capture(ctx);
                 self.screenshot_requested = true;
-            }
-            let shot = ctx.input(|i| {
-                i.events.iter().find_map(|e| {
-                    if let Event::Screenshot { image, .. } = e {
-                        Some(image.clone())
-                    } else {
-                        None
-                    }
-                })
-            });
-            if let Some(image) = shot {
-                let mut pixels: Vec<u32> = image
-                    .pixels
-                    .iter()
-                    .map(|c| u32::from_be_bytes([c.a(), c.r(), c.g(), c.b()]))
-                    .collect();
-                if let Some(native) = &self.editor.native {
-                    let _ = native.save_png(path, &mut pixels, image.width(), image.height());
-                }
-                self.allow_close = true;
-                ctx.send_viewport_cmd(ViewportCommand::Close);
             }
             ctx.request_repaint_after(Duration::from_millis(100));
         }

@@ -25,9 +25,10 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 ));
             }
             let path = path()?;
+            let request_id = s.queue_capture(None, args["path"].as_str().unwrap())?;
             s.ui_effects
-                .push_back(json!({"id":"screenshot","value":path}));
-            Ok(json!({"queued":true,"path":path}))
+                .push_back(json!({"id":"screenshot","value":path,"request_id":request_id}));
+            Ok(json!({"queued":true,"path":path,"request_id":request_id}))
         }
         SettingsRead => {
             let config = crate::configuration::Settings::load(path()?)

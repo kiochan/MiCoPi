@@ -62,6 +62,10 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/application/session.rs` | Single document owner, validation and execution boundaries |
 | `src/application/atomic.rs` | Shared-tile rollback checkpoints and atomic action capability checks |
 | `src/application/replay.rs` | Recording boundaries, project persistence and replay actions |
+| `src/application/presentation_captures.rs` | Session-scoped capture IDs and bounded pending/recent diagnostics, separate from document and recorded UI state |
+| `src/desktop/capture.rs`, `src/desktop/capture_tests.rs` | Root Screenshot token matching, acknowledged FIFOs, preview isolation and presentation-only regression checks |
+| `src/desktop/native_windows.rs`, `src/desktop/capture_writer.rs` | Native framebuffer readback, scoped request ownership, bounded lazy background PNG encoding and atomic file publication |
+| `scripts/capture_checks.py`, `scripts/smoke-captures.py` | Attached-process request polling, decoded PNG/client-rectangle checks and explicit unavailable/file-error verification |
 | `src/engine/document.rs` | Pixels, composition and copy-on-write undo tiles |
 | `src/engine/raster_masks.rs`, `src/engine/raster_mask_editing.rs` | Bounded stable-ID mask metadata, raw uniform/dense A8 storage, contact leases and independent byte-tile history |
 | `src/engine/raster_mask_project.rs` | MICOPI04 byte-plane directory, strict payload validation and cold uniform canonicalization |
@@ -143,6 +147,8 @@ The host owns transaction and verification rules. Plugins own drawing and proces
 Native A8 prerequisites live in the existing SDK/header, `plugins/painting/src/raster.rs` and `plugins/compositing/src/masks.rs`. `src/plugins/native_masks_tests.rs` checks negotiation and dispatch; `tests/fixtures/native-layout.c`, `scripts/check-native-abi.py` and `scripts/smoke-native-masks.py` check C/C++ layouts and actual DLL behavior. The implemented document byte-plane/history/project/replay foundation is specified in [Raster Mask Storage](raster-mask-storage.md). Public mask painting, commands, property effects, complete geometry/structural integration and thumbnail controls remain planned in [Raster Masks Design](raster-masks-design.md); the full feature is not yet available.
 
 Unit tests stay near their implementation. Shared support lives under `tests/reference/`, ABI rejection fixtures under `tests/fixtures/native-incompatible/`, and historical recording fixtures under `tests/fixtures/replay/`. Keep each binary fixture with its provenance and expected hashes. See [Development](development.md) for commands and `tests/README.md` for shared support.
+
+Capture fixtures exercise asynchronous presentation and file publication independently of the document journal. `scripts/capture_checks.py` is shared by the dedicated capture and localization smokes; it correlates request IDs and checks physical client dimensions instead of accepting an old file's presence. See [Capture Requests](capture-requests.md) for its lifecycle and bounds. These PNGs are presentation artifacts rather than verified document outcome tiles.
 
 Generated smoke captures, extracted packages, benchmarks and artwork from examples belong under ignored `target/test-output/` or `target/example-output/`. Only reviewed screenshots are promoted to `docs/screenshots/`; portable deliverables stay under ignored `dist/`.
 

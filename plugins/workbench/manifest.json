@@ -149,7 +149,155 @@
     {
       "id": "window.list",
       "title": "Inspect Plugin Windows",
-      "operation": "window_state"
+      "operation": "window_state",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "runtime": {
+            "type": "string"
+          },
+          "panels": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "actual": {},
+          "last_drop": {},
+          "last_capture": {},
+          "capture_requests": {
+            "type": "object",
+            "properties": {
+              "pending": {
+                "type": "array",
+                "maxItems": 128,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "request_id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "target": {
+                      "type": "string",
+                      "enum": [
+                        "workspace",
+                        "panel"
+                      ]
+                    },
+                    "panel": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "At most 32768 UTF-8 bytes"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "queued",
+                        "saved",
+                        "failed"
+                      ]
+                    },
+                    "width": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "height": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "At most 4096 Unicode characters"
+                    }
+                  },
+                  "required": [
+                    "request_id",
+                    "target",
+                    "path",
+                    "status"
+                  ]
+                }
+              },
+              "recent": {
+                "type": "array",
+                "maxItems": 128,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "request_id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "target": {
+                      "type": "string",
+                      "enum": [
+                        "workspace",
+                        "panel"
+                      ]
+                    },
+                    "panel": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "At most 32768 UTF-8 bytes"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "queued",
+                        "saved",
+                        "failed"
+                      ]
+                    },
+                    "width": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "height": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "At most 4096 Unicode characters"
+                    }
+                  },
+                  "required": [
+                    "request_id",
+                    "target",
+                    "path",
+                    "status"
+                  ]
+                }
+              },
+              "last": {}
+            },
+            "required": [
+              "pending",
+              "recent",
+              "last"
+            ]
+          },
+          "last_request": {},
+          "last_result": {}
+        },
+        "required": [
+          "runtime",
+          "capture_requests"
+        ]
+      }
     },
     {
       "id": "workspace.layout.apply",
@@ -227,7 +375,31 @@
     {
       "id": "window.capture",
       "title": "Capture Window",
-      "operation": "window_capture"
+      "operation": "window_capture",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          },
+          "applied": {
+            "type": "boolean"
+          },
+          "runtime": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "queued",
+          "applied",
+          "runtime"
+        ]
+      }
     },
     {
       "id": "window.drop",
@@ -246,11 +418,17 @@
           },
           "path": {
             "type": "string"
+          },
+          "request_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
           }
         },
         "required": [
           "queued",
-          "path"
+          "path",
+          "request_id"
         ]
       }
     }
@@ -262,7 +440,152 @@
       "title": "Plugin Windows",
       "action": "window.list",
       "output_schema": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "runtime": {
+            "type": "string"
+          },
+          "panels": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "actual": {},
+          "last_drop": {},
+          "last_capture": {},
+          "capture_requests": {
+            "type": "object",
+            "properties": {
+              "pending": {
+                "type": "array",
+                "maxItems": 128,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "request_id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "target": {
+                      "type": "string",
+                      "enum": [
+                        "workspace",
+                        "panel"
+                      ]
+                    },
+                    "panel": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "At most 32768 UTF-8 bytes"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "queued",
+                        "saved",
+                        "failed"
+                      ]
+                    },
+                    "width": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "height": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "At most 4096 Unicode characters"
+                    }
+                  },
+                  "required": [
+                    "request_id",
+                    "target",
+                    "path",
+                    "status"
+                  ]
+                }
+              },
+              "recent": {
+                "type": "array",
+                "maxItems": 128,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "request_id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "target": {
+                      "type": "string",
+                      "enum": [
+                        "workspace",
+                        "panel"
+                      ]
+                    },
+                    "panel": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "At most 32768 UTF-8 bytes"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "queued",
+                        "saved",
+                        "failed"
+                      ]
+                    },
+                    "width": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "height": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "error": {
+                      "type": "string",
+                      "description": "At most 4096 Unicode characters"
+                    }
+                  },
+                  "required": [
+                    "request_id",
+                    "target",
+                    "path",
+                    "status"
+                  ]
+                }
+              },
+              "last": {}
+            },
+            "required": [
+              "pending",
+              "recent",
+              "last"
+            ]
+          },
+          "last_request": {},
+          "last_result": {}
+        },
+        "required": [
+          "runtime",
+          "capture_requests"
+        ]
       }
     }
   ]
