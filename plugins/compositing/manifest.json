@@ -49,10 +49,15 @@
             },
             "maxItems": 26,
             "description": "Currently available modes, including the CPU Normal fallback; known but unsupported modes remain in graph.catalog.blend_modes."
+          },
+          "renderer_mix": {
+            "type": "boolean",
+            "description": "The loaded compositor supports premultiplied backdrop mixing."
           }
         },
         "required": [
-          "available_blend_modes"
+          "available_blend_modes",
+          "renderer_mix"
         ]
       }
     },
@@ -103,10 +108,15 @@
             },
             "maxItems": 26,
             "description": "Currently available modes, including the CPU Normal fallback; known but unsupported modes remain in graph.catalog.blend_modes."
+          },
+          "renderer_mix": {
+            "type": "boolean",
+            "description": "The loaded compositor supports premultiplied backdrop mixing."
           }
         },
         "required": [
-          "available_blend_modes"
+          "available_blend_modes",
+          "renderer_mix"
         ]
       }
     },
@@ -177,10 +187,14 @@
             },
             "maxItems": 26,
             "description": "Currently available modes, including the CPU Normal fallback; known but unsupported modes remain in graph.catalog.blend_modes."
+          },
+          "renderer_mix": {
+            "type": "boolean"
           }
         },
         "required": [
-          "available_blend_modes"
+          "available_blend_modes",
+          "renderer_mix"
         ]
       }
     }
@@ -325,6 +339,33 @@
         },
         "required": [
           "mode",
+          "opacity"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "compositing.mix",
+      "title": "Backdrop Mix",
+      "category": "Image",
+      "binding": {
+        "kind": "image",
+        "operation": "mix",
+        "defaults": {
+          "opacity": 1
+        }
+      },
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "opacity": {
+            "type": "number",
+            "title": "Opacity",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "required": [
           "opacity"
         ],
         "additionalProperties": false

@@ -37,13 +37,13 @@ The reviewed Release capture uses generated drawing content. Four-language inspe
 | Component | Color | `color` | 24 |
 | Component | Luminosity | `luminosity` | 25 |
 
-IDs 0–7 and their existing arithmetic are unchanged. The public `add` name continues to mean Linear Dodge. Dissolve is a separate planned coverage operation; Pass Through is a planned group policy. Neither is approximated by one of these color modes.
+IDs 0–7 and their existing arithmetic are unchanged. The public `add` name continues to mean Linear Dodge. Dissolve is a separate planned coverage operation; [Pass Through](pass-through.md) is a separate implemented group policy. Neither is approximated by one of these color modes.
 
 ## Color and alpha contract
 
 The native implementation independently follows the standard equations described in [W3C Compositing and Blending](https://www.w3.org/TR/compositing-1/#blending) for its defined separable and nonseparable modes. It does not import PhotoCraft source. Arithmetic operates on stored encoded RGB components, without a linear-light or ICC conversion. Hue/Saturation/Color/Luminosity use RGB luminance weights 0.30/0.59/0.11 with saturation/luminance adjustment and gamut clipping, rather than replacing HSV picker channels.
 
-Appended rational modes compute half-up byte rounding with bounded integer ratios. Soft Light and component-mode calculations use scalar double precision, clamp to the supported range and quantize the blended RGB once; a tightly bounded correction handles floating roundoff at mathematical half-byte ties. The existing integer alpha composition then applies unchanged. Layer opacity scales source alpha once; a group composites children before its own opacity and blend boundary. Alpha-zero composited output is canonical zero. See [Layer Groups](layer-groups.md) for isolation and baking.
+Appended rational modes compute half-up byte rounding with bounded integer ratios. Soft Light and component-mode calculations use scalar double precision, clamp to the supported range and quantize the blended RGB once; a tightly bounded correction handles floating roundoff at mathematical half-byte ties. The existing integer alpha composition then applies unchanged. Layer opacity scales source alpha once; an isolated group composites children before its own opacity and color-blend boundary. Pass Through uses its separate before/after Mix contract. Alpha-zero composited output is canonical zero. See [Layer Groups](layer-groups.md) for isolation and baking.
 
 Endpoint and tie choices are explicit:
 

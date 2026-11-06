@@ -139,7 +139,9 @@ typedef struct {
 } MicopiCompositeLayer;
 typedef struct {
     /* Kinds 0 layer, 1 filter, 2 blend, 3 output. Optional kind 4 is transparent
-       zero; it requires MICOPI_COMPOSITOR_TRANSPARENT and a=b=mode=amount=0. */
+       zero; it requires MICOPI_COMPOSITOR_TRANSPARENT and a=b=mode=amount=0.
+       Optional kind 5 requires MICOPI_COMPOSITOR_MIX: a before, b after, mode=0,
+       finite amount in [0,1]; both input indices must precede this instruction. */
     uint32_t kind, a, b, mode; float amount;
 } MicopiCompositeNode;
 typedef struct {
@@ -153,6 +155,10 @@ typedef struct {
 /* Read the complete tail only when struct_size >= sizeof(MicopiCompositorApiFeatures).
    Hosts must check capabilities before sending optional instructions. */
 #define MICOPI_COMPOSITOR_TRANSPARENT UINT64_C(1)
+/* Kind 5 uses t=round(amount*255), with exact input words at t=0/255.
+   Otherwise round weighted alpha/255; zero output alpha yields zero. RGB rounds
+   half-up against the unrounded weighted alpha, preserving premultiplied mixing. */
+#define MICOPI_COMPOSITOR_MIX (UINT64_C(1) << 1)
 typedef struct { MicopiCompositorApi base; uint64_t capabilities; } MicopiCompositorApiFeatures;
 /* Stable color blend IDs; IDs 0..7 keep the original arithmetic. */
 #define MICOPI_BLEND_NORMAL UINT32_C(0)

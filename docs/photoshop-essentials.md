@@ -15,7 +15,7 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 | Area | Available foundation | Main gap |
 | --- | --- | --- |
 | Drawing | Native DLL tools, pressure, stabilization, spacing, pressure curve, size/shape cursor | Rich tips/dynamics and additional painting tools |
-| Layers | Stable IDs, multi-selection/batches, isolated groups/baking, locks/labels, merge/flatten/stamp | Masks, clipping, Pass Through, selected-layer merge and multi-layer transforms |
+| Layers | Stable IDs, multi-selection/batches, isolated/Pass Through groups and baking, locks/labels, merge/flatten/stamp | Masks, clipping, selected-layer merge and multi-layer transforms |
 | Selection/editing | Document masks, gestures, color matching, edge processing, selected painting and internal transfers | System clipboard and selection transforms |
 | Geometry | Anchored framing/crop, orthogonal geometry, Image Size/Trim, Move and affine Free Transform/repeat/skew | Off-canvas storage and richer project metadata |
 | Composition | Linked layer/filter/blend graphs and explicit free graphs | More adjustments, filters and mask-aware composition |
@@ -84,7 +84,7 @@ Acceptance: coordinate units, pivots, bounds, resampling and clipping are specif
 - [x] Add versioned stable-ID isolated groups with nested visibility/opacity/blending, typed subtree operations, cached actual composition, deterministic history/replay and shared nodes/MCP/headless contracts.
 - [x] Add explicit Group Merge and group-aware Merge Visible with documented backdrop/hidden-content/filter behavior, one structural undo/outcome, shared typed nodes/MCP/headless execution and failure rollback. Retain the group's outer properties or the complete visible root result as appropriate; keep hidden branches/skeletons for Merge Visible.
 - [ ] Add selected-layer merge with explicit relative stacking, backdrop and parent semantics.
-- [ ] Add Pass Through groups with explicit backdrop semantics and alpha/opacity reference fixtures.
+- [x] Add opt-in Pass Through groups with explicit incoming-backdrop semantics, once-only integer premultiplied opacity, nested isolation, optional native capability checks and independent alpha/opacity references. Retain isolated defaults/bytes and verified outcomes; reject standalone baking of a Pass Through target. See [Pass Through](pass-through.md).
 - [x] Expand shared layer/group/node color blending to 26 modes, including Soft/Hard Light, Color Dodge/Burn, Linear Burn and Hue/Saturation/Color/Luminosity. Preserve the original eight mode IDs/pixels, advertise optional native mode capabilities, reject unavailable modes before mutation and retain alpha/history/replay references. See [Color blend modes](blend-modes.md).
 - [ ] Add deterministic Dissolve coverage with an explicit document-coordinate/seed contract, dirty-region equivalence, alpha/opacity references and verified replay. It is a spatial coverage operation rather than a color-channel equation.
 - [ ] Add raster masks, mask editing/enable/invert/density/feather and selection-to-mask conversion.

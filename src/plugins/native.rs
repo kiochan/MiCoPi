@@ -578,6 +578,9 @@ impl NativePlugin {
     }
 }
 impl crate::engine::graph::Renderer for NativePlugin {
+    fn supports_mix(&self) -> bool {
+        self.compositor_capabilities & abi::COMPOSITOR_MIX != 0
+    }
     fn supports_blend_mode(&self, mode: u32) -> bool {
         mode <= abi::BLEND_MODE_MAX && self.compositor_blend_modes & (1u64 << mode) != 0
     }
@@ -595,6 +598,9 @@ impl crate::engine::graph::Renderer for NativePlugin {
         let api = self.compositor.ok_or("Missing compositor interface")?;
         if nodes.iter().any(|n| n.kind == 4) && !self.supports_transparent() {
             return Err("Compositor does not support transparent image nodes".into());
+        }
+        if nodes.iter().any(|n| n.kind == 5) && !self.supports_mix() {
+            return Err("The compositor does not support backdrop mixing".into());
         }
         if layers
             .iter()

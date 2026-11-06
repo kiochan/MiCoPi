@@ -11,5 +11,38 @@
       "title": "Layers",
       "builtin": "layers"
     }
+  ],
+  "actions": [
+    {
+      "id": "group.inspect",
+      "title": "Inspect Group Properties",
+      "steps": [
+        {
+          "action": "ui.dispatch",
+          "args": {
+            "id": "group.inspect",
+            "value": {
+              "$arg": "group_id"
+            }
+          }
+        }
+      ],
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "group_id"
+        ],
+        "additionalProperties": false
+      },
+      "read_only": false,
+      "document_atomic": false
+    }
   ]
 }

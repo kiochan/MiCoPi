@@ -1,0 +1,22 @@
+{"action":"canvas.new","args":{"width":320,"height":220,"background":"#738A9B"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Character shadow"}}
+{"action":"brush.set","args":{"radius":26,"color":"#614E79","hardness":0.85,"stabilizer":0.35,"pressure_size":true,"pressure_opacity":true}}
+{"action":"canvas.stroke","args":{"points":[{"x":35,"y":165,"pressure":0.2,"pen":true,"time":0},{"x":150,"y":50,"pressure":1,"pen":true,"time":70},{"x":285,"y":150,"pressure":0.4,"pen":true,"time":140}]}}
+{"action":"layer.set","args":{"layer_id":2,"blend_mode":"multiply"}}
+{"action":"group.create","args":{"members":[{"kind":"layer","id":2}],"name":"Character"}}
+{"action":"group.set","args":{"group_id":1,"blend_mode":"screen"}}
+{"action":"canvas.export","args":{"path":"target/example-output/pass-isolated.png"}}
+{"action":"group.set","args":{"group_id":1,"compositing":"pass_through"}}
+{"action":"canvas.export","args":{"path":"target/example-output/pass-parent.png"}}
+{"action":"group.query","args":{}}
+{"action":"group.set","args":{"group_id":1,"opacity":0.55}}
+{"action":"canvas.export","args":{"path":"target/example-output/pass-faded.png"}}
+{"action":"history.undo","args":{}}
+{"action":"group.set","args":{"group_id":1,"compositing":"isolated"}}
+{"action":"group.merge","args":{"group_id":1}}
+{"action":"canvas.export","args":{"path":"target/example-output/pass-isolated-baked.png"}}
+{"action":"history.undo","args":{}}
+{"action":"group.set","args":{"group_id":1,"compositing":"pass_through"}}
+{"action":"graph.read","args":{}}
+{"action":"replay.verify","args":{}}

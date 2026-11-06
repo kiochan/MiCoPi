@@ -17,7 +17,7 @@ Next layer -> optional filters -+                      Blend B -> Canvas Output
 Top layer -> optional filters -------------------------+
 ```
 
-Documents with [Layer Groups](layer-groups.md) initially show **Actual Composition**: the read-only generated graph of isolated child stacks, group opacity/blend gates and output. A shared transparent source initializes isolated groups without another raster buffer. Edit hierarchy and group appearance in Layers; use **Layer Filters** for the editable source branches described below. Generated nodes retain group names and IDs for inspection; they must not be submitted as a replacement source graph.
+Documents with [Layer Groups](layer-groups.md) initially show **Actual Composition**: the read-only generated graph of child stacks, isolated opacity/blend gates, Pass Through before/after Mix gates and output. A shared transparent source initializes isolated groups without another raster buffer. Pass Through starts children at the current parent backdrop and mixes their completed change once. Edit hierarchy and group appearance in Layers; use **Layer Filters** for the editable source branches described below. Generated nodes retain group names and IDs for inspection; they must not be submitted as a replacement source graph. See [Pass Through](pass-through.md) for nested semantics and baking boundaries.
 
 ![Actual group composition](screenshots/group-composition.png)
 
@@ -29,7 +29,7 @@ Documents with [Layer Groups](layer-groups.md) initially show **Actual Compositi
 
 **Graph Options > Switch to Free Compositing** converts the draft to explicit wiring without changing its connections or output. Apply to commit the switch. Ungroup first: free compositing and group trees cannot be combined. In this advanced mode, Add Node and port dragging are available; only connected layers participate, new layers are not automatically included, and layer reordering preserves source identity without changing the graph's explicit order. Referenced layers cannot be deleted until their source nodes are removed or retargeted.
 
-**Graph Options > Rebuild from Layers** replaces the draft, including its filters, with a fresh linked stack. It is an explicit reset, not a required synchronization step. Apply to commit it. Disable **Node Compositing** in Graph Options and apply to bypass filters/custom wiring; group isolation and appearance remain active. Linked structural synchronization still operates while effects are disabled. Load Current is also available in Graph Options.
+**Graph Options > Rebuild from Layers** replaces the draft, including its filters, with a fresh linked stack. It is an explicit reset, not a required synchronization step. Apply to commit it. Disable **Node Compositing** in Graph Options and apply to bypass filters/custom wiring; group compositing policies and appearance remain active. Linked structural synchronization still operates while effects are disabled. Load Current is also available in Graph Options.
 
 Drag headers to move nodes, Ctrl+scroll to zoom, double-click empty space to center, and use Fit Graph to see the graph. Right-click a node to delete it. Closing the editor does not disable effects. Unapplied drafts remain only in the current UI; projects store applied graphs. When external edits or undo conflict with an unapplied draft, use Graph Options > Load Current before overwriting the applied graph.
 
@@ -43,9 +43,10 @@ Free-graph sources honor layer visibility and opacity; free blend nodes own thei
 | Layer | Read a source layer without changing pixels |
 | Filter | Invert, grayscale, brightness, contrast or saturation |
 | Blend | The 26 [color blend modes](blend-modes.md), with opacity applied at the blend boundary |
+| Backdrop Mix | Premultiplied interpolation of `before` and `after` images at one opacity; requires Mix capability |
 | Output | The unique canvas and export result |
 
-Invert/grayscale strength is 0..1; brightness/contrast/saturation are -1..1; blend opacity is 0..1. Filters preserve alpha; blending uses straight-alpha source-over. Fully transparent composited pixels are canonicalized to zero. Spatial filters such as blur are not implemented.
+Invert/grayscale strength is 0..1; brightness/contrast/saturation are -1..1; Blend and Backdrop Mix opacity are 0..1. Filters preserve alpha; color blending uses straight-alpha source-over. Backdrop Mix (`compositing.mix`, wire kind `mix`) interpolates the two completed images in premultiplied form, with exact endpoints and defined integer rounding. It is available in free graphs and generated Pass Through topology; linked source/filter chains do not accept it as a filter. Fully transparent composited pixels are canonicalized to zero. Spatial filters such as blur are not implemented.
 
 Layer-source and Blend-node mode controls share the Layers and Group Properties menus: 26 modes in Photoshop-style families, separators and a bounded scrolling popup using configured spacing. The active mode stays labeled, and unavailable modes remain visible but disabled with an explanation. RGB blending uses stored encoded components; Hue/Saturation/Color/Luminosity use luminance/saturation adjustment and gamut clipping. These are documented MiCoPi semantics, without an ICC conversion or a bit-for-bit Photoshop compatibility claim. See [Color Blend Modes](blend-modes.md).
 
@@ -55,8 +56,8 @@ Linked graphs additionally require every layer exactly once in stack order, line
 
 ## Actions and plugin registration
 
-- graph.catalog: image schema, the recognized `blend_modes` catalog, current `available_blend_modes`, filters and registered node definitions.
-- graph.read: editable source `graph`, generated `effective_graph`, groups, `mode` (`linked`, `free` or `grouped`), stable layer identities/properties, default linked graph, `available_blend_modes`, renderer availability/capabilities and errors. The `compositing.graph` public state exposes the same availability list, including the CPU Normal fallback.
+- graph.catalog: image schema, the recognized `blend_modes` catalog, current `available_blend_modes`, `renderer_mix`, filters and registered node definitions.
+- graph.read: editable source `graph`, generated `effective_graph`, groups, `mode` (`linked`, `free` or `grouped`), stable layer identities/properties, default linked graph, `available_blend_modes`, `renderer_mix`, renderer availability/capabilities and errors. The `compositing.graph` public state exposes the same flags and availability list, including the CPU Normal fallback.
 - graph.set: validate and apply as an undoable metadata edit.
 - graph.open: emit the editor-open UI effect; headless does not create a window.
 - layer.set: edit ordinary layer properties, including blend mode.
@@ -71,6 +72,8 @@ To create a linked graph through MCP/headless, start with `graph.read.default_gr
 The complete [linked-layer JSONL example](../examples/automation/linked-layers.jsonl) adds a filter, duplicates and reorders its layer, exports a PNG and verifies the recording. The [blend-mode example](../examples/automation/blend-modes.jsonl) also demonstrates layer/group modes, capability discovery, subtree baking and outcome replay.
 
 Original blend IDs 0–7 and their pixel results remain unchanged. Appended IDs 8–25 require a supporting compositor; complete capability masks retain all eight legacy bits and may support a subset of appended modes. Unsupported properties, graph branches and staged projects reject before publication, including hidden or disabled content. Verified outcome playback restores saved surfaces without calling a renderer. See [Native Plugins](native-plugins.md).
+
+Pass Through is a separate group policy, not another color mode. Its native kind-5 instruction requires `COMPOSITOR_MIX` in the existing Features tail; older isolated-capable compositors remain usable for isolated documents. Explicit Mix nodes and stored Pass Through policies require support even when disconnected, hidden or disabled. The callback layouts and 64-instruction budget stay unchanged.
 
 Image definitions come from plugins/compositing/manifest.json and use binding.kind=image with a kernel operation and parameters_schema. Legacy graphs without node_type migrate to compositing.* IDs when applied. New aliases use existing kernel semantics; a new image algorithm requires extending the compositor implementation. JSON workflow nodes and image-buffer nodes have separate typed domains. See [Workflow Nodes](workflow-nodes.md).
 

@@ -1290,5 +1290,21 @@
   "Luminosity": "輝度",
   "This blend mode requires a compatible compositor.": "この描画モードには対応するコンポジターが必要です。",
   "The compositor does not support this blend mode": "コンポジターがこの描画モードに対応していません。",
-  "Compositor blend mode mask omits legacy modes": "コンポジターの描画モードマスクに従来のモードが含まれていません。"
+  "Compositor blend mode mask omits legacy modes": "コンポジターの描画モードマスクに従来のモードが含まれていません。",
+  "Group Compositing": "グループの合成方式",
+  "Isolated": "独立合成",
+  "Pass Through": "通過",
+  "Pass Through Group": "通過グループ",
+  "Backdrop Mix": "背景とのミックス",
+  "Before": "処理前",
+  "After": "処理後",
+  "Pass Through requires a compatible compositor.": "通過モードには対応するコンポジターが必要です。",
+  "Backdrop mixing requires a compatible compositor.": "背景とのミックスには対応するコンポジターが必要です。",
+  "Pass Through uses child blend modes. The isolated group blend mode is retained.": "通過モードでは子の描画モードを使います。独立合成時のグループ描画モードは保持されます。",
+  "Children blend into the parent backdrop; group opacity controls the combined change.": "子を親の背景と合成し、グループの不透明度で全体の変化量を調整します。",
+  "The compositor does not support backdrop mixing": "コンポジターが背景とのミックスに対応していません。",
+  "Pass Through groups depend on the outside backdrop; switch to Isolated or merge visible artwork": "通過グループは外側の背景に依存します。独立合成に切り替えるか、表示中の内容を結合してください。",
+  "Inspect Group Properties": "グループのプロパティを表示",
+  "Group property controls require the desktop; use group.query and group.set for headless editing": "グループのプロパティ UI はデスクトップ専用です。ヘッドレス編集には group.query と group.set を使用してください。",
+  "A valid group ID is required": "有効なグループ ID が必要です。"
 }

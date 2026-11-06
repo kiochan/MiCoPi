@@ -95,6 +95,20 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         }
         Ui => {
             let id = args["id"].as_str().unwrap();
+            if id == "group.inspect" {
+                let group = args["value"]
+                    .as_u64()
+                    .filter(|id| (1..=u32::MAX as u64).contains(id))
+                    .ok_or_else(|| {
+                        ActionError::new("invalid_group", "A valid group ID is required")
+                    })?;
+                if s.runtime != "desktop" {
+                    return Err(ActionError::new("ui_unavailable", "Group property controls require the desktop; use group.query and group.set for headless editing"));
+                }
+                s.doc
+                    .group_layer_ids(group)
+                    .map_err(|e| ActionError::new("invalid_group", e))?;
+            }
             if matches!(id, "transform.open" | "transform.parameters") && s.runtime != "desktop" {
                 return Err(ActionError::new("ui_unavailable","Free Transform controls require the desktop; use canvas.transform for headless editing"));
             }
@@ -139,7 +153,11 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             }
             let id = args["id"].as_str().unwrap();
             s.ui[id] = args.get("value").cloned().unwrap_or(Value::Null);
-            s.ui_effects.push_back(args.clone());
+            let mut effect = args.clone();
+            if id == "group.inspect" {
+                effect["document_identity"] = json!(s.doc.identity);
+            }
+            s.ui_effects.push_back(effect);
             while s.ui_effects.len() > 128 {
                 s.ui_effects.pop_front();
             }

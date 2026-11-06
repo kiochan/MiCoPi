@@ -40,6 +40,8 @@ pub(crate) mod layer_query;
 #[cfg(test)]
 mod linked_graph_tests;
 #[cfg(test)]
+mod pass_through_tests;
+#[cfg(test)]
 mod pipeline_tests;
 #[cfg(test)]
 mod replay_tests;

@@ -38,13 +38,31 @@ fn all_plugin_actions_states_and_image_definitions_are_discovered_without_invoca
     assert!(nodes
         .iter()
         .any(|n| n["id"] == "state.native_paint.stats" && n["domain"] == "workflow"));
-    assert_eq!(nodes.iter().filter(|n| n["domain"] == "image").count(), 5);
+    assert_eq!(nodes.iter().filter(|n| n["domain"] == "image").count(), 6);
     let transparent = nodes
         .iter()
         .find(|n| n["id"] == "compositing.transparent")
         .unwrap();
     assert_eq!(transparent["domain"], "image");
     assert!(transparent["inputs"].as_array().unwrap().is_empty());
+    let mix = nodes.iter().find(|n| n["id"] == "compositing.mix").unwrap();
+    assert_eq!(mix["domain"], "image");
+    let inputs = mix["inputs"].as_array().unwrap();
+    assert_eq!(inputs.len(), 2);
+    for (input, name) in inputs.iter().zip(["before", "after"]) {
+        assert_eq!(input["id"], name);
+        assert_eq!(input["data_type"], "image");
+        assert_eq!(input["required"], true);
+    }
+    let outputs = mix["outputs"].as_array().unwrap();
+    assert_eq!(outputs.len(), 1);
+    assert_eq!(outputs[0]["id"], "image");
+    assert_eq!(outputs[0]["data_type"], "image");
+    let opacity = &mix["parameters_schema"]["properties"]["opacity"];
+    assert_eq!(opacity["type"], "number");
+    assert_eq!(opacity["minimum"], 0);
+    assert_eq!(opacity["maximum"], 1);
+    assert_eq!(mix["defaults"]["opacity"], 1);
     let state = nodes
         .iter()
         .find(|n| n["id"] == "action.canvas.state")

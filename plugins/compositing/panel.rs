@@ -32,6 +32,140 @@ mod tests {
     use super::*;
     use crate::desktop::tests::{frame, studio};
     #[test]
+    fn pass_through_mix_node_menu_and_opacity_edit_stay_in_the_source_draft() {
+        fn label(shape: &Shape, title: &str) -> Option<Pos2> {
+            match shape {
+                Shape::Text(value) if value.galley.text() == title => {
+                    Some(value.pos + value.galley.size() * 0.5)
+                }
+                Shape::Vec(values) => values.iter().find_map(|value| label(value, title)),
+                _ => None,
+            }
+        }
+        fn click(point: Pos2) -> Vec<Event> {
+            vec![
+                Event::PointerMoved(point),
+                Event::PointerButton {
+                    pos: point,
+                    button: PointerButton::Primary,
+                    pressed: true,
+                    modifiers: Modifiers::NONE,
+                },
+                Event::PointerButton {
+                    pos: point,
+                    button: PointerButton::Primary,
+                    pressed: false,
+                    modifiers: Modifiers::NONE,
+                },
+            ]
+        }
+        let app = studio();
+        let state = app.editor.session.state();
+        for available in [false, true] {
+            let ctx = Context::default();
+            theme::fonts(&ctx);
+            theme::apply(&ctx, &app.editor.settings.ui);
+            let mut snarl = Snarl::new();
+            let mut point = None;
+            for n in 0..4 {
+                let events = if n == 3 {
+                    click(point.unwrap())
+                } else {
+                    vec![]
+                };
+                let output = ctx.run(
+                    RawInput {
+                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(360., 1000.))),
+                        events,
+                        time: Some(n as f64),
+                        focused: true,
+                        ..Default::default()
+                    },
+                    |ctx| {
+                        CentralPanel::default().show(ctx, |ui| {
+                            add_menu(
+                                ui,
+                                &mut snarl,
+                                pos2(20., 20.),
+                                Some(&app.editor.plugin_nodes),
+                                available,
+                            )
+                        });
+                    },
+                );
+                if n == 2 {
+                    point = output
+                        .shapes
+                        .iter()
+                        .find_map(|shape| label(&shape.shape, "Backdrop Mix"));
+                    assert!(point.is_some());
+                }
+            }
+            assert_eq!(snarl.nodes().count(), usize::from(available));
+            if !available {
+                continue;
+            }
+            let id = snarl.node_ids().next().unwrap().0;
+            assert_eq!(snarl[id].node_type.as_deref(), Some("compositing.mix"));
+            assert!(matches!(snarl[id].data, NodeKind::Mix { opacity: 1. }));
+            for n in 4..10 {
+                let events = if n >= 7 {
+                    let (rail, widget) = ctx
+                        .data_mut(|data| {
+                            data.get_temp::<(Rect, Rect)>(Id::new(("mix-opacity-control", id)))
+                        })
+                        .unwrap();
+                    assert!(
+                        widget.contains_rect(rail) && rail.width() < widget.width(),
+                        "rail={rail:?}, widget={widget:?}"
+                    );
+                    let point = if n == 7 {
+                        pos2(rail.left() + rail.width() * 0.9, rail.center().y)
+                    } else {
+                        rail.center()
+                    };
+                    let mut events = vec![Event::PointerMoved(point)];
+                    if n == 7 || n == 9 {
+                        events.push(Event::PointerButton {
+                            pos: point,
+                            button: PointerButton::Primary,
+                            pressed: n == 7,
+                            modifiers: Modifiers::NONE,
+                        });
+                    }
+                    events
+                } else {
+                    vec![]
+                };
+                let _ = ctx.run(
+                    RawInput {
+                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(360., 500.))),
+                        events,
+                        time: Some(n as f64),
+                        focused: true,
+                        ..Default::default()
+                    },
+                    |ctx| {
+                        CentralPanel::default().show(ctx, |ui| {
+                            let mut viewer = NodeViewer {
+                                definitions: Some(&app.editor.plugin_nodes),
+                                mix_available: true,
+                                ..Default::default()
+                            };
+                            viewer.show_body(id, &[], &[], ui, &mut snarl);
+                        });
+                    },
+                );
+            }
+            assert!(
+                matches!(snarl[id].data,NodeKind::Mix {opacity} if opacity>0.2 && opacity<0.8),
+                "draft after rail drag: {:?}",
+                snarl[id].data
+            );
+            assert_eq!(app.editor.session.state(), state);
+        }
+    }
+    #[test]
     fn dockable_nodes_apply_button_updates_the_document_and_connections_reject_cycles() {
         let mut app = studio();
         let ctx = Context::default();
@@ -423,6 +557,7 @@ struct NodeViewer<'a> {
     linked: bool,
     document: Option<&'a crate::engine::Document>,
     supported_blends: u32,
+    mix_available: bool,
     actions: Vec<crate::application::Action>,
 }
 impl Default for NodeViewer<'_> {
@@ -437,6 +572,7 @@ impl Default for NodeViewer<'_> {
             linked: false,
             document: None,
             supported_blends: 0xff,
+            mix_available: false,
             actions: vec![],
         }
     }
@@ -463,15 +599,19 @@ fn add_menu(
     snarl: &mut Snarl<Node>,
     pos: Pos2,
     definitions: Option<&BTreeMap<String, crate::plugins::nodes::Resolved>>,
+    mix_available: bool,
 ) {
     let Some(definitions) = definitions else {
         ui.weak(tr("Node Definition Not Loaded"));
         return;
     };
     for def in definitions.values().filter(|d| d.domain == "image") {
+        let available = mix_available
+            || !matches!(&def.binding,crate::plugins::nodes::Binding::Image {operation,..} if operation=="mix");
         if ui
-            .button(tr(&def.title))
+            .add_enabled(available, Button::new(tr(&def.title)))
             .on_hover_text(tr(&def.id))
+            .on_disabled_hover_text(tr("Backdrop mixing requires a compatible compositor."))
             .clicked()
         {
             if snarl.nodes().count() < MAX_NODES {
@@ -586,7 +726,13 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
     }
     fn show_input(&mut self, p: &InPin, ui: &mut Ui, snarl: &mut Snarl<Node>) -> PinInfo {
         ui.label(tr(
-            if matches!(snarl[p.id.node].data, NodeKind::Blend { .. }) {
+            if matches!(snarl[p.id.node].data, NodeKind::Mix { .. }) {
+                if p.id.input == 0 {
+                    "Before"
+                } else {
+                    "After"
+                }
+            } else if matches!(snarl[p.id.node].data, NodeKind::Blend { .. }) {
                 if p.id.input == 0 {
                     "Background"
                 } else {
@@ -668,6 +814,18 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
                                 }
                             });
                         data[key] = serde_json::json!(index);
+                    } else if key == "opacity" && operation == "mix" {
+                        let mut opacity=data[key].as_f64().unwrap_or(1.) as f32;
+                        let response=ui.add_enabled(self.mix_available,Slider::new(&mut opacity,0. ..=1.)).on_disabled_hover_text(tr("Backdrop mixing requires a compatible compositor."));
+                        #[cfg(test)] {
+                            // Slider's union response includes its numeric editor; capture the
+                            // actual rail widget for pointer-driven layout/input regressions.
+                            let rail=ui.ctx().read_response(response.id).unwrap().rect;
+                            ui.data_mut(|data|data.insert_temp(Id::new(("mix-opacity-control",id)),(rail,response.rect)));
+                        }
+                        if response.changed() {
+                            data[key]=serde_json::json!(opacity);
+                        }
                     } else if key == "mode" && operation == "blend" {
                         if let Ok(mode)=serde_json::from_value(data[key].clone()) {
                             if let Some(next)=super::blend_modes::combo(ui,("node-blend-mode",id),mode,false,ui.available_width(),self.supported_blends).inner {
@@ -766,7 +924,7 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
         !self.linked
     }
     fn show_graph_menu(&mut self, pos: Pos2, ui: &mut Ui, snarl: &mut Snarl<Node>) {
-        add_menu(ui, snarl, pos, self.definitions);
+        add_menu(ui, snarl, pos, self.definitions, self.mix_available);
     }
     fn has_node_menu(&mut self, _: &Node) -> bool {
         true
@@ -891,7 +1049,7 @@ impl Editor {
             });
             if !state.linked {
                 ui.menu_button(tr("Add Node"), |ui| {
-                    add_menu(ui, &mut state.snarl, pos2(80., 80.), Some(&self.plugin_nodes));
+                    add_menu(ui, &mut state.snarl, pos2(80., 80.), Some(&self.plugin_nodes),self.session.doc.renderer.as_ref().is_some_and(|renderer|renderer.supports_mix()));
                 });
             }
             if ui.button(tr("Fit Graph")).on_hover_text(tr("Drag nodes · Ctrl+scroll to zoom · Double-click to center · Right-click for filters")).clicked() {
@@ -936,6 +1094,12 @@ impl Editor {
             },
             actions: vec![],
             supported_blends: super::blend_modes::supported(&self.session.doc),
+            mix_available: self
+                .session
+                .doc
+                .renderer
+                .as_ref()
+                .is_some_and(|renderer| renderer.supports_mix()),
         };
         let style = SnarlStyle {
             node_layout: Some(NodeLayout::sandwich()),

@@ -5,6 +5,24 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub const MAX_GROUPS: usize = 16;
 pub const MAX_DEPTH: usize = 8;
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GroupPolicy {
+    #[default]
+    Isolated,
+    PassThrough,
+}
+impl GroupPolicy {
+    pub fn is_isolated(&self) -> bool {
+        *self == Self::Isolated
+    }
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Isolated => "Isolated",
+            Self::PassThrough => "Pass Through",
+        }
+    }
+}
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ItemKind {
@@ -39,6 +57,8 @@ pub struct Group {
     pub visible: bool,
     pub opacity: u8,
     pub blend_mode: BlendMode,
+    #[serde(default, skip_serializing_if = "GroupPolicy::is_isolated")]
+    pub compositing: GroupPolicy,
     pub children: Vec<GroupItem>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -124,7 +144,8 @@ impl GroupTree {
         Ok(out)
     }
     pub fn validate(&self, ids: &[u64], next: u64) -> Result<(), String> {
-        if self.version != 1
+        if !matches!(self.version, 1 | 2)
+            || (self.version == 1 && self.groups.iter().any(|g| !g.compositing.is_isolated()))
             || self.groups.is_empty()
             || self.groups.len() > MAX_GROUPS
             || next == 0
@@ -329,10 +350,56 @@ impl GroupTree {
             graph: &mut Graph,
             next: &mut u64,
             zero: u32,
+            seed: u32,
             group_nodes: &mut BTreeMap<u64, u32>,
         ) -> Result<u32, String> {
-            let mut last = zero;
+            let mut last = seed;
             for item in items {
+                if item.kind == ItemKind::Group {
+                    let g = tree.group(item.id)?;
+                    if g.compositing == GroupPolicy::PassThrough {
+                        let head = build(
+                            tree,
+                            &g.children,
+                            source,
+                            ids,
+                            modes,
+                            branches,
+                            graph,
+                            next,
+                            zero,
+                            last,
+                            group_nodes,
+                        )?;
+                        let mix = fresh(
+                            next,
+                            NodeKind::Mix {
+                                opacity: if g.visible {
+                                    g.opacity as f32 / 255.
+                                } else {
+                                    0.
+                                },
+                            },
+                            "mix",
+                        )?;
+                        group_nodes.insert(g.id, mix.id);
+                        graph.edges.extend([
+                            Edge {
+                                from: last,
+                                to: mix.id,
+                                input: 0,
+                            },
+                            Edge {
+                                from: head,
+                                to: mix.id,
+                                input: 1,
+                            },
+                        ]);
+                        last = mix.id;
+                        graph.nodes.push(mix);
+                        continue;
+                    }
+                }
                 let (head, mode, opacity) = match item.kind {
                     ItemKind::Layer => {
                         let index = ids
@@ -367,6 +434,7 @@ impl GroupTree {
                                 branches,
                                 graph,
                                 next,
+                                zero,
                                 zero,
                                 group_nodes,
                             )?,
@@ -409,6 +477,7 @@ impl GroupTree {
             &branches,
             &mut graph,
             &mut next,
+            zero_id,
             zero_id,
             &mut group_nodes,
         )?;

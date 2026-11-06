@@ -1290,5 +1290,21 @@
   "Luminosity": "명도",
   "This blend mode requires a compatible compositor.": "이 혼합 모드에는 호환되는 합성기가 필요합니다.",
   "The compositor does not support this blend mode": "합성기가 이 혼합 모드를 지원하지 않습니다.",
-  "Compositor blend mode mask omits legacy modes": "합성기 혼합 모드 마스크에 기존 모드가 누락되었습니다."
+  "Compositor blend mode mask omits legacy modes": "합성기 혼합 모드 마스크에 기존 모드가 누락되었습니다.",
+  "Group Compositing": "그룹 합성 방식",
+  "Isolated": "격리 합성",
+  "Pass Through": "통과",
+  "Pass Through Group": "통과 그룹",
+  "Backdrop Mix": "배경 혼합",
+  "Before": "처리 전",
+  "After": "처리 후",
+  "Pass Through requires a compatible compositor.": "통과 모드에는 호환되는 합성기가 필요합니다.",
+  "Backdrop mixing requires a compatible compositor.": "배경 혼합에는 호환되는 합성기가 필요합니다.",
+  "Pass Through uses child blend modes. The isolated group blend mode is retained.": "통과 모드는 하위 레이어의 혼합 모드를 사용합니다. 격리 그룹의 혼합 모드는 유지됩니다.",
+  "Children blend into the parent backdrop; group opacity controls the combined change.": "하위 항목은 상위 배경과 혼합되며 그룹 불투명도가 전체 변화량을 조절합니다.",
+  "The compositor does not support backdrop mixing": "합성기가 배경 혼합을 지원하지 않습니다.",
+  "Pass Through groups depend on the outside backdrop; switch to Isolated or merge visible artwork": "통과 그룹은 외부 배경에 의존합니다. 격리 합성으로 전환하거나 보이는 내용을 병합하세요.",
+  "Inspect Group Properties": "그룹 속성 보기",
+  "Group property controls require the desktop; use group.query and group.set for headless editing": "그룹 속성 UI는 데스크톱에서만 사용할 수 있습니다. 헤드리스 편집에는 group.query와 group.set을 사용하세요.",
+  "A valid group ID is required": "유효한 그룹 ID가 필요합니다."
 }

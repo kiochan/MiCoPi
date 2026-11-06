@@ -10,7 +10,7 @@ pub fn schema() -> serde_json::Value {
         "enabled":{"type":"boolean"},"linked":{"type":"boolean","default":false,"description":"A validated layer-stack chain; structural layer edits keep its branches synchronized"},
         "nodes":{"type":"array","maxItems":64,"items":{"type":"object","required":["id","position","kind"],"additionalProperties":false,"properties":{
             "node_type":{"type":"string"},"id":id,"position":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-1000000,"maximum":1000000}},
-            "kind":{"type":"string","enum":["layer","filter","blend","output","transparent"]},"index":{"type":"integer","minimum":0,"maximum":15},
+            "kind":{"type":"string","enum":["layer","filter","blend","mix","output","transparent"]},"index":{"type":"integer","minimum":0,"maximum":15},
             "filter":{"type":"string","enum":Filter::ALL},"amount":{"type":"number","minimum":-1,"maximum":1},
             "mode":{"type":"string","enum":BlendMode::ALL},"opacity":{"type":"number","minimum":0,"maximum":1}
         }}},
@@ -253,13 +253,14 @@ pub enum NodeKind {
     Layer { index: usize },
     Filter { filter: Filter, amount: f32 },
     Blend { mode: BlendMode, opacity: f32 },
+    Mix { opacity: f32 },
     Output,
 }
 impl NodeKind {
     pub fn inputs(&self) -> usize {
         match self {
             Self::Layer { .. } | Self::Transparent => 0,
-            Self::Blend { .. } => 2,
+            Self::Blend { .. } | Self::Mix { .. } => 2,
             _ => 1,
         }
     }
@@ -269,6 +270,7 @@ impl NodeKind {
             Self::Layer { index } => format!("Layer {}", index + 1),
             Self::Filter { filter, .. } => filter.title().into(),
             Self::Blend { mode, .. } => format!("Blend · {}", mode.title()),
+            Self::Mix { .. } => "Backdrop Mix".into(),
             Self::Output => "Canvas Output".into(),
         }
     }
@@ -302,6 +304,9 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 pub trait Renderer {
+    fn supports_mix(&self) -> bool {
+        false
+    }
     fn supports_blend_mode(&self, mode: u32) -> bool {
         mode < 8
     }
@@ -402,7 +407,7 @@ impl Graph {
                 {
                     return Err("Invalid filter parameters".into())
                 }
-                NodeKind::Blend { opacity, .. }
+                NodeKind::Blend { opacity, .. } | NodeKind::Mix { opacity }
                     if !opacity.is_finite() || !(0. ..=1.).contains(&opacity) =>
                 {
                     return Err("Invalid blend opacity".into())
@@ -522,6 +527,13 @@ impl Graph {
                         a: input(0),
                         b: input(1),
                         mode: mode as u32,
+                        amount: opacity,
+                    },
+                    NodeKind::Mix { opacity } => abi::CompositeNode {
+                        kind: 5,
+                        a: input(0),
+                        b: input(1),
+                        mode: 0,
                         amount: opacity,
                     },
                     NodeKind::Output => abi::CompositeNode {

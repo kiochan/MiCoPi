@@ -293,7 +293,6 @@ fn old_capability_prefix_preflights_hidden_disabled_batch_and_staged_project_met
     );
     let source = raw(&s);
     let committed = pixels(&mut s);
-    let before = s.state();
     let composition = s.doc.composition();
     let history = s.doc.history_bytes();
     let delegate = s.doc.renderer.clone().unwrap();
@@ -302,6 +301,7 @@ fn old_capability_prefix_preflights_hidden_disabled_batch_and_staged_project_met
         delegate: delegate.clone(),
         renders: renders.clone(),
     }));
+    let before = s.state();
     let mut disabled = graph(&s, BlendMode::Hue, false);
     // Group documents retain the raw linked leaf-filter store. Test a disabled
     // extended blend in that store rather than a structurally invalid free DAG.

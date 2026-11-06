@@ -68,6 +68,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/group_merge.rs`, `src/application/group_merge_tests.rs`, `scripts/smoke-group-merge.py` | Staged subtree/visible-group baking, retained hidden branches and shared action/history/replay verification |
 | `plugins/compositing/src/blends.rs`, `plugins/compositing/src/blend_tests.rs` | Independent extended color equations, exact rounding and native/reference compatibility checks |
 | `src/engine/blend_modes.rs`, `src/desktop/blend_modes.rs`, `src/application/blend_mode_tests.rs`, `scripts/smoke-blend-modes.py` | Shared renderer-capability preflight, bounded family menus and cross-client blend/history/replay checks |
+| `src/engine/mix.rs`, `plugins/compositing/src/mix_tests.rs`, `src/application/pass_through_tests.rs`, `scripts/smoke-pass-through.py` | Backdrop-mix capability preflight, native interpolation references and Pass Through policy/history/transport verification |
 | `src/application/layer_query.rs`, `src/application/layer_organization_tests.rs` | Read-only layer discovery, organization schema and lock/label/history/replay contracts |
 | `src/engine/layer_selection.rs`, `src/plugins/layer_batch.rs` | Sparse stable-ID layer selection, bounded history grouping and explicit shared-handler batch execution |
 | `src/engine/groups.rs`, `src/engine/group_editing.rs`, `src/plugins/groups.rs` | Versioned group trees, cached isolated composition/visibility, buffer-preserving hierarchy edits and shared public commands |

@@ -381,7 +381,9 @@ pub struct CompositeLayer {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct CompositeNode {
-    pub kind: u32, // 0 layer, 1 filter, 2 blend, 3 output, 4 transparent (capability-gated)
+    // 0 layer, 1 filter, 2 blend, 3 output. Capability-gated: 4 transparent,
+    // 5 premultiplied mix (a before, b after, mode=0, finite amount in 0..=1).
+    pub kind: u32,
     pub a: u32,
     pub b: u32,
     pub mode: u32,
@@ -407,6 +409,11 @@ pub struct CompositorApi {
 /// Optional complete compositor tail. The published v1 prefix remains unchanged.
 /// Kind 4 produces transparent zero with a=b=mode=0 and amount=0.
 pub const COMPOSITOR_TRANSPARENT: u64 = 1;
+/// Kind 5 interpolates premultiplied colors using t=round(amount*255).
+/// Endpoints retain the exact input words. Otherwise round weighted alpha/255;
+/// zero output alpha yields zero, and RGB rounds half-up against the unrounded
+/// weighted alpha. Both input indices must refer to prior instruction slots.
+pub const COMPOSITOR_MIX: u64 = 1 << 1;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct CompositorApiFeatures {
@@ -643,6 +650,8 @@ mod transform_layout_tests {
         assert_eq!(offset_of!(CompositorApiFeatures, base), 0);
         assert_eq!(offset_of!(CompositorApiFeatures, capabilities), 16);
         assert_eq!(COMPOSITOR_TRANSPARENT, 1);
+        assert_eq!(COMPOSITOR_MIX, 2);
+        assert_eq!(COMPOSITOR_MIX & COMPOSITOR_TRANSPARENT, 0);
         assert_eq!(size_of::<CompositorApiModes>(), 32);
         assert_eq!(offset_of!(CompositorApiModes, base), 0);
         assert_eq!(offset_of!(CompositorApiModes, supported_blend_modes), 24);

@@ -117,6 +117,7 @@ impl Definition {
                     "layer" => &["index"],
                     "filter" => &["filter", "amount"],
                     "blend" => &["mode", "opacity"],
+                    "mix" => &["opacity"],
                     "output" | "transparent" => &[],
                     _ => return Err("Unknown image kernel operation".into()),
                 };
@@ -144,7 +145,7 @@ impl Definition {
                     {
                         return Err("Default filter amount is out of range".into())
                     }
-                    NodeKind::Blend { opacity, .. }
+                    NodeKind::Blend { opacity, .. } | NodeKind::Mix { opacity }
                         if !opacity.is_finite() || !(0. ..=1.).contains(&opacity) =>
                     {
                         return Err("Default blend opacity is out of range".into())
@@ -175,6 +176,7 @@ impl Definition {
             let names: &[&str] = match operation.as_str() {
                 "layer" | "transparent" => &[],
                 "blend" => &["background", "foreground"],
+                "mix" => &["before", "after"],
                 _ => &["image"],
             };
             let image_port = |id: &str| Port {
@@ -182,6 +184,8 @@ impl Definition {
                 title: match id {
                     "background" => "Background",
                     "foreground" => "Foreground",
+                    "before" => "Before",
+                    "after" => "After",
                     _ => "Image",
                 }
                 .into(),

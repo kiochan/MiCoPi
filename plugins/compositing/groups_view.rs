@@ -11,12 +11,14 @@ pub(super) struct EffectiveView {
     error: String,
     names: BTreeMap<u32, Gate>,
     renderer: bool,
+    mix_available: bool,
 }
 #[derive(Clone)]
 struct Gate {
     name: String,
     visible: bool,
     opacity: f32,
+    compositing: crate::engine::groups::GroupPolicy,
 }
 fn fingerprint(editor: &Editor) -> u64 {
     let mut hash = std::collections::hash_map::DefaultHasher::new();
@@ -59,6 +61,8 @@ impl EffectiveView {
                                 name: group["name"].as_str()?.to_owned(),
                                 visible: group["visible"].as_bool()?,
                                 opacity: group["opacity"].as_f64()? as f32,
+                                compositing: serde_json::from_value(group["compositing"].clone())
+                                    .unwrap_or_default(),
                             },
                         ))
                     })
@@ -67,12 +71,14 @@ impl EffectiveView {
                     graph,
                     names,
                     state["renderer_transparent"].as_bool().unwrap_or(false),
+                    state["renderer_mix"].as_bool().unwrap_or(false),
                 ))
             });
         match result {
-            Ok((graph, names, renderer)) => {
+            Ok((graph, names, renderer, mix_available)) => {
                 self.names = names;
                 self.renderer = renderer;
+                self.mix_available = mix_available;
                 let previous: BTreeMap<_, _> = self
                     .snarl
                     .nodes_pos_ids()
@@ -149,6 +155,17 @@ impl EffectiveView {
             ui.colored_label(
                 ui.visuals().warn_fg_color,
                 tr("Group rendering requires a compatible compositor."),
+            );
+        }
+        if !self.mix_available
+            && self
+                .names
+                .values()
+                .any(|group| group.compositing == crate::engine::groups::GroupPolicy::PassThrough)
+        {
+            ui.colored_label(
+                ui.visuals().warn_fg_color,
+                tr("Pass Through requires a compatible compositor."),
             );
         }
         if let Some(error) = &editor.session.doc.render_error {
@@ -246,7 +263,13 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
     }
     fn show_input(&mut self, pin: &InPin, ui: &mut Ui, snarl: &mut Snarl<Node>) -> PinInfo {
         ui.label(tr(
-            if matches!(snarl[pin.id.node].data, NodeKind::Blend { .. }) {
+            if matches!(snarl[pin.id.node].data, NodeKind::Mix { .. }) {
+                if pin.id.input == 0 {
+                    "Before"
+                } else {
+                    "After"
+                }
+            } else if matches!(snarl[pin.id.node].data, NodeKind::Blend { .. }) {
                 if pin.id.input == 0 {
                     "Background"
                 } else {
@@ -278,7 +301,13 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
             ui.set_width(self.width);
             ui.style_mut().wrap_mode = Some(TextWrapMode::Wrap);
             if let Some(group) = self.names.get(&snarl[id].id) {
-                ui.weak(tr("Group Composite"));
+                ui.weak(tr(
+                    if group.compositing == crate::engine::groups::GroupPolicy::PassThrough {
+                        "Pass Through Group"
+                    } else {
+                        "Group Composite"
+                    },
+                ));
                 ui.label(format!(
                     "{}: {:.0}%",
                     localize("Opacity"),
@@ -310,6 +339,12 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
                 }
                 NodeKind::Blend { mode, opacity } => {
                     ui.label(tr(mode.title()));
+                    if !self.names.contains_key(&snarl[id].id) {
+                        ui.label(format!("{:.0}%", opacity * 100.));
+                    }
+                }
+                NodeKind::Mix { opacity } => {
+                    ui.weak(tr("Backdrop Mix"));
                     if !self.names.contains_key(&snarl[id].id) {
                         ui.label(format!("{:.0}%", opacity * 100.));
                     }
@@ -586,5 +621,76 @@ mod tests {
             draft.message,
             "Graph or Groups Changed Externally; Use Load Current"
         );
+    }
+    #[test]
+    fn pass_through_actual_composition_shows_real_mix_gate_and_before_after_ports() {
+        let (mut app, group) = fixture();
+        assert!(app.editor.core(
+            "group.set",
+            json!({"group_id":group,"compositing":"pass_through","opacity":0.5})
+        ));
+        let ctx = Context::default();
+        theme::fonts(&ctx);
+        theme::apply(&ctx, &app.editor.settings.ui);
+        let state = app.editor.session.state();
+        let history = app.editor.session.doc.history_bytes();
+        let mut output = None;
+        for n in 0..4 {
+            output = Some(ctx.run(
+                RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1300., 900.))),
+                    time: Some(n as f64),
+                    ..Default::default()
+                },
+                |ctx| {
+                    CentralPanel::default().show(ctx, |ui| app.editor.nodes_ui(ui));
+                },
+            ));
+        }
+        let effective = app.editor.session.doc.effective_graph().unwrap();
+        assert_eq!(
+            app.editor.nodes.effective.snarl.nodes().count(),
+            effective.nodes.len()
+        );
+        assert_eq!(
+            app.editor.nodes.effective.snarl.wires().count(),
+            effective.edges.len()
+        );
+        let gate = app
+            .editor
+            .nodes
+            .effective
+            .names
+            .iter()
+            .find(|(_, gate)| gate.name == "Character")
+            .unwrap();
+        assert_eq!(
+            gate.1.compositing,
+            crate::engine::groups::GroupPolicy::PassThrough
+        );
+        assert!(app
+            .editor
+            .nodes
+            .effective
+            .snarl
+            .nodes()
+            .any(|node| node.id == *gate.0
+                && matches!(node.data,NodeKind::Mix {opacity} if opacity>0.49 && opacity<0.51)));
+        fn has(shape: &Shape, title: &str) -> bool {
+            match shape {
+                Shape::Text(value) => value.galley.text() == title,
+                Shape::Vec(values) => values.iter().any(|value| has(value, title)),
+                _ => false,
+            }
+        }
+        let output = output.unwrap();
+        for title in ["Before", "After", "Pass Through Group", "Backdrop Mix"] {
+            assert!(
+                output.shapes.iter().any(|shape| has(&shape.shape, title)),
+                "{title}"
+            );
+        }
+        assert_eq!(app.editor.session.state(), state);
+        assert_eq!(app.editor.session.doc.history_bytes(), history);
     }
 }

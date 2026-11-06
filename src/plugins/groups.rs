@@ -1,6 +1,9 @@
 //! Explicit group structure and inspection share the document's cached composition.
 use crate::application::{ActionError, ActionResult, Operation, Session};
-use crate::engine::{graph::BlendMode, groups::GroupItem};
+use crate::engine::{
+    graph::BlendMode,
+    groups::{GroupItem, GroupPolicy},
+};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -20,7 +23,7 @@ pub(crate) fn schema(op: Operation) -> Value {
         ),
         GroupCreateSelected => (json!({"name":name}), vec![]),
         GroupProperties => (
-            json!({"group_id":id,"name":name,"visible":{"type":"boolean"},"opacity":{"type":"number","minimum":0,"maximum":1},"blend_mode":{"type":"string","enum":BlendMode::ALL}}),
+            json!({"group_id":id,"name":name,"visible":{"type":"boolean"},"opacity":{"type":"number","minimum":0,"maximum":1},"blend_mode":{"type":"string","enum":BlendMode::ALL},"compositing":{"type":"string","enum":["isolated","pass_through"],"description":"Isolated blends children independently; Pass Through blends children against the parent backdrop then mixes the group result once. Retains blend_mode for later isolated use."}}),
             vec!["group_id"],
         ),
         GroupMove => (
@@ -29,7 +32,7 @@ pub(crate) fn schema(op: Operation) -> Value {
         ),
         GroupMerge => {
             let mut target = id.clone();
-            target["description"] = json!("Nonempty group to bake, including hidden descendants. The fresh raster retains this group's own name, visibility, opacity and blend mode; pixel/alpha-locked descendants reject the operation. Requires an idle contact.");
+            target["description"] = json!("Nonempty isolated group to bake, including hidden descendants and nested Pass Through groups. A Pass Through target depends on the external backdrop and rejects this command. The fresh raster retains this group's own name, visibility, opacity and blend mode; pixel/alpha-locked descendants reject the operation. Requires an idle contact.");
             (json!({"group_id":target}), vec!["group_id"])
         }
         GroupUngroupParent => (json!({}), vec![]),
@@ -107,6 +110,10 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 .get("blend_mode")
                 .map(|v| serde_json::from_value(v.clone()))
                 .transpose()?;
+            let compositing: Option<GroupPolicy> = args
+                .get("compositing")
+                .map(|v| serde_json::from_value(v.clone()))
+                .transpose()?;
             s.doc
                 .group_set(
                     id,
@@ -114,6 +121,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                     args["visible"].as_bool(),
                     args["opacity"].as_f64().map(|v| (v * 255.).round() as u8),
                     mode,
+                    compositing,
                 )
                 .map_err(group_error)?;
         }

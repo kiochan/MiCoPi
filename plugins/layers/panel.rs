@@ -2246,11 +2246,12 @@ mod tests {
     #[test]
     fn layers_pending_group_actions_keep_locally_owned_brush_and_hand_contacts_intact() {
         for tool in [Tool::Brush, Tool::Hand] {
-            for command in [
-                "group.merge",
-                "group.set",
-                "group.move",
-                "layer.merge_visible",
+            for (command, policy_change) in [
+                ("group.merge", false),
+                ("group.set", false),
+                ("group.set", true),
+                ("group.move", false),
+                ("layer.merge_visible", false),
             ] {
                 let (mut app, ids) = native_multi();
                 let group = app.editor.session.apply(crate::application::Action::new(
@@ -2284,7 +2285,11 @@ mod tests {
                 let action = match command {
                     "group.set" => crate::application::Action::new(
                         command,
-                        json!({"group_id":group,"opacity":0.5}),
+                        if policy_change {
+                            json!({"group_id":group,"compositing":"pass_through"})
+                        } else {
+                            json!({"group_id":group,"opacity":0.5})
+                        },
                     ),
                     "group.move" => crate::application::Action::new(
                         command,

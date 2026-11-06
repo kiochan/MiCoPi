@@ -8,7 +8,7 @@ The Layers panel provides an editable **Layer Name**, **Layer Actions** menu and
 
 Flips, 180° rotation and offsets operate on the selected visible layer's full canvas-sized pixel buffer. Hidden layers must be made visible before a pixel edit, following the existing plugin edit contract. Offsets are signed integer pixels: positive X is right, positive Y is down. Exposed areas become transparent; out-of-bounds pixels are discarded and can be restored with undo. These operations do not resample colors. The native painting plugin must be enabled for pixel transforms.
 
-[Layer Groups](layer-groups.md) adds isolated nesting, typed hierarchy commands and an actual-composition node view. Existing leaf commands preserve membership; explicit hierarchy moves handle reparenting. Merge Group bakes an explicitly targeted subtree, while grouped Merge Visible retains hidden content and group skeletons; see [Group baking](layer-groups.md#bake-groups-and-visible-artwork).
+[Layer Groups](layer-groups.md) adds isolated or [Pass Through](pass-through.md) nesting, typed hierarchy commands and an actual-composition node view. Existing leaf commands preserve membership; explicit hierarchy moves handle reparenting. Merge Group bakes an explicitly targeted isolated subtree, including its nested Pass Through children; a Pass Through target requires an external backdrop and rejects standalone baking. Grouped Merge Visible retains hidden content and group skeletons; see [Group baking](layer-groups.md#bake-groups-and-visible-artwork).
 
 ## Public actions
 

@@ -3,6 +3,8 @@ use micopi_plugin_api as abi;
 #[cfg(test)]
 mod blend_tests;
 mod blends;
+#[cfg(test)]
+mod mix_tests;
 pub fn over(dst: u32, src: u32, mode: u32) -> u32 {
     if mode >= abi::BLEND_COLOR_BURN {
         return blends::over(dst, src, mode);
@@ -41,6 +43,31 @@ pub fn over(dst: u32, src: u32, mode: u32) -> u32 {
 }
 fn opacity(p: u32, amount: u32) -> u32 {
     (p & 0xffffff) | (((p >> 24) * amount / 255) << 24)
+}
+// Keep Mix-only register pressure out of the existing renderer instruction loop.
+#[inline(never)]
+fn mix(before: u32, after: u32, amount: u32) -> u32 {
+    if amount == 0 {
+        return before;
+    }
+    if amount == 255 {
+        return after;
+    }
+    let before_weight = (before >> 24) * (255 - amount);
+    let after_weight = (after >> 24) * amount;
+    let weight = before_weight + after_weight;
+    let alpha = (weight + 127) / 255;
+    if alpha == 0 {
+        return 0;
+    }
+    let mut result = alpha << 24;
+    for shift in [0, 8, 16] {
+        let numerator =
+            ((before >> shift) & 255) * before_weight + ((after >> shift) & 255) * after_weight;
+        let channel = (numerator + weight / 2) / weight;
+        result |= channel << shift;
+    }
+    result
 }
 pub fn filter(p: u32, mode: u32, amount: f32) -> u32 {
     if p >> 24 == 0 {
@@ -165,6 +192,12 @@ unsafe extern "C" fn render(
                 }
                 3 => n.a as usize >= i,
                 4 => n.a != 0 || n.b != 0 || n.mode != 0 || n.amount != 0.,
+                5 => {
+                    n.a as usize >= i
+                        || n.b as usize >= i
+                        || n.mode != 0
+                        || !(0. ..=1.).contains(&n.amount)
+                }
                 _ => true,
             }
         {
@@ -206,6 +239,11 @@ unsafe extern "C" fn render(
                             n.mode,
                         ),
                         4 => 0,
+                        5 => mix(
+                            values[n.a as usize],
+                            values[n.b as usize],
+                            (n.amount * 255.).round() as u32,
+                        ),
                         _ => values[n.a as usize],
                     };
                 }
@@ -234,7 +272,7 @@ static COMPOSITOR: abi::CompositorApiModes = abi::CompositorApiModes {
             struct_size: std::mem::size_of::<abi::CompositorApiModes>() as u32,
             render: Some(render),
         },
-        capabilities: abi::COMPOSITOR_TRANSPARENT,
+        capabilities: abi::COMPOSITOR_TRANSPARENT | abi::COMPOSITOR_MIX,
     },
     supported_blend_modes: abi::BLEND_MODES_ALL,
 };
@@ -364,7 +402,10 @@ mod tests {
             std::mem::size_of::<abi::CompositorApiModes>()
         );
         let complete = unsafe { &*(micopi_compositor_v1().cast::<abi::CompositorApiFeatures>()) };
-        assert_eq!(complete.capabilities, abi::COMPOSITOR_TRANSPARENT);
+        assert_eq!(
+            complete.capabilities,
+            abi::COMPOSITOR_TRANSPARENT | abi::COMPOSITOR_MIX
+        );
         let modes = unsafe { &*(micopi_compositor_v1().cast::<abi::CompositorApiModes>()) };
         assert_eq!(modes.supported_blend_modes, abi::BLEND_MODES_ALL);
         assert!(base.render.is_some());

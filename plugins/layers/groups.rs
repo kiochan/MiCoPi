@@ -1,5 +1,6 @@
 //! Group hierarchy presentation; document changes use registered group actions.
 use super::*;
+use crate::engine::groups::GroupPolicy;
 use serde::Deserialize;
 #[derive(Clone, Deserialize)]
 pub(super) struct Entry {
@@ -14,6 +15,12 @@ pub(super) struct Group {
     pub(super) visible: bool,
     pub(super) opacity: f32,
     pub(super) blend_mode: crate::engine::graph::BlendMode,
+    #[serde(default)]
+    pub(super) compositing: GroupPolicy,
+    #[serde(default)]
+    pub(super) mergeable: bool,
+    #[serde(default)]
+    pub(super) merge_error: Option<String>,
     #[serde(default)]
     pub(super) children: Vec<Entry>,
     #[serde(default)]
@@ -33,6 +40,8 @@ pub(super) struct Row {
 #[derive(Deserialize)]
 struct Query {
     #[serde(default)]
+    pass_through_available: bool,
+    #[serde(default)]
     roots: Vec<Entry>,
     groups: Vec<Group>,
     rows: Vec<Row>,
@@ -42,6 +51,7 @@ struct Query {
     matching_group_ids: Vec<u64>,
 }
 pub(super) struct Data {
+    pub(super) pass_through_available: bool,
     pub(super) roots: Vec<Entry>,
     pub(super) groups: Vec<Group>,
     pub(super) rows: Vec<Row>,
@@ -142,6 +152,7 @@ impl Editor {
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(Arc::new(Data {
+                    pass_through_available: query.pass_through_available,
                     roots: query.roots,
                     groups: query.groups,
                     rows: query.rows,
@@ -228,7 +239,7 @@ impl Editor {
         ctx.data_mut(|data| data.get_temp::<Workspace>(workspace_key(self.session.doc.identity)))
             .and_then(|workspace| workspace.focused)
     }
-    pub(super) fn focus_group_ui(&self, ctx: &Context, id: Option<u64>) {
+    pub(in crate::desktop) fn focus_group_ui(&self, ctx: &Context, id: Option<u64>) {
         let key = workspace_key(self.session.doc.identity);
         let mut workspace = ctx
             .data_mut(|data| data.get_temp::<Workspace>(key))
@@ -629,23 +640,75 @@ impl Editor {
                 changes["opacity"] = json!(opacity.value);
                 opacity_revision = Some(opacity.revision);
             }
+            ui.label(tr("Group Compositing"));
+            let policy_response = ComboBox::from_id_salt(("group-compositing", id))
+                .width(ui.available_width())
+                .height(a.control_height * 3. + a.item_spacing * 2.)
+                .truncate()
+                .selected_text(tr(group.compositing.title()))
+                .show_ui(ui, |ui| {
+                    for policy in [GroupPolicy::Isolated, GroupPolicy::PassThrough] {
+                        let available =
+                            policy == GroupPolicy::Isolated || data.pass_through_available;
+                        if ui
+                            .add_enabled(
+                                available,
+                                Button::selectable(group.compositing == policy, tr(policy.title()))
+                                    .min_size(vec2(ui.available_width(), a.control_height)),
+                            )
+                            .on_disabled_hover_text(tr(
+                                "Pass Through requires a compatible compositor.",
+                            ))
+                            .clicked()
+                        {
+                            changes.as_object_mut().unwrap().remove("opacity");
+                            opacity_revision = None;
+                            changes["compositing"] = json!(policy);
+                            ui.close();
+                        }
+                    }
+                })
+                .response;
+            #[cfg(test)]
+            ui.data_mut(|data| {
+                data.insert_temp(
+                    Id::new(("group-policy-control", self.session.doc.identity, id)),
+                    policy_response.rect,
+                )
+            });
+            #[cfg(not(test))]
+            let _ = policy_response;
             ui.label(tr("Group Blend Mode"));
-            if let Some(mode) = super::super::blend_modes::combo(
-                ui,
-                ("group-mode", id),
-                group.blend_mode,
-                false,
-                ui.available_width(),
-                super::super::blend_modes::supported(&self.session.doc),
-            )
-            .inner
-            {
-                changes["blend_mode"] = json!(mode);
-            }
+            ui.add_enabled_ui(group.compositing == GroupPolicy::Isolated, |ui| {
+                let choice = super::super::blend_modes::combo(
+                    ui,
+                    ("group-mode", id),
+                    group.blend_mode,
+                    false,
+                    ui.available_width(),
+                    super::super::blend_modes::supported(&self.session.doc),
+                );
+                #[cfg(test)]
+                ui.data_mut(|data| {
+                    data.insert_temp(
+                        Id::new(("group-blend-control", self.session.doc.identity, id)),
+                        (choice.response.rect, choice.response.enabled()),
+                    )
+                });
+                if let Some(mode) = choice.inner {
+                    changes["blend_mode"] = json!(mode);
+                }
+            })
+            .response
+            .on_disabled_hover_text(tr(
+                "Pass Through uses child blend modes. The isolated group blend mode is retained.",
+            ));
         });
-        ui.weak(tr(
-            "Children composite together before group opacity and blending.",
-        ));
+        ui.weak(tr(if group.compositing == GroupPolicy::PassThrough {
+            "Children blend into the parent backdrop; group opacity controls the combined change."
+        } else {
+            "Children composite together before group opacity and blending."
+        }));
         ui.horizontal_wrapped(|ui| {
             if ui
                 .add_enabled(
@@ -675,17 +738,24 @@ impl Editor {
                     ("group.delete", "Delete Group and Contents"),
                 ] {
                     let enabled = match command {
-                        "group.merge" => !group.layer_ids.is_empty(),
+                        "group.merge" => group.mergeable,
                         "group.delete" => group.layer_ids.len() < self.session.doc.layers.len(),
                         "group.duplicate" => {
                             self.session.doc.layers.len() + group.layer_ids.len() <= 16
                         }
                         _ => true,
                     };
-                    if ui
-                        .add_enabled(enabled, Button::new(tr(title)).wrap())
-                        .clicked()
-                    {
+                    let response = ui.add_enabled(enabled, Button::new(tr(title)).wrap());
+                    let response = if command == "group.merge" {
+                        if let Some(error) = &group.merge_error {
+                            response.on_disabled_hover_text(localize(error))
+                        } else {
+                            response
+                        }
+                    } else {
+                        response
+                    };
+                    if response.clicked() {
                         pending.push(crate::application::Action::new(
                             command,
                             json!({"group_id":id}),
@@ -866,6 +936,7 @@ impl Editor {
         let edited = action.args["group_id"].as_u64();
         let rename = action.args.get("name").is_some();
         let opacity = action.args.get("opacity").is_some();
+        let policy = action.args.get("compositing").is_some();
         let before_revision = self.session.revision;
         let before_generation = self.session.doc.groups_revision();
         match self.session.apply(action) {
@@ -873,7 +944,7 @@ impl Editor {
                 if command == "group.set" {
                     if let Some(id) = edited {
                         let key = opacity_key(self.session.doc.identity, id);
-                        if opacity {
+                        if opacity || policy {
                             ctx.data_mut(|data| data.remove::<OpacityDraft>(key));
                         } else if let Some(mut draft) =
                             ctx.data_mut(|data| data.get_temp::<OpacityDraft>(key))
@@ -987,6 +1058,456 @@ mod tests {
             Shape::Vec(shapes) => shapes.iter().find_map(|shape| label(shape, text)),
             _ => None,
         }
+    }
+    fn click(point: Pos2) -> Vec<Event> {
+        vec![
+            Event::PointerMoved(point),
+            Event::PointerButton {
+                pos: point,
+                button: PointerButton::Primary,
+                pressed: true,
+                modifiers: Modifiers::NONE,
+            },
+            Event::PointerButton {
+                pos: point,
+                button: PointerButton::Primary,
+                pressed: false,
+                modifiers: Modifiers::NONE,
+            },
+        ]
+    }
+    fn choose_policy(
+        app: &mut Studio,
+        ctx: &Context,
+        size: Vec2,
+        group: u64,
+        policy: GroupPolicy,
+        time: f64,
+    ) {
+        let rect = ctx
+            .data_mut(|data| {
+                data.get_temp::<Rect>(Id::new((
+                    "group-policy-control",
+                    app.editor.session.doc.identity,
+                    group,
+                )))
+            })
+            .unwrap();
+        assert!(Rect::from_min_size(Pos2::ZERO, size).contains_rect(rect));
+        frame(app, ctx, size, click(rect.center()), time);
+        let output = frame(app, ctx, size, vec![], time + 1.);
+        let title = crate::i18n::text_in(app.editor.settings.ui.language, policy.title());
+        let point = output
+            .shapes
+            .iter()
+            .find_map(|shape| {
+                label(&shape.shape, &title).map(|point| {
+                    assert!(shape.clip_rect.contains(point));
+                    point
+                })
+            })
+            .unwrap();
+        frame(app, ctx, size, click(point), time + 2.);
+        frame(app, ctx, size, vec![], time + 3.);
+    }
+    #[test]
+    fn pass_through_policy_controls_retain_modes_and_painting_focus_in_narrow_cjk_panels() {
+        let previous = crate::i18n::current();
+        for language in crate::i18n::Language::ALL {
+            for width in [176., 320.] {
+                let (mut app, group, ids) = fixture();
+                app.editor.settings.ui.language = language;
+                assert!(app.editor.core(
+                    "group.set",
+                    json!({"group_id":group,"blend_mode":"multiply"})
+                ));
+                let ctx = Context::default();
+                let size = vec2(width, 1200.);
+                app.editor.focus_group_ui(&ctx, Some(group));
+                for n in 0..3 {
+                    frame(&mut app, &ctx, size, vec![], n as f64);
+                }
+                let key = opacity_key(app.editor.session.doc.identity, group);
+                ctx.data_mut(|data| {
+                    data.insert_temp(
+                        key,
+                        OpacityDraft {
+                            value: 0.25,
+                            revision: app.editor.session.revision,
+                            generation: app.editor.session.doc.groups_revision(),
+                            dragging: false,
+                            submitted: false,
+                        },
+                    )
+                });
+                let raw = app
+                    .editor
+                    .session
+                    .doc
+                    .layers
+                    .iter()
+                    .map(|layer| layer.pixels.clone())
+                    .collect::<Vec<_>>();
+                app.editor.session.replay_boundary().unwrap();
+                let events = app
+                    .editor
+                    .session
+                    .replay_journal(false)
+                    .unwrap()
+                    .entries
+                    .len();
+                let revision = app.editor.session.revision;
+                choose_policy(&mut app, &ctx, size, group, GroupPolicy::PassThrough, 3.);
+                let query = app
+                    .editor
+                    .group_query_ui(&ctx, &LayerFilter::default())
+                    .unwrap();
+                let target = query.groups.iter().find(|value| value.id == group).unwrap();
+                assert_eq!(
+                    target.compositing,
+                    GroupPolicy::PassThrough,
+                    "{language:?}/{width}: {}",
+                    app.editor.status
+                );
+                assert_eq!(target.blend_mode, crate::engine::graph::BlendMode::Multiply);
+                assert_eq!(target.opacity, 1.);
+                assert!(!target.mergeable && target.merge_error.is_some());
+                assert!(ctx
+                    .data_mut(|data| data.get_temp::<OpacityDraft>(key))
+                    .is_none());
+                assert_eq!(app.editor.session.revision, revision + 1);
+                let journal = app.editor.session.replay_journal(false).unwrap();
+                assert_eq!(journal.entries.len(), events + 1);
+                let recorded = journal.events(events, 1).unwrap();
+                assert_eq!(recorded["events"][0]["source"]["action"], "group.set");
+                assert_eq!(
+                    recorded["events"][0]["source"]["args"],
+                    json!({"group_id":group,"compositing":"pass_through"})
+                );
+                let (rect, enabled) = ctx
+                    .data_mut(|data| {
+                        data.get_temp::<(Rect, bool)>(Id::new((
+                            "group-blend-control",
+                            app.editor.session.doc.identity,
+                            group,
+                        )))
+                    })
+                    .unwrap();
+                assert!(!enabled && Rect::from_min_size(Pos2::ZERO, size).contains_rect(rect));
+                frame(&mut app, &ctx, size, click(rect.center()), 7.);
+                assert_eq!(app.editor.session.revision, revision + 1);
+                choose_policy(&mut app, &ctx, size, group, GroupPolicy::Isolated, 8.);
+                let query = app
+                    .editor
+                    .group_query_ui(&ctx, &LayerFilter::default())
+                    .unwrap();
+                let target = query.groups.iter().find(|value| value.id == group).unwrap();
+                assert_eq!(target.compositing, GroupPolicy::Isolated);
+                assert_eq!(target.blend_mode, crate::engine::graph::BlendMode::Multiply);
+                assert!(target.mergeable);
+                assert_eq!(app.editor.focused_group_ui(&ctx), Some(group));
+                assert_eq!(
+                    app.editor
+                        .session
+                        .doc
+                        .layer_id(app.editor.session.doc.active),
+                    ids[2]
+                );
+                assert_eq!(
+                    app.editor
+                        .session
+                        .doc
+                        .layers
+                        .iter()
+                        .map(|layer| layer.pixels.clone())
+                        .collect::<Vec<_>>(),
+                    raw
+                );
+                assert!(app.editor.core("history.undo", json!({})));
+                assert_eq!(
+                    app.editor.session.doc.groups_state()["groups"][0]["compositing"],
+                    "pass_through"
+                );
+                assert!(app.editor.core("history.undo", json!({})));
+                assert_eq!(
+                    app.editor.session.doc.groups_state()["groups"][0]["compositing"],
+                    "isolated"
+                );
+            }
+        }
+        crate::i18n::set_language(previous);
+    }
+    #[test]
+    fn pass_through_external_edits_preserve_stale_name_and_opacity_drafts() {
+        let (mut app, group, _) = fixture();
+        let ctx = Context::default();
+        let size = vec2(244., 1200.);
+        app.editor.focus_group_ui(&ctx, Some(group));
+        for n in 0..3 {
+            frame(&mut app, &ctx, size, vec![], n as f64);
+        }
+        let identity = app.editor.session.doc.identity;
+        let revision = app.editor.session.revision;
+        let generation = app.editor.session.doc.groups_revision();
+        ctx.data_mut(|data| {
+            data.insert_temp(
+                name_key(identity, group),
+                NameDraft {
+                    text: "My uncommitted name".into(),
+                    generation,
+                },
+            );
+            data.insert_temp(
+                opacity_key(identity, group),
+                OpacityDraft {
+                    value: 0.25,
+                    revision,
+                    generation,
+                    dragging: true,
+                    submitted: false,
+                },
+            );
+        });
+        assert!(app.editor.core(
+            "group.set",
+            json!({"group_id":group,"compositing":"pass_through"})
+        ));
+        let state = app.editor.session.state();
+        frame(&mut app, &ctx, size, vec![], 3.);
+        assert_eq!(app.editor.session.state(), state);
+        assert_eq!(
+            ctx.data_mut(|data| data.get_temp::<NameDraft>(name_key(identity, group)))
+                .unwrap()
+                .text,
+            "My uncommitted name"
+        );
+        assert_eq!(
+            ctx.data_mut(|data| data.get_temp::<OpacityDraft>(opacity_key(identity, group)))
+                .unwrap()
+                .value,
+            0.25
+        );
+        let mut stale = crate::application::Action::new(
+            "group.set",
+            json!({"group_id":group,"compositing":"isolated"}),
+        );
+        stale.expected_revision = Some(revision);
+        assert!(!app.editor.dispatch_group_ui(&ctx, stale));
+        assert_eq!(app.editor.session.state(), state);
+        assert_eq!(app.editor.focused_group_ui(&ctx), Some(group));
+    }
+    #[test]
+    fn pass_through_unavailable_policy_stays_visible_without_dispatching() {
+        struct Legacy(Arc<dyn crate::engine::graph::Renderer>);
+        impl crate::engine::graph::Renderer for Legacy {
+            fn supports_transparent(&self) -> bool {
+                self.0.supports_transparent()
+            }
+            fn render(
+                &self,
+                nodes: &[micopi_plugin_api::CompositeNode],
+                layers: &[micopi_plugin_api::CompositeLayer],
+                width: u32,
+                height: u32,
+                output: &mut micopi_plugin_api::Pixels,
+            ) -> Result<(), String> {
+                self.0.render(nodes, layers, width, height, output)
+            }
+        }
+        let (mut app, group, _) = fixture();
+        app.editor.session.doc.renderer = Some(Arc::new(Legacy(
+            app.editor.session.doc.renderer.clone().unwrap(),
+        )));
+        let ctx = Context::default();
+        let size = vec2(244., 1200.);
+        app.editor.focus_group_ui(&ctx, Some(group));
+        for n in 0..3 {
+            frame(&mut app, &ctx, size, vec![], n as f64);
+        }
+        assert!(
+            !app.editor
+                .group_query_ui(&ctx, &LayerFilter::default())
+                .unwrap()
+                .pass_through_available
+        );
+        let state = app.editor.session.state();
+        let events = app
+            .editor
+            .session
+            .replay_journal(false)
+            .unwrap()
+            .entries
+            .len();
+        choose_policy(&mut app, &ctx, size, group, GroupPolicy::PassThrough, 3.);
+        assert_eq!(app.editor.session.state(), state);
+        assert_eq!(
+            app.editor
+                .session
+                .replay_journal(false)
+                .unwrap()
+                .entries
+                .len(),
+            events
+        );
+        assert_eq!(app.editor.focused_group_ui(&ctx), Some(group));
+    }
+    #[test]
+    fn pass_through_group_inspect_effect_keeps_local_brush_and_hand_contacts_alive() {
+        for tool in [Tool::Brush, Tool::Hand] {
+            let (mut app, group, ids) = fixture();
+            app.editor.session.runtime = "desktop";
+            let ctx = Context::default();
+            let sample = crate::application::Pointer {
+                phase: crate::application::PointerPhase::Down,
+                x: 3.,
+                y: 3.,
+                pressure: 0.3,
+                time: 0,
+                pen: true,
+                eraser: false,
+                tool_override: Some(tool),
+                view_x: Some(300.),
+                view_y: Some(300.),
+            };
+            app.editor.session.pointer(sample).unwrap();
+            app.editor.sync_from_session();
+            app.editor.input_owned = true;
+            app.editor.pen_active = true;
+            app.editor.pressure = sample.pressure;
+            app.editor.panning = (tool == Tool::Hand).then_some(pos2(300., 300.));
+            let composition = app.editor.session.doc.composition();
+            let raw = app
+                .editor
+                .session
+                .doc
+                .layers
+                .iter()
+                .map(|layer| layer.pixels.clone())
+                .collect::<Vec<_>>();
+            let parameters = app.editor.session.state()["parameters"].clone();
+            let history = app.editor.session.doc.history_bytes();
+            let events = app
+                .editor
+                .session
+                .replay_journal(false)
+                .unwrap()
+                .entries
+                .len();
+            app.editor
+                .session
+                .apply(crate::application::Action::new(
+                    "group.inspect",
+                    json!({"group_id":group}),
+                ))
+                .unwrap();
+            assert_eq!(app.editor.focused_group_ui(&ctx), None);
+            app.consume_ui_effects(&ctx);
+            assert_eq!(app.editor.focused_group_ui(&ctx), Some(group));
+            assert_eq!(app.editor.session.doc.composition(), composition);
+            assert_eq!(
+                app.editor
+                    .session
+                    .doc
+                    .layers
+                    .iter()
+                    .map(|layer| layer.pixels.clone())
+                    .collect::<Vec<_>>(),
+                raw
+            );
+            assert_eq!(app.editor.session.state()["parameters"], parameters);
+            assert_eq!(app.editor.session.doc.history_bytes(), history);
+            assert_eq!(
+                app.editor
+                    .session
+                    .doc
+                    .layer_id(app.editor.session.doc.active),
+                ids[2]
+            );
+            assert!(
+                app.editor.session.stroke.active()
+                    && app.editor.session.pointer_checkpoint.is_some()
+            );
+            assert!(app.editor.input_owned && app.editor.pen_active);
+            assert_eq!(app.editor.pressure, 0.3);
+            assert_eq!(app.editor.drawing, tool == Tool::Brush);
+            assert_eq!(
+                app.editor.panning,
+                (tool == Tool::Hand).then_some(pos2(300., 300.))
+            );
+            let journal = app.editor.session.replay_journal(false).unwrap();
+            let recorded = journal
+                .events(events, journal.entries.len() - events)
+                .unwrap();
+            let mut samples = recorded["events"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .filter(|event| event["source"]["kind"] == "pointer")
+                .flat_map(|event| event["source"]["samples"].as_array().unwrap().clone())
+                .collect::<Vec<_>>();
+            samples.extend(
+                serde_json::to_value(&app.editor.session.replay_samples)
+                    .unwrap()
+                    .as_array()
+                    .unwrap()
+                    .clone(),
+            );
+            assert_eq!(samples, vec![serde_json::to_value(sample).unwrap()]);
+            app.editor
+                .session
+                .pointer(crate::application::Pointer {
+                    phase: crate::application::PointerPhase::Move,
+                    x: 5.,
+                    pressure: 0.85,
+                    time: 20,
+                    ..sample
+                })
+                .unwrap();
+            assert!(app.editor.session.stroke.active());
+            app.editor
+                .session
+                .pointer(crate::application::Pointer {
+                    phase: crate::application::PointerPhase::Up,
+                    x: 6.,
+                    pressure: 0.4,
+                    time: 40,
+                    ..sample
+                })
+                .unwrap();
+            assert!(!app.editor.session.stroke.active());
+        }
+    }
+    #[test]
+    fn pass_through_group_inspect_ignores_a_queued_previous_document_identity() {
+        let (mut app, group, _) = fixture();
+        app.editor.session.runtime = "desktop";
+        let ctx = Context::default();
+        let identity = app.editor.session.doc.identity;
+        app.editor
+            .session
+            .apply(crate::application::Action::new(
+                "group.inspect",
+                json!({"group_id":group}),
+            ))
+            .unwrap();
+        let effect = app.editor.session.ui_effects.pop_back().unwrap();
+        assert_eq!(effect["document_identity"], identity);
+        assert!(app
+            .editor
+            .core("canvas.new", json!({"width":12,"height":8})));
+        let created = app
+            .editor
+            .session
+            .apply(crate::application::Action::new(
+                "group.create",
+                json!({"members":[],"name":"New document group"}),
+            ))
+            .unwrap();
+        assert_eq!(created["result"]["group_id"], group);
+        assert_ne!(app.editor.session.doc.identity, identity);
+        app.editor.session.ui_effects.push_back(effect);
+        app.consume_ui_effects(&ctx);
+        assert_eq!(app.editor.focused_group_ui(&ctx), None);
     }
     #[test]
     fn group_inspection_disclosure_and_shared_filter_preserve_raster_selection_and_pixels() {
@@ -1299,80 +1820,91 @@ mod tests {
             .any(|shape| label(&shape.shape, "Ink Group").is_some()));
     }
     #[test]
-    fn empty_group_merge_is_disabled_in_each_language() {
+    fn empty_and_pass_through_group_merge_is_disabled_in_each_language() {
         let old = crate::i18n::current();
         for language in crate::i18n::Language::ALL {
-            let (mut app, _, _) = fixture();
-            let group = app
-                .editor
-                .session
-                .apply(crate::application::Action::new(
-                    "group.create",
-                    json!({"members":[],"name":"Empty"}),
-                ))
-                .unwrap()["result"]["group_id"]
-                .as_u64()
-                .unwrap();
-            app.editor.settings.ui.language = language;
-            let ctx = Context::default();
-            let size = vec2(244., 1100.);
-            app.editor.focus_group_ui(&ctx, Some(group));
-            let mut output = frame(&mut app, &ctx, size, vec![], 0.);
-            for n in 1..3 {
-                output = frame(&mut app, &ctx, size, vec![], n as f64);
-            }
-            let title = crate::i18n::text_in(language, "Group Actions");
-            let menu = output
-                .shapes
-                .iter()
-                .find_map(|shape| label(&shape.shape, &title))
-                .unwrap();
-            let click = |point| {
-                vec![
-                    Event::PointerMoved(point),
-                    Event::PointerButton {
-                        pos: point,
-                        button: PointerButton::Primary,
-                        pressed: true,
-                        modifiers: Modifiers::NONE,
-                    },
-                    Event::PointerButton {
-                        pos: point,
-                        button: PointerButton::Primary,
-                        pressed: false,
-                        modifiers: Modifiers::NONE,
-                    },
-                ]
-            };
-            frame(&mut app, &ctx, size, click(menu), 3.);
-            let output = frame(&mut app, &ctx, size, vec![], 4.);
-            let title = crate::i18n::text_in(language, "Merge Group");
-            let (clip, merge) = output
-                .shapes
-                .iter()
-                .find_map(|shape| label(&shape.shape, &title).map(|point| (shape.clip_rect, point)))
-                .unwrap();
-            assert!(clip.contains(merge), "{language:?}: Merge Group is clipped");
-            let before = app.editor.session.state();
-            let events = app
-                .editor
-                .session
-                .replay_journal(false)
-                .unwrap()
-                .entries
-                .len();
-            frame(&mut app, &ctx, size, click(merge), 5.);
-            assert_eq!(app.editor.session.state(), before);
-            assert_eq!(app.editor.focused_group_ui(&ctx), Some(group));
-            assert_eq!(
-                app.editor
+            for pass_through in [false, true] {
+                let (mut app, existing, _) = fixture();
+                let group = if pass_through {
+                    assert!(app.editor.core(
+                        "group.set",
+                        json!({"group_id":existing,"compositing":"pass_through"})
+                    ));
+                    existing
+                } else {
+                    app.editor
+                        .session
+                        .apply(crate::application::Action::new(
+                            "group.create",
+                            json!({"members":[],"name":"Empty"}),
+                        ))
+                        .unwrap()["result"]["group_id"]
+                        .as_u64()
+                        .unwrap()
+                };
+                app.editor.settings.ui.language = language;
+                let ctx = Context::default();
+                let size = vec2(244., 1100.);
+                app.editor.focus_group_ui(&ctx, Some(group));
+                let mut output = frame(&mut app, &ctx, size, vec![], 0.);
+                for n in 1..3 {
+                    output = frame(&mut app, &ctx, size, vec![], n as f64);
+                }
+                let title = crate::i18n::text_in(language, "Group Actions");
+                let menu = output
+                    .shapes
+                    .iter()
+                    .find_map(|shape| label(&shape.shape, &title))
+                    .unwrap();
+                let click = |point| {
+                    vec![
+                        Event::PointerMoved(point),
+                        Event::PointerButton {
+                            pos: point,
+                            button: PointerButton::Primary,
+                            pressed: true,
+                            modifiers: Modifiers::NONE,
+                        },
+                        Event::PointerButton {
+                            pos: point,
+                            button: PointerButton::Primary,
+                            pressed: false,
+                            modifiers: Modifiers::NONE,
+                        },
+                    ]
+                };
+                frame(&mut app, &ctx, size, click(menu), 3.);
+                let output = frame(&mut app, &ctx, size, vec![], 4.);
+                let title = crate::i18n::text_in(language, "Merge Group");
+                let (clip, merge) = output
+                    .shapes
+                    .iter()
+                    .find_map(|shape| {
+                        label(&shape.shape, &title).map(|point| (shape.clip_rect, point))
+                    })
+                    .unwrap();
+                assert!(clip.contains(merge), "{language:?}: Merge Group is clipped");
+                let before = app.editor.session.state();
+                let events = app
+                    .editor
                     .session
                     .replay_journal(false)
                     .unwrap()
                     .entries
-                    .len(),
-                events
-            );
+                    .len();
+                frame(&mut app, &ctx, size, click(merge), 5.);
+                assert_eq!(app.editor.session.state(), before);
+                assert_eq!(app.editor.focused_group_ui(&ctx), Some(group));
+                assert_eq!(
+                    app.editor
+                        .session
+                        .replay_journal(false)
+                        .unwrap()
+                        .entries
+                        .len(),
+                    events
+                );
+            }
         }
         crate::i18n::set_language(old);
     }

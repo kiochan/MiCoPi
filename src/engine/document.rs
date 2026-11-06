@@ -1609,6 +1609,8 @@ mod layer_editing;
 mod layer_merge;
 #[path = "layer_selection.rs"]
 mod layer_selection;
+#[path = "mix.rs"]
+mod mix;
 pub use layer_merge::MergeLayers;
 #[cfg(test)]
 #[path = "document_tests.rs"]

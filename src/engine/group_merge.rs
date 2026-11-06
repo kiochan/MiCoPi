@@ -1,9 +1,41 @@
 //! Isolated group baking and hidden-preserving visible-stack consolidation.
-use super::super::groups::{GroupItem, GroupTree, ItemKind};
+use super::super::groups::{GroupItem, GroupPolicy, GroupTree, ItemKind};
 use super::group_editing::GroupPlan;
 use super::*;
 
 impl Document {
+    /// Shared semantic gates for commands and public inspector feedback.
+    /// Contacts and final staged topology/rendering are validated at execution.
+    pub fn group_merge_eligibility(&self, group_id: u64) -> Result<(), String> {
+        self.ensure_group_renderer()?;
+        self.ensure_mix_capability(&self.graph, self.groups.as_ref())?;
+        self.ensure_blend_modes(
+            &self.graph,
+            self.groups.as_ref(),
+            &self.layers.iter().map(|l| l.mode).collect::<Vec<_>>(),
+        )?;
+        let tree = self.groups.as_ref().ok_or("Group does not exist")?;
+        let group = tree.group(group_id)?;
+        if group.compositing == GroupPolicy::PassThrough {
+            return Err("Pass Through groups depend on the outside backdrop; switch to Isolated or merge visible artwork".into());
+        }
+        let ids = tree.descendants(GroupItem::group(group_id))?;
+        if ids.is_empty() {
+            return Err("An empty group has no raster layers to merge".into());
+        }
+        let indices: Vec<_> = ids
+            .iter()
+            .map(|id| {
+                self.layer_index(*id)
+                    .ok_or("Group references a missing raster")
+            })
+            .collect::<Result<_, _>>()?;
+        self.check_group_bake_locks(&indices)?;
+        if self.next_layer_id > u32::MAX as u64 {
+            return Err("Layer identity limit reached".into());
+        }
+        Ok(())
+    }
     fn check_group_bake_locks(&self, indices: &[usize]) -> Result<(), String> {
         if indices.iter().any(|i| self.pixel_locked(*i)) {
             return Err("Unlock layer pixels before merging these layers".into());
@@ -93,7 +125,7 @@ impl Document {
     }
 
     pub fn group_merge(&mut self, group_id: u64) -> Result<u64, String> {
-        self.ensure_group_renderer()?;
+        self.group_merge_eligibility(group_id)?;
         let original = self.groups.as_ref().ok_or("Group does not exist")?;
         let group = original.group(group_id)?.clone();
         let consumed_ids = original.descendants(GroupItem::group(group_id))?;

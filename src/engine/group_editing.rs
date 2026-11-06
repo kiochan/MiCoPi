@@ -1,5 +1,5 @@
 //! Group metadata, effective composition caches and structural buffer ownership.
-use super::super::groups::{Group, GroupItem, GroupTree, ItemKind, MAX_GROUPS};
+use super::super::groups::{Group, GroupItem, GroupPolicy, GroupTree, ItemKind, MAX_GROUPS};
 use super::*;
 use serde_json::{json, Value};
 
@@ -41,6 +41,7 @@ impl Document {
             self.groups.as_ref(),
             &self.layers.iter().map(|l| l.mode).collect::<Vec<_>>(),
         )?;
+        self.ensure_mix_capability(&self.graph, self.groups.as_ref())?;
         if self.has_groups()
             || self
                 .graph
@@ -128,6 +129,7 @@ impl Document {
     ) -> Result<GroupPlan, String> {
         if require {
             self.ensure_blend_modes(graph, groups, modes)?;
+            self.ensure_mix_capability(graph, groups)?;
         }
         let ids: Vec<_> = metadata.iter().map(|m| m.id).collect();
         if let Some(tree) = groups {
@@ -286,6 +288,7 @@ impl Document {
             visible: true,
             opacity: 255,
             blend_mode: BlendMode::Normal,
+            compositing: GroupPolicy::Isolated,
             children,
         });
         self.commit_tree(tree, id + 1)?;
@@ -298,6 +301,7 @@ impl Document {
         visible: Option<bool>,
         opacity: Option<u8>,
         mode: Option<BlendMode>,
+        compositing: Option<GroupPolicy>,
     ) -> Result<(), String> {
         let mut tree = self.tree();
         let group = tree.group_mut(id)?;
@@ -312,6 +316,12 @@ impl Document {
         }
         if let Some(v) = mode {
             group.blend_mode = v;
+        }
+        if let Some(v) = compositing {
+            group.compositing = v;
+            if v == GroupPolicy::PassThrough {
+                tree.version = 2;
+            }
         }
         self.commit_tree(tree, self.next_group_id)
     }
@@ -729,7 +739,8 @@ impl Document {
                     }
                     ItemKind::Group => {
                         if let Ok(g) = tree.group(item.id) {
-                            let row = json!({"kind":"group","id":g.id,"name":g.name,"parent_id":parent,"depth":depth,"visible":g.visible,"effective_visible":visible&&g.visible,"opacity":g.opacity as f32/255.,"blend_mode":g.blend_mode,"children":g.children,"layer_ids":tree.descendants(*item).unwrap_or_default(),"node_id":doc.group_nodes.get(&g.id)});
+                            let eligibility = doc.group_merge_eligibility(g.id);
+                            let row = json!({"kind":"group","id":g.id,"name":g.name,"parent_id":parent,"depth":depth,"visible":g.visible,"effective_visible":visible&&g.visible,"opacity":g.opacity as f32/255.,"blend_mode":g.blend_mode,"compositing":g.compositing,"children":g.children,"layer_ids":tree.descendants(*item).unwrap_or_default(),"node_id":doc.group_nodes.get(&g.id),"mergeable":eligibility.is_ok(),"merge_error":eligibility.err()});
                             groups.push(row.clone());
                             rows.push(row);
                             walk(
@@ -748,6 +759,6 @@ impl Document {
             }
         }
         walk(self, &tree, &tree.roots, 0, 0, true, &mut groups, &mut rows);
-        json!({"version":1,"roots":tree.roots,"groups":groups,"rows":rows})
+        json!({"version":tree.version,"roots":tree.roots,"groups":groups,"rows":rows,"pass_through_available":self.pass_through_available()})
     }
 }

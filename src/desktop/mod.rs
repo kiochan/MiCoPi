@@ -812,6 +812,19 @@ impl Studio {
                         Panel::Nodes
                     });
                 }
+                Some("group.inspect") => {
+                    if effect["document_identity"].as_u64()
+                        == Some(self.editor.session.doc.identity)
+                    {
+                        if let Some(id) = effect["value"]
+                            .as_u64()
+                            .filter(|id| self.editor.session.doc.group_layer_ids(*id).is_ok())
+                        {
+                            self.editor.focus_group_ui(ctx, Some(id));
+                            self.focus_panel(Panel::Layers);
+                        }
+                    }
+                }
                 Some("replay.open") => {
                     self.editor.finish_stroke();
                     self.replay.open = true;

@@ -777,8 +777,12 @@ fn groups_malformed_metadata_and_small_projects_reject_before_document_replaceme
     let valid = serde_json::to_value(s.doc.composition()).unwrap();
     let mut cases = Vec::new();
     let mut invalid = valid.clone();
-    invalid["groups"]["version"] = json!(2);
+    invalid["groups"]["version"] = json!(3);
     cases.push(("unknown-version", invalid));
+    let mut invalid = valid.clone();
+    invalid["groups"]["version"] = json!(1);
+    invalid["groups"]["groups"][0]["compositing"] = json!("pass_through");
+    cases.push(("v1-pass-through-policy", invalid));
     let mut invalid = valid.clone();
     invalid["groups"]["groups"][0]["children"] =
         json!([layer(all[0]), layer(all[0]), layer(all[1])]);
