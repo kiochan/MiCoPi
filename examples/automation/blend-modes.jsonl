@@ -1,0 +1,20 @@
+{"action":"graph.catalog","args":{}}
+{"action":"canvas.new","args":{"width":128,"height":96,"background":"#804020"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Color cel"}}
+{"action":"layer.fill_color","args":{"color":"#4080C0"}}
+{"action":"layer.set","args":{"blend_mode":"soft_light","opacity":0.7}}
+{"action":"canvas.export","args":{"path":"target/example-output/blend-soft-light.png"}}
+{"action":"group.create","args":{"members":[{"kind":"layer","id":2}],"name":"Character"}}
+{"action":"group.set","args":{"group_id":1,"blend_mode":"color","opacity":0.8}}
+{"action":"canvas.export","args":{"path":"target/example-output/blend-color.png"}}
+{"action":"group.merge","args":{"group_id":1}}
+{"action":"canvas.export","args":{"path":"target/example-output/blend-color-baked.png"}}
+{"action":"history.undo","args":{}}
+{"action":"group.set","args":{"group_id":1,"blend_mode":"vivid_light"}}
+{"action":"layer.batch","args":{"action":"layer.set","layer_ids":[1,2],"args":{"opacity":0.9}}}
+{"action":"history.undo","args":{}}
+{"action":"group.set","args":{"group_id":1,"blend_mode":"luminosity"}}
+{"action":"canvas.export","args":{"path":"target/example-output/blend-luminosity.png"}}
+{"action":"graph.read","args":{}}
+{"action":"replay.verify","args":{}}

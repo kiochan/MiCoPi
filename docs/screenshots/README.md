@@ -2,8 +2,11 @@
 
 These are actual application captures, not interface mockups. Current images come from isolated GUI smoke checks and design previews of MiCoPi builds. Documentation deliberately reuses stable filenames so image updates do not require changing every guide.
 
+`blend-modes.png` is the English Release capture from `scripts/smoke-blend-modes.py` on 2026-11-06; English, Chinese, Japanese and Korean captures were reviewed. Soft Light is applied to a generated pressure-sensitive stroke over a midtone layer. The same isolated run compares all 26 modes across JSONL/MCP/GUI, rejects extended-mode edits/projects with the old compositor, and verifies projects and DLL-independent replay. Actual dropdown interactions, bounded scrolling, unavailable entries and configured narrow/CJK metrics have desktop regression coverage. Artist-owned layer names remain untranslated.
+
 | Image | Purpose |
 | --- | --- |
+| [Blend modes](blend-modes.png) | Shared Soft Light layer properties and pressure-sensitive drawing |
 | [Atomic workflow](atomic-workflow.png) | Default atomic execution control in the plugin node editor |
 | [Verified replay](replay.png) | Event timeline and read-only recorded outcome preview |
 | [Selection to layer](selection-to-layer.png) | Actual selected-pixel layer extraction, with the source preserved and the new layer active |

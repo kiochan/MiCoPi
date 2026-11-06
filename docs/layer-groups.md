@@ -4,7 +4,7 @@ Groups are bounded, stable-ID containers over MiCoPi's raster layers. They do no
 
 ![Nested groups in the Layers panel](screenshots/layer-groups.png)
 
-Two opaque overlapping children inside a 50% group produce approximately 50% alpha over transparency. Applying 50% to each child separately would produce approximately 75% alpha in the overlap and is deliberately not the group model. Groups support the existing Normal, Multiply, Screen, Overlay, Darken, Lighten, Add and Difference modes. Photoshop Pass Through is a separate, currently unsupported mode.
+Two opaque overlapping children inside a 50% group produce approximately 50% alpha over transparency. Applying 50% to each child separately would produce approximately 75% alpha in the overlap and is deliberately not the group model. Groups share all 26 [color blend modes](blend-modes.md) with raster layers and Blend nodes, including burn/dodge, contrast and Hue/Saturation/Color/Luminosity families. The original eight mode IDs and pixel arithmetic are preserved; `add` remains the wire name for Linear Dodge. Photoshop Pass Through is a separate, currently unsupported group policy.
 
 ```mermaid
 flowchart LR
@@ -21,6 +21,8 @@ flowchart LR
 Select sibling raster layers and use **Group Selection (Ctrl+G)**. Group headers expand or collapse their children without changing selection. Inspecting a group's properties is separate from the active raster painting target; the inspector names the **Painting Layer**. Clicking a raster returns to its properties. **Select Group Layers** explicitly selects descendant rasters; an empty group has no raster selection.
 
 Group controls provide names, visibility, opacity and blending, plus child creation, duplication, reparenting, ungrouping and explicit **Delete Group and Contents**. **Ungroup Active Layer's Parent (Ctrl+Shift+G)** targets the active raster's parent; a group's context action uses its explicit ID. Shortcuts remain configurable, and older explicit bindings take precedence over new defaults.
+
+Blend selection uses the same family-ordered scrolling menu as Layers and Layer Filters, with a bounded height derived from configured appearance metrics. Unsupported modes stay visible but disabled; the active label remains readable. Runtime availability is exposed through `graph.read.available_blend_modes` and public `compositing.graph` state. Unsupported new-mode edits reject before changing the group.
 
 Dragging group opacity previews the control locally and submits one command on release. A numeric edit commits on Enter or focus loss. External document changes retain the draft and require an explicit reset rather than applying it to changed content.
 
@@ -87,7 +89,7 @@ A changed structural or property group edit has one structural/composition undo 
 
 A compositor error is rejected before outcome publication. Rollback copies the existing verified surface tiles into the committed display cache, restores the exact dirty flag and clears pending composition, so restoring or recording the rejected attempt does not call a still-failing renderer. Rendering errors remain distinct from journal storage failures; callers can retry after the renderer recovers.
 
-The compositor's v1 callback prefix is unchanged. A complete optional `CompositorApiFeatures` tail advertises `COMPOSITOR_TRANSPARENT`; kind 4 supplies transparent zero. Old prefix-only DLLs retain flat composition and are rejected before installing groups or transparent-node graphs. Old hosts can use the extended DLL for their original four-kind plans. Native group composition retains one dirty-region call and a fixed 64-word scratch array, with no full-image intermediates. See [Native Plugins](native-plugins.md).
+The compositor's v1 callback prefix is unchanged. A complete optional `CompositorApiFeatures` tail advertises `COMPOSITOR_TRANSPARENT`; kind 4 supplies transparent zero. Old prefix-only DLLs retain flat composition and are rejected before installing groups or transparent-node graphs. Old hosts can use the extended DLL for their original four-kind plans. Native group composition retains one dirty-region call and a fixed 64-word scratch array, with no full-image intermediates. The optional complete 32-byte `CompositorApiModes` extension advertises a supported-mode bitmap at offset 24; prefix-only or Features-only DLLs retain modes 0–7. Extended masks must preserve those baseline bits and may omit appended modes. Unsupported modes in hidden groups, disabled effects or unused graph branches reject before document/project publication. See [Color Blend Modes](blend-modes.md) and [Native Plugins](native-plugins.md).
 
 ## Verification
 

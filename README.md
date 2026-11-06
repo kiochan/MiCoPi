@@ -28,6 +28,8 @@ The [unified plugin system](docs/plugin-system.md) exposes package versions, com
 
 [PNG Export Sizing](docs/export-sizing.md) supports pixels, millimeters, inches and percentage output, explicit previews and output-only PPI overrides. Native sampling runs on the composed frame, preserving source layers/history; file digests are bound to export events.
 
+[Color blend modes](docs/blend-modes.md) provide 26 modes for layers, isolated groups and Blend nodes, including burn/dodge, contrast and Hue/Saturation/Color/Luminosity families. Scrolling menus follow Photoshop family order; unsupported modes remain visible and disabled. The original eight mode IDs and pixel results are preserved, and shared APIs expose current renderer availability.
+
 ## Why MiCoPi
 
 **Painting first. Plugins carry behavior. One execution core serves artists and automation.**

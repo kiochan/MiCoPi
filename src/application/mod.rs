@@ -19,6 +19,8 @@ mod tests;
 #[cfg(test)]
 mod alpha_lock_tests;
 #[cfg(test)]
+mod blend_mode_tests;
+#[cfg(test)]
 mod canvas_editing_tests;
 #[cfg(test)]
 mod editing_tests;

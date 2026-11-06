@@ -66,7 +66,11 @@ Ordinary MOVE uses cached contact/instance state, with no JSON serialization, re
 
 ## Typed compositor: SDK 1.2
 
-The optional micopi_compositor_v1 table adds region rendering without changing action/tool ABI v1. The host validates JSON topology and supplies immutable layers, typed instructions and a separate dirty-region output buffer. At most 64 instructions and 16 layers are supported. The plugin performs all filter/blend pixel math. See [Compositor](../plugins/compositing/README.md) and [Image Editor](node-editor.md).
+The optional micopi_compositor_v1 table adds region rendering without changing action/tool ABI v1. The host validates JSON topology and supplies immutable layers, typed instructions and a separate dirty-region output buffer. At most 64 instructions and 16 layers are supported. The plugin performs all filter/blend pixel math. The current kernel implements 26 [color blend modes](blend-modes.md), preserving IDs 0–7 and their existing arithmetic. See [Compositor](../plugins/compositing/README.md) and [Image Editor](node-editor.md).
+
+The optional `CompositorApiModes` / `MicopiCompositorApiModes` extension retains the original callback prefix and transparent-source Features tail. Its complete x64 table is 32 bytes; a `u64` supported-mode bitmap follows at offset 24, with bit `n` declaring native mode `n`. Hosts read this bitmap only when the advertised size covers the complete tail. Prefix-only and 24-byte Features tables retain the mandatory legacy mask `0xff`; a complete bitmap omitting any baseline bit is rejected, while subsets of appended IDs 8–25 are allowed. Unknown bits do not enable additional host modes. Updating the DLL requires restart.
+
+`graph.read.available_blend_modes`, `graph.catalog.available_blend_modes` and public `compositing.graph` expose current availability with the CPU Normal fallback. Unsupported new-mode properties, graphs and staged projects reject before publication, including hidden layers/groups, disabled effects and unused branches. The interface retains unavailable choices as disabled entries. Existing v1 callbacks, per-region execution and fixed per-pixel scratch remain unchanged; outcome replay restores saved surfaces without invoking the compositor.
 
 ## Contributions and automation
 

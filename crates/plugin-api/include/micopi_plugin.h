@@ -154,6 +154,47 @@ typedef struct {
    Hosts must check capabilities before sending optional instructions. */
 #define MICOPI_COMPOSITOR_TRANSPARENT UINT64_C(1)
 typedef struct { MicopiCompositorApi base; uint64_t capabilities; } MicopiCompositorApiFeatures;
+/* Stable color blend IDs; IDs 0..7 keep the original arithmetic. */
+#define MICOPI_BLEND_NORMAL UINT32_C(0)
+#define MICOPI_BLEND_MULTIPLY UINT32_C(1)
+#define MICOPI_BLEND_SCREEN UINT32_C(2)
+#define MICOPI_BLEND_OVERLAY UINT32_C(3)
+#define MICOPI_BLEND_DARKEN UINT32_C(4)
+#define MICOPI_BLEND_LIGHTEN UINT32_C(5)
+#define MICOPI_BLEND_ADD UINT32_C(6)
+#define MICOPI_BLEND_DIFFERENCE UINT32_C(7)
+#define MICOPI_BLEND_COLOR_BURN UINT32_C(8)
+#define MICOPI_BLEND_LINEAR_BURN UINT32_C(9)
+#define MICOPI_BLEND_DARKER_COLOR UINT32_C(10)
+#define MICOPI_BLEND_COLOR_DODGE UINT32_C(11)
+#define MICOPI_BLEND_LIGHTER_COLOR UINT32_C(12)
+#define MICOPI_BLEND_SOFT_LIGHT UINT32_C(13)
+#define MICOPI_BLEND_HARD_LIGHT UINT32_C(14)
+#define MICOPI_BLEND_VIVID_LIGHT UINT32_C(15)
+#define MICOPI_BLEND_LINEAR_LIGHT UINT32_C(16)
+#define MICOPI_BLEND_PIN_LIGHT UINT32_C(17)
+#define MICOPI_BLEND_HARD_MIX UINT32_C(18)
+#define MICOPI_BLEND_EXCLUSION UINT32_C(19)
+#define MICOPI_BLEND_SUBTRACT UINT32_C(20)
+#define MICOPI_BLEND_DIVIDE UINT32_C(21)
+#define MICOPI_BLEND_HUE UINT32_C(22)
+#define MICOPI_BLEND_SATURATION UINT32_C(23)
+#define MICOPI_BLEND_COLOR UINT32_C(24)
+#define MICOPI_BLEND_LUMINOSITY UINT32_C(25)
+#define MICOPI_BLEND_MODE_MAX MICOPI_BLEND_LUMINOSITY
+#define MICOPI_BLEND_MODE_COUNT UINT32_C(26)
+#define MICOPI_BLEND_MODES_LEGACY UINT64_C(0xff)
+#define MICOPI_BLEND_MODES_ALL UINT64_C(0x03ffffff)
+/* Read only when struct_size >= sizeof(MicopiCompositorApiModes).
+   Bit N supports blend ID N in source descriptors and blend instructions.
+   A missing Modes tail implies MICOPI_BLEND_MODES_LEGACY. The existing Features
+   tail is still independently readable at its original size and offset.
+   All MICOPI_BLEND_MODES_LEGACY bits must remain set; new modes may be partial.
+   Old v1 hosts ignore this tail and assume the mandatory legacy modes exist. */
+typedef struct {
+    MicopiCompositorApiFeatures base;
+    uint64_t supported_blend_modes;
+} MicopiCompositorApiModes;
 const MicopiCompositorApi *micopi_compositor_v1(void);
 /* Independent optional exact geometry table, with immutable source and disjoint
    output. Local origins are zero; dimensions/stride are bounded to 4096.

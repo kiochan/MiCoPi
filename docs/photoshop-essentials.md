@@ -85,7 +85,8 @@ Acceptance: coordinate units, pivots, bounds, resampling and clipping are specif
 - [x] Add explicit Group Merge and group-aware Merge Visible with documented backdrop/hidden-content/filter behavior, one structural undo/outcome, shared typed nodes/MCP/headless execution and failure rollback. Retain the group's outer properties or the complete visible root result as appropriate; keep hidden branches/skeletons for Merge Visible.
 - [ ] Add selected-layer merge with explicit relative stacking, backdrop and parent semantics.
 - [ ] Add Pass Through groups with explicit backdrop semantics and alpha/opacity reference fixtures.
-- [ ] Expand common layer/group blend modes, including Soft/Hard Light, Color Dodge/Burn, Linear Burn and Hue/Saturation/Color/Luminosity, with native capability and alpha/color references.
+- [x] Expand shared layer/group/node color blending to 26 modes, including Soft/Hard Light, Color Dodge/Burn, Linear Burn and Hue/Saturation/Color/Luminosity. Preserve the original eight mode IDs/pixels, advertise optional native mode capabilities, reject unavailable modes before mutation and retain alpha/history/replay references. See [Color blend modes](blend-modes.md).
+- [ ] Add deterministic Dissolve coverage with an explicit document-coordinate/seed contract, dirty-region equivalence, alpha/opacity references and verified replay. It is a spatial coverage operation rather than a color-channel equation.
 - [ ] Add raster masks, mask editing/enable/invert/density/feather and selection-to-mask conversion.
 - [ ] Add clipping masks and mask-aware image graph ports/composition.
 - [ ] Add multi-layer align/distribute/link.

@@ -130,6 +130,7 @@ fn reference(dst: u32, src: u32, mode: BlendMode, opacity: u32) -> u32 {
             BlendMode::Lighten => s.max(d),
             BlendMode::Add => (s + d).min(255.),
             BlendMode::Difference => (s - d).abs(),
+            _ => panic!("The legacy reference covers only modes 0 through 7"),
         };
         let premultiplied =
             (1. - sa) * da * d + (1. - da) * sa * s + sa * da * quantize(channel) as f64;
@@ -144,7 +145,7 @@ fn reference(dst: u32, src: u32, mode: BlendMode, opacity: u32) -> u32 {
 #[test]
 fn group_merge_bakes_only_internal_children_for_all_gate_modes_alpha_and_opacity_edges() {
     let mut s = session();
-    for mode in BlendMode::ALL {
+    for mode in BlendMode::LEGACY {
         for backdrop_alpha in [0, 128, 255] {
             for opacity in [0, 128, 255] {
                 let backdrop = (backdrop_alpha << 24) | 0x804020;

@@ -10,7 +10,51 @@
     {
       "id": "graph.read",
       "title": "Read Image Graph",
-      "operation": "graph_read"
+      "operation": "graph_read",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "available_blend_modes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "multiply",
+                "screen",
+                "overlay",
+                "darken",
+                "lighten",
+                "add",
+                "difference",
+                "color_burn",
+                "linear_burn",
+                "darker_color",
+                "color_dodge",
+                "lighter_color",
+                "soft_light",
+                "hard_light",
+                "vivid_light",
+                "linear_light",
+                "pin_light",
+                "hard_mix",
+                "exclusion",
+                "subtract",
+                "divide",
+                "hue",
+                "saturation",
+                "color",
+                "luminosity"
+              ]
+            },
+            "maxItems": 26,
+            "description": "Currently available modes, including the CPU Normal fallback; known but unsupported modes remain in graph.catalog.blend_modes."
+          }
+        },
+        "required": [
+          "available_blend_modes"
+        ]
+      }
     },
     {
       "id": "graph.set",
@@ -20,7 +64,51 @@
     {
       "id": "graph.catalog",
       "title": "List Filters and Blend Modes",
-      "operation": "graph_catalog"
+      "operation": "graph_catalog",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "available_blend_modes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "multiply",
+                "screen",
+                "overlay",
+                "darken",
+                "lighten",
+                "add",
+                "difference",
+                "color_burn",
+                "linear_burn",
+                "darker_color",
+                "color_dodge",
+                "lighter_color",
+                "soft_light",
+                "hard_light",
+                "vivid_light",
+                "linear_light",
+                "pin_light",
+                "hard_mix",
+                "exclusion",
+                "subtract",
+                "divide",
+                "hue",
+                "saturation",
+                "color",
+                "luminosity"
+              ]
+            },
+            "maxItems": 26,
+            "description": "Currently available modes, including the CPU Normal fallback; known but unsupported modes remain in graph.catalog.blend_modes."
+          }
+        },
+        "required": [
+          "available_blend_modes"
+        ]
+      }
     },
     {
       "id": "graph.open",
@@ -52,7 +140,48 @@
       "title": "Document Image Graph",
       "action": "graph.read",
       "output_schema": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "available_blend_modes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "multiply",
+                "screen",
+                "overlay",
+                "darken",
+                "lighten",
+                "add",
+                "difference",
+                "color_burn",
+                "linear_burn",
+                "darker_color",
+                "color_dodge",
+                "lighter_color",
+                "soft_light",
+                "hard_light",
+                "vivid_light",
+                "linear_light",
+                "pin_light",
+                "hard_mix",
+                "exclusion",
+                "subtract",
+                "divide",
+                "hue",
+                "saturation",
+                "color",
+                "luminosity"
+              ]
+            },
+            "maxItems": 26,
+            "description": "Currently available modes, including the CPU Normal fallback; known but unsupported modes remain in graph.catalog.blend_modes."
+          }
+        },
+        "required": [
+          "available_blend_modes"
+        ]
       }
     }
   ],
@@ -166,7 +295,25 @@
               "darken",
               "lighten",
               "add",
-              "difference"
+              "difference",
+              "color_burn",
+              "linear_burn",
+              "darker_color",
+              "color_dodge",
+              "lighter_color",
+              "soft_light",
+              "hard_light",
+              "vivid_light",
+              "linear_light",
+              "pin_light",
+              "hard_mix",
+              "exclusion",
+              "subtract",
+              "divide",
+              "hue",
+              "saturation",
+              "color",
+              "luminosity"
             ]
           },
           "opacity": {

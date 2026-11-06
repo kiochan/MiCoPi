@@ -144,6 +144,27 @@ Run `python scripts/smoke-physical-creation.py --cli <built-cli> --gui <built-de
 
 Run `python scripts/smoke-physical-resample.py --cli <built-cli> --gui <built-desktop>` for exact-axis physical/pixel equivalence, unknown-density handling, source metadata retention, native output parity across transports, project/undo/replay checks and four-language Image Size cancellation captures. Use `--skip-gui` for transport-only checks. Library tests cover read-only plans during contacts, rejected active mutations, all-layer/mask estimates and budgets, static preflight versus evolving pipeline context, native/encoding/journal rollback and inert workflow editing. Desktop regressions cover unit switching, external density/revision changes and narrow CJK footers. No DLL ABI or pen-MOVE path change is required.
 
+## Color blend checks
+
+Build and stage the matching compositor before running `python scripts/smoke-blend-modes.py --cli <built-cli> --gui <built-desktop>`. Its 186-action fixture compares all 26 layer/free-graph/group modes across JSONL/MCP/GUI, schema/workflow availability, batch Undo, disabled filters, projects and DLL-independent replay, with four-language captures. `--legacy-compositor <previous-dll>` additionally checks rejection before replacing hidden-mode properties or opening extended-mode projects. Native Release tests retain exact old-mode hashes, independent full-byte alpha references, all 65,536 Soft Light/Hard Mix channel pairs and explicit rational half-byte boundaries. Host tests cover unsupported/missing/partial capabilities, active pressure contacts, baking, undo and render/atomic/journal rollback. See [Color Blend Modes](blend-modes.md).
+
+On 2026-11-06, after this task's build and smoke processes had finished, five interleaved old/new DLL pairs per original mode measured the following medians on two prepared 1024-square full-range straight-ARGB sources with four instructions. Every pair compared the complete output bytes. Timers include one ctypes callback, native validation and composition; allocation, source generation, comparison/hash work, Session/history/journal, encoding, GUI and tablet input are excluded. These workload/environment-specific observations do not establish pen latency or a general speedup.
+
+| Legacy mode | Previous DLL (ms) | Current DLL (ms) |
+| --- | ---: | ---: |
+| Normal | 30.10 | 30.06 |
+| Multiply | 33.08 | 32.18 |
+| Screen | 31.68 | 32.75 |
+| Overlay | 35.39 | 35.59 |
+| Darken | 30.21 | 30.09 |
+| Lighten | 31.24 | 31.43 |
+| Linear Dodge | 28.73 | 29.84 |
+| Difference | 35.96 | 36.58 |
+
+Keep the extended kernel out of line: otherwise compiler inlining can make legacy integer calls save floating registers. The final pairwise median differences ranged from -2.7% to +3.8%, with identical pixels. The ignored Release `extended_blend_cost` test observed one cold 1024-square native call per appended mode at 31.4–87.8 ms, including 87.8 ms Soft Light and 83.7 ms Hue. That separate fixture uses prepared opaque sources and checks sampled reference pixels outside its timers; it excludes allocations, Session, recording, encoding and I/O. Dirty-region callbacks, a 64-word per-pixel scratch array and borrowed source descriptors remain in use.
+
+The tested desktop/CLI executables are 9,944,064/3,887,616 bytes, 60.5/30 KiB above the preceding group-baking preview. The matching compositor is 273,408 bytes, an increase of 6.5 KiB, with no added dependency. The previous host with its own unchanged manifests also produces identical eight-mode PNGs using the new DLL; own/cross-host outcome archives verify without the compositor. Old 16/24-byte prefixes and incomplete tails retain their legacy contract; a complete mode bitmap must retain all baseline bits.
+
 ## Layer organization checks
 
 Run `python scripts/smoke-group-merge.py --cli <built-cli> --gui <built-desktop>` for subtree/visible-group baking, fresh raster output bindings, hidden locked content, single-step undo, exact transport PNGs, projects and DLL-independent replay. It opens/cancels the real Merge Group schema form in all four languages against a fresh nonempty target. `group_merge_tests` checks independent all-mode/alpha/opacity references, retained filters and buffer addresses, active Brush/Hand contacts, render/journal/atomic failure and final-group removal. Desktop checks exercise the real group menu, Layers pending dispatch and grouping/visible-merge shortcuts; recording boundaries retain pressure samples and leave native contacts active on rejection. The ignored Release `group_bake_cost` test measures the two complete Session commands on a prepared 1024-square, four-raster, two-group fixture, with source/reference preparation outside the timers.

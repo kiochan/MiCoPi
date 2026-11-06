@@ -400,7 +400,7 @@ impl Operation {
                 vec!["to"],
             ),
             Self::LayerProperties => (
-                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},"visible":{"type":"boolean"},"alpha_locked":{"type":"boolean"},"pixel_locked":{"type":"boolean"},"position_locked":{"type":"boolean"},"color_label":{"type":"string","enum":["none","red","orange","yellow","green","blue","violet","gray"]},"opacity":{"type":"number","minimum":0,"maximum":1},"blend_mode":{"type":"string","enum":["normal","multiply","screen","overlay","darken","lighten","add","difference"]}}),
+                json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},"visible":{"type":"boolean"},"alpha_locked":{"type":"boolean"},"pixel_locked":{"type":"boolean"},"position_locked":{"type":"boolean"},"color_label":{"type":"string","enum":["none","red","orange","yellow","green","blue","violet","gray"]},"opacity":{"type":"number","minimum":0,"maximum":1},"blend_mode":{"type":"string","enum":crate::engine::graph::BlendMode::ALL}}),
                 vec![],
             ),
             Self::Pick => (json!({"x":number,"y":number}), vec!["x", "y"]),

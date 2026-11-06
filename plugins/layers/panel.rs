@@ -327,8 +327,28 @@ impl Editor {
         ctx: Option<&Context>,
     ) {
         for mut action in pending {
+            let property_args = if action.action == "layer.set" {
+                Some(&action.args)
+            } else if action.action == "layer.batch" && action.args["action"] == "layer.set" {
+                action.args.get("args")
+            } else {
+                None
+            };
+            let unsupported_blend = property_args
+                .and_then(|args| args.get("blend_mode"))
+                .and_then(|mode| {
+                    serde_json::from_value::<crate::engine::graph::BlendMode>(mode.clone()).ok()
+                })
+                .is_some_and(|mode| {
+                    mode as u32 >= 8
+                        && !super::blend_modes::allows(
+                            super::blend_modes::supported(&self.session.doc),
+                            mode,
+                        )
+                });
             let requires_idle = action.action.starts_with("group.")
-                || action.action == "layer.merge_visible" && self.session.doc.has_groups();
+                || action.action == "layer.merge_visible" && self.session.doc.has_groups()
+                || unsupported_blend;
             if !requires_idle && (self.input_owned || self.drawing || self.panning.is_some()) {
                 self.finish_stroke();
             }
@@ -1046,32 +1066,23 @@ impl Editor {
                 ui.add_enabled_ui(
                     self.session.doc.graph.linked || !self.session.doc.graph.enabled,
                     |ui| {
-                        ComboBox::from_id_salt("layer-blend")
-                            .width(if narrow {
+                        if let Some(item) = super::blend_modes::combo(
+                            ui,
+                            "layer-blend",
+                            mode,
+                            mode_mixed,
+                            if narrow {
                                 ui.available_width().min(a.control_height * 6.)
                             } else {
                                 a.control_height * 4.
-                            })
-                            .truncate()
-                            .selected_text(tr(if mode_mixed {
-                                "Mixed Values"
-                            } else {
-                                mode.title()
-                            }))
-                            .show_ui(ui, |ui| {
-                                for item in crate::engine::graph::BlendMode::ALL {
-                                    if ui
-                                        .selectable_label(
-                                            !mode_mixed && mode == item,
-                                            tr(item.title()),
-                                        )
-                                        .clicked()
-                                    {
-                                        mode = item;
-                                        mode_changed = true;
-                                    }
-                                }
-                            });
+                            },
+                            super::blend_modes::supported(&self.session.doc),
+                        )
+                        .inner
+                        {
+                            mode = item;
+                            mode_changed = true;
+                        }
                     },
                 );
             };
@@ -2211,29 +2222,29 @@ mod tests {
         assert_eq!(app.editor.session.state(), before);
         assert!(app.editor.status.contains("revision_conflict"));
     }
-    #[test]
-    fn layers_pending_group_actions_keep_locally_owned_brush_and_hand_contacts_intact() {
-        fn contact_samples(editor: &mut Editor, start: usize) -> Vec<Value> {
-            let journal = editor.session.replay_journal(false).unwrap();
-            let events = journal
-                .events(start, journal.entries.len() - start)
-                .unwrap();
-            let mut samples = events["events"]
+    fn contact_samples(editor: &mut Editor, start: usize) -> Vec<Value> {
+        let journal = editor.session.replay_journal(false).unwrap();
+        let events = journal
+            .events(start, journal.entries.len() - start)
+            .unwrap();
+        let mut samples = events["events"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|event| event["source"]["kind"] == "pointer")
+            .flat_map(|event| event["source"]["samples"].as_array().unwrap().clone())
+            .collect::<Vec<_>>();
+        samples.extend(
+            serde_json::to_value(&editor.session.replay_samples)
+                .unwrap()
                 .as_array()
                 .unwrap()
-                .iter()
-                .filter(|event| event["source"]["kind"] == "pointer")
-                .flat_map(|event| event["source"]["samples"].as_array().unwrap().clone())
-                .collect::<Vec<_>>();
-            samples.extend(
-                serde_json::to_value(&editor.session.replay_samples)
-                    .unwrap()
-                    .as_array()
-                    .unwrap()
-                    .clone(),
-            );
-            samples
-        }
+                .clone(),
+        );
+        samples
+    }
+    #[test]
+    fn layers_pending_group_actions_keep_locally_owned_brush_and_hand_contacts_intact() {
         for tool in [Tool::Brush, Tool::Hand] {
             for command in [
                 "group.merge",
@@ -2552,6 +2563,135 @@ mod tests {
             let mut args = json!({"layer_id":ids[1]});
             args[lock] = json!(false);
             assert!(app.editor.core("layer.set", args));
+        }
+    }
+    #[test]
+    fn unsupported_new_blend_property_drafts_do_not_finish_local_brush_or_hand_contacts() {
+        struct Legacy(Arc<dyn crate::engine::graph::Renderer>);
+        impl crate::engine::graph::Renderer for Legacy {
+            fn supports_transparent(&self) -> bool {
+                self.0.supports_transparent()
+            }
+            fn render(
+                &self,
+                nodes: &[micopi_plugin_api::CompositeNode],
+                layers: &[micopi_plugin_api::CompositeLayer],
+                width: u32,
+                height: u32,
+                output: &mut micopi_plugin_api::Pixels,
+            ) -> Result<(), String> {
+                self.0.render(nodes, layers, width, height, output)
+            }
+        }
+        for tool in [Tool::Brush, Tool::Hand] {
+            for batch in [false, true] {
+                let (mut app, ids) = native_multi();
+                let original = app.editor.session.doc.renderer.clone().unwrap();
+                app.editor.session.doc.renderer = Some(Arc::new(Legacy(original)));
+                let sample = crate::application::Pointer {
+                    phase: crate::application::PointerPhase::Down,
+                    x: 3.,
+                    y: 3.,
+                    pressure: 0.3,
+                    time: 0,
+                    pen: true,
+                    eraser: false,
+                    tool_override: Some(tool),
+                    view_x: Some(300.),
+                    view_y: Some(300.),
+                };
+                app.editor.session.pointer(sample).unwrap();
+                app.editor.sync_from_session();
+                app.editor.input_owned = true;
+                app.editor.pen_active = true;
+                app.editor.pressure = sample.pressure;
+                app.editor.panning = (tool == Tool::Hand).then_some(pos2(300., 300.));
+                let state = app.editor.session.state();
+                let pixels = app
+                    .editor
+                    .session
+                    .doc
+                    .layers
+                    .iter()
+                    .map(|layer| layer.pixels.clone())
+                    .collect::<Vec<_>>();
+                let history = app.editor.session.doc.history_bytes();
+                let events = app
+                    .editor
+                    .session
+                    .replay_journal(false)
+                    .unwrap()
+                    .entries
+                    .len();
+                let action = if batch {
+                    batch_action("layer.set", &ids[1..=2], json!({"blend_mode":"color_burn"}))
+                } else {
+                    crate::application::Action::new(
+                        "layer.set",
+                        json!({"layer_id":ids[2],"blend_mode":"color_burn"}),
+                    )
+                };
+                app.editor
+                    .dispatch_layer_pending_ui(vec![action], Some(&Context::default()));
+                assert!(
+                    app.editor
+                        .status
+                        .contains("The compositor does not support this blend mode"),
+                    "{}",
+                    app.editor.status
+                );
+                assert_eq!(app.editor.session.state(), state);
+                assert_eq!(
+                    app.editor
+                        .session
+                        .doc
+                        .layers
+                        .iter()
+                        .map(|layer| layer.pixels.clone())
+                        .collect::<Vec<_>>(),
+                    pixels
+                );
+                assert_eq!(app.editor.session.doc.history_bytes(), history);
+                assert!(app.editor.session.stroke.active());
+                assert!(app.editor.session.pointer_checkpoint.is_some());
+                assert!(app.editor.input_owned && app.editor.pen_active);
+                assert_eq!(app.editor.drawing, tool == Tool::Brush);
+                assert_eq!(
+                    app.editor.panning,
+                    (tool == Tool::Hand).then_some(pos2(300., 300.))
+                );
+                assert_eq!(app.editor.pressure, 0.3);
+                assert_eq!(
+                    contact_samples(&mut app.editor, events),
+                    vec![serde_json::to_value(sample).unwrap()]
+                );
+                app.editor
+                    .session
+                    .pointer(crate::application::Pointer {
+                        phase: crate::application::PointerPhase::Move,
+                        x: 5.,
+                        pressure: 0.9,
+                        time: 20,
+                        ..sample
+                    })
+                    .unwrap();
+                assert!(app.editor.session.stroke.active());
+                app.editor
+                    .session
+                    .pointer(crate::application::Pointer {
+                        phase: crate::application::PointerPhase::Up,
+                        x: 6.,
+                        pressure: 0.4,
+                        time: 40,
+                        ..sample
+                    })
+                    .unwrap();
+                let samples = contact_samples(&mut app.editor, events);
+                assert_eq!(samples.len(), 3);
+                assert_eq!(samples[1]["pressure"], json!(0.9f32));
+                assert_eq!(samples[2]["phase"], "up");
+                assert!(!app.editor.session.stroke.active());
+            }
         }
     }
     #[test]

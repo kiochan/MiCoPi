@@ -1,5 +1,6 @@
 //! egui workbench. Painting and platform input remain independent of widget layout.
 mod area;
+mod blend_modes;
 #[path = "../../plugins/brush/panel.rs"]
 mod brush;
 #[path = "../../plugins/canvas/panel.rs"]

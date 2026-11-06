@@ -36,6 +36,11 @@ impl Document {
         Ok(())
     }
     pub fn ensure_graph_renderer(&self) -> Result<(), String> {
+        self.ensure_blend_modes(
+            &self.graph,
+            self.groups.as_ref(),
+            &self.layers.iter().map(|l| l.mode).collect::<Vec<_>>(),
+        )?;
         if self.has_groups()
             || self
                 .graph
@@ -121,6 +126,9 @@ impl Document {
         next: u64,
         require: bool,
     ) -> Result<GroupPlan, String> {
+        if require {
+            self.ensure_blend_modes(graph, groups, modes)?;
+        }
         let ids: Vec<_> = metadata.iter().map(|m| m.id).collect();
         if let Some(tree) = groups {
             if require {

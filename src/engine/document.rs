@@ -1595,6 +1595,8 @@ impl Document {
         Ok(doc)
     }
 }
+#[path = "blend_modes.rs"]
+mod blend_modes;
 #[path = "canvas_editing.rs"]
 mod canvas_editing;
 #[path = "group_editing.rs"]

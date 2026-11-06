@@ -38,7 +38,7 @@ type SelectionTable = (
 // The v1 callback prefix remains usable when an optional feature tail is absent.
 unsafe fn decode_compositor_table(
     pointer: *const abi::CompositorApi,
-) -> Result<(abi::CompositorApi, u64), String> {
+) -> Result<(abi::CompositorApi, u64, u64), String> {
     if pointer.is_null() {
         return Err("Compositor returned a null ABI table".into());
     }
@@ -58,7 +58,15 @@ unsafe fn decode_compositor_table(
         } else {
             0
         };
-    Ok((api, capabilities))
+    let modes = if header.struct_size >= std::mem::size_of::<abi::CompositorApiModes>() as u32 {
+        std::ptr::read_unaligned(pointer.cast::<abi::CompositorApiModes>()).supported_blend_modes
+    } else {
+        abi::BLEND_MODES_LEGACY
+    };
+    if modes & abi::BLEND_MODES_LEGACY != abi::BLEND_MODES_LEGACY {
+        return Err("Compositor blend mode mask omits legacy modes".into());
+    }
+    Ok((api, capabilities, modes))
 }
 // Read only advertised, complete optional tails; legacy prefixes remain usable.
 unsafe fn decode_selection_table(
@@ -324,7 +332,7 @@ impl Module {
             Ok(None)
         }
     }
-    unsafe fn compositor_api(&self) -> Result<Option<(abi::CompositorApi, u64)>, String> {
+    unsafe fn compositor_api(&self) -> Result<Option<(abi::CompositorApi, u64, u64)>, String> {
         #[cfg(windows)]
         {
             let address =
@@ -441,6 +449,7 @@ pub struct NativePlugin {
     resample_features: u32,
     compositor: Option<abi::CompositorApi>,
     compositor_capabilities: u64,
+    compositor_blend_modes: u64,
     _module: Module,
 }
 impl std::fmt::Debug for NativePlugin {
@@ -522,10 +531,11 @@ impl NativePlugin {
         if tool_options.is_some() && tools.is_none() {
             return Err("Tool options require a tool API".into());
         }
-        let (compositor, compositor_capabilities) = match unsafe { module.compositor_api()? } {
-            Some((api, capabilities)) => (Some(api), capabilities),
-            None => (None, 0),
-        };
+        let (compositor, compositor_capabilities, compositor_blend_modes) =
+            match unsafe { module.compositor_api()? } {
+                Some((api, capabilities, modes)) => (Some(api), capabilities, modes),
+                None => (None, 0, 0),
+            };
         if api.describe.is_none()
             || (api.invoke.is_none() && tools.is_none() && compositor.is_none())
             || api.create.is_some() != api.destroy.is_some()
@@ -560,6 +570,7 @@ impl NativePlugin {
                 resample_features,
                 compositor,
                 compositor_capabilities,
+                compositor_blend_modes,
                 _module: module,
             }),
             contributions,
@@ -567,6 +578,9 @@ impl NativePlugin {
     }
 }
 impl crate::engine::graph::Renderer for NativePlugin {
+    fn supports_blend_mode(&self, mode: u32) -> bool {
+        mode <= abi::BLEND_MODE_MAX && self.compositor_blend_modes & (1u64 << mode) != 0
+    }
     fn supports_transparent(&self) -> bool {
         self.compositor_capabilities & abi::COMPOSITOR_TRANSPARENT != 0
     }
@@ -581,6 +595,15 @@ impl crate::engine::graph::Renderer for NativePlugin {
         let api = self.compositor.ok_or("Missing compositor interface")?;
         if nodes.iter().any(|n| n.kind == 4) && !self.supports_transparent() {
             return Err("Compositor does not support transparent image nodes".into());
+        }
+        if layers
+            .iter()
+            .any(|layer| !self.supports_blend_mode(layer.mode))
+            || nodes
+                .iter()
+                .any(|node| node.kind == 2 && !self.supports_blend_mode(node.mode))
+        {
+            return Err("The compositor does not support this blend mode".into());
         }
         let status = unsafe {
             (api.render.unwrap())(
@@ -1093,6 +1116,10 @@ mod tests {
             render: Some(render),
         };
         assert_eq!(unsafe { decode_compositor_table(&prefix) }.unwrap().1, 0);
+        assert_eq!(
+            unsafe { decode_compositor_table(&prefix) }.unwrap().2,
+            abi::BLEND_MODES_LEGACY
+        );
         let mut table = abi::CompositorApiFeatures {
             base: prefix,
             capabilities: abi::COMPOSITOR_TRANSPARENT,
@@ -1107,6 +1134,43 @@ mod tests {
             unsafe { decode_compositor_table(&table.base) }.unwrap().1,
             abi::COMPOSITOR_TRANSPARENT
         );
+        assert_eq!(
+            unsafe { decode_compositor_table(&table.base) }.unwrap().2,
+            abi::BLEND_MODES_LEGACY
+        );
+        let mut modes = abi::CompositorApiModes {
+            base: abi::CompositorApiFeatures {
+                base: prefix,
+                capabilities: abi::COMPOSITOR_TRANSPARENT,
+            },
+            supported_blend_modes: abi::BLEND_MODES_ALL,
+        };
+        modes.base.base.struct_size = std::mem::size_of::<abi::CompositorApiModes>() as u32 - 1;
+        assert_eq!(
+            unsafe { decode_compositor_table(&modes.base.base) }
+                .unwrap()
+                .2,
+            abi::BLEND_MODES_LEGACY
+        );
+        modes.base.base.struct_size += 1;
+        assert_eq!(
+            unsafe { decode_compositor_table(&modes.base.base) }
+                .unwrap()
+                .2,
+            abi::BLEND_MODES_ALL
+        );
+        modes.supported_blend_modes = abi::BLEND_MODES_LEGACY | (1u64 << abi::BLEND_HUE);
+        assert_eq!(
+            unsafe { decode_compositor_table(&modes.base.base) }
+                .unwrap()
+                .2,
+            modes.supported_blend_modes
+        );
+        modes.supported_blend_modes &= !1;
+        assert!(unsafe { decode_compositor_table(&modes.base.base) }
+            .err()
+            .unwrap()
+            .contains("legacy"));
         table.base.render = None;
         assert!(unsafe { decode_compositor_table(&table.base) }.is_err());
         table.base.render = prefix.render;

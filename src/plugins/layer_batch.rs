@@ -116,6 +116,14 @@ fn alpha_transform_valid(s: &Session, index: usize, batch: &Batch) -> bool {
     })
 }
 fn preflight(s: &Session, batch: &Batch) -> Result<Vec<u64>, ActionError> {
+    if batch.action == "layer.set" {
+        if let Some(value) = batch.args.get("blend_mode") {
+            let mode = serde_json::from_value(value.clone())?;
+            s.doc
+                .ensure_blend_mode(mode)
+                .map_err(|e| ActionError::new("blend_mode_unavailable", e))?;
+        }
+    }
     if s.stroke.active() || s.pointer_checkpoint.is_some() {
         return Err(ActionError::new(
             "stroke_active",

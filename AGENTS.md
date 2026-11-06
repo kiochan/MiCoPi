@@ -53,6 +53,7 @@ Keep `src/plugins/` host integration separate from root `plugins/` feature packa
 - Keep layer multi-selection distinct from the active painting layer. Batch operations require explicit stable IDs, shared-handler validation, one bounded undo group/revision/outcome and full rollback; do not silently widen single-layer painting or use a general atomic pipeline as a substitute for grouped undo.
 - Keep versioned group trees consistent with depth-first raster storage. Compile group opacity/blending once at each isolated boundary, preserve local flags and cached inherited visibility, and retain group composition when filters are disabled. Source Layer Filters and generated Actual Composition are different public views; never submit the generated graph as the editable source. See [Layer Groups](docs/layer-groups.md).
 - Preserve supported project, recording and ABI compatibility. Extend optional ABI tails with size/capability checks; retain rejection fixtures and old recording hashes.
+- Keep color blend IDs and legacy arithmetic stable. Preflight renderer capabilities for all declared layer/group/node modes, including hidden or disabled branches, before mutation or project publication; outcome replay restores verified surfaces without renderer capability checks. Pass Through and spatial coverage need separate contracts. See [Color blend modes](docs/blend-modes.md).
 - Measure hot-path or dependency costs. Do not claim physical tablet compatibility from synthetic tests.
 
 ## Implementation conventions

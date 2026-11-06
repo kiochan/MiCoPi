@@ -139,6 +139,14 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         }
         SelectLayer | LayerProperties => {
             let i = index()?;
+            if op == LayerProperties {
+                if let Some(value) = args.get("blend_mode") {
+                    let mode = serde_json::from_value(value.clone())?;
+                    s.doc
+                        .ensure_blend_mode(mode)
+                        .map_err(|e| ActionError::new("blend_mode_unavailable", e))?;
+                }
+            }
             if i >= s.doc.layers.len() {
                 return Err(ActionError::new("invalid_layer", "Layer does not exist"));
             }

@@ -422,6 +422,7 @@ struct NodeViewer<'a> {
     fit_view: bool,
     linked: bool,
     document: Option<&'a crate::engine::Document>,
+    supported_blends: u32,
     actions: Vec<crate::application::Action>,
 }
 impl Default for NodeViewer<'_> {
@@ -435,6 +436,7 @@ impl Default for NodeViewer<'_> {
             fit_view: false,
             linked: false,
             document: None,
+            supported_blends: 0xff,
             actions: vec![],
         }
     }
@@ -624,12 +626,7 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
                         ui.weak(format!("ID {}", doc.layer_id(index)));
                         ui.checkbox(&mut visible, tr("Visible"));
                         ui.add(Slider::new(&mut opacity, 0. ..=1.).text(tr("Opacity")));
-                        ComboBox::from_id_salt(("node-layer-mode", id))
-                            .selected_text(tr(mode.title())).show_ui(ui, |ui| {
-                                for item in crate::engine::graph::BlendMode::ALL {
-                                    ui.selectable_value(&mut mode, item, tr(item.title()));
-                                }
-                            });
+                        if let Some(next)=super::blend_modes::combo(ui,("node-layer-mode",id),mode,false,ui.available_width(),self.supported_blends).inner {mode=next;}
                         if visible != layer.visible || (opacity * 255.).round() as u8 != layer.opacity || mode != layer.mode {
                             self.actions.push(crate::application::Action::new("layer.set", serde_json::json!({"layer_id":doc.layer_id(index),"visible":visible,"opacity":opacity,"blend_mode":mode})));
                         }
@@ -671,6 +668,12 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
                                 }
                             });
                         data[key] = serde_json::json!(index);
+                    } else if key == "mode" && operation == "blend" {
+                        if let Ok(mode)=serde_json::from_value(data[key].clone()) {
+                            if let Some(next)=super::blend_modes::combo(ui,("node-blend-mode",id),mode,false,ui.available_width(),self.supported_blends).inner {
+                                data[key]=serde_json::json!(next);
+                            }
+                        }
                     } else {
                         let mut schema = schema.clone();
                         if key == "amount" {
@@ -932,6 +935,7 @@ impl Editor {
                 Some(&self.session.doc)
             },
             actions: vec![],
+            supported_blends: super::blend_modes::supported(&self.session.doc),
         };
         let style = SnarlStyle {
             node_layout: Some(NodeLayout::sandwich()),

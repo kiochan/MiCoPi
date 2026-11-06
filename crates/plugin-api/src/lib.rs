@@ -413,6 +413,48 @@ pub struct CompositorApiFeatures {
     pub base: CompositorApi,
     pub capabilities: u64,
 }
+/// Stable color blend IDs. Existing IDs 0..=7 retain their original arithmetic.
+pub const BLEND_NORMAL: u32 = 0;
+pub const BLEND_MULTIPLY: u32 = 1;
+pub const BLEND_SCREEN: u32 = 2;
+pub const BLEND_OVERLAY: u32 = 3;
+pub const BLEND_DARKEN: u32 = 4;
+pub const BLEND_LIGHTEN: u32 = 5;
+pub const BLEND_ADD: u32 = 6;
+pub const BLEND_DIFFERENCE: u32 = 7;
+pub const BLEND_COLOR_BURN: u32 = 8;
+pub const BLEND_LINEAR_BURN: u32 = 9;
+pub const BLEND_DARKER_COLOR: u32 = 10;
+pub const BLEND_COLOR_DODGE: u32 = 11;
+pub const BLEND_LIGHTER_COLOR: u32 = 12;
+pub const BLEND_SOFT_LIGHT: u32 = 13;
+pub const BLEND_HARD_LIGHT: u32 = 14;
+pub const BLEND_VIVID_LIGHT: u32 = 15;
+pub const BLEND_LINEAR_LIGHT: u32 = 16;
+pub const BLEND_PIN_LIGHT: u32 = 17;
+pub const BLEND_HARD_MIX: u32 = 18;
+pub const BLEND_EXCLUSION: u32 = 19;
+pub const BLEND_SUBTRACT: u32 = 20;
+pub const BLEND_DIVIDE: u32 = 21;
+pub const BLEND_HUE: u32 = 22;
+pub const BLEND_SATURATION: u32 = 23;
+pub const BLEND_COLOR: u32 = 24;
+pub const BLEND_LUMINOSITY: u32 = 25;
+pub const BLEND_MODE_MAX: u32 = BLEND_LUMINOSITY;
+pub const BLEND_MODE_COUNT: u32 = BLEND_MODE_MAX + 1;
+pub const BLEND_MODES_LEGACY: u64 = (1 << (BLEND_DIFFERENCE + 1)) - 1;
+pub const BLEND_MODES_ALL: u64 = (1 << BLEND_MODE_COUNT) - 1;
+/// Read this entire optional tail only when the published prefix struct_size
+/// covers it. Bit N advertises color blend ID N for both layers and blend nodes.
+/// Without this tail, only BLEND_MODES_LEGACY is supported. The older Features
+/// tail remains independently readable at its original size and offset.
+/// All mandatory BLEND_MODES_LEGACY bits must remain set; new-mode support may
+/// be partial. Old v1 hosts ignore this tail and assume the legacy modes exist.
+#[repr(C)]
+pub struct CompositorApiModes {
+    pub base: CompositorApiFeatures,
+    pub supported_blend_modes: u64,
+}
 pub type CompositorEntry = unsafe extern "C" fn() -> *const CompositorApi;
 
 /// Independent optional exact geometry extension. Existing selection/tool tables are unchanged.
@@ -601,5 +643,12 @@ mod transform_layout_tests {
         assert_eq!(offset_of!(CompositorApiFeatures, base), 0);
         assert_eq!(offset_of!(CompositorApiFeatures, capabilities), 16);
         assert_eq!(COMPOSITOR_TRANSPARENT, 1);
+        assert_eq!(size_of::<CompositorApiModes>(), 32);
+        assert_eq!(offset_of!(CompositorApiModes, base), 0);
+        assert_eq!(offset_of!(CompositorApiModes, supported_blend_modes), 24);
+        assert_eq!(BLEND_MODE_MAX, 25);
+        assert_eq!(BLEND_MODE_COUNT, 26);
+        assert_eq!(BLEND_MODES_LEGACY, 0xff);
+        assert_eq!(BLEND_MODES_ALL, 0x03ff_ffff);
     }
 }

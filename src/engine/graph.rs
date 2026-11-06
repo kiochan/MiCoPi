@@ -75,17 +75,35 @@ mod transparent_tests {
 #[repr(u32)]
 pub enum BlendMode {
     #[default]
-    Normal,
-    Multiply,
-    Screen,
-    Overlay,
-    Darken,
-    Lighten,
-    Add,
-    Difference,
+    Normal = 0,
+    Multiply = 1,
+    Screen = 2,
+    Overlay = 3,
+    Darken = 4,
+    Lighten = 5,
+    Add = 6,
+    Difference = 7,
+    ColorBurn = 8,
+    LinearBurn = 9,
+    DarkerColor = 10,
+    ColorDodge = 11,
+    LighterColor = 12,
+    SoftLight = 13,
+    HardLight = 14,
+    VividLight = 15,
+    LinearLight = 16,
+    PinLight = 17,
+    HardMix = 18,
+    Exclusion = 19,
+    Subtract = 20,
+    Divide = 21,
+    Hue = 22,
+    Saturation = 23,
+    Color = 24,
+    Luminosity = 25,
 }
 impl BlendMode {
-    pub const ALL: [Self; 8] = [
+    pub const LEGACY: [Self; 8] = [
         Self::Normal,
         Self::Multiply,
         Self::Screen,
@@ -95,6 +113,73 @@ impl BlendMode {
         Self::Add,
         Self::Difference,
     ];
+    pub const ALL: [Self; 26] = [
+        Self::Normal,
+        Self::Multiply,
+        Self::Screen,
+        Self::Overlay,
+        Self::Darken,
+        Self::Lighten,
+        Self::Add,
+        Self::Difference,
+        Self::ColorBurn,
+        Self::LinearBurn,
+        Self::DarkerColor,
+        Self::ColorDodge,
+        Self::LighterColor,
+        Self::SoftLight,
+        Self::HardLight,
+        Self::VividLight,
+        Self::LinearLight,
+        Self::PinLight,
+        Self::HardMix,
+        Self::Exclusion,
+        Self::Subtract,
+        Self::Divide,
+        Self::Hue,
+        Self::Saturation,
+        Self::Color,
+        Self::Luminosity,
+    ];
+    pub const MENU: [Self; 26] = [
+        Self::Normal,
+        Self::Darken,
+        Self::Multiply,
+        Self::ColorBurn,
+        Self::LinearBurn,
+        Self::DarkerColor,
+        Self::Lighten,
+        Self::Screen,
+        Self::ColorDodge,
+        Self::Add,
+        Self::LighterColor,
+        Self::Overlay,
+        Self::SoftLight,
+        Self::HardLight,
+        Self::VividLight,
+        Self::LinearLight,
+        Self::PinLight,
+        Self::HardMix,
+        Self::Difference,
+        Self::Exclusion,
+        Self::Subtract,
+        Self::Divide,
+        Self::Hue,
+        Self::Saturation,
+        Self::Color,
+        Self::Luminosity,
+    ];
+    pub fn starts_menu_group(self) -> bool {
+        matches!(
+            self,
+            Self::Normal
+                | Self::Darken
+                | Self::Lighten
+                | Self::Overlay
+                | Self::Difference
+                | Self::Hue
+        )
+    }
     pub fn title(self) -> &'static str {
         match self {
             Self::Normal => "Normal",
@@ -105,6 +190,24 @@ impl BlendMode {
             Self::Lighten => "Lighten",
             Self::Add => "Linear Dodge",
             Self::Difference => "Difference",
+            Self::ColorBurn => "Color Burn",
+            Self::LinearBurn => "Linear Burn",
+            Self::DarkerColor => "Darker Color",
+            Self::ColorDodge => "Color Dodge",
+            Self::LighterColor => "Lighter Color",
+            Self::SoftLight => "Soft Light",
+            Self::HardLight => "Hard Light",
+            Self::VividLight => "Vivid Light",
+            Self::LinearLight => "Linear Light",
+            Self::PinLight => "Pin Light",
+            Self::HardMix => "Hard Mix",
+            Self::Exclusion => "Exclusion",
+            Self::Subtract => "Subtract",
+            Self::Divide => "Divide",
+            Self::Hue => "Hue",
+            Self::Saturation => "Saturation",
+            Self::Color => "Color",
+            Self::Luminosity => "Luminosity",
         }
     }
 }
@@ -199,6 +302,9 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 pub trait Renderer {
+    fn supports_blend_mode(&self, mode: u32) -> bool {
+        mode < 8
+    }
     fn supports_transparent(&self) -> bool {
         false
     }

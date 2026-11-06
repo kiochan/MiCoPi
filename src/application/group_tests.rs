@@ -161,7 +161,7 @@ fn groups_isolate_child_modes_and_apply_every_group_mode_against_the_parent() {
         0xff4080c0, 0xff202018, 0xffa0a0c8, 0xff414030, 0xff404020, 0xff8080c0, 0xffc0c0e0,
         0xff4040a0,
     ];
-    for (mode, expected) in BlendMode::ALL.into_iter().zip(expected) {
+    for (mode, expected) in BlendMode::LEGACY.into_iter().zip(expected) {
         call(&mut s, "group.set", json!({"group_id":g,"blend_mode":mode}));
         assert_eq!(pixels(&mut s), [expected; 2], "{mode:?}");
     }

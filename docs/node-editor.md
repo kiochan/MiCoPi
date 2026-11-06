@@ -42,10 +42,12 @@ Free-graph sources honor layer visibility and opacity; free blend nodes own thei
 | Transparent | Transparent zero; requires the compositor's optional transparent-source capability |
 | Layer | Read a source layer without changing pixels |
 | Filter | Invert, grayscale, brightness, contrast or saturation |
-| Blend | Normal, multiply, screen, overlay, darken, lighten, linear dodge or difference |
+| Blend | The 26 [color blend modes](blend-modes.md), with opacity applied at the blend boundary |
 | Output | The unique canvas and export result |
 
 Invert/grayscale strength is 0..1; brightness/contrast/saturation are -1..1; blend opacity is 0..1. Filters preserve alpha; blending uses straight-alpha source-over. Fully transparent composited pixels are canonicalized to zero. Spatial filters such as blur are not implemented.
+
+Layer-source and Blend-node mode controls share the Layers and Group Properties menus: 26 modes in Photoshop-style families, separators and a bounded scrolling popup using configured spacing. The active mode stays labeled, and unavailable modes remain visible but disabled with an explanation. RGB blending uses stored encoded components; Hue/Saturation/Color/Luminosity use luminance/saturation adjustment and gamut clipping. These are documented MiCoPi semantics, without an ICC conversion or a bit-for-bit Photoshop compatibility claim. See [Color Blend Modes](blend-modes.md).
 
 An image graph has at most 64 nodes, 128 edges and one output. Cycles, duplicate inputs, missing required inputs, invalid layer references and parameters are rejected before changing the document. Unconnected drafts are allowed, but all nodes must remain structurally valid. Only dependencies of the output are compiled for rendering.
 
@@ -53,8 +55,8 @@ Linked graphs additionally require every layer exactly once in stack order, line
 
 ## Actions and plugin registration
 
-- graph.catalog: image schema, supported filters/modes and registered node definitions.
-- graph.read: editable source `graph`, generated `effective_graph`, groups, `mode` (`linked`, `free` or `grouped`), stable layer identities/properties, default linked graph, renderer availability/capabilities and errors.
+- graph.catalog: image schema, the recognized `blend_modes` catalog, current `available_blend_modes`, filters and registered node definitions.
+- graph.read: editable source `graph`, generated `effective_graph`, groups, `mode` (`linked`, `free` or `grouped`), stable layer identities/properties, default linked graph, `available_blend_modes`, renderer availability/capabilities and errors. The `compositing.graph` public state exposes the same availability list, including the CPU Normal fallback.
 - graph.set: validate and apply as an undoable metadata edit.
 - graph.open: emit the editor-open UI effect; headless does not create a window.
 - layer.set: edit ordinary layer properties, including blend mode.
@@ -66,7 +68,9 @@ Linked graphs additionally require every layer exactly once in stack order, line
 
 To create a linked graph through MCP/headless, start with `graph.read.default_graph`, retain its layer order and set `linked: true` (already present in the default). Insert registered filter nodes on individual source branches and submit `graph.set`. Layer sources retain the compatible `index` wire format; structural edits resolve them through document-scoped stable IDs before rebuilding. Use the returned `layers` mapping and revision guards rather than caching numeric indices across edits. Applying a linked graph updates layer modes and topology in one undoable document operation. The same operation supports atomic pipelines, outcome recording and verified playback.
 
-The complete [linked-layer JSONL example](../examples/automation/linked-layers.jsonl) adds a filter, duplicates and reorders its layer, exports a PNG and verifies the recording.
+The complete [linked-layer JSONL example](../examples/automation/linked-layers.jsonl) adds a filter, duplicates and reorders its layer, exports a PNG and verifies the recording. The [blend-mode example](../examples/automation/blend-modes.jsonl) also demonstrates layer/group modes, capability discovery, subtree baking and outcome replay.
+
+Original blend IDs 0–7 and their pixel results remain unchanged. Appended IDs 8–25 require a supporting compositor; complete capability masks retain all eight legacy bits and may support a subset of appended modes. Unsupported properties, graph branches and staged projects reject before publication, including hidden or disabled content. Verified outcome playback restores saved surfaces without calling a renderer. See [Native Plugins](native-plugins.md).
 
 Image definitions come from plugins/compositing/manifest.json and use binding.kind=image with a kernel operation and parameters_schema. Legacy graphs without node_type migrate to compositing.* IDs when applied. New aliases use existing kernel semantics; a new image algorithm requires extending the compositor implementation. JSON workflow nodes and image-buffer nodes have separate typed domains. See [Workflow Nodes](workflow-nodes.md).
 

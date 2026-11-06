@@ -1,6 +1,12 @@
 //! Stateless region compositor. One DLL call per damaged region, no image intermediates.
 use micopi_plugin_api as abi;
+#[cfg(test)]
+mod blend_tests;
+mod blends;
 pub fn over(dst: u32, src: u32, mode: u32) -> u32 {
+    if mode >= abi::BLEND_COLOR_BURN {
+        return blends::over(dst, src, mode);
+    }
     let a = src >> 24;
     if a == 0 {
         return dst;
@@ -130,7 +136,7 @@ unsafe extern "C" fn render(
             || l.len < width as usize * height as usize
             || l.opacity > 255
             || l.visible > 1
-            || l.mode > 7
+            || l.mode > abi::BLEND_MODE_MAX
             || span(l.data, width as usize * height as usize)
                 .is_none_or(|source| overlaps(source, destination))
     }) {
@@ -154,7 +160,7 @@ unsafe extern "C" fn render(
                 2 => {
                     n.a as usize >= i
                         || n.b as usize >= i
-                        || n.mode > 7
+                        || n.mode > abi::BLEND_MODE_MAX
                         || !(0. ..=1.).contains(&n.amount)
                 }
                 3 => n.a as usize >= i,
@@ -221,13 +227,16 @@ static BASE: abi::PluginApi = abi::PluginApi {
     destroy: None,
     invoke: None,
 };
-static COMPOSITOR: abi::CompositorApiFeatures = abi::CompositorApiFeatures {
-    base: abi::CompositorApi {
-        abi_version: 1,
-        struct_size: std::mem::size_of::<abi::CompositorApiFeatures>() as u32,
-        render: Some(render),
+static COMPOSITOR: abi::CompositorApiModes = abi::CompositorApiModes {
+    base: abi::CompositorApiFeatures {
+        base: abi::CompositorApi {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::CompositorApiModes>() as u32,
+            render: Some(render),
+        },
+        capabilities: abi::COMPOSITOR_TRANSPARENT,
     },
-    capabilities: abi::COMPOSITOR_TRANSPARENT,
+    supported_blend_modes: abi::BLEND_MODES_ALL,
 };
 #[no_mangle]
 pub extern "C" fn micopi_plugin_v1() -> *const abi::PluginApi {
@@ -235,7 +244,7 @@ pub extern "C" fn micopi_plugin_v1() -> *const abi::PluginApi {
 }
 #[no_mangle]
 pub extern "C" fn micopi_compositor_v1() -> *const abi::CompositorApi {
-    &COMPOSITOR.base
+    &COMPOSITOR.base.base
 }
 
 #[cfg(test)]
@@ -347,15 +356,17 @@ mod tests {
     }
 
     #[test]
-    fn optional_table_retains_v1_prefix_and_transparent_capability() {
+    fn optional_table_retains_v1_prefix_transparent_capability_and_modes() {
         let base = unsafe { &*micopi_compositor_v1() };
         assert_eq!(base.abi_version, 1);
         assert_eq!(
             base.struct_size as usize,
-            std::mem::size_of::<abi::CompositorApiFeatures>()
+            std::mem::size_of::<abi::CompositorApiModes>()
         );
         let complete = unsafe { &*(micopi_compositor_v1().cast::<abi::CompositorApiFeatures>()) };
         assert_eq!(complete.capabilities, abi::COMPOSITOR_TRANSPARENT);
+        let modes = unsafe { &*(micopi_compositor_v1().cast::<abi::CompositorApiModes>()) };
+        assert_eq!(modes.supported_blend_modes, abi::BLEND_MODES_ALL);
         assert!(base.render.is_some());
     }
 

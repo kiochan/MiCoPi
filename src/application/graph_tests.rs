@@ -83,7 +83,7 @@ fn layer_and_node_blending_use_identical_dll_math_for_all_modes() {
         0xff4080c0, 0xff202018, 0xffa0a0c8, 0xff414030, 0xff404020, 0xff8080c0, 0xffc0c0e0,
         0xff4040a0,
     ];
-    for (mode, expected) in BlendMode::ALL.into_iter().zip(expected) {
+    for (mode, expected) in BlendMode::LEGACY.into_iter().zip(expected) {
         let mut s = fresh(2, 2);
         s.doc.layers[0].pixels.fill(0xff804020);
         s.doc.add_layer();
@@ -282,9 +282,10 @@ fn graph_actions_and_public_resources_work_inside_the_unified_pipeline() {
         true
     );
     let catalog = s.apply(Action::new("graph.catalog", json!({}))).unwrap();
+    assert_eq!(catalog["result"]["blend_modes"], json!(BlendMode::ALL));
     assert_eq!(
-        catalog["result"]["blend_modes"].as_array().unwrap().len(),
-        8
+        catalog["result"]["available_blend_modes"],
+        json!(BlendMode::MENU)
     );
     let _typed: Value = json!(s.doc.graph);
 }

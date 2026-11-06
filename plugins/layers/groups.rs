@@ -630,20 +630,18 @@ impl Editor {
                 opacity_revision = Some(opacity.revision);
             }
             ui.label(tr("Group Blend Mode"));
-            ComboBox::from_id_salt(("group-mode", id))
-                .width(ui.available_width())
-                .truncate()
-                .selected_text(tr(group.blend_mode.title()))
-                .show_ui(ui, |ui| {
-                    for mode in crate::engine::graph::BlendMode::ALL {
-                        if ui
-                            .selectable_label(mode == group.blend_mode, tr(mode.title()))
-                            .clicked()
-                        {
-                            changes["blend_mode"] = json!(mode);
-                        }
-                    }
-                });
+            if let Some(mode) = super::super::blend_modes::combo(
+                ui,
+                ("group-mode", id),
+                group.blend_mode,
+                false,
+                ui.available_width(),
+                super::super::blend_modes::supported(&self.session.doc),
+            )
+            .inner
+            {
+                changes["blend_mode"] = json!(mode);
+            }
         });
         ui.weak(tr(
             "Children composite together before group opacity and blending.",
