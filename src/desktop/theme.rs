@@ -25,6 +25,8 @@ mod glyph_tests {
                 for source in [
                     include_str!("theme.rs"),
                     include_str!("../../plugins/layers/panel.rs"),
+                    include_str!("../../plugins/layers/groups.rs"),
+                    include_str!("../../plugins/compositing/groups_view.rs"),
                 ] {
                     for tail in source.split("\\u{").skip(1) {
                         let Some((hex, _)) = tail.split_once('}') else {

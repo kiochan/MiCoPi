@@ -138,6 +138,8 @@ typedef struct {
     uint32_t opacity, visible, mode;
 } MicopiCompositeLayer;
 typedef struct {
+    /* Kinds 0 layer, 1 filter, 2 blend, 3 output. Optional kind 4 is transparent
+       zero; it requires MICOPI_COMPOSITOR_TRANSPARENT and a=b=mode=amount=0. */
     uint32_t kind, a, b, mode; float amount;
 } MicopiCompositeNode;
 typedef struct {
@@ -148,6 +150,10 @@ typedef struct {
                       const MicopiCompositeLayer *, size_t,
                       uint32_t, uint32_t, MicopiPixels *);
 } MicopiCompositorApi;
+/* Read the complete tail only when struct_size >= sizeof(MicopiCompositorApiFeatures).
+   Hosts must check capabilities before sending optional instructions. */
+#define MICOPI_COMPOSITOR_TRANSPARENT UINT64_C(1)
+typedef struct { MicopiCompositorApi base; uint64_t capabilities; } MicopiCompositorApiFeatures;
 const MicopiCompositorApi *micopi_compositor_v1(void);
 /* Independent optional exact geometry table, with immutable source and disjoint
    output. Local origins are zero; dimensions/stride are bounded to 4096.

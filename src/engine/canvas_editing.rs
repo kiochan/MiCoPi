@@ -44,7 +44,9 @@ impl Document {
                 origin_y: 0,
             };
             renderer.render(
-                if self.graph.enabled && (!self.graph.linked || self.graph.has_filters()) {
+                if self.has_groups()
+                    || self.graph.enabled && (!self.graph.linked || self.graph.has_filters())
+                {
                     &self.plan
                 } else {
                     &[]

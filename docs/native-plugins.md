@@ -22,6 +22,8 @@ The host checks locks before invoking opaque actions and again at every mutable 
 
 ## SDK and builds
 
+Isolated [layer groups](layer-groups.md) and transparent image nodes use an optional complete `CompositorApiFeatures` tail. The existing `CompositorApi` prefix and render callback stay unchanged; its advertised `struct_size` must cover the appended `u64 capabilities` before the host reads `COMPOSITOR_TRANSPARENT`. Kind 4 is a constant transparent source with zero `a`, `b`, `mode` and `amount`. New hosts retain prefix-only DLLs for original plans and reject unsupported groups/transparent graphs before installation. Extended DLLs retain original four-kind behavior. Input/output spans must be bounded and disjoint; rendering retains one dirty-region call and 64 per-pixel `u32` slots without image intermediates.
+
 crates/plugin-api contains dependency-free repr(C) types, function tables and include/micopi_plugin.h. Independent examples are painting, native-paint, ai-assistant and compositing. The SDK source package builds without the host or GUI crates.
 
 ```powershell

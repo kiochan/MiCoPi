@@ -117,7 +117,7 @@ impl Definition {
                     "layer" => &["index"],
                     "filter" => &["filter", "amount"],
                     "blend" => &["mode", "opacity"],
-                    "output" => &[],
+                    "output" | "transparent" => &[],
                     _ => return Err("Unknown image kernel operation".into()),
                 };
                 if schema["type"] != "object"
@@ -173,7 +173,7 @@ impl Definition {
             let image =
                 json!({"type":"object","title":"Image","description":"Native ARGB image buffer"});
             let names: &[&str] = match operation.as_str() {
-                "layer" => &[],
+                "layer" | "transparent" => &[],
                 "blend" => &["background", "foreground"],
                 _ => &["image"],
             };

@@ -439,6 +439,24 @@ pub static COMMANDS: &[Command] = &[
         42
     ),
     c!(
+        "group.create_selected",
+        "Group Selection",
+        "Layers",
+        "group folder selected layers organize",
+        UiCommand(10200),
+        "Ctrl+G",
+        10200
+    ),
+    c!(
+        "group.ungroup_parent",
+        "Ungroup Active Layer's Parent",
+        "Layers",
+        "ungroup folder parent layers",
+        UiCommand(10201),
+        "Ctrl+Shift+G",
+        10201
+    ),
+    c!(
         "clipboard.system_copy",
         "Copy",
         "Edit",
@@ -1777,6 +1795,7 @@ impl Keymap {
                         | "canvas.transform.repeat_copy"
                 )
                 || command.id.starts_with("clipboard.system_")
+                || command.id.starts_with("group.")
                 || command.id == "toolbox.mode.move"
                 || command.id.starts_with("movement."))
                 && !explicit.contains(command.id)
@@ -1834,6 +1853,39 @@ impl Keymap {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn group_shortcuts_keep_ps_defaults_and_yield_to_explicit_older_bindings() {
+        let create = super::COMMANDS
+            .iter()
+            .position(|c| c.id == "group.create_selected")
+            .unwrap();
+        let ungroup = super::COMMANDS
+            .iter()
+            .position(|c| c.id == "group.ungroup_parent")
+            .unwrap();
+        let defaults = super::Keymap::default();
+        assert_eq!(
+            defaults.bindings[create],
+            vec![super::Chord::parse("Ctrl+G").unwrap()]
+        );
+        assert_eq!(
+            defaults.bindings[ungroup],
+            vec![super::Chord::parse("Ctrl+Shift+G").unwrap()]
+        );
+        for json in [
+            r#"{"keybindings":{"plugin.custom.group":"Ctrl+G","plugin.custom.ungroup":"Ctrl+Shift+G"}}"#,
+            r#"{"keybindings":{"tool.brush":"Ctrl+G","tool.eraser":"Ctrl+Shift+G"}}"#,
+        ] {
+            let map = super::Keymap::decode(json).unwrap();
+            assert!(map.bindings[create].is_empty());
+            assert!(map.bindings[ungroup].is_empty());
+        }
+        let disabled = super::Keymap::decode(
+            r#"{"keybindings":{"group.create_selected":[],"group.ungroup_parent":[]}}"#,
+        )
+        .unwrap();
+        assert!(disabled.bindings[create].is_empty() && disabled.bindings[ungroup].is_empty());
+    }
     use super::*;
     #[test]
     fn plugin_commands_are_bindable_and_survive_unloaded_plugins_and_restart() {

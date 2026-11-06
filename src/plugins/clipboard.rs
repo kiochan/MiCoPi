@@ -93,6 +93,7 @@ pub(super) fn bounds(s: &Session) -> Result<[usize; 4], String> {
     Ok(b)
 }
 pub(super) fn validate_paste(s: &Session) -> Result<(), String> {
+    s.doc.preflight_new_layer(None)?;
     // Preflight capacity before allocating a full destination layer.
     if s.doc.layers.len() >= crate::engine::MAX_LAYERS
         || s.doc.width * s.doc.height * (s.doc.layers.len() + 1) > 64 * 1024 * 1024

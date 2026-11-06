@@ -324,7 +324,7 @@ impl Session {
         let mut parameters = json!(self.parameters);
         parameters["spacing"] = json!(self.parameters.spacing);
         parameters["minimum_opacity"] = json!(self.parameters.minimum_opacity);
-        json!({"document_info":self.doc.info().state(self.doc.width,self.doc.height),"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"selected_layer_ids":self.doc.selected_layer_ids(),"layers":(0..self.doc.layers.len()).map(|index|self.layer_state(index)).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"last_transform":crate::plugins::affine::repeat_state(self),"movement_defaults":self.movement_defaults,"movement_options":self.movement_options(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
+        json!({"document_info":self.doc.info().state(self.doc.width,self.doc.height),"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"selected_layer_ids":self.doc.selected_layer_ids(),"groups":self.doc.groups_state(),"layers":(0..self.doc.layers.len()).map(|index|self.layer_state(index)).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"last_transform":crate::plugins::affine::repeat_state(self),"movement_defaults":self.movement_defaults,"movement_options":self.movement_options(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
     }
     pub(crate) fn layer_state(&self, index: usize) -> Value {
         let l = &self.doc.layers[index];
@@ -332,7 +332,8 @@ impl Session {
             "alpha_locked":self.doc.alpha_locked(index),"pixel_locked":self.doc.pixel_locked(index),
             "position_locked":self.doc.position_locked(index),"color_label":self.doc.color_label(index),
             "visible":l.visible,"opacity":l.opacity as f32/255.,"blend_mode":l.mode,"active":index==self.doc.active,
-            "selected":self.doc.layer_selected(index)})
+            "selected":self.doc.layer_selected(index),"effective_visible":self.doc.layer_visible(index),
+            "parent_id":self.doc.layer_parent_id(index)})
     }
     pub fn apply(&mut self, action: Action) -> ActionResult {
         let pointer_action = self
@@ -531,6 +532,21 @@ impl Session {
                             if let Some(saved) = checkpoint.take() {
                                 saved.restore(self);
                             }
+                            if error.code == "render_error" {
+                                self.replay_action(
+                                    &id,
+                                    &event_args,
+                                    op,
+                                    false,
+                                    Some(error.to_string()),
+                                )?;
+                                self.record(EventKind::Action {
+                                    action: id.clone(),
+                                    args: event_args.clone(),
+                                    success: false,
+                                    error: Some(error.to_string()),
+                                });
+                            }
                             if op == Some(Operation::Export) && !failed {
                                 return Err(ActionError::new("export_recording",format!(
                                     "PNG was written to {} (SHA-256 {}), but recording failed: {}",
@@ -610,6 +626,21 @@ impl Session {
             }
             if op == Operation::LayerBatch {
                 crate::plugins::layer_batch::validate(&action.args)?;
+            }
+            if matches!(
+                op,
+                Operation::GroupQuery
+                    | Operation::GroupCreate
+                    | Operation::GroupCreateSelected
+                    | Operation::GroupProperties
+                    | Operation::GroupMove
+                    | Operation::GroupUngroup
+                    | Operation::GroupUngroupParent
+                    | Operation::GroupDelete
+                    | Operation::GroupDuplicate
+                    | Operation::GroupSelectLayers
+            ) {
+                crate::plugins::groups::validate(op, &action.args)?;
             }
             out.push((action.action.clone(), Some(op), action.args.clone()));
         } else if definition.native.is_some() {

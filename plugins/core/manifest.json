@@ -96,6 +96,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -110,7 +118,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -366,6 +376,255 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "groups": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "roots": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "layer",
+                        "group"
+                      ]
+                    },
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "groups": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "layer",
+                        "group"
+                      ]
+                    },
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "parent_id": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "depth": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 8
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    },
+                    "effective_visible": {
+                      "type": "boolean"
+                    },
+                    "opacity": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "blend_mode": {
+                      "type": "string"
+                    },
+                    "children": {
+                      "type": "array",
+                      "maxItems": 32,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "layer",
+                              "group"
+                            ]
+                          },
+                          "id": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 4294967295
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "layer_ids": {
+                      "type": "array",
+                      "maxItems": 16,
+                      "items": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4294967295
+                      }
+                    },
+                    "index": {
+                      "type": "integer"
+                    },
+                    "node_id": {
+                      "type": "integer"
+                    },
+                    "matched": {
+                      "type": "boolean"
+                    },
+                    "context": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "id",
+                    "name",
+                    "parent_id",
+                    "depth",
+                    "visible",
+                    "effective_visible"
+                  ]
+                }
+              },
+              "rows": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "layer",
+                        "group"
+                      ]
+                    },
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "parent_id": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "depth": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 8
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    },
+                    "effective_visible": {
+                      "type": "boolean"
+                    },
+                    "opacity": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "blend_mode": {
+                      "type": "string"
+                    },
+                    "children": {
+                      "type": "array",
+                      "maxItems": 32,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "layer",
+                              "group"
+                            ]
+                          },
+                          "id": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 4294967295
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "id"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "layer_ids": {
+                      "type": "array",
+                      "maxItems": 16,
+                      "items": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4294967295
+                      }
+                    },
+                    "index": {
+                      "type": "integer"
+                    },
+                    "node_id": {
+                      "type": "integer"
+                    },
+                    "matched": {
+                      "type": "boolean"
+                    },
+                    "context": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "id",
+                    "name",
+                    "parent_id",
+                    "depth",
+                    "visible",
+                    "effective_visible"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "version",
+              "roots",
+              "groups",
+              "rows"
+            ]
           }
         },
         "required": [
@@ -375,7 +634,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "groups"
         ]
       }
     },
@@ -804,6 +1064,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -818,7 +1086,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -1296,6 +1566,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -1310,7 +1588,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -1539,6 +1819,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -1553,7 +1841,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -1782,6 +2072,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -1796,7 +2094,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -2944,6 +3244,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -2958,7 +3266,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -3320,6 +3630,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -3334,7 +3652,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -3604,6 +3924,1584 @@
       }
     },
     {
+      "id": "group.query",
+      "title": "Inspect Layer Groups",
+      "operation": "group_query",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "roots": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "layer",
+                    "group"
+                  ]
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "kind",
+                "id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "groups": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "layer",
+                    "group"
+                  ]
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "name": {
+                  "type": "string"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "depth": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 8
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string"
+                },
+                "children": {
+                  "type": "array",
+                  "maxItems": 32,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "layer",
+                          "group"
+                        ]
+                      },
+                      "id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4294967295
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "id"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "index": {
+                  "type": "integer"
+                },
+                "node_id": {
+                  "type": "integer"
+                },
+                "matched": {
+                  "type": "boolean"
+                },
+                "context": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "name",
+                "parent_id",
+                "depth",
+                "visible",
+                "effective_visible"
+              ]
+            }
+          },
+          "rows": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "layer",
+                    "group"
+                  ]
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "name": {
+                  "type": "string"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "depth": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 8
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string"
+                },
+                "children": {
+                  "type": "array",
+                  "maxItems": 32,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "layer",
+                          "group"
+                        ]
+                      },
+                      "id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4294967295
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "id"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "index": {
+                  "type": "integer"
+                },
+                "node_id": {
+                  "type": "integer"
+                },
+                "matched": {
+                  "type": "boolean"
+                },
+                "context": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "name",
+                "parent_id",
+                "depth",
+                "visible",
+                "effective_visible"
+              ]
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 32
+          },
+          "matched": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 32
+          },
+          "filter_active": {
+            "type": "boolean"
+          },
+          "matching_layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "matching_group_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "active_layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "renderer_transparent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "version",
+          "roots",
+          "groups",
+          "rows",
+          "total",
+          "matched",
+          "filter_active",
+          "matching_layer_ids",
+          "matching_group_ids",
+          "revision",
+          "drawing",
+          "selected_layer_ids",
+          "active_layer_id",
+          "renderer_transparent"
+        ]
+      }
+    },
+    {
+      "id": "group.create",
+      "title": "New Layer Group",
+      "operation": "group_create",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "groups": {
+            "type": "object",
+            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected",
+                "effective_visible",
+                "parent_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "active_layer": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groups",
+          "selected_layer_ids",
+          "layers",
+          "active_layer",
+          "revision",
+          "drawing"
+        ]
+      }
+    },
+    {
+      "id": "group.create_selected",
+      "title": "Group Selection",
+      "operation": "group_create_selected",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "groups": {
+            "type": "object",
+            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected",
+                "effective_visible",
+                "parent_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "active_layer": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groups",
+          "selected_layer_ids",
+          "layers",
+          "active_layer",
+          "revision",
+          "drawing"
+        ]
+      }
+    },
+    {
+      "id": "group.set",
+      "title": "Set Group Properties",
+      "operation": "group_properties",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "groups": {
+            "type": "object",
+            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected",
+                "effective_visible",
+                "parent_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "active_layer": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groups",
+          "selected_layer_ids",
+          "layers",
+          "active_layer",
+          "revision",
+          "drawing"
+        ]
+      }
+    },
+    {
+      "id": "group.move",
+      "title": "Move Stack Entries",
+      "operation": "group_move",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "groups": {
+            "type": "object",
+            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected",
+                "effective_visible",
+                "parent_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "active_layer": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groups",
+          "selected_layer_ids",
+          "layers",
+          "active_layer",
+          "revision",
+          "drawing"
+        ]
+      }
+    },
+    {
+      "id": "group.ungroup",
+      "title": "Ungroup",
+      "operation": "group_ungroup",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "groups": {
+            "type": "object",
+            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected",
+                "effective_visible",
+                "parent_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "active_layer": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groups",
+          "selected_layer_ids",
+          "layers",
+          "active_layer",
+          "revision",
+          "drawing"
+        ]
+      }
+    },
+    {
+      "id": "group.ungroup_parent",
+      "title": "Ungroup Active Layer's Parent",
+      "operation": "group_ungroup_parent",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "groups": {
+            "type": "object",
+            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected",
+                "effective_visible",
+                "parent_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "active_layer": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groups",
+          "selected_layer_ids",
+          "layers",
+          "active_layer",
+          "revision",
+          "drawing"
+        ]
+      }
+    },
+    {
+      "id": "group.delete",
+      "title": "Delete Group and Contents",
+      "operation": "group_delete",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "groups": {
+            "type": "object",
+            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected",
+                "effective_visible",
+                "parent_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "active_layer": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groups",
+          "selected_layer_ids",
+          "layers",
+          "active_layer",
+          "revision",
+          "drawing"
+        ]
+      }
+    },
+    {
+      "id": "group.duplicate",
+      "title": "Duplicate Group",
+      "operation": "group_duplicate",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "groups": {
+            "type": "object",
+            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected",
+                "effective_visible",
+                "parent_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "active_layer": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groups",
+          "selected_layer_ids",
+          "layers",
+          "active_layer",
+          "revision",
+          "drawing"
+        ]
+      }
+    },
+    {
+      "id": "group.select_layers",
+      "title": "Select Group Layers",
+      "operation": "group_select_layers",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "group_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "groups": {
+            "type": "object",
+            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "layers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 15
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "name": {
+                  "type": "string"
+                },
+                "alpha_locked": {
+                  "type": "boolean"
+                },
+                "pixel_locked": {
+                  "type": "boolean"
+                },
+                "position_locked": {
+                  "type": "boolean"
+                },
+                "color_label": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "red",
+                    "orange",
+                    "yellow",
+                    "green",
+                    "blue",
+                    "violet",
+                    "gray"
+                  ]
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string",
+                  "enum": [
+                    "normal",
+                    "multiply",
+                    "screen",
+                    "overlay",
+                    "darken",
+                    "lighten",
+                    "add",
+                    "difference"
+                  ]
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "selected": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "name",
+                "alpha_locked",
+                "pixel_locked",
+                "position_locked",
+                "color_label",
+                "visible",
+                "opacity",
+                "blend_mode",
+                "active",
+                "selected",
+                "effective_visible",
+                "parent_id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "active_layer": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groups",
+          "selected_layer_ids",
+          "layers",
+          "active_layer",
+          "revision",
+          "drawing"
+        ]
+      }
+    },
+    {
       "id": "layer.query",
       "title": "Find Layers",
       "operation": "layer_query",
@@ -3685,6 +5583,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -3699,7 +5605,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -4371,6 +6279,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -4385,7 +6301,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -4614,6 +6532,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -4628,7 +6554,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -5266,6 +7194,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -5280,7 +7216,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -5509,6 +7447,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -5523,7 +7469,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -5752,6 +7700,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -5766,7 +7722,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -5995,6 +7953,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -6009,7 +7975,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -6238,6 +8206,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -6252,7 +8228,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -6481,6 +8459,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -6495,7 +8481,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -6724,6 +8712,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -6738,7 +8734,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -6967,6 +8965,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -6981,7 +8987,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -7721,6 +9729,14 @@
                 },
                 "selected": {
                   "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4294967295
                 }
               },
               "required": [
@@ -7735,7 +9751,9 @@
                 "opacity",
                 "blend_mode",
                 "active",
-                "selected"
+                "selected",
+                "effective_visible",
+                "parent_id"
               ],
               "additionalProperties": false
             }
@@ -7773,6 +9791,325 @@
           "active_layer_id"
         ],
         "additionalProperties": false
+      }
+    },
+    {
+      "id": "core.groups",
+      "title": "Inspect Layer Groups",
+      "action": "group.query",
+      "args": {},
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "roots": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "layer",
+                    "group"
+                  ]
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                }
+              },
+              "required": [
+                "kind",
+                "id"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "groups": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "layer",
+                    "group"
+                  ]
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "name": {
+                  "type": "string"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "depth": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 8
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string"
+                },
+                "children": {
+                  "type": "array",
+                  "maxItems": 32,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "layer",
+                          "group"
+                        ]
+                      },
+                      "id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4294967295
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "id"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "index": {
+                  "type": "integer"
+                },
+                "node_id": {
+                  "type": "integer"
+                },
+                "matched": {
+                  "type": "boolean"
+                },
+                "context": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "name",
+                "parent_id",
+                "depth",
+                "visible",
+                "effective_visible"
+              ]
+            }
+          },
+          "rows": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "layer",
+                    "group"
+                  ]
+                },
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "name": {
+                  "type": "string"
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "depth": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 8
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "effective_visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "blend_mode": {
+                  "type": "string"
+                },
+                "children": {
+                  "type": "array",
+                  "maxItems": 32,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "layer",
+                          "group"
+                        ]
+                      },
+                      "id": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4294967295
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "id"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "index": {
+                  "type": "integer"
+                },
+                "node_id": {
+                  "type": "integer"
+                },
+                "matched": {
+                  "type": "boolean"
+                },
+                "context": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "kind",
+                "id",
+                "name",
+                "parent_id",
+                "depth",
+                "visible",
+                "effective_visible"
+              ]
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 32
+          },
+          "matched": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 32
+          },
+          "filter_active": {
+            "type": "boolean"
+          },
+          "matching_layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "matching_group_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "drawing": {
+            "type": "boolean"
+          },
+          "selected_layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "active_layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "renderer_transparent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "version",
+          "roots",
+          "groups",
+          "rows",
+          "total",
+          "matched",
+          "filter_active",
+          "matching_layer_ids",
+          "matching_group_ids",
+          "revision",
+          "drawing",
+          "selected_layer_ids",
+          "active_layer_id",
+          "renderer_transparent"
+        ]
       }
     }
   ]

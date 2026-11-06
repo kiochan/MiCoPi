@@ -13,6 +13,8 @@ impl Document {
         let mut ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
         let mut modes: Vec<_> = self.layers.iter().map(|l| l.mode).collect();
         let mut graph = self.graph.clone();
+        let mut groups = self.groups.clone();
+        let mut copies = Vec::new();
         for (offset, id) in selected.iter().enumerate() {
             let index = ids
                 .iter()
@@ -20,6 +22,10 @@ impl Document {
                 .ok_or("Layer does not exist")?;
             let old = ids.clone();
             let new = self.next_layer_id + offset as u64;
+            copies.push((*id, new));
+            if let Some(tree) = &mut groups {
+                tree.insert_layer_after(*id, new)?;
+            }
             ids.insert(index + 1, new);
             modes.insert(index + 1, modes[index]);
             if graph.linked {
@@ -36,6 +42,26 @@ impl Document {
             }
             graph.compile(ids.len())?;
         }
+        let metadata: Vec<_> = ids
+            .iter()
+            .map(|id| {
+                let source = copies
+                    .iter()
+                    .find(|(_, to)| to == id)
+                    .map_or(*id, |(from, _)| *from);
+                let mut m = self.layer_metadata[self.layer_index(source).unwrap()].clone();
+                m.id = *id;
+                m
+            })
+            .collect();
+        self.prepare_group_plan(
+            &graph,
+            groups.as_ref(),
+            &metadata,
+            &modes,
+            self.next_group_id,
+            true,
+        )?;
         Ok(())
     }
     pub(crate) fn preflight_layer_deletions(&self, selected: &[u64]) -> Result<(), String> {
@@ -182,7 +208,22 @@ impl Document {
         );
         let graph =
             self.reindexed_graph(&metadata, Some((self.layer_id(index), self.next_layer_id)))?;
-        let plan = graph.compile(metadata.len())?;
+        let mut groups = self.groups.clone();
+        if let Some(tree) = &mut groups {
+            tree.insert_layer_after(self.layer_id(index), self.next_layer_id)?;
+        }
+        let modes: Vec<_> = metadata
+            .iter()
+            .map(|m| self.layers[self.layer_index(m.id).unwrap_or(index)].mode)
+            .collect();
+        let prepared = self.prepare_group_plan(
+            &graph,
+            groups.as_ref(),
+            &metadata,
+            &modes,
+            self.next_group_id,
+            true,
+        )?;
         self.finish();
         let before = self.composition();
         let active = self.active;
@@ -203,7 +244,8 @@ impl Document {
         self.next_layer_id += 1;
         self.select_layer(index + 1);
         self.graph = graph;
-        self.plan = plan;
+        self.groups = groups;
+        self.install_group_plan(prepared);
         self.track_layer_order();
         self.commit_composition(
             before,
@@ -263,7 +305,25 @@ impl Document {
             },
         );
         let graph = self.reindexed_graph(&metadata, None)?;
-        let plan = graph.compile(metadata.len())?;
+        let mut groups = self.groups.clone();
+        if let Some(tree) = &mut groups {
+            tree.insert_layer_after(self.layer_id(self.active), self.next_layer_id)?;
+        }
+        let modes: Vec<_> = metadata
+            .iter()
+            .map(|m| {
+                self.layer_index(m.id)
+                    .map_or(BlendMode::Normal, |i| self.layers[i].mode)
+            })
+            .collect();
+        let prepared = self.prepare_group_plan(
+            &graph,
+            groups.as_ref(),
+            &metadata,
+            &modes,
+            self.next_group_id,
+            true,
+        )?;
         self.finish();
         let before = self.composition();
         let active = self.active;
@@ -292,7 +352,8 @@ impl Document {
         self.next_layer_id += 1;
         self.select_layer(index);
         self.graph = graph;
-        self.plan = plan;
+        self.groups = groups;
+        self.install_group_plan(prepared);
         if self.selection.current.is_some() {
             self.selection.previous = self.selection.current.take();
         }
@@ -309,6 +370,12 @@ impl Document {
         }
         if index == to {
             return Ok(());
+        }
+        if self.has_groups() {
+            let mut ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
+            let moved = ids.remove(index);
+            ids.insert(to, moved);
+            return self.reorder_layers(&ids);
         }
         let mut metadata = self.layer_metadata.clone();
         let moved = metadata.remove(index);
@@ -346,6 +413,22 @@ impl Document {
         let mut metadata = self.layer_metadata.clone();
         metadata.remove(index);
         let graph = self.reindexed_graph(&metadata, None)?;
+        let mut groups = self.groups.clone();
+        if let Some(tree) = &mut groups {
+            tree.remove_layer(self.layer_id(index));
+        }
+        let modes: Vec<_> = metadata
+            .iter()
+            .map(|m| self.layers[self.layer_index(m.id).unwrap()].mode)
+            .collect();
+        let prepared = self.prepare_group_plan(
+            &graph,
+            groups.as_ref(),
+            &metadata,
+            &modes,
+            self.next_group_id,
+            true,
+        )?;
         self.finish();
         let before = self.composition();
         let active = self.active;
@@ -366,7 +449,8 @@ impl Document {
             .unwrap_or(index.min(self.layers.len() - 1));
         self.normalize_layer_selection();
         self.graph = graph;
-        self.plan = self.graph.compile(self.layers.len())?;
+        self.groups = groups;
+        self.install_group_plan(prepared);
         self.track_layer_order();
         self.commit_composition(
             before,

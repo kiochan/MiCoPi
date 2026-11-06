@@ -3,6 +3,7 @@ pub mod color;
 pub mod document;
 pub mod document_info;
 pub mod graph;
+pub mod groups;
 pub mod homography;
 pub mod input;
 mod linked_graph;

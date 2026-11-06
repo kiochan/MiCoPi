@@ -17,7 +17,7 @@ impl Document {
             .as_ref()
             .ok_or("Compositor DLL is required to merge layers")?;
         let graph = if full_graph {
-            self.graph.clone()
+            self.effective_graph()?
         } else if self.graph.linked {
             let old: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
             let ids: Vec<_> = indices.iter().map(|&i| self.layer_id(i)).collect();
@@ -28,7 +28,9 @@ impl Document {
             graph.enabled = false;
             graph
         };
-        let plan = if graph.enabled && (!graph.linked || graph.has_filters()) {
+        let plan = if self.has_groups() && full_graph
+            || graph.enabled && (!graph.linked || graph.has_filters())
+        {
             graph.compile(indices.len())?
         } else {
             vec![]
@@ -71,6 +73,30 @@ impl Document {
     pub fn merge_layers(&mut self, operation: MergeLayers, index: usize) -> Result<(), String> {
         if index >= self.layers.len() {
             return Err("Layer does not exist".into());
+        }
+        if self.has_groups() {
+            self.ensure_group_renderer()?;
+            if operation == MergeLayers::Visible {
+                return Err("Merge Visible with groups is not supported; use Flatten Image or Stamp Visible".into());
+            }
+            if operation == MergeLayers::Down && index > 0 {
+                let tree = self.groups.as_ref().unwrap();
+                let a = super::super::groups::GroupItem::layer(self.layer_id(index - 1));
+                let b = super::super::groups::GroupItem::layer(self.layer_id(index));
+                let parent = tree.parent(a)?;
+                let siblings = tree.children(parent)?;
+                if tree.parent(b)? != parent
+                    || siblings
+                        .iter()
+                        .position(|v| *v == a)
+                        .zip(siblings.iter().position(|v| *v == b))
+                        .is_none_or(|(a, b)| a + 1 != b)
+                {
+                    return Err(
+                        "Merge Down requires adjacent raster siblings in the same group".into(),
+                    );
+                }
+            }
         }
         if !self.graph.linked && operation != MergeLayers::Flatten {
             return Err("Layer merges and Stamp Visible require linked composition; use Flatten Image to bake a free graph".into());
@@ -130,7 +156,6 @@ impl Document {
         // Full-stack rendering includes original visibility, filters and blend modes.
         // Removed hidden layers are included only by explicit Flatten Image.
         let all: Vec<_> = (0..self.layers.len()).collect();
-        let pixels = self.render_merge(if full { &all } else { &indices }, full)?;
         let target = if operation == MergeLayers::Down {
             index - 1
         } else {
@@ -187,7 +212,30 @@ impl Document {
                 .collect();
             Graph::linked_from_layers(&layers)
         };
-        let plan = graph.compile(metadata.len())?;
+        let mut groups = self.groups.clone();
+        if operation == MergeLayers::Flatten {
+            groups = None;
+        } else if let Some(tree) = &mut groups {
+            if operation == MergeLayers::Stamp {
+                tree.roots
+                    .push(super::super::groups::GroupItem::layer(self.next_layer_id));
+            } else {
+                for &i in &removed {
+                    if i != target {
+                        tree.remove_layer(self.layer_id(i));
+                    }
+                }
+            }
+        }
+        let prepared = self.prepare_group_plan(
+            &graph,
+            groups.as_ref(),
+            &metadata,
+            &modes,
+            self.next_group_id,
+            true,
+        )?;
+        let pixels = self.render_merge(if full { &all } else { &removed }, full)?;
         self.finish();
         let before = self.composition();
         let active = self.active;
@@ -216,7 +264,8 @@ impl Document {
             self.normalize_layer_selection();
         }
         self.graph = graph;
-        self.plan = plan;
+        self.groups = groups;
+        self.install_group_plan(prepared);
         self.track_layer_order();
         self.commit_composition(
             before,

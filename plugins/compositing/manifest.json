@@ -58,6 +58,22 @@
   ],
   "nodes": [
     {
+      "id": "compositing.transparent",
+      "title": "Transparent",
+      "category": "Image",
+      "binding": {
+        "kind": "image",
+        "operation": "transparent",
+        "defaults": {}
+      },
+      "parameters_schema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
       "id": "compositing.layer",
       "title": "Layer Source",
       "category": "Image",

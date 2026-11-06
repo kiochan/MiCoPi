@@ -26,6 +26,10 @@ pub struct Composition {
     pub next_layer_id: u64,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub selected_layer_ids: Vec<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub groups: Option<super::groups::GroupTree>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub next_group_id: u64,
     #[serde(
         default,
         skip_serializing_if = "super::selection::SelectionState::is_default"
@@ -115,7 +119,13 @@ impl Composition {
                 }
             }
         }
+        if self.next_group_id > u32::MAX as u64 + 1 {
+            return Err("Invalid group allocator".into());
+        }
         if self.layer_metadata.is_empty() {
+            if self.groups.is_some() {
+                return Err("Group trees require stable raster identities".into());
+            }
             return if self.next_layer_id == 0 {
                 Ok(())
             } else {
@@ -135,6 +145,18 @@ impl Composition {
             })
         {
             return Err("Invalid layer identities or names".into());
+        }
+        if let Some(tree) = &self.groups {
+            if !self.graph.linked {
+                return Err("Groups require linked layer-filter composition".into());
+            }
+            let ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
+            tree.validate(&ids, self.next_group_id)?;
+            tree.compile_graph(
+                &self.graph,
+                &ids,
+                &self.layers.iter().map(|v| v.2).collect::<Vec<_>>(),
+            )?;
         }
         Ok(())
     }
@@ -167,6 +189,10 @@ struct HistoryGroup {
 }
 #[derive(Clone)]
 enum LayerChange {
+    Permutation {
+        order: Vec<usize>,
+        active: usize,
+    },
     Canvas(Arc<CanvasState>),
     Replace {
         current: Vec<usize>,
@@ -202,6 +228,8 @@ pub(crate) struct HistoryCheckpoint {
     distance: f32,
     next_layer_id: u64,
     history_group: Option<HistoryGroup>,
+    next_group_id: u64,
+    dirty: bool,
 }
 impl Edit {
     fn bytes(&self) -> usize {
@@ -214,6 +242,9 @@ impl Edit {
                 LayerChange::Canvas(state) => state.layers.iter().map(|l| l.pixels.len() * 4).sum(),
                 LayerChange::Replace { saved, .. } => {
                     saved.iter().map(|(_, l)| l.pixels.len() * 4).sum()
+                }
+                LayerChange::Permutation { order, .. } => {
+                    order.len() * std::mem::size_of::<usize>()
                 }
                 _ => 0,
             })
@@ -237,6 +268,12 @@ pub struct Document {
     layer_metadata: Vec<LayerMetadata>,
     next_layer_id: u64,
     selected_layer_ids: Vec<u64>,
+    groups: Option<super::groups::GroupTree>,
+    next_group_id: u64,
+    effective_graph: Option<Graph>,
+    group_visibility: [bool; MAX_LAYERS],
+    group_nodes: BTreeMap<u64, u32>,
+    groups_revision: u64,
     pub(crate) replay_tiles: std::collections::BTreeSet<(usize, usize)>,
     pub(crate) replay_surface: Option<[usize; 4]>,
     pub(crate) replay_data: Option<Vec<u8>>,
@@ -294,6 +331,8 @@ impl Document {
             distance: self.distance,
             next_layer_id: self.next_layer_id,
             history_group: self.history_group.clone(),
+            next_group_id: self.next_group_id,
+            dirty: self.dirty,
         }
     }
     pub(crate) fn restore_history(&mut self, saved: HistoryCheckpoint) {
@@ -307,6 +346,8 @@ impl Document {
         self.distance = saved.distance;
         self.next_layer_id = saved.next_layer_id;
         self.history_group = saved.history_group;
+        self.next_group_id = saved.next_group_id;
+        self.dirty = saved.dirty;
     }
     pub fn new(width: usize, height: usize) -> Self {
         assert!(width > 0 && height > 0 && width <= MAX_SIDE && height <= MAX_SIDE);
@@ -330,6 +371,12 @@ impl Document {
             }],
             next_layer_id: 2,
             selected_layer_ids: Vec::new(),
+            groups: None,
+            next_group_id: 1,
+            effective_graph: None,
+            group_visibility: [true; MAX_LAYERS],
+            group_nodes: BTreeMap::new(),
+            groups_revision: 0,
             selection: Default::default(),
             workflow: Default::default(),
             identity: {
@@ -365,8 +412,16 @@ impl Document {
         self.changed = Some([0, 0, self.width, self.height]);
         self.display_changed = self.changed;
     }
+    /// The journal restored verified composite pixels directly into this buffer.
+    /// Refresh consumers without invoking a renderer again during rollback.
+    pub(crate) fn finish_verified_surface_restore(&mut self) {
+        self.changed = None;
+        self.display_changed = Some([0, 0, self.width, self.height]);
+        self.replay_surface = Some([0, 0, self.width, self.height]);
+    }
     pub fn requires_renderer(&self) -> bool {
-        (self.graph.enabled && (!self.graph.linked || self.graph.has_filters()))
+        self.has_groups()
+            || (self.graph.enabled && (!self.graph.linked || self.graph.has_filters()))
             || self.layers.iter().any(|l| l.mode != BlendMode::Normal)
     }
     pub fn layer_is_rendered(&self, index: usize) -> bool {
@@ -386,6 +441,12 @@ impl Document {
             next_layer_id: self.next_layer_id,
             workflow: self.workflow.clone(),
             selected_layer_ids: self.selected_layer_ids.clone(),
+            groups: self.groups.clone(),
+            next_group_id: if self.next_group_id == 1 {
+                0
+            } else {
+                self.next_group_id
+            },
             graph: self.graph.clone(),
             layers: self
                 .layers
@@ -452,6 +513,8 @@ impl Document {
         self.last_transform = state.last_transform;
         self.selection = state.selection;
         self.selected_layer_ids = state.selected_layer_ids;
+        self.groups = state.groups;
+        self.next_group_id = self.next_group_id.max(state.next_group_id).max(1);
         self.layer_metadata = if state.layer_metadata.is_empty() {
             (0..self.layers.len())
                 .map(|i| LayerMetadata {
@@ -477,6 +540,7 @@ impl Document {
             l.mode = mode;
         }
         self.normalize_layer_selection();
+        let _ = self.refresh_group_cache();
         self.render_error = None;
         self.invalidate();
     }
@@ -491,6 +555,7 @@ impl Document {
             layer,
             tiles: BTreeMap::new(),
             metadata_bytes: before.graph.nodes.len() * 160
+                + before.groups.as_ref().map_or(0, |g| g.memory_bytes())
                 + before.selected_layer_ids.len() * 8
                 + before.selection.memory_bytes()
                 + std::mem::size_of_val(&before.last_transform)
@@ -514,7 +579,36 @@ impl Document {
         self.invalidate();
     }
     pub fn set_graph(&mut self, graph: Graph) -> Result<(), String> {
-        let plan = graph.compile(self.layers.len())?;
+        if graph
+            .nodes
+            .iter()
+            .any(|n| matches!(n.data, NodeKind::Transparent))
+        {
+            self.ensure_group_renderer()?;
+        }
+        let mut modes: Vec<_> = self.layers.iter().map(|l| l.mode).collect();
+        if graph.linked {
+            for (mode, branch) in modes
+                .iter_mut()
+                .zip(graph.stack_branches(self.layers.len())?)
+            {
+                if let Some(Node {
+                    data: NodeKind::Blend { mode: next, .. },
+                    ..
+                }) = branch.blend
+                {
+                    *mode = next;
+                }
+            }
+        }
+        let prepared = self.prepare_group_plan(
+            &graph,
+            self.groups.as_ref(),
+            &self.layer_metadata,
+            &modes,
+            self.next_group_id,
+            true,
+        )?;
         if ((graph.enabled && (!graph.linked || graph.has_filters()))
             || (graph.linked
                 && graph.nodes.iter().any(
@@ -540,7 +634,7 @@ impl Document {
             }
         }
         self.graph = graph;
-        self.plan = plan;
+        self.install_group_plan(prepared);
         self.commit_composition(before, None);
         Ok(())
     }
@@ -630,6 +724,22 @@ impl Document {
         ) {
             return Ok(());
         }
+        let mut modes: Vec<_> = self.layers.iter().map(|l| l.mode).collect();
+        modes[index] = mode;
+        let graph = if self.graph.linked {
+            let ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
+            self.graph.sync_stack(&modes, &ids, &ids, None)?
+        } else {
+            self.graph.clone()
+        };
+        let prepared = self.prepare_group_plan(
+            &graph,
+            self.groups.as_ref(),
+            &self.layer_metadata,
+            &modes,
+            self.next_group_id,
+            true,
+        )?;
         self.finish();
         let before = self.composition();
         let l = &mut self.layers[index];
@@ -640,12 +750,8 @@ impl Document {
         self.layer_metadata[index].pixel_locked = pixel_locked;
         self.layer_metadata[index].position_locked = position_locked;
         self.layer_metadata[index].color_label = color_label;
-        if self.graph.linked {
-            let ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
-            let modes: Vec<_> = self.layers.iter().map(|l| l.mode).collect();
-            self.graph = self.graph.sync_stack(&modes, &ids, &ids, None)?;
-            self.plan = self.graph.compile(self.layers.len())?;
-        }
+        self.graph = graph;
+        self.install_group_plan(prepared);
         self.commit_composition(before, None);
         Ok(())
     }
@@ -705,8 +811,9 @@ impl Document {
                     };
                     self.render_error = renderer
                         .render(
-                            if self.graph.enabled
-                                && (!self.graph.linked || self.graph.has_filters())
+                            if self.has_groups()
+                                || self.graph.enabled
+                                    && (!self.graph.linked || self.graph.has_filters())
                             {
                                 &self.plan
                             } else {
@@ -794,7 +901,7 @@ impl Document {
             || height == 0
             || x.checked_add(width).is_none_or(|n| n > self.width)
             || y.checked_add(height).is_none_or(|n| n > self.height)
-            || !self.layers[self.active].visible
+            || !self.layer_visible(self.active)
         {
             return false;
         }
@@ -818,7 +925,7 @@ impl Document {
     pub(crate) fn locked_region_empty(&self, x: usize, y: usize, w: usize, h: usize) -> bool {
         self.alpha_locked(self.active)
             && self.stroke.is_some()
-            && self.layers[self.active].visible
+            && self.layer_visible(self.active)
             && w > 0
             && h > 0
             && x.checked_add(w).is_some_and(|v| v <= self.width)
@@ -867,7 +974,7 @@ impl Document {
     }
     pub fn begin(&mut self, x: f32, y: f32, b: Brush) {
         self.finish();
-        if !self.layers[self.active].visible || self.pixel_locked(self.active) {
+        if !self.layer_visible(self.active) || self.pixel_locked(self.active) {
             return;
         }
         self.stroke = Some(Edit {
@@ -1032,6 +1139,12 @@ impl Document {
             let before = self.composition();
             if let Some(change) = &mut e.layer_change {
                 match change {
+                    LayerChange::Permutation { order, active } => {
+                        let inverse = Self::inverse_order(order);
+                        self.permute_buffers(order);
+                        *order = inverse;
+                        std::mem::swap(&mut self.active, active);
+                    }
                     LayerChange::Replace {
                         current,
                         saved,
@@ -1088,6 +1201,7 @@ impl Document {
             self.restore_composition(state.clone());
             *state = before;
             e.metadata_bytes = state.graph.nodes.len() * 160
+                + state.groups.as_ref().map_or(0, |g| g.memory_bytes())
                 + state.selected_layer_ids.len() * 8
                 + state.selection.memory_bytes()
                 + std::mem::size_of_val(&state.last_transform)
@@ -1141,37 +1255,78 @@ impl Document {
         let _ = self.try_add_layer();
     }
     pub fn try_add_layer(&mut self) -> Result<(), String> {
+        self.try_add_layer_in(None)
+    }
+    pub fn try_add_layer_in(&mut self, parent: Option<u64>) -> Result<(), String> {
         if self.layers.len() >= MAX_LAYERS
             || self.width * self.height * (self.layers.len() + 1) > 64 * 1024 * 1024
         {
             return Err("Layer count or document pixel limit reached".into());
         }
         let mut metadata = self.layer_metadata.clone();
-        metadata.push(LayerMetadata {
-            id: self.next_layer_id,
-            name: String::new(),
-            alpha_locked: false,
-            ..Default::default()
-        });
+        let mut groups = self.groups.clone();
+        if let Some(tree) = &mut groups {
+            if let Some(parent) = parent {
+                tree.children_mut(parent)?
+                    .push(super::groups::GroupItem::layer(self.next_layer_id));
+            } else {
+                tree.insert_layer_after(self.layer_id(self.active), self.next_layer_id)?;
+            }
+        } else if parent.is_some_and(|id| id != 0) {
+            return Err("Group does not exist".into());
+        }
+        let index = groups
+            .as_ref()
+            .map(|t| t.layer_ids())
+            .transpose()?
+            .map(|ids| ids.iter().position(|id| *id == self.next_layer_id).unwrap())
+            .unwrap_or(self.layers.len());
+        metadata.insert(
+            index,
+            LayerMetadata {
+                id: self.next_layer_id,
+                name: String::new(),
+                alpha_locked: false,
+                ..Default::default()
+            },
+        );
         let graph = self.reindexed_graph(&metadata, None)?;
         if self.next_layer_id > u32::MAX as u64 {
             return Err("Layer identity limit reached".into());
         }
-        let plan = graph.compile(metadata.len())?;
+        let modes: Vec<_> = metadata
+            .iter()
+            .map(|m| {
+                self.layer_index(m.id)
+                    .map_or(BlendMode::Normal, |i| self.layers[i].mode)
+            })
+            .collect();
+        let prepared = self.prepare_group_plan(
+            &graph,
+            groups.as_ref(),
+            &metadata,
+            &modes,
+            self.next_group_id,
+            true,
+        )?;
         self.finish();
         let before = self.composition();
         let active = self.active;
         self.layer_metadata = metadata;
         self.next_layer_id += 1;
-        self.layers.push(Layer {
-            pixels: vec![0; self.width * self.height],
-            visible: true,
-            opacity: 255,
-            mode: BlendMode::Normal,
-        });
-        self.select_layer(self.layers.len() - 1);
+        self.layers.insert(
+            index,
+            Layer {
+                pixels: vec![0; self.width * self.height],
+                visible: true,
+                opacity: 255,
+                mode: BlendMode::Normal,
+            },
+        );
+        self.select_layer(index);
         self.graph = graph;
-        self.plan = plan;
+        self.groups = groups;
+        self.install_group_plan(prepared);
         self.commit_composition(
             before,
             Some(LayerChange::Toggle {
@@ -1442,6 +1597,8 @@ impl Document {
 }
 #[path = "canvas_editing.rs"]
 mod canvas_editing;
+#[path = "group_editing.rs"]
+mod group_editing;
 #[path = "layer_editing.rs"]
 mod layer_editing;
 #[path = "layer_merge.rs"]

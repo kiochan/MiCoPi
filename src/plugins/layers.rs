@@ -41,6 +41,9 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             Ok(s.state())
         }
         MergeDown | MergeVisible | FlattenImage | StampVisible => {
+            if op == MergeVisible && s.doc.has_groups() {
+                return Err(ActionError::new("group_boundary", "Merge Visible with groups is not supported; use Flatten Image or Stamp Visible"));
+            }
             use crate::engine::document::MergeLayers;
             let i = if op == MergeDown {
                 index()?
@@ -84,6 +87,15 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             Ok(s.state())
         }
         AddLayer => {
+            let parent = args.get("parent_id").and_then(Value::as_u64);
+            if let Some(id) = parent.filter(|id| *id != 0) {
+                s.doc
+                    .group_layer_ids(id)
+                    .map_err(|e| ActionError::new("invalid_group", e))?;
+            }
+            s.doc
+                .preflight_new_layer(parent)
+                .map_err(|e| ActionError::new("layer_limit", e))?;
             if s.doc.layers.len() >= MAX_LAYERS
                 || s.doc.width * s.doc.height * (s.doc.layers.len() + 1) > 64 * 1024 * 1024
             {
@@ -95,7 +107,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             s.finish_stroke();
             let count = s.doc.layers.len();
             s.doc
-                .try_add_layer()
+                .try_add_layer_in(parent)
                 .map_err(|e| ActionError::new("layer_limit", e))?;
             if s.doc.layers.len() == count {
                 return Err(ActionError::new(

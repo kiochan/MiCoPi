@@ -15,7 +15,7 @@ pub(crate) fn resolved_target(s: &Session, target: MoveTarget) -> MoveTarget {
 }
 pub(crate) fn preview_bounds(s: &Session, target: MoveTarget) -> Result<[usize; 4], String> {
     let target = resolved_target(s, target);
-    if target != MoveTarget::SelectionMask && !s.doc.layers[s.doc.active].visible {
+    if target != MoveTarget::SelectionMask && !s.doc.layer_visible(s.doc.active) {
         return Err("Make the active layer visible before moving pixels".into());
     }
     if target == MoveTarget::Layer {
@@ -76,7 +76,7 @@ pub(crate) fn context(s: &Session, op: Operation, args: &Value) -> Value {
 }
 fn run(s: &mut Session, op: Operation, args: &Value) -> Result<(), String> {
     let o = options(s, op, args);
-    if o.kind != 2 && !s.doc.layers[s.doc.active].visible {
+    if o.kind != 2 && !s.doc.layer_visible(s.doc.active) {
         return Err("Make the active layer visible before moving pixels".into());
     }
     if o.kind != 0

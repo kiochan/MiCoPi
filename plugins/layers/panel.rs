@@ -4,6 +4,8 @@ use crate::engine::document::LayerColor;
 use serde_json::{json, Value};
 use std::{hash::Hasher, sync::Arc};
 
+#[path = "groups.rs"]
+mod groups;
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 enum LockFilter {
     #[default]
@@ -315,7 +317,15 @@ impl Editor {
         }
         success
     }
+    #[cfg(test)]
     fn dispatch_layer_pending(&mut self, pending: Vec<crate::application::Action>) {
+        self.dispatch_layer_pending_ui(pending, None);
+    }
+    fn dispatch_layer_pending_ui(
+        &mut self,
+        pending: Vec<crate::application::Action>,
+        ctx: Option<&Context>,
+    ) {
         for mut action in pending {
             if self.input_owned || self.drawing || self.panning.is_some() {
                 self.finish_stroke();
@@ -325,7 +335,16 @@ impl Editor {
             if action.action == "layer.batch" && action.expected_revision.is_none() {
                 action.expected_revision = Some(self.session.revision);
             }
-            if !self.core_at_revision(&action.action, action.args, action.expected_revision) {
+            let success = if action.action.starts_with("group.") {
+                if let Some(ctx) = ctx {
+                    self.dispatch_group_ui(ctx, action)
+                } else {
+                    self.core_at_revision(&action.action, action.args, action.expected_revision)
+                }
+            } else {
+                self.core_at_revision(&action.action, action.args, action.expected_revision)
+            };
+            if !success {
                 break;
             }
         }
@@ -428,6 +447,21 @@ impl Editor {
                         ui.selectable_value(&mut filter.visible, Some(true), tr("Visible Layers"));
                         ui.selectable_value(&mut filter.visible, Some(false), tr("Hidden Layers"));
                     });
+                ComboBox::from_id_salt("layer-filter-selected")
+                    .selected_text(tr(match filter.selected {
+                        None => "Any Selection",
+                        Some(true) => "Selected Layers",
+                        Some(false) => "Unselected Layers",
+                    }))
+                    .show_ui(ui, |ui| {
+                        for (value, title) in [
+                            (None, "Any Selection"),
+                            (Some(true), "Selected Layers"),
+                            (Some(false), "Unselected Layers"),
+                        ] {
+                            ui.selectable_value(&mut filter.selected, value, tr(title));
+                        }
+                    });
                 ComboBox::from_id_salt("layer-filter-lock")
                     .selected_text(tr(filter.lock.title()))
                     .show_ui(ui, |ui| {
@@ -447,7 +481,7 @@ impl Editor {
             .on_hover_text(tr("Filter Layers"));
         });
         let queried_filter = filter.clone();
-        let rows = self.cached_layer_indices(ui.ctx(), &filter);
+        let rows = self.panel_filtered_indices(ui.ctx(), &filter);
         match &rows {
             Ok(rows) => {
                 let selected = (0..self.session.doc.layers.len())
@@ -463,11 +497,20 @@ impl Editor {
                     ui.weak(tr(format!("{} selected outside this filter", outside)));
                 }
                 if filter.active() {
-                    ui.weak(tr(format!(
-                        "{} of {} layers",
-                        rows.len(),
-                        self.session.doc.layers.len()
-                    )));
+                    if self.session.doc.has_groups() {
+                        if let Ok(data) = self.group_query_ui(ui.ctx(), &filter) {
+                            ui.weak(tr(format!(
+                                "{} layers and {} groups match",
+                                data.matched_layers, data.matched_groups
+                            )));
+                        }
+                    } else {
+                        ui.weak(tr(format!(
+                            "{} of {} layers",
+                            rows.len(),
+                            self.session.doc.layers.len()
+                        )));
+                    }
                     if !rows.contains(&self.session.doc.active) {
                         ui.weak(tr("Active layer is outside this filter."));
                     }
@@ -482,7 +525,7 @@ impl Editor {
         }
         ui.data_mut(|d| d.insert_temp(key, filter.clone()));
         if filter != queried_filter {
-            self.cached_layer_indices(ui.ctx(), &filter)
+            self.panel_filtered_indices(ui.ctx(), &filter)
                 .unwrap_or_default()
         } else {
             rows.unwrap_or_default()
@@ -505,6 +548,17 @@ impl Editor {
         let multi = targets.len() > 1;
         let lowest = *indices.iter().min().unwrap();
         let remaining = count - targets.len();
+        let grouped = self.session.doc.has_groups();
+        let group_up = if grouped {
+            self.group_sibling_move_ui(&targets, true)
+        } else {
+            None
+        };
+        let group_down = if grouped {
+            self.group_sibling_move_ui(&targets, false)
+        } else {
+            None
+        };
         let pixels = indices.iter().any(|&i| self.session.doc.pixel_locked(i));
         let position = indices.iter().any(|&i| self.session.doc.position_locked(i));
         if multi {
@@ -543,24 +597,36 @@ impl Editor {
                 count + targets.len() <= 16,
             ),
             (
-                "layer.move",
+                if grouped { "group.move" } else { "layer.move" },
                 if multi {
                     "Move Selected Layers Up"
                 } else {
                     "Move Layer Up"
                 },
-                serde_json::json!({"layer_id":id,"to":(lowest+1).min(remaining)}),
-                lowest < remaining,
+                group_up.clone().unwrap_or_else(
+                    || serde_json::json!({"layer_id":id,"to":(lowest+1).min(remaining)}),
+                ),
+                if grouped {
+                    group_up.is_some()
+                } else {
+                    lowest < remaining
+                },
             ),
             (
-                "layer.move",
+                if grouped { "group.move" } else { "layer.move" },
                 if multi {
                     "Move Selected Layers Down"
                 } else {
                     "Move Layer Down"
                 },
-                serde_json::json!({"layer_id":id,"to":lowest.saturating_sub(1)}),
-                lowest > 0,
+                group_down.clone().unwrap_or_else(
+                    || serde_json::json!({"layer_id":id,"to":lowest.saturating_sub(1)}),
+                ),
+                if grouped {
+                    group_down.is_some()
+                } else {
+                    lowest > 0
+                },
             ),
             (
                 "layer.delete",
@@ -786,6 +852,7 @@ impl Editor {
     }
     pub(super) fn layers_ui(&mut self, ui: &mut Ui) {
         let mut pending = Vec::new();
+        let focus = self.focused_group_ui(ui.ctx());
         let targets = self.session.doc.selected_layer_ids();
         let target_indices: Vec<_> = targets
             .iter()
@@ -793,13 +860,21 @@ impl Editor {
             .collect();
         ui.horizontal_wrapped(|ui| {
             if icon_button(ui, self, 42, false).clicked() {
-                self.actions.push(Action::NewLayer);
+                if let Some(parent) = focus {
+                    pending.push(crate::application::Action::new(
+                        "layer.add",
+                        json!({"parent_id":parent}),
+                    ));
+                } else {
+                    self.actions.push(Action::NewLayer);
+                }
             }
             if ui
                 .add_enabled_ui(
-                    target_indices.iter().all(|&i| {
-                        !self.session.doc.pixel_locked(i) && !self.session.doc.alpha_locked(i)
-                    }),
+                    focus.is_none()
+                        && target_indices.iter().all(|&i| {
+                            !self.session.doc.pixel_locked(i) && !self.session.doc.alpha_locked(i)
+                        }),
                     |ui| icon_button(ui, self, 43, false),
                 )
                 .inner
@@ -811,231 +886,240 @@ impl Editor {
                     self.actions.push(Action::UiCommand(43));
                 }
             }
-            ui.menu_button(tr("···"), |ui| {
-                if let Some(action) = self.layer_menu(ui, self.session.doc.active) {
-                    pending.push(action);
-                }
+            self.group_toolbar_ui(ui, &mut pending);
+            ui.add_enabled_ui(focus.is_none(), |ui| {
+                ui.menu_button(tr("···"), |ui| {
+                    if let Some(action) = self.layer_menu(ui, self.session.doc.active) {
+                        pending.push(action);
+                    }
+                })
             })
+            .inner
             .response
             .on_hover_text(tr("Layer Actions"));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.weak(tr(format!("{} / 16", self.session.doc.layers.len())));
             });
         });
-        let index = self.session.doc.active;
-        let id = self.session.doc.layer_id(index);
-        if targets.len() > 1 {
-            ui.weak(tr("Active Layer Name"));
-        }
-        let edit_id = Id::new(("layer-name", self.session.doc.identity, id));
-        let current = if self.session.doc.custom_layer_name(index).is_empty() {
-            localize(format!("Layer {:02}", index + 1))
-        } else {
-            self.session.doc.layer_name(index)
-        };
-        let mut draft = ui
-            .data_mut(|d| d.get_temp::<String>(edit_id))
-            .unwrap_or_else(|| current.clone());
-        let response = ui.add(
-            TextEdit::singleline(&mut draft)
-                .id(edit_id)
-                .char_limit(120)
-                .desired_width(f32::INFINITY)
-                .hint_text(crate::i18n::text("Layer Name")),
-        );
-        if response.changed() {
-            ui.data_mut(|d| d.insert_temp(edit_id, draft.clone()));
-        }
-        if response.has_focus() && ui.input(|i| i.key_pressed(Key::Escape)) {
-            response.surrender_focus();
-            ui.data_mut(|d| d.remove::<String>(edit_id));
-        } else if response.lost_focus()
-            || (response.has_focus() && ui.input(|i| i.key_pressed(Key::Enter)))
-        {
-            if draft != current && !draft.trim().is_empty() {
-                pending.insert(
-                    0,
-                    crate::application::Action::new(
-                        "layer.rename",
-                        serde_json::json!({"layer_id":id,"name":draft}),
-                    ),
-                );
+        let a = self.settings.ui.clone();
+        if !self.group_properties_ui(ui, &mut pending) {
+            let index = self.session.doc.active;
+            let id = self.session.doc.layer_id(index);
+            if targets.len() > 1 {
+                ui.weak(tr("Active Layer Name"));
             }
-            ui.data_mut(|d| d.remove::<String>(edit_id));
-        }
-        ui.add_space(self.settings.ui.item_spacing);
-        let before = LayerProperties::read(self, index);
-        let alpha_mixed = target_indices
-            .iter()
-            .any(|&i| self.session.doc.alpha_locked(i) != before.alpha);
-        let pixels_mixed = target_indices
-            .iter()
-            .any(|&i| self.session.doc.pixel_locked(i) != before.pixels);
-        let position_mixed = target_indices
-            .iter()
-            .any(|&i| self.session.doc.position_locked(i) != before.position);
-        let color_mixed = target_indices
-            .iter()
-            .any(|&i| self.session.doc.color_label(i) != before.color);
-        let mut changes = json!({});
-        let mut alpha = before.alpha && !alpha_mixed;
-        ui.scope(|ui| {
-            ui.style_mut().wrap_mode = Some(TextWrapMode::Wrap);
+            let edit_id = Id::new(("layer-name", self.session.doc.identity, id));
+            let current = if self.session.doc.custom_layer_name(index).is_empty() {
+                localize(format!("Layer {:02}", index + 1))
+            } else {
+                self.session.doc.layer_name(index)
+            };
+            let mut draft = ui
+                .data_mut(|d| d.get_temp::<String>(edit_id))
+                .unwrap_or_else(|| current.clone());
+            let response = ui.add(
+                TextEdit::singleline(&mut draft)
+                    .id(edit_id)
+                    .char_limit(120)
+                    .desired_width(f32::INFINITY)
+                    .hint_text(crate::i18n::text("Layer Name")),
+            );
+            if response.changed() {
+                ui.data_mut(|d| d.insert_temp(edit_id, draft.clone()));
+            }
+            if response.has_focus() && ui.input(|i| i.key_pressed(Key::Escape)) {
+                response.surrender_focus();
+                ui.data_mut(|d| d.remove::<String>(edit_id));
+            } else if response.lost_focus()
+                || (response.has_focus() && ui.input(|i| i.key_pressed(Key::Enter)))
+            {
+                if draft != current && !draft.trim().is_empty() {
+                    pending.insert(
+                        0,
+                        crate::application::Action::new(
+                            "layer.rename",
+                            serde_json::json!({"layer_id":id,"name":draft}),
+                        ),
+                    );
+                }
+                ui.data_mut(|d| d.remove::<String>(edit_id));
+            }
+            ui.add_space(self.settings.ui.item_spacing);
+            let before = LayerProperties::read(self, index);
+            let alpha_mixed = target_indices
+                .iter()
+                .any(|&i| self.session.doc.alpha_locked(i) != before.alpha);
+            let pixels_mixed = target_indices
+                .iter()
+                .any(|&i| self.session.doc.pixel_locked(i) != before.pixels);
+            let position_mixed = target_indices
+                .iter()
+                .any(|&i| self.session.doc.position_locked(i) != before.position);
+            let color_mixed = target_indices
+                .iter()
+                .any(|&i| self.session.doc.color_label(i) != before.color);
+            let mut changes = json!({});
+            let mut alpha = before.alpha && !alpha_mixed;
+            ui.scope(|ui| {
+                ui.style_mut().wrap_mode = Some(TextWrapMode::Wrap);
+                if ui
+                    .add(
+                        Checkbox::new(&mut alpha, tr("Lock Layer Transparency"))
+                            .indeterminate(alpha_mixed),
+                    )
+                    .changed()
+                {
+                    changes["alpha_locked"] = json!(alpha);
+                }
+            });
+            ui.horizontal_wrapped(|ui| {
+                ui.weak(tr("Layer Locks"));
+                let pixel_hint = if pixels_mixed {
+                    format!("{}\n{}", localize("Lock Pixels"), localize("Mixed Values"))
+                } else {
+                    localize("Lock Pixels").into_owned()
+                };
+                if ui
+                    .add(layer_icon_button(
+                        &a,
+                        '\u{e899}',
+                        before.pixels && !pixels_mixed,
+                    ))
+                    .on_hover_text(pixel_hint)
+                    .clicked()
+                {
+                    changes["pixel_locked"] = json!(pixels_mixed || !before.pixels);
+                }
+                let position_hint = if position_mixed {
+                    format!(
+                        "{}\n{}",
+                        localize("Lock Position"),
+                        localize("Mixed Values")
+                    )
+                } else {
+                    localize("Lock Position").into_owned()
+                };
+                if ui
+                    .add(layer_icon_button(
+                        &a,
+                        '\u{e89f}',
+                        before.position && !position_mixed,
+                    ))
+                    .on_hover_text(position_hint)
+                    .clicked()
+                {
+                    changes["position_locked"] = json!(position_mixed || !before.position);
+                }
+                ComboBox::from_id_salt(("layer-color", id))
+                    .width(a.control_height * 4.)
+                    .truncate()
+                    .selected_text(if color_mixed {
+                        tr("Mixed Values")
+                    } else {
+                        color_label_text(ui, before.color)
+                    })
+                    .show_ui(ui, |ui| {
+                        for color in LayerColor::ALL {
+                            if ui
+                                .selectable_label(
+                                    !color_mixed && before.color == color,
+                                    color_label_text(ui, color),
+                                )
+                                .clicked()
+                            {
+                                changes["color_label"] = json!(color);
+                            }
+                        }
+                    })
+                    .response
+                    .on_hover_text(tr("Color Label"));
+            });
+            let mut mode = self.session.doc.layers[index].mode;
+            let mode_mixed = target_indices
+                .iter()
+                .any(|&i| self.session.doc.layers[i].mode != mode);
+            let mut mode_changed = false;
+            let narrow = ui.available_width() < a.control_height * 9.;
+            let blend = |ui: &mut Ui| {
+                ui.weak(tr("Blend Mode"));
+                ui.add_enabled_ui(
+                    self.session.doc.graph.linked || !self.session.doc.graph.enabled,
+                    |ui| {
+                        ComboBox::from_id_salt("layer-blend")
+                            .width(if narrow {
+                                ui.available_width().min(a.control_height * 6.)
+                            } else {
+                                a.control_height * 4.
+                            })
+                            .truncate()
+                            .selected_text(tr(if mode_mixed {
+                                "Mixed Values"
+                            } else {
+                                mode.title()
+                            }))
+                            .show_ui(ui, |ui| {
+                                for item in crate::engine::graph::BlendMode::ALL {
+                                    if ui
+                                        .selectable_label(
+                                            !mode_mixed && mode == item,
+                                            tr(item.title()),
+                                        )
+                                        .clicked()
+                                    {
+                                        mode = item;
+                                        mode_changed = true;
+                                    }
+                                }
+                            });
+                    },
+                );
+            };
+            if narrow {
+                ui.vertical(blend);
+            } else {
+                ui.horizontal(blend);
+            }
+            if mode_changed {
+                changes["blend_mode"] = json!(mode);
+            }
             if ui
                 .add(
-                    Checkbox::new(&mut alpha, tr("Lock Layer Transparency"))
-                        .indeterminate(alpha_mixed),
+                    Button::new(tr(RichText::new(localize("Node Editor…"))
+                        .color(theme::Colors::new(&self.settings.ui).accent_text)))
+                    .frame(false),
                 )
-                .changed()
-            {
-                changes["alpha_locked"] = json!(alpha);
-            }
-        });
-        let a = self.settings.ui.clone();
-        ui.horizontal_wrapped(|ui| {
-            ui.weak(tr("Layer Locks"));
-            let pixel_hint = if pixels_mixed {
-                format!("{}\n{}", localize("Lock Pixels"), localize("Mixed Values"))
-            } else {
-                localize("Lock Pixels").into_owned()
-            };
-            if ui
-                .add(layer_icon_button(
-                    &a,
-                    '\u{e899}',
-                    before.pixels && !pixels_mixed,
-                ))
-                .on_hover_text(pixel_hint)
                 .clicked()
             {
-                changes["pixel_locked"] = json!(pixels_mixed || !before.pixels);
+                self.core("graph.open", serde_json::json!({}));
             }
-            let position_hint = if position_mixed {
-                format!(
-                    "{}\n{}",
-                    localize("Lock Position"),
-                    localize("Mixed Values")
-                )
-            } else {
-                localize("Lock Position").into_owned()
-            };
-            if ui
-                .add(layer_icon_button(
-                    &a,
-                    '\u{e89f}',
-                    before.position && !position_mixed,
-                ))
-                .on_hover_text(position_hint)
-                .clicked()
-            {
-                changes["position_locked"] = json!(position_mixed || !before.position);
+            if self.session.doc.graph.enabled && !self.session.doc.graph.linked {
+                ui.weak(tr(
+                    "Node Graph Controls Compositing; Set Modes on Blend Nodes",
+                ));
+                if !self.session.doc.layer_is_rendered(self.session.doc.active) {
+                    ui.colored_label(
+                        ui.visuals().warn_fg_color,
+                        tr("Current Layer Is Not Connected to the Output"),
+                    );
+                }
             }
-            ComboBox::from_id_salt(("layer-color", id))
-                .width(a.control_height * 4.)
-                .truncate()
-                .selected_text(if color_mixed {
-                    tr("Mixed Values")
-                } else {
-                    color_label_text(ui, before.color)
-                })
-                .show_ui(ui, |ui| {
-                    for color in LayerColor::ALL {
-                        if ui
-                            .selectable_label(
-                                !color_mixed && before.color == color,
-                                color_label_text(ui, color),
-                            )
-                            .clicked()
-                        {
-                            changes["color_label"] = json!(color);
-                        }
-                    }
-                })
-                .response
-                .on_hover_text(tr("Color Label"));
-        });
-        let mut mode = self.session.doc.layers[index].mode;
-        let mode_mixed = target_indices
-            .iter()
-            .any(|&i| self.session.doc.layers[i].mode != mode);
-        let mut mode_changed = false;
-        let narrow = ui.available_width() < a.control_height * 9.;
-        let blend = |ui: &mut Ui| {
-            ui.weak(tr("Blend Mode"));
-            ui.add_enabled_ui(
-                self.session.doc.graph.linked || !self.session.doc.graph.enabled,
-                |ui| {
-                    ComboBox::from_id_salt("layer-blend")
-                        .width(if narrow {
-                            ui.available_width().min(a.control_height * 6.)
-                        } else {
-                            a.control_height * 4.
-                        })
-                        .truncate()
-                        .selected_text(tr(if mode_mixed {
-                            "Mixed Values"
-                        } else {
-                            mode.title()
-                        }))
-                        .show_ui(ui, |ui| {
-                            for item in crate::engine::graph::BlendMode::ALL {
-                                if ui
-                                    .selectable_label(!mode_mixed && mode == item, tr(item.title()))
-                                    .clicked()
-                                {
-                                    mode = item;
-                                    mode_changed = true;
-                                }
-                            }
-                        });
-                },
-            );
-        };
-        if narrow {
-            ui.vertical(blend);
-        } else {
-            ui.horizontal(blend);
-        }
-        if mode_changed {
-            changes["blend_mode"] = json!(mode);
-        }
-        if ui
-            .add(
-                Button::new(tr(RichText::new(localize("Node Editor…"))
-                    .color(theme::Colors::new(&self.settings.ui).accent_text)))
-                .frame(false),
-            )
-            .clicked()
-        {
-            self.core("graph.open", serde_json::json!({}));
-        }
-        if self.session.doc.graph.enabled && !self.session.doc.graph.linked {
-            ui.weak(tr(
-                "Node Graph Controls Compositing; Set Modes on Blend Nodes",
-            ));
-            if !self.session.doc.layer_is_rendered(self.session.doc.active) {
-                ui.colored_label(
-                    ui.visuals().warn_fg_color,
-                    tr("Current Layer Is Not Connected to the Output"),
-                );
+            let mut opacity =
+                self.session.doc.layers[self.session.doc.active].opacity as f32 / 255.;
+            let previous = opacity;
+            parameter(ui, "Opacity", &mut opacity, 0.0..=1., "%", true, false);
+            if (opacity - previous).abs() > 0.0001 {
+                changes["opacity"] = json!(opacity);
             }
+            if target_indices.iter().any(|&i| {
+                self.session.doc.layers[i].opacity != self.session.doc.layers[index].opacity
+            }) {
+                ui.weak(tr("Mixed opacity; edits apply to selected layers."));
+            }
+            if let Some(action) = property_action(&targets, changes) {
+                pending.push(action);
+            }
+            ui.add_space(self.settings.ui.item_spacing);
         }
-        let mut opacity = self.session.doc.layers[self.session.doc.active].opacity as f32 / 255.;
-        let previous = opacity;
-        parameter(ui, "Opacity", &mut opacity, 0.0..=1., "%", true, false);
-        if (opacity - previous).abs() > 0.0001 {
-            changes["opacity"] = json!(opacity);
-        }
-        if target_indices
-            .iter()
-            .any(|&i| self.session.doc.layers[i].opacity != self.session.doc.layers[index].opacity)
-        {
-            ui.weak(tr("Mixed opacity; edits apply to selected layers."));
-        }
-        if let Some(action) = property_action(&targets, changes) {
-            pending.push(action);
-        }
-        ui.add_space(self.settings.ui.item_spacing);
         let indices = self.layer_filters_ui(ui);
         ui.add_space(a.item_spacing);
         let colors = theme::Colors::new(&a);
@@ -1043,7 +1127,82 @@ impl Editor {
         let detail_height = a.small_font_size * 1.5;
         let row_height = (a.control_height + a.panel_padding * 2.)
             .max(name_height + detail_height + a.item_spacing * 2.);
-        for &index in indices.iter().rev() {
+        let filter = ui
+            .data_mut(|data| {
+                data.get_temp::<LayerFilter>(LayerFilter::key(self.session.doc.identity))
+            })
+            .unwrap_or_default();
+        let listing = if self.session.doc.has_groups() {
+            match self.group_listing_ui(ui.ctx(), &filter) {
+                Ok(listing) => Some(listing),
+                Err(error) => {
+                    ui.colored_label(ui.visuals().error_fg_color, localize(&error));
+                    None
+                }
+            }
+        } else {
+            None
+        };
+        let visible_layers = listing
+            .as_ref()
+            .map(|listing| listing.layers.clone())
+            .unwrap_or_else(|| indices.clone());
+        if let Some(listing) = &listing {
+            let collapsed = listing
+                .data
+                .layers
+                .iter()
+                .filter(|&&i| self.session.doc.layer_selected(i) && !visible_layers.contains(&i))
+                .count();
+            if collapsed > 0 {
+                ui.weak(tr(format!("{} selected in collapsed groups", collapsed)));
+            }
+        }
+        let entries = listing
+            .as_ref()
+            .map(|listing| {
+                listing
+                    .entries
+                    .iter()
+                    .map(|entry| match *entry {
+                        groups::DisplayEntry::Group(i) => groups::DisplayEntry::Group(i),
+                        groups::DisplayEntry::Layer {
+                            index,
+                            depth,
+                            effective_visible,
+                        } => groups::DisplayEntry::Layer {
+                            index,
+                            depth,
+                            effective_visible,
+                        },
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_else(|| {
+                indices
+                    .iter()
+                    .rev()
+                    .map(|&index| groups::DisplayEntry::Layer {
+                        index,
+                        depth: 0,
+                        effective_visible: self.session.doc.layers[index].visible,
+                    })
+                    .collect()
+            });
+        for entry in entries {
+            let (index, depth, effective_visible) = match entry {
+                groups::DisplayEntry::Group(i) => {
+                    if let Some(listing) = &listing {
+                        self.group_row_ui(ui, &listing.data.rows[i], filter.active(), &mut pending);
+                    }
+                    continue;
+                }
+                groups::DisplayEntry::Layer {
+                    index,
+                    depth,
+                    effective_visible,
+                } => (index, depth, effective_visible),
+            };
             let width = ui
                 .available_width()
                 .min((ui.clip_rect().right() - ui.next_widget_position().x).max(0.));
@@ -1091,8 +1250,14 @@ impl Editor {
                     color,
                 );
             }
+            let indent = (depth as f32 * (a.panel_padding + a.item_spacing))
+                .min((width - a.control_height * 4.).max(0.));
             let eye = Rect::from_min_size(
-                r.min + vec2(a.item_spacing, (row_height - a.control_height) * 0.5),
+                r.min
+                    + vec2(
+                        a.item_spacing + indent,
+                        (row_height - a.control_height) * 0.5,
+                    ),
                 Vec2::splat(a.control_height),
             );
             let toggle = ui.interact(
@@ -1108,10 +1273,28 @@ impl Editor {
             ui.painter().circle_stroke(
                 eye.center(),
                 4.,
-                Stroke::new(1., if visible { colors.accent } else { colors.muted }),
+                Stroke::new(
+                    1.,
+                    if visible && effective_visible {
+                        colors.accent
+                    } else {
+                        colors.muted
+                    },
+                ),
             );
             if visible {
-                ui.painter().circle_filled(eye.center(), 2., colors.accent);
+                ui.painter().circle_filled(
+                    eye.center(),
+                    2.,
+                    if effective_visible {
+                        colors.accent
+                    } else {
+                        colors.muted
+                    },
+                );
+            }
+            if visible && !effective_visible {
+                toggle.clone().on_hover_text(tr("Hidden by a parent group"));
             }
             if toggle.clicked() {
                 self.core(
@@ -1236,10 +1419,11 @@ impl Editor {
             }
             let response = response.on_hover_text(hint);
             if response.clicked() && !toggle.clicked() {
+                self.focus_group_ui(ui.ctx(), None);
                 self.layer_row_selection(
                     ui.ctx(),
                     self.session.doc.layer_id(index),
-                    &indices,
+                    &visible_layers,
                     ui.input(|input| input.modifiers),
                 );
             }
@@ -1249,7 +1433,7 @@ impl Editor {
                 }
             });
         }
-        self.dispatch_layer_pending(pending);
+        self.dispatch_layer_pending_ui(pending, Some(ui.ctx()));
     }
 }
 

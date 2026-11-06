@@ -149,6 +149,16 @@ pub enum Operation {
     LayerQuery,
     LayerSelection,
     LayerBatch,
+    GroupQuery,
+    GroupCreate,
+    GroupCreateSelected,
+    GroupProperties,
+    GroupMove,
+    GroupUngroup,
+    GroupUngroupParent,
+    GroupDelete,
+    GroupDuplicate,
+    GroupSelectLayers,
     ClearLayer,
     SelectionShape,
     SelectAll,
@@ -192,6 +202,26 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::AddLayer {
+            return json!({"type":"object","properties":{
+                "parent_id":{"type":"integer","minimum":0,"maximum":4294967295u64,"description":"Parent group ID; zero means document root. When omitted, insert beside the active raster layer."}
+            },"additionalProperties":false});
+        }
+        if matches!(
+            self,
+            Self::GroupQuery
+                | Self::GroupCreate
+                | Self::GroupCreateSelected
+                | Self::GroupProperties
+                | Self::GroupMove
+                | Self::GroupUngroup
+                | Self::GroupUngroupParent
+                | Self::GroupDelete
+                | Self::GroupDuplicate
+                | Self::GroupSelectLayers
+        ) {
+            return crate::plugins::groups::schema(self);
+        }
         if self == Self::LayerQuery {
             return super::layer_query::schema();
         }
@@ -415,6 +445,7 @@ impl Operation {
                 | Self::ContextRead
                 | Self::State
                 | Self::LayerQuery
+                | Self::GroupQuery
                 | Self::NewPlan
                 | Self::ImageSizePlan
                 | Self::DocumentInfo

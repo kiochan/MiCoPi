@@ -38,7 +38,13 @@ fn all_plugin_actions_states_and_image_definitions_are_discovered_without_invoca
     assert!(nodes
         .iter()
         .any(|n| n["id"] == "state.native_paint.stats" && n["domain"] == "workflow"));
-    assert_eq!(nodes.iter().filter(|n| n["domain"] == "image").count(), 4);
+    assert_eq!(nodes.iter().filter(|n| n["domain"] == "image").count(), 5);
+    let transparent = nodes
+        .iter()
+        .find(|n| n["id"] == "compositing.transparent")
+        .unwrap();
+    assert_eq!(transparent["domain"], "image");
+    assert!(transparent["inputs"].as_array().unwrap().is_empty());
     let state = nodes
         .iter()
         .find(|n| n["id"] == "action.canvas.state")

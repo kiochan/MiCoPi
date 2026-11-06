@@ -16,7 +16,7 @@ This roadmap starts from the **0.21.0 implementation and subsequent work on main
 - Unified package metadata, host compatibility checks, lifecycle diagnostics and dependency-aware enable/disable plans shared by Settings and automation.
 - English-only embedding; external Chinese, Japanese and Korean catalogs with profile overrides, owner-scoped plugin catalogs and background hot reload.
 
-Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no verified system-clipboard interoperability, off-canvas layer storage or layer groups. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
+Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no verified system-clipboard interoperability, off-canvas layer storage or raster/clipping masks. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
 
 ## Delivery order
 
@@ -37,7 +37,7 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 
 ## M1 — Reliable document foundation
 
-Layer organization now includes persistent pixel/position locks, color labels, read-only name/metadata filtering, stable-ID multi-selection and explicit shared-handler batches with one Undo/Redo group and verified outcome. These are shared with nodes/MCP/headless and retain host-enforced native write permissions; groups, raster/clipping masks and multi-layer Free Transform remain planned in the [editing checklist](docs/photoshop-essentials.md).
+Layer organization now includes persistent pixel/position locks, color labels, read-only name/metadata filtering, stable-ID multi-selection and explicit shared-handler batches with one Undo/Redo group and verified outcome. These are shared with nodes/MCP/headless and retain host-enforced native write permissions; raster/clipping masks and multi-layer Free Transform remain planned in the [editing checklist](docs/photoshop-essentials.md).
 
 - [ ] Audit rollback across single actions, active-contact transitions, structural edits and project lifecycle operations. Make unsupported atomic effects explicit before execution.
 - [ ] Add durable recovery checkpoints and a recovery UI. Recover only validated committed outcomes; never rerun DLL commands or external side effects to restore a canvas.
@@ -62,8 +62,8 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 - [x] Add independent native perspective sampling, finite convex four-corner controls, persistent homogeneous repeat recipes, shared preview/node/MCP/headless execution and verified atomic outcomes.
 - [x] Add ordered local X/Y skew through the shared affine action, numeric controls and reversible mouse/pen edge handles, preserving cached previews, repeat, undo and verified outcomes.
 - [x] Add document-owned transform recipes, exact-matrix repeat and selected/whole-layer copy-repeat with configurable PS bindings, one undo/outcome, public state and shared nodes/MCP/headless execution. Clear recipes on changed canvas geometry and restore them with undo.
-- [ ] Add layer groups with explicit reference and history behavior.
-- [ ] Make structural and multi-layer edits reliably undoable; define optional undo grouping separately from transaction rollback.
+- [x] Add versioned stable-ID isolated groups, nested appearance, typed subtree operations, cached composition/visibility and deterministic undo/replay.
+- [x] Make implemented structural/multi-layer edits undoable with buffer ownership and explicit batch undo groups, separately from atomic failure rollback.
 - [x] Add bounded selection persistence, native shape/combine commands, PS selection shortcuts and drawing/action output clipping.
 - [x] Add direct rectangle/ellipse marquee and freehand/polygonal lasso gestures, reversible previews and connected-fill selection traversal.
 - [x] Add tolerance-based Wand, Grow and Similar commands with native active/merged sampling and shared automation contracts.

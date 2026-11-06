@@ -554,6 +554,14 @@ impl Studio {
                         continue;
                     }
                     match id {
+                        10200 | 10201 => {
+                            let action = if id == 10200 {
+                                "group.create_selected"
+                            } else {
+                                "group.ungroup_parent"
+                            };
+                            self.editor.core(action, serde_json::json!({}));
+                        }
                         10144 | 10145 => self.editor.open_canvas_geometry(id == 10145),
                         10154..=10158 => {
                             let action = match id {

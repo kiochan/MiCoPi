@@ -176,6 +176,20 @@ fn preflight(s: &Session, batch: &Batch) -> Result<Vec<u64>, ActionError> {
         }
         _ => {}
     }
+    if batch.action == "layer.move" && s.doc.has_groups() {
+        let mut order: Vec<_> = (0..s.doc.layers.len())
+            .map(|i| s.doc.layer_id(i))
+            .filter(|id| !ids.contains(id))
+            .collect();
+        order.splice(
+            batch.args["to"].as_u64().unwrap() as usize
+                ..batch.args["to"].as_u64().unwrap() as usize,
+            ids.iter().copied(),
+        );
+        s.doc
+            .preflight_layer_order(&order)
+            .map_err(|e| ActionError::new("group_boundary", e))?;
+    }
     if !targeted(&batch.action) {
         for id in &ids {
             let i = s.doc.layer_index(*id).unwrap();
@@ -236,13 +250,18 @@ pub(crate) fn execute(s: &mut Session, args: Value) -> ActionResult {
                     .collect();
                 expected.splice(to..to, ids.iter().copied());
                 if expected != original {
-                    // Gather at the top, then place the block. Each move touches
-                    // only a requested layer and moves its existing pixel buffer.
-                    for (pass, destination) in [(0, original.len() - 1), (1, to)] {
-                        for (offset, id) in ids.iter().enumerate() {
-                            let mut args = child_args(&batch, *id);
-                            args["to"] = json!(destination + if pass == 0 { 0 } else { offset });
-                            apply(s, &batch, *id, args)?;
+                    if s.doc.has_groups() {
+                        s.doc.reorder_layers(&expected).map_err(invalid)?;
+                    } else {
+                        // Gather at the top, then place the block. Each move touches
+                        // only a requested layer and moves its existing pixel buffer.
+                        for (pass, destination) in [(0, original.len() - 1), (1, to)] {
+                            for (offset, id) in ids.iter().enumerate() {
+                                let mut args = child_args(&batch, *id);
+                                args["to"] =
+                                    json!(destination + if pass == 0 { 0 } else { offset });
+                                apply(s, &batch, *id, args)?;
+                            }
                         }
                     }
                 }

@@ -15,7 +15,7 @@ fn run(s: &mut Session, op: Operation) -> Result<(), String> {
         _ => 4,
     };
     let (sw, sh) = (s.doc.width, s.doc.height);
-    if layer && !s.doc.layers[s.doc.active].visible {
+    if layer && !s.doc.layer_visible(s.doc.active) {
         return Err("Make the active layer visible before rotating it".into());
     }
     let (w, h) = if kind <= 1 && !layer {

@@ -17,15 +17,19 @@ Next layer -> optional filters -+                      Blend B -> Canvas Output
 Top layer -> optional filters -------------------------+
 ```
 
+Documents with [Layer Groups](layer-groups.md) initially show **Actual Composition**: the read-only generated graph of isolated child stacks, group opacity/blend gates and output. A shared transparent source initializes isolated groups without another raster buffer. Edit hierarchy and group appearance in Layers; use **Layer Filters** for the editable source branches described below. Generated nodes retain group names and IDs for inspection; they must not be submitted as a replacement source graph.
+
+![Actual group composition](screenshots/group-composition.png)
+
 1. Add, duplicate, move or delete layers normally. The applied linked chain follows these operations automatically. Filters follow stable layer identities; duplication copies a layer's filters with new node IDs. Deleting a layer removes its branch, with undo restoring it.
 2. Right-click a source or filter and choose **Insert Filter**. The menu uses registered plugin filter definitions and inserts a connected node. Deleting a filter reconnects its neighbors. Linked wiring is protected against manual disconnection.
 3. Source cards show the layer name, identity, visibility, opacity and blend mode. Source-card controls use the same `layer.set` action as the Layers panel. Blend-node mode edits update that layer's mode when applied. Layer opacity is applied once at the source; linked blends have opacity 1.
 4. Edit filter/blend parameters and choose **Apply to Canvas**, or enable **Live Preview** for valid changes after a 300 ms pause. Source-card property changes atomically apply the current valid graph draft and the layer property edit. Original pixels remain intact.
 5. **Graph Options > Arrange Stack** aligns sources, filter chains, merges and output. Structural layer edits arrange the linked chain automatically. Clean editor views refresh when another panel or client changes the applied graph; unapplied drafts remain protected by a conflict message. Fit Graph includes the taller source-property cards.
 
-**Graph Options > Switch to Free Compositing** converts the draft to explicit wiring without changing its connections or output. Apply to commit the switch. In this advanced mode, Add Node and port dragging are available; only connected layers participate, new layers are not automatically included, and layer reordering preserves source identity without changing the graph's explicit order. Referenced layers cannot be deleted until their source nodes are removed or retargeted.
+**Graph Options > Switch to Free Compositing** converts the draft to explicit wiring without changing its connections or output. Apply to commit the switch. Ungroup first: free compositing and group trees cannot be combined. In this advanced mode, Add Node and port dragging are available; only connected layers participate, new layers are not automatically included, and layer reordering preserves source identity without changing the graph's explicit order. Referenced layers cannot be deleted until their source nodes are removed or retargeted.
 
-**Graph Options > Rebuild from Layers** replaces the draft, including its filters, with a fresh linked stack. It is an explicit reset, not a required synchronization step. Apply to commit it. Disable **Node Compositing** in Graph Options and apply to bypass filters/custom wiring and render the ordinary layer stack; linked structural synchronization still operates while effects are disabled. Load Current is also available in Graph Options.
+**Graph Options > Rebuild from Layers** replaces the draft, including its filters, with a fresh linked stack. It is an explicit reset, not a required synchronization step. Apply to commit it. Disable **Node Compositing** in Graph Options and apply to bypass filters/custom wiring; group isolation and appearance remain active. Linked structural synchronization still operates while effects are disabled. Load Current is also available in Graph Options.
 
 Drag headers to move nodes, Ctrl+scroll to zoom, double-click empty space to center, and use Fit Graph to see the graph. Right-click a node to delete it. Closing the editor does not disable effects. Unapplied drafts remain only in the current UI; projects store applied graphs. When external edits or undo conflict with an unapplied draft, use Graph Options > Load Current before overwriting the applied graph.
 
@@ -35,6 +39,7 @@ Free-graph sources honor layer visibility and opacity; free blend nodes own thei
 
 | Node | Behavior |
 | --- | --- |
+| Transparent | Transparent zero; requires the compositor's optional transparent-source capability |
 | Layer | Read a source layer without changing pixels |
 | Filter | Invert, grayscale, brightness, contrast or saturation |
 | Blend | Normal, multiply, screen, overlay, darken, lighten, linear dodge or difference |
@@ -49,7 +54,7 @@ Linked graphs additionally require every layer exactly once in stack order, line
 ## Actions and plugin registration
 
 - graph.catalog: image schema, supported filters/modes and registered node definitions.
-- graph.read: applied graph, `mode` (`linked` or `free`), stable layer identities/properties, default linked graph, renderer availability and errors.
+- graph.read: editable source `graph`, generated `effective_graph`, groups, `mode` (`linked`, `free` or `grouped`), stable layer identities/properties, default linked graph, renderer availability/capabilities and errors.
 - graph.set: validate and apply as an undoable metadata edit.
 - graph.open: emit the editor-open UI effect; headless does not create a window.
 - layer.set: edit ordinary layer properties, including blend mode.
@@ -65,6 +70,6 @@ The complete [linked-layer JSONL example](../examples/automation/linked-layers.j
 
 Image definitions come from plugins/compositing/manifest.json and use binding.kind=image with a kernel operation and parameters_schema. Legacy graphs without node_type migrate to compositing.* IDs when applied. New aliases use existing kernel semantics; a new image algorithm requires extending the compositor implementation. JSON workflow nodes and image-buffer nodes have separate typed domains. See [Workflow Nodes](workflow-nodes.md).
 
-The independent compositor DLL receives one dirty rectangle, immutable source layers and typed instructions. It processes the region without a full image allocation per node. A linked graph without filters uses the existing ordinary-stack fast path, including the CPU normal-blend path without a compositor DLL. Topology validation/rebuilding happens on graph or layer edits, never on individual pen MOVE calls. No dependency or ABI extension is introduced. Graph properties and positions support undo/redo; project files retain original layers and applied graphs and continue to read legacy files. See [Compositor Plugin](../plugins/compositing/README.md).
+The independent compositor DLL receives one dirty rectangle, immutable source layers and typed instructions. It processes the region without a full image allocation per node. An ungrouped linked graph without filters uses the existing ordinary-stack fast path, including the CPU normal-blend path without a compositor DLL. Grouped composition requires a size/capability-checked optional transparent-source tail; the original callback prefix remains unchanged. Topology validation/rebuilding happens on graph or layer edits, never on individual pen MOVE calls. No dependency is added. Graph properties and positions support undo/redo; project files retain original layers and applied graphs and continue to read legacy files. See [Compositor Plugin](../plugins/compositing/README.md).
 
 Regression coverage includes all blend modes with alpha/opacity edges, layer insertion/reordering, identity-preserving filters, filter duplication/deletion, protected UI connections, draft conflicts, budget rejection, atomic rollback, undo/redo, saved projects, legacy journals and identical PNG bytes through JSONL, MCP and desktop attachment. Run `python scripts/smoke-linked-graphs.py` after building the host and DLLs.

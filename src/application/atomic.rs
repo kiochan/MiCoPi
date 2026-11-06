@@ -134,6 +134,15 @@ impl Operation {
                 | Self::LayerProperties
                 | Self::LayerSelection
                 | Self::LayerBatch
+                | Self::GroupCreate
+                | Self::GroupCreateSelected
+                | Self::GroupProperties
+                | Self::GroupMove
+                | Self::GroupUngroup
+                | Self::GroupUngroupParent
+                | Self::GroupDelete
+                | Self::GroupDuplicate
+                | Self::GroupSelectLayers
                 | Self::ClearLayer
                 | Self::SelectionShape
                 | Self::SelectAll

@@ -133,6 +133,22 @@ impl Graph {
         duplicate: Option<(u64, u64)>,
         baked: &[u64],
     ) -> Result<Self, String> {
+        self.sync_stack_mapped(
+            modes,
+            old_ids,
+            new_ids,
+            &duplicate.into_iter().collect::<Vec<_>>(),
+            baked,
+        )
+    }
+    pub(crate) fn sync_stack_mapped(
+        &self,
+        modes: &[BlendMode],
+        old_ids: &[u64],
+        new_ids: &[u64],
+        duplicates: &[(u64, u64)],
+        baked: &[u64],
+    ) -> Result<Self, String> {
         let mut branches = self.stack_branches(old_ids.len())?;
         for (id, branch) in old_ids.iter().zip(&mut branches) {
             if baked.contains(id) {
@@ -164,7 +180,10 @@ impl Graph {
         };
         let mut last = 0;
         for (index, (mode, id)) in modes.iter().zip(new_ids).enumerate() {
-            let copy_from = duplicate.filter(|(_, to)| to == id).map(|(from, _)| from);
+            let copy_from = duplicates
+                .iter()
+                .find(|(_, to)| to == id)
+                .map(|(from, _)| *from);
             let old = by_id.get(&copy_from.unwrap_or(*id));
             let y = index as f32 * 240.;
             let mut source = match old.filter(|_| copy_from.is_none()) {

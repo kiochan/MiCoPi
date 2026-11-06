@@ -25,6 +25,8 @@ mod editing_tests;
 #[cfg(test)]
 mod graph_tests;
 #[cfg(test)]
+mod group_tests;
+#[cfg(test)]
 mod layer_batch_tests;
 #[cfg(test)]
 mod layer_merge_tests;

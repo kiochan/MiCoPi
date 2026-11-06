@@ -240,6 +240,20 @@ impl State {
         doc.restore_composition(m.composition.clone());
         doc.dirty = m.dirty;
         doc.render_error = m.render_error.clone();
+        doc.composite.resize(m.width * m.height, 0);
+        for (id, cell) in self.surface.iter().enumerate() {
+            let x = id % cols * TILE;
+            let y = id / cols * TILE;
+            let mut i = 0;
+            for row in y..(y + TILE).min(m.height) {
+                for col in x..(x + TILE).min(m.width) {
+                    doc.composite[row * m.width + col] =
+                        cell.block.pixels[if cell.block.pixels.len() == 1 { 0 } else { i }];
+                    i += 1;
+                }
+            }
+        }
+        doc.finish_verified_surface_restore();
         doc.replay_tiles = (0..self.layers.len())
             .flat_map(|l| (0..m.count()).map(move |t| (l, t)))
             .collect();
@@ -688,6 +702,12 @@ impl Journal {
     ) -> Result<Prepared, ActionError> {
         metadata.validate()?;
         doc.compose();
+        if let Some(error) = &doc.render_error {
+            return Err(ActionError::new(
+                "render_error",
+                format!("Document composition failed: {error}"),
+            ));
+        }
         metadata.render_error = doc.render_error.clone();
         let replace = self.entries.is_empty()
             || (doc.width, doc.height, doc.layers.len())

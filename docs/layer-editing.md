@@ -8,6 +8,8 @@ The Layers panel provides an editable **Layer Name**, **Layer Actions** menu and
 
 Flips, 180° rotation and offsets operate on the selected visible layer's full canvas-sized pixel buffer. Hidden layers must be made visible before a pixel edit, following the existing plugin edit contract. Offsets are signed integer pixels: positive X is right, positive Y is down. Exposed areas become transparent; out-of-bounds pixels are discarded and can be restored with undo. These operations do not resample colors. The native painting plugin must be enabled for pixel transforms.
 
+[Layer Groups](layer-groups.md) adds isolated nesting, typed hierarchy commands and an actual-composition node view. Existing leaf commands preserve membership; explicit hierarchy moves handle reparenting.
+
 ## Public actions
 
 `canvas.state.layers` exposes `id`, `name`, `active`, lock flags, `color_label` and existing appearance properties. Layer IDs are scoped to one document and remain stable across reorder and save/reopen. A new document starts its own identity space. IDs are never a global document selector.
@@ -45,7 +47,7 @@ The final layer cannot be deleted. Existing limits remain 16 layers, 4096 pixels
 
 ## Scope and verification
 
-Implemented layer editing covers stable identities, rename/duplicate/reorder/delete, consolidation and exact pixel transforms. Canvas resize/crop has a separate [geometry contract](canvas-editing.md). Raster/clipping masks, off-canvas storage, groups and PSD interchange remain future work in the [roadmap](../ROADMAP.md). The Windows clipboard adapter is implemented with native interoperability verification pending; see [Clipboard](clipboard.md). PhotoCraft's GPU/web frontend and wider module architecture are not adopted.
+Implemented layer editing covers stable identities, rename/duplicate/reorder/delete, consolidation and exact pixel transforms. Canvas resize/crop has a separate [geometry contract](canvas-editing.md). Raster/clipping masks, off-canvas storage and PSD interchange remain future work in the [roadmap](../ROADMAP.md). The Windows clipboard adapter is implemented with native interoperability verification pending; see [Clipboard](clipboard.md). PhotoCraft's GPU/web frontend and wider module architecture are not adopted.
 
 Regression coverage checks graph remapping, undo/redo pixels, stable ID allocation, failed atomic groups, saved projects, old verified journals and new replay frame parity. Native transform tests compare asymmetric images and overlapping translations with an independent out-of-place oracle. Buffer pointer checks verify reorder and ordinary delete/undo reuse pixel allocations; atomic checkpoints may share removed undo buffers and can require a copy on restoration.
 
@@ -82,7 +84,7 @@ The Layers panel offers a name search and color/visibility/lock filters, restrai
 {"action":"layer.query","args":{"query":"ink","pixel_locked":true,"color_label":"violet"}}
 ```
 
-See the [organization example](../examples/automation/layer-organization.jsonl) and [native pixel-access contract](native-plugins.md#layer-pixel-access). Groups and raster/clipping masks remain planned in the [editing checklist](photoshop-essentials.md).
+See the [organization example](../examples/automation/layer-organization.jsonl) and [native pixel-access contract](native-plugins.md#layer-pixel-access). Raster/clipping masks remain planned in the [editing checklist](photoshop-essentials.md).
 
 ## Multiple selected layers and explicit batches
 
@@ -106,7 +108,7 @@ One changed batch publishes one revision, one compact verified outcome and one u
 {"action":"layer.query","args":{"selected":true}}
 ```
 
-See the [batch example](../examples/automation/layer-batch.jsonl). Layer groups, raster/clipping masks, multi-layer pixel transforms and off-canvas storage remain separate planned work.
+See the [batch example](../examples/automation/layer-batch.jsonl). Raster/clipping masks, multi-layer pixel transforms and off-canvas storage remain separate planned work.
 
 ## Merge, flatten and stamp
 

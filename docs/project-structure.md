@@ -67,6 +67,9 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
 | `src/application/layer_query.rs`, `src/application/layer_organization_tests.rs` | Read-only layer discovery, organization schema and lock/label/history/replay contracts |
 | `src/engine/layer_selection.rs`, `src/plugins/layer_batch.rs` | Sparse stable-ID layer selection, bounded history grouping and explicit shared-handler batch execution |
+| `src/engine/groups.rs`, `src/engine/group_editing.rs`, `src/plugins/groups.rs` | Versioned group trees, cached isolated composition/visibility, buffer-preserving hierarchy edits and shared public commands |
+| `plugins/layers/groups.rs`, `plugins/compositing/groups_view.rs` | Compiled hierarchy/property inspection and the actual-composition node view |
+| `src/application/group_tests.rs`, `scripts/smoke-groups.py` | Group composition, structural/history/persistence contracts and cross-transport parity |
 | `src/application/layer_batch_tests.rs`, `scripts/smoke-layer-batch.py` | Batch selection, atomic/history/persistence contracts and transport parity |
 | `plugins/layers/panel.rs` | Compiled layer properties, metadata-based filter cache, markers, names and responsive rows |
 | `src/engine/selection.rs` | Immutable coverage storage, bounded encoding and shared selection snapshots |

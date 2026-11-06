@@ -60,7 +60,7 @@ Install each plugin directory beside the executable, with its manifest and DLL w
 
 [JSONL, MCP and GUI attachment](plugins-and-actions.md) use the same Session as the desktop. For file automation, supply explicit paths to document and export actions. Generic UI intent actions can return stored effects without opening windows. Desktop selection gesture/window commands explicitly report headless unavailability; use document actions such as `selection.shape` for headless editing.
 
-Current omissions include clipboard, free transforms, layer groups, Wintab, multi-document tabs and watercolor blending. The UI does not present placeholders for these features.
+Selections, Session/Windows clipboard commands, Free Transform and isolated layer groups are implemented; see [Clipboard](clipboard.md), [Canvas Editing](canvas-editing.md) and [Layer Groups](layer-groups.md). Native clipboard interoperability still needs an interactive cross-application check. Current omissions include Wintab, multi-document tabs, off-canvas raster storage, masks and watercolor blending.
 
 ## Organize and transform layers
 

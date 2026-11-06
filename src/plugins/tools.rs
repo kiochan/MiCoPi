@@ -84,7 +84,7 @@ impl StrokeEngine {
                         "Stroke starts outside the canvas",
                     ));
                 }
-                if !s.doc.layers[s.doc.active].visible {
+                if !s.doc.layer_visible(s.doc.active) {
                     return Err(ActionError::new("hidden_layer", "Current layer is hidden"));
                 }
             }

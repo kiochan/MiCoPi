@@ -21,6 +21,7 @@ fn transfer(s: &mut Session, cut: bool) -> Result<(), String> {
     if s.doc.graph.enabled && !s.doc.graph.linked {
         return Err("Link the layer stack before extracting selected pixels".into());
     }
+    s.doc.preflight_new_layer(None)?;
     s.finish_stroke();
     let size = [b[2] - b[0], b[3] - b[1]];
     let mut region = vec![0; size[0] * size[1]];

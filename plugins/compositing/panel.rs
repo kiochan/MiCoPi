@@ -5,12 +5,18 @@ use egui_snarl::{
     InPin, InPinId, NodeId, OutPin, OutPinId, Snarl,
 };
 use std::collections::BTreeMap;
+#[path = "groups_view.rs"]
+mod groups_view;
 #[derive(Default)]
 pub(super) struct GraphEditor {
     #[cfg(test)]
     apply_rect: Option<Rect>,
     snarl: Snarl<Node>,
     base: Graph,
+    base_groups: u64,
+    effective: groups_view::EffectiveView,
+    layer_filters: bool,
+    had_groups: bool,
     identity: u64,
     enabled: bool,
     linked: bool,
@@ -267,6 +273,7 @@ impl GraphEditor {
     ) {
         self.snarl = Snarl::new();
         self.base = doc.graph.clone();
+        self.base_groups = doc.groups_revision();
         self.identity = doc.identity;
         let graph = if default || doc.graph.nodes.is_empty() {
             Graph::linked_from_layers(&doc.layers)
@@ -340,6 +347,13 @@ impl GraphEditor {
         }
     }
     fn apply(&mut self, editor: &mut Editor) {
+        if self.identity != editor.session.doc.identity
+            || self.base != editor.session.doc.graph
+            || self.base_groups != editor.session.doc.groups_revision()
+        {
+            self.message = "Graph or Groups Changed Externally; Use Load Current".into();
+            return;
+        }
         let graph = self.graph();
         match editor.session.apply(crate::application::Action::new(
             "graph.set",
@@ -347,6 +361,7 @@ impl GraphEditor {
         )) {
             Ok(_) => {
                 self.base = editor.session.doc.graph.clone();
+                self.base_groups = editor.session.doc.groups_revision();
                 self.loaded = Some(self.graph());
                 self.edited = None;
                 self.message = "Applied · Original Strokes Preserved · Undo Available".into();
@@ -363,6 +378,13 @@ impl GraphEditor {
         editor: &mut Editor,
         actions: Vec<crate::application::Action>,
     ) {
+        if self.identity != editor.session.doc.identity
+            || self.base != editor.session.doc.graph
+            || self.base_groups != editor.session.doc.groups_revision()
+        {
+            self.message = "Graph or Groups Changed Externally; Use Load Current".into();
+            return;
+        }
         let mut steps = vec![];
         if self.loaded.as_ref() != Some(&self.graph()) {
             steps.push(serde_json::json!({"id":"graph","action":"graph.set","args":{"graph":self.graph()}}));
@@ -375,6 +397,7 @@ impl GraphEditor {
                 // Preserve widget IDs during slider drags, including when the host
                 // canonicalizes serialized branch order after a property edit.
                 self.base = editor.session.doc.graph.clone();
+                self.base_groups = editor.session.doc.groups_revision();
                 for node in self.snarl.nodes_info_mut() {
                     if let Some(applied) = self.base.nodes.iter().find(|n| n.id == node.value.id) {
                         node.value = applied.clone();
@@ -800,19 +823,43 @@ impl Editor {
     fn image_nodes_ui(&mut self, ui: &mut Ui) {
         let mut state = std::mem::take(&mut self.nodes);
         if state.identity != self.session.doc.identity {
+            state.layer_filters = false;
+            state.had_groups = false;
+            state.effective = Default::default();
             state.load(&self.session.doc, false, &self.plugin_nodes);
         }
-        if state.base != self.session.doc.graph && state.loaded.as_ref() == Some(&state.graph()) {
+        let groups = self.session.doc.has_groups();
+        if groups && !state.had_groups {
+            state.layer_filters = false;
+        }
+        state.had_groups = groups;
+        if groups {
+            ui.horizontal_wrapped(|ui| {
+                ui.selectable_value(&mut state.layer_filters, false, tr("Actual Composition"));
+                ui.selectable_value(&mut state.layer_filters, true, tr("Layer Filters"));
+            });
+            if !state.layer_filters {
+                state.effective.show(self, ui);
+                self.nodes = state;
+                return;
+            }
+            ui.weak(tr("Layer Filters edits individual source effects. Group composition is shown in Actual Composition."));
+        }
+        if (state.base != self.session.doc.graph
+            || state.base_groups != self.session.doc.groups_revision())
+            && state.loaded.as_ref() == Some(&state.graph())
+        {
             state.load(&self.session.doc, false, &self.plugin_nodes);
             state.fit_view = false;
         }
-        let conflict = state.base != self.session.doc.graph;
+        let conflict = state.base != self.session.doc.graph
+            || state.base_groups != self.session.doc.groups_revision();
         let mut apply = false;
         ui.horizontal_wrapped(|ui| {
             ui.label(tr(if state.linked { "Linked Layer Stack" } else { "Free Compositing" }));
             ui.menu_button(tr("Graph Options"), |ui| {
                 if state.linked {
-                    if ui.button(tr("Switch to Free Compositing")).clicked() {
+                    if ui.add_enabled(!groups,Button::new(tr("Switch to Free Compositing"))).on_hover_text(tr("Groups require linked layer filters.")).clicked() {
                         state.linked = false;
                         ui.close();
                     }
@@ -837,7 +884,7 @@ impl Editor {
                     ui.close();
                 }
                 ui.separator();
-                ui.checkbox(&mut state.enabled, tr("Node Compositing"));
+                ui.checkbox(&mut state.enabled,tr(if groups {"Layer Filters Enabled"} else {"Node Compositing"}));
             });
             if !state.linked {
                 ui.menu_button(tr("Add Node"), |ui| {
@@ -856,7 +903,11 @@ impl Editor {
         if conflict {
             ui.colored_label(
                 ui.visuals().warn_fg_color,
-                tr("Graph Changed Externally; Use Load Current"),
+                tr(if state.base_groups != self.session.doc.groups_revision() {
+                    "Graph or Groups Changed Externally; Use Load Current"
+                } else {
+                    "Graph Changed Externally; Use Load Current"
+                }),
             );
         }
 

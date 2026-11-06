@@ -381,7 +381,7 @@ pub struct CompositeLayer {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct CompositeNode {
-    pub kind: u32, // 0 layer, 1 filter, 2 blend, 3 output
+    pub kind: u32, // 0 layer, 1 filter, 2 blend, 3 output, 4 transparent (capability-gated)
     pub a: u32,
     pub b: u32,
     pub mode: u32,
@@ -403,6 +403,15 @@ pub struct CompositorApi {
             *mut Pixels,
         ) -> i32,
     >,
+}
+/// Optional complete compositor tail. The published v1 prefix remains unchanged.
+/// Kind 4 produces transparent zero with a=b=mode=0 and amount=0.
+pub const COMPOSITOR_TRANSPARENT: u64 = 1;
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct CompositorApiFeatures {
+    pub base: CompositorApi,
+    pub capabilities: u64,
 }
 pub type CompositorEntry = unsafe extern "C" fn() -> *const CompositorApi;
 
@@ -580,5 +589,17 @@ mod transform_layout_tests {
         assert_eq!(size_of::<ProjectiveApi>(), 24);
         assert_eq!(offset_of!(ProjectiveApi, pixels), 8);
         assert_eq!(offset_of!(ProjectiveApi, mask), 16);
+    }
+    #[test]
+    fn optional_compositor_capabilities_preserve_the_v1_prefix() {
+        assert_eq!(size_of::<CompositeNode>(), 20);
+        assert_eq!(offset_of!(CompositeNode, amount), 16);
+        assert_eq!(size_of::<CompositeLayer>(), 32);
+        assert_eq!(size_of::<CompositorApi>(), 16);
+        assert_eq!(offset_of!(CompositorApi, render), 8);
+        assert_eq!(size_of::<CompositorApiFeatures>(), 24);
+        assert_eq!(offset_of!(CompositorApiFeatures, base), 0);
+        assert_eq!(offset_of!(CompositorApiFeatures, capabilities), 16);
+        assert_eq!(COMPOSITOR_TRANSPARENT, 1);
     }
 }

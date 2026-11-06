@@ -86,6 +86,8 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             let mut doc = codec::open(&path)?;
             let journal = crate::application::replay::read_embedded(&mut doc)?;
             doc.renderer = s.registry.renderer();
+            doc.ensure_graph_renderer()
+                .map_err(|e| ActionError::new("renderer_missing", e))?;
             if let Some(graph) = s.workflow_stack.first() {
                 if doc.workflow != *graph {
                     doc.workflow = graph.clone();

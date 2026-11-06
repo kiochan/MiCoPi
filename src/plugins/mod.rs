@@ -19,6 +19,7 @@ mod compositing;
 mod document;
 pub(crate) mod export;
 mod geometry;
+pub(crate) mod groups;
 pub(crate) mod layer_batch;
 mod layer_transfer;
 mod layers;
@@ -38,6 +39,10 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        GroupQuery | GroupCreate | GroupCreateSelected | GroupProperties | GroupMove
+        | GroupUngroup | GroupUngroupParent | GroupDelete | GroupDuplicate | GroupSelectLayers => {
+            groups::execute(session, op, args)
+        }
         LayerQuery => crate::application::layer_query::execute(session, &args),
         LayerBatch => layer_batch::execute(session, args),
         Export | Render | ExportPlan | ExportPreview | ExportDialog => {

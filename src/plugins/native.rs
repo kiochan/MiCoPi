@@ -35,6 +35,31 @@ type SelectionTable = (
     Option<abi::SelectionEdgesFn>,
     Option<abi::SelectionTransferFn>,
 );
+// The v1 callback prefix remains usable when an optional feature tail is absent.
+unsafe fn decode_compositor_table(
+    pointer: *const abi::CompositorApi,
+) -> Result<(abi::CompositorApi, u64), String> {
+    if pointer.is_null() {
+        return Err("Compositor returned a null ABI table".into());
+    }
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.abi_version != 1
+        || header.struct_size < std::mem::size_of::<abi::CompositorApi>() as u32
+    {
+        return Err("Incompatible compositor ABI".into());
+    }
+    let api = std::ptr::read_unaligned(pointer);
+    if api.render.is_none() {
+        return Err("Compositor is missing render".into());
+    }
+    let capabilities =
+        if header.struct_size >= std::mem::size_of::<abi::CompositorApiFeatures>() as u32 {
+            std::ptr::read_unaligned(pointer.cast::<abi::CompositorApiFeatures>()).capabilities
+        } else {
+            0
+        };
+    Ok((api, capabilities))
+}
 // Read only advertised, complete optional tails; legacy prefixes remain usable.
 unsafe fn decode_selection_table(
     pointer: *const abi::SelectionApi,
@@ -299,7 +324,7 @@ impl Module {
             Ok(None)
         }
     }
-    unsafe fn compositor_api(&self) -> Result<Option<abi::CompositorApi>, String> {
+    unsafe fn compositor_api(&self) -> Result<Option<(abi::CompositorApi, u64)>, String> {
         #[cfg(windows)]
         {
             let address =
@@ -308,21 +333,7 @@ impl Module {
                 return Ok(None);
             }
             let entry = std::mem::transmute::<*mut c_void, abi::CompositorEntry>(address);
-            let pointer = entry();
-            if pointer.is_null() {
-                return Err("Compositor returned a null ABI table".into());
-            }
-            let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
-            if header.abi_version != 1
-                || header.struct_size < std::mem::size_of::<abi::CompositorApi>() as u32
-            {
-                return Err("Incompatible compositor ABI".into());
-            }
-            let api = std::ptr::read_unaligned(pointer);
-            if api.render.is_none() {
-                return Err("Compositor is missing render".into());
-            }
-            Ok(Some(api))
+            decode_compositor_table(entry()).map(Some)
         }
         #[cfg(not(windows))]
         {
@@ -429,6 +440,7 @@ pub struct NativePlugin {
     resample: Option<abi::ResampleApi>,
     resample_features: u32,
     compositor: Option<abi::CompositorApi>,
+    compositor_capabilities: u64,
     _module: Module,
 }
 impl std::fmt::Debug for NativePlugin {
@@ -510,7 +522,10 @@ impl NativePlugin {
         if tool_options.is_some() && tools.is_none() {
             return Err("Tool options require a tool API".into());
         }
-        let compositor = unsafe { module.compositor_api()? };
+        let (compositor, compositor_capabilities) = match unsafe { module.compositor_api()? } {
+            Some((api, capabilities)) => (Some(api), capabilities),
+            None => (None, 0),
+        };
         if api.describe.is_none()
             || (api.invoke.is_none() && tools.is_none() && compositor.is_none())
             || api.create.is_some() != api.destroy.is_some()
@@ -544,6 +559,7 @@ impl NativePlugin {
                 resample,
                 resample_features,
                 compositor,
+                compositor_capabilities,
                 _module: module,
             }),
             contributions,
@@ -551,6 +567,9 @@ impl NativePlugin {
     }
 }
 impl crate::engine::graph::Renderer for NativePlugin {
+    fn supports_transparent(&self) -> bool {
+        self.compositor_capabilities & abi::COMPOSITOR_TRANSPARENT != 0
+    }
     fn render(
         &self,
         nodes: &[abi::CompositeNode],
@@ -560,6 +579,9 @@ impl crate::engine::graph::Renderer for NativePlugin {
         output: &mut abi::Pixels,
     ) -> Result<(), String> {
         let api = self.compositor.ok_or("Missing compositor interface")?;
+        if nodes.iter().any(|n| n.kind == 4) && !self.supports_transparent() {
+            return Err("Compositor does not support transparent image nodes".into());
+        }
         let status = unsafe {
             (api.render.unwrap())(
                 nodes.as_ptr(),
@@ -1003,7 +1025,7 @@ unsafe extern "C" fn edit_region(
         || h == 0
         || x.checked_add(w).is_none_or(|v| v > session.doc.width)
         || y.checked_add(h).is_none_or(|v| v > session.doc.height)
-        || !session.doc.layers[session.doc.active].visible
+        || !session.doc.layer_visible(session.doc.active)
     {
         return abi::ERROR;
     }
@@ -1052,6 +1074,46 @@ unsafe extern "C" fn edit_region(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn compositor_optional_features_require_a_complete_tail_and_preserve_the_prefix() {
+        unsafe extern "C" fn render(
+            _: *const abi::CompositeNode,
+            _: usize,
+            _: *const abi::CompositeLayer,
+            _: usize,
+            _: u32,
+            _: u32,
+            _: *mut abi::Pixels,
+        ) -> i32 {
+            abi::ERROR
+        }
+        let prefix = abi::CompositorApi {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::CompositorApi>() as u32,
+            render: Some(render),
+        };
+        assert_eq!(unsafe { decode_compositor_table(&prefix) }.unwrap().1, 0);
+        let mut table = abi::CompositorApiFeatures {
+            base: prefix,
+            capabilities: abi::COMPOSITOR_TRANSPARENT,
+        };
+        table.base.struct_size = std::mem::size_of::<abi::CompositorApiFeatures>() as u32 - 1;
+        assert_eq!(
+            unsafe { decode_compositor_table(&table.base) }.unwrap().1,
+            0
+        );
+        table.base.struct_size += 1;
+        assert_eq!(
+            unsafe { decode_compositor_table(&table.base) }.unwrap().1,
+            abi::COMPOSITOR_TRANSPARENT
+        );
+        table.base.render = None;
+        assert!(unsafe { decode_compositor_table(&table.base) }.is_err());
+        table.base.render = prefix.render;
+        table.base.abi_version = 99;
+        assert!(unsafe { decode_compositor_table(&table.base) }.is_err());
+        assert!(unsafe { decode_compositor_table(std::ptr::null()) }.is_err());
+    }
     #[test]
     fn edge_tail_is_optional_and_complete_size_checked_after_color_prefix() {
         unsafe extern "C" fn mix(

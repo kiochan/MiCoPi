@@ -118,7 +118,11 @@ impl Session {
             self.journal.as_mut().unwrap().commit(prepared)
         })();
         if let Err(error) = &result {
-            self.replay_error = Some(error.to_string());
+            // A compositor failure leaves the journal untouched and can be
+            // retried after document rollback; it is not a storage fault.
+            if error.code != "render_error" {
+                self.replay_error = Some(error.to_string());
+            }
         }
         result
     }

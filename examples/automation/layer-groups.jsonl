@@ -1,0 +1,23 @@
+{"action":"canvas.new","args":{"width":96,"height":64,"background":"#FFF9EF"}}
+{"action":"layer.rename","args":{"name":"Sketch"}}
+{"action":"brush.set","args":{"radius":3,"color":"#6676AA","stabilizer":0.35,"pressure_size":true}}
+{"action":"canvas.stroke","args":{"points":[{"x":10,"y":48,"pressure":0.2,"pen":true,"time":0},{"x":42,"y":12,"pressure":1,"pen":true,"time":40},{"x":84,"y":48,"pressure":0.4,"pen":true,"time":80}]}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Ink"}}
+{"action":"brush.set","args":{"radius":2,"color":"#333743"}}
+{"action":"canvas.stroke","args":{"points":[{"x":14,"y":48,"pressure":0.3,"pen":true,"time":0},{"x":42,"y":16,"pressure":1,"pen":true,"time":40},{"x":80,"y":48,"pressure":0.5,"pen":true,"time":80}]}}
+{"action":"group.create","args":{"members":[{"kind":"layer","id":1},{"kind":"layer","id":2}],"name":"Ink Group"}}
+{"action":"group.set","args":{"group_id":1,"opacity":0.65}}
+{"action":"group.create","args":{"members":[{"kind":"group","id":1}],"name":"Illustration"}}
+{"action":"layer.add","args":{"parent_id":2}}
+{"action":"layer.rename","args":{"name":"Highlights"}}
+{"action":"brush.set","args":{"radius":1,"color":"#FFFFFF"}}
+{"action":"canvas.stroke","args":{"points":[{"x":32,"y":29,"pressure":0.4,"pen":true,"time":0},{"x":42,"y":20,"pressure":1,"pen":true,"time":40},{"x":52,"y":29,"pressure":0.4,"pen":true,"time":80}]}}
+{"action":"group.move","args":{"items":[{"kind":"layer","id":3}],"parent_id":1,"index":2}}
+{"action":"group.query","args":{"query":"Ink"}}
+{"action":"group.duplicate","args":{"group_id":1}}
+{"action":"group.set","args":{"group_id":3,"visible":false}}
+{"action":"group.select_layers","args":{"group_id":1}}
+{"action":"graph.read","args":{}}
+{"action":"canvas.export","args":{"path":"target/example-output/layer-groups.png"}}
+{"action":"replay.verify","args":{}}

@@ -10,12 +10,65 @@ pub fn schema() -> serde_json::Value {
         "enabled":{"type":"boolean"},"linked":{"type":"boolean","default":false,"description":"A validated layer-stack chain; structural layer edits keep its branches synchronized"},
         "nodes":{"type":"array","maxItems":64,"items":{"type":"object","required":["id","position","kind"],"additionalProperties":false,"properties":{
             "node_type":{"type":"string"},"id":id,"position":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-1000000,"maximum":1000000}},
-            "kind":{"type":"string","enum":["layer","filter","blend","output"]},"index":{"type":"integer","minimum":0,"maximum":15},
+            "kind":{"type":"string","enum":["layer","filter","blend","output","transparent"]},"index":{"type":"integer","minimum":0,"maximum":15},
             "filter":{"type":"string","enum":Filter::ALL},"amount":{"type":"number","minimum":-1,"maximum":1},
             "mode":{"type":"string","enum":BlendMode::ALL},"opacity":{"type":"number","minimum":0,"maximum":1}
         }}},
         "edges":{"type":"array","maxItems":128,"items":{"type":"object","required":["from","to","input"],"additionalProperties":false,"properties":{"from":id,"to":id,"input":{"type":"integer","minimum":0,"maximum":1}}}}
     }})
+}
+
+#[cfg(test)]
+mod transparent_tests {
+    use super::*;
+
+    #[test]
+    fn transparent_source_compiles_without_layer_or_input_and_keeps_canonical_fields() {
+        let graph = Graph {
+            enabled: true,
+            linked: false,
+            nodes: vec![
+                Node {
+                    id: 3,
+                    node_type: Some("compositing.transparent".into()),
+                    position: [0., 0.],
+                    data: NodeKind::Transparent,
+                },
+                Node {
+                    id: 7,
+                    node_type: Some("compositing.output".into()),
+                    position: [100., 0.],
+                    data: NodeKind::Output,
+                },
+            ],
+            edges: vec![Edge {
+                from: 3,
+                to: 7,
+                input: 0,
+            }],
+        };
+        let decoded: Graph = serde_json::from_value(serde_json::to_value(&graph).unwrap()).unwrap();
+        assert_eq!(decoded, graph);
+        assert_eq!(NodeKind::Transparent.inputs(), 0);
+        let compiled = graph.compile(16).unwrap();
+        assert_eq!(compiled.len(), 2);
+        let seed = compiled[0];
+        assert_eq!(
+            (seed.kind, seed.a, seed.b, seed.mode, seed.amount),
+            (4, 0, 0, 0, 0.)
+        );
+        assert_eq!((compiled[1].kind, compiled[1].a), (3, 0));
+        let mut invalid = graph.clone();
+        invalid.edges.push(Edge {
+            from: 3,
+            to: 3,
+            input: 0,
+        });
+        assert!(invalid.compile(16).is_err());
+        invalid = graph;
+        invalid.linked = true;
+        assert!(invalid.compile(16).is_err());
+    }
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -93,6 +146,7 @@ impl Filter {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum NodeKind {
+    Transparent,
     Layer { index: usize },
     Filter { filter: Filter, amount: f32 },
     Blend { mode: BlendMode, opacity: f32 },
@@ -101,13 +155,14 @@ pub enum NodeKind {
 impl NodeKind {
     pub fn inputs(&self) -> usize {
         match self {
-            Self::Layer { .. } => 0,
+            Self::Layer { .. } | Self::Transparent => 0,
             Self::Blend { .. } => 2,
             _ => 1,
         }
     }
     pub fn title(&self) -> String {
         match self {
+            Self::Transparent => "Transparent".into(),
             Self::Layer { index } => format!("Layer {}", index + 1),
             Self::Filter { filter, .. } => filter.title().into(),
             Self::Blend { mode, .. } => format!("Blend · {}", mode.title()),
@@ -144,6 +199,9 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 pub trait Renderer {
+    fn supports_transparent(&self) -> bool {
+        false
+    }
     fn render(
         &self,
         nodes: &[abi::CompositeNode],
@@ -332,6 +390,13 @@ impl Graph {
             .map(|&i| {
                 let input = |port: usize| slots[&inputs[i][port].unwrap()];
                 match self.nodes[i].data {
+                    NodeKind::Transparent => abi::CompositeNode {
+                        kind: 4,
+                        a: 0,
+                        b: 0,
+                        mode: 0,
+                        amount: 0.,
+                    },
                     NodeKind::Layer { index } => abi::CompositeNode {
                         kind: 0,
                         a: index as u32,

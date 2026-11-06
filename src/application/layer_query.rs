@@ -15,6 +15,7 @@ struct Query {
     pixel_locked: Option<bool>,
     position_locked: Option<bool>,
     selected: Option<bool>,
+    effective_visible: Option<bool>,
 }
 fn parse(args: &Value) -> Result<Query, ActionError> {
     if args
@@ -56,6 +57,7 @@ pub(crate) fn execute(s: &Session, args: &Value) -> Result<Value, ActionError> {
                 && matches(pixels, q.pixel_locked)
                 && matches(position, q.position_locked)
                 && matches(s.doc.layer_selected(i), q.selected)
+                && matches(s.doc.layer_visible(i), q.effective_visible)
         })
         .map(|i| s.layer_state(i))
         .collect();
@@ -71,6 +73,7 @@ pub(crate) fn schema() -> Value {
         "color_label":{"type":"string","enum":["none","red","orange","yellow","green","blue","violet","gray"]},
         "visible":{"type":"boolean"},"locked":{"type":"boolean","description":"Any transparency, pixel or position lock. All supplied filters are combined with AND."},
         "alpha_locked":{"type":"boolean"},"pixel_locked":{"type":"boolean"},"position_locked":{"type":"boolean"},
-        "selected":{"type":"boolean","description":"Matches membership in the current layer selection, independently of the active painting layer."}
+        "selected":{"type":"boolean","description":"Matches membership in the current layer selection, independently of the active painting layer."},
+        "effective_visible":{"type":"boolean","description":"Visibility after applying all ancestor group visibility flags; local visibility is preserved separately."}
     },"required":[],"additionalProperties":false})
 }
