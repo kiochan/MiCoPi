@@ -8,6 +8,13 @@ The Layers panel provides an editable **Layer Name**, **Layer Actions** menu and
 
 Flips, 180° rotation and offsets operate on the selected visible layer's full canvas-sized pixel buffer. Hidden layers must be made visible before a pixel edit, following the existing plugin edit contract. Offsets are signed integer pixels: positive X is right, positive Y is down. Exposed areas become transparent; out-of-bounds pixels are discarded and can be restored with undo. These operations do not resample colors. The native painting plugin must be enabled for pixel transforms.
 
+On mask-bearing documents, explicit single-layer Duplicate/Delete commands now
+carry the owned mask and paint target through one compound history edit. The
+default Ctrl+J/Ctrl+Shift+J bindings remain selection-transfer commands
+(`layer.via_copy`/`layer.via_cut`) and are still guarded there, including the
+no-selection shortcut case. Multi-selected panel controls use `layer.batch`,
+whose mask integration also remains pending. See [Mask owner editing](mask-owner-editing.md).
+
 [Layer Groups](layer-groups.md) adds isolated or [Pass Through](pass-through.md) nesting, typed hierarchy commands and an actual-composition node view. Existing leaf commands preserve membership; explicit hierarchy moves handle reparenting. Merge Group bakes an explicitly targeted isolated subtree, including its nested Pass Through children; a Pass Through target requires an external backdrop and rejects standalone baking. Grouped Merge Visible retains hidden content and group skeletons; see [Group baking](layer-groups.md#bake-groups-and-visible-artwork).
 
 **Ctrl+E** now runs **Merge Layers**: multiple selected rasters use [selected-only merging](selected-merge.md), while a singleton keeps Merge Down. Noncontiguous and cross-parent targets are supported without consuming unselected rasters. The optional **Review Selected Merge…** window shows captured targets and placement before an explicit commit; the default shortcut remains immediate. Selected-only baking can change visible stacking/backdrop interactions, so use the plan or review when inspecting that boundary.
@@ -52,7 +59,7 @@ The final layer cannot be deleted. Existing limits remain 16 layers, 4096 pixels
 
 ## Scope and verification
 
-Implemented layer editing covers stable identities, rename/duplicate/reorder/delete, consolidation and exact pixel transforms. Canvas resize/crop has a separate [geometry contract](canvas-editing.md). [Raster masks](raster-mask-editing.md) support painting/effects and [document-wide geometry](mask-canvas-geometry.md); mask-aware owner transforms, duplication/deletion, merging and transfers remain guarded. Complete mask integration, clipping masks, off-canvas storage and PSD interchange remain future work in the [roadmap](../ROADMAP.md). The Windows clipboard adapter is implemented with native interoperability verification pending; see [Clipboard](clipboard.md). PhotoCraft's GPU/web frontend and wider module architecture are not adopted.
+Implemented layer editing covers stable identities, rename/duplicate/reorder/delete, consolidation and exact pixel transforms. Canvas resize/crop has a separate [geometry contract](canvas-editing.md). [Raster masks](raster-mask-editing.md) support painting/effects and [document-wide geometry](mask-canvas-geometry.md); plain [single-layer owner duplication/deletion](mask-owner-editing.md) carries masks with explicit target and compound-history rules. Mask-aware owner transforms, group/subtree/batch edits, Layer via Copy/Cut, merging and transfers remain guarded. Complete mask integration, clipping masks, off-canvas storage and PSD interchange remain future work in the [roadmap](../ROADMAP.md). The Windows clipboard adapter is implemented with native interoperability verification pending; see [Clipboard](clipboard.md). PhotoCraft's GPU/web frontend and wider module architecture are not adopted.
 
 Regression coverage checks graph remapping, undo/redo pixels, stable ID allocation, failed atomic groups, saved projects, old verified journals and new replay frame parity. Native transform tests compare asymmetric images and overlapping translations with an independent out-of-place oracle. Buffer pointer checks verify reorder and ordinary delete/undo reuse pixel allocations; atomic checkpoints may share removed undo buffers and can require a copy on restoration.
 
@@ -89,7 +96,7 @@ The Layers panel offers a name search and color/visibility/lock filters, restrai
 {"action":"layer.query","args":{"query":"ink","pixel_locked":true,"color_label":"violet"}}
 ```
 
-See the [organization example](../examples/automation/layer-organization.jsonl) and [native pixel-access contract](native-plugins.md#layer-pixel-access). Raster/clipping masks remain planned in the [editing checklist](photoshop-essentials.md).
+See the [organization example](../examples/automation/layer-organization.jsonl) and [native pixel-access contract](native-plugins.md#layer-pixel-access). [Raster-mask editing](raster-mask-editing.md) describes the available painting, document geometry and single-owner subsets; complete integration and clipping masks remain planned in the [editing checklist](photoshop-essentials.md).
 
 ## Multiple selected layers and explicit batches
 
@@ -113,7 +120,7 @@ One changed batch publishes one revision, one compact verified outcome and one u
 {"action":"layer.query","args":{"selected":true}}
 ```
 
-See the [batch example](../examples/automation/layer-batch.jsonl). Raster/clipping masks, multi-layer pixel transforms and off-canvas storage remain separate planned work.
+See the [batch example](../examples/automation/layer-batch.jsonl). Mask-aware batches, clipping masks, multi-layer pixel transforms and off-canvas storage remain separate planned work; the available single-owner mask operations do not enable batches on mask-bearing documents.
 
 ## Merge, flatten and stamp
 

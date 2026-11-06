@@ -1391,5 +1391,6 @@
   "Preview uses visible artwork. Layers and raster masks are cropped; undo restores them.": "表示中の作品でプレビューします。レイヤーとラスターマスクを切り抜き、元に戻すと復元します。",
   "Raster Mask Buffers": "ラスターマスクのバッファー",
   "Reframe layers, raster masks and selections without scaling.": "拡大縮小せずにレイヤー、ラスターマスク、選択範囲のキャンバス範囲を変更します。",
-  "Scale every layer, raster mask and selection. Apply commits one edit.": "すべてのレイヤー、ラスターマスク、選択範囲を拡大縮小します。適用は1回の編集として記録されます。"
+  "Scale every layer, raster mask and selection. Apply commits one edit.": "すべてのレイヤー、ラスターマスク、選択範囲を拡大縮小します。適用は1回の編集として記録されます。",
+  "Finish the current contact before changing layer structure": "現在の入力を終了してからレイヤー構造を変更してください"
 }

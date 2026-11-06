@@ -17,6 +17,7 @@ Run these tools from the repository root. Downloaded toolchains, builds, capture
 | smoke-raster-masks.py | Verify A8 storage/composition, safe edit boundaries, legacy compatibility and DLL-free replay; optional GUI captures |
 | smoke-mask-editing.py | Verify eleven public mask actions, native density/feather and typed painting, workflow bindings, guarded edits and raw/verified replay across JSONL/MCP/GUI; optional four-language captures |
 | smoke-mask-geometry.py | Compare document framing, rotations/flips, image sampling and Trim against independent raw-mask references across JSONL/MCP/GUI, with undo, legacy capability rejection and DLL-free replay |
+| smoke-mask-owners.py | Compare single-layer mask copies/deletions, independent storage, ID bindings, targets, grouped composition, undo, rollback and DLL-free replay across JSONL/MCP/GUI |
 | check-repository.py | Validate local Markdown links, example JSON and tracked-file boundaries |
 
 ```powershell
@@ -45,5 +46,12 @@ run adds GUI transport parity and four-language dialog/native Layers captures
 under `target/test-output/mask-geometry-smoke/`. See
 [Mask Canvas Geometry](../docs/mask-canvas-geometry.md) for raw/effective coverage,
 admission and remaining owner-editing boundaries.
+
+`smoke-mask-owners.py --skip-gui` checks the single-raster ownership subset;
+the full run adds attached-GUI parity and four native Layers captures. It uses
+small independently written project fixtures and integral JSON-float selectors,
+and keeps output under `target/test-output/mask-owners-smoke/`. See
+[Mask Owner Editing](../docs/mask-owner-editing.md) for exact target/ID semantics
+and the group/batch/transfer paths that remain guarded.
 
 See [Development](../docs/development.md) for prerequisites and [Project Structure](../docs/project-structure.md) for ownership rules.

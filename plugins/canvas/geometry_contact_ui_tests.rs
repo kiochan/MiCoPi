@@ -12,7 +12,7 @@ fn open(editor: &mut Editor, kind: usize) {
         _ => editor.open_trim_canvas(),
     }
     editor.blocked = true;
-    editor.geometry_contact_allowed = true;
+    editor.contact_draft_allowed = true;
 }
 fn frame(app: &mut Studio, ctx: &Context, events: Vec<Event>, time: f64) -> FullOutput {
     crate::i18n::set_language(crate::i18n::Language::English);
@@ -160,7 +160,7 @@ fn external_contacts_survive_dialog_open_read_only_plans_cancel_and_unrelated_mo
                 // A mouse release elsewhere in the UI does not belong to MCP's
                 // native contact, whether or not a geometry modal is present.
                 app.editor.blocked = true;
-                app.editor.geometry_contact_allowed = false;
+                app.editor.contact_draft_allowed = false;
             }
             before.assert_same(&app.editor);
             let mut output = frame(&mut app, &ctx, vec![], 1.);

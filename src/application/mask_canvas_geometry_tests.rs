@@ -1057,14 +1057,10 @@ fn mask_canvas_square_raw_only_turn_recomputes_fixed_pixel_feather_and_preserves
     let effective = s.doc.effective_mask_plane(id).unwrap();
     assert!(matches!(effective,PlaneView::Dense(data)if data==[115,113,84,71]));
     let before = Before::capture(&s);
-    for (action, args) in [
-        ("layer.duplicate", json!({"layer_id":1})),
-        ("layer.delete", json!({"layer_id":1})),
-        (
-            "canvas.transform",
-            json!({"target":"layer","translate_x":1}),
-        ),
-    ] {
+    for (action, args) in [(
+        "canvas.transform",
+        json!({"target":"layer","translate_x":1}),
+    )] {
         let error = s.apply(Action::new(action, args)).unwrap_err();
         assert_eq!(error.code, "mask_editing_pending", "{action}: {error}");
         before.restored(&s);

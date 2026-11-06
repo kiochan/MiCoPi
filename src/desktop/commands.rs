@@ -56,6 +56,22 @@ pub(super) fn vk_to_key(vk: u16) -> Option<Key> {
         .find(|key| key_to_vk(*key) == Some(vk))
 }
 impl Editor {
+    pub(super) fn contact_guarded_ui_action(&self, action: Action) -> bool {
+        match action {
+            Action::UiCommand(10140 | 10144 | 10145 | 10166..=10174) => true,
+            Action::UiCommand(id) => self
+                .settings
+                .keys
+                .plugin_action(id)
+                .and_then(|id| self.session.registry.actions.get(id))
+                .is_some_and(|definition| {
+                    definition
+                        .operation
+                        .is_some_and(crate::application::Operation::is_contact_guarded_command)
+                }),
+            _ => false,
+        }
+    }
     pub(super) fn open_palette(&mut self, mode: Mode) {
         self.register_commands();
         self.finish_stroke();
@@ -513,14 +529,14 @@ impl Studio {
                 continue;
             }
             if action == Action::Cancel
-                && self.editor.geometry_contact_modal()
+                && self.editor.contact_draft_modal()
                 && !self.settings_open
                 && !self.replay.open
                 && self.editor.palette.is_none()
                 && !self.editor.new_open
                 && self.editor.export_draft.is_none()
                 && self.editor.transform.is_none()
-                && (self.editor.command_form.is_none() || self.editor.geometry_command_form())
+                && (self.editor.command_form.is_none() || self.editor.guarded_command_form())
             {
                 self.editor.geometry = None;
                 self.editor.command_form = None;
@@ -529,22 +545,8 @@ impl Studio {
             let group_edit = matches!(action, Action::UiCommand(10187 | 10200 | 10201))
                 || (matches!(action, Action::UiCommand(10147))
                     && self.editor.session.doc.has_groups());
-            let geometry_edit = match action {
-                Action::UiCommand(10144 | 10145 | 10166..=10174) => true,
-                Action::UiCommand(id) => self
-                    .editor
-                    .settings
-                    .keys
-                    .plugin_action(id)
-                    .and_then(|id| self.editor.session.registry.actions.get(id))
-                    .is_some_and(|definition| {
-                        definition
-                            .operation
-                            .is_some_and(crate::application::Operation::is_canvas_geometry_command)
-                    }),
-                _ => false,
-            };
-            if !group_edit && !geometry_edit {
+            let guarded_edit = self.editor.contact_guarded_ui_action(action);
+            if !group_edit && !guarded_edit {
                 self.editor.finish_stroke();
                 self.editor.pen_active = false;
             }

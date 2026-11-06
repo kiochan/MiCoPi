@@ -496,7 +496,7 @@ impl Editor {
         }
         if self.blocked
             && self.input_owned
-            && !(self.geometry_contact_allowed && self.geometry_contact_modal())
+            && !(self.contact_draft_allowed && self.contact_draft_modal())
         {
             self.finish_stroke();
         }

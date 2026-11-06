@@ -1391,5 +1391,6 @@
   "Preview uses visible artwork. Layers and raster masks are cropped; undo restores them.": "Preview uses visible artwork. Layers and raster masks are cropped; undo restores them.",
   "Raster Mask Buffers": "Raster Mask Buffers",
   "Reframe layers, raster masks and selections without scaling.": "Reframe layers, raster masks and selections without scaling.",
-  "Scale every layer, raster mask and selection. Apply commits one edit.": "Scale every layer, raster mask and selection. Apply commits one edit."
+  "Scale every layer, raster mask and selection. Apply commits one edit.": "Scale every layer, raster mask and selection. Apply commits one edit.",
+  "Finish the current contact before changing layer structure": "Finish the current contact before changing layer structure"
 }

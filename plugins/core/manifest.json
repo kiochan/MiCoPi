@@ -3684,7 +3684,20 @@
     {
       "id": "layer.duplicate",
       "title": "Duplicate layer",
-      "operation": "duplicate_layer"
+      "operation": "duplicate_layer",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "source_layer_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+          "layer_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+          "mask_ids": {
+            "type": "array", "minItems": 0, "maxItems": 1,
+            "items": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            "description": "Fresh copied owner-mask IDs; empty for an unmasked source."
+          }
+        },
+        "required": ["source_layer_id", "layer_id", "mask_ids"]
+      }
     },
     {
       "id": "layer.move",
@@ -3694,7 +3707,19 @@
     {
       "id": "layer.delete",
       "title": "Delete layer",
-      "operation": "delete_layer"
+      "operation": "delete_layer",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "deleted_layer_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+          "deleted_mask_ids": {
+            "type": "array", "minItems": 0, "maxItems": 1,
+            "items": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            "description": "Removed owner-mask IDs; empty for an unmasked source."
+          }
+        },
+        "required": ["deleted_layer_id", "deleted_mask_ids"]
+      }
     },
     {
       "id": "layer.merge_down",

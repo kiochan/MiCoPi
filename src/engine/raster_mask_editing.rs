@@ -75,7 +75,7 @@ impl Document {
     pub(super) fn bump_mask_storage_epoch(&mut self) {
         self.mask_storage_epoch = NEXT_MASK_STORAGE_EPOCH.fetch_add(1, Ordering::Relaxed);
     }
-    fn mark_mask_plane(&mut self, id: u64) {
+    pub(super) fn mark_mask_plane(&mut self, id: u64) {
         let count = self.width.div_ceil(TILE) * self.height.div_ceil(TILE);
         self.replay_mask_tiles
             .extend((0..count).map(|tile| (id, tile)));

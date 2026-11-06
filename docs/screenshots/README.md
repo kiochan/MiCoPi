@@ -2,6 +2,16 @@
 
 These are actual application captures, not interface mockups. Current images come from isolated GUI smoke checks and design previews of MiCoPi builds. Documentation deliberately reuses stable filenames so image updates do not require changing every guide.
 
+`mask-owner-editing.png` is the reviewed English final Release capture from
+`scripts/smoke-mask-owners.py` on 2026-11-06. All four native Layers captures were
+reviewed. The independently constructed small fixture duplicates Light inside
+its retained parent, gives the copy a fresh raw-mask identity and selects that
+copied mask for painting. Source/copy thumbnails, inherited Screen/opacity and
+disabled Link feedback remain separate. Artist-owned names are untranslated.
+The same run checks 22 exact raw/composition cases across JSONL/MCP/GUI, compound
+Undo, projects, ID bindings, contact/atomic rejection and DLL-free outcomes;
+language changes leave exported artwork unchanged.
+
 `mask-canvas-geometry.png` is the reviewed English final Release capture from
 `scripts/smoke-mask-geometry.py` on 2026-11-06. The real Image Size dialog exposes
 separate raw-A8/effective-cache estimates and the fixed-pixel feather policy.
@@ -32,6 +42,7 @@ when these dialogs open or cancel.
 | [New canvas](new-canvas.png) | Configurable preset, unit selector, resolved pixel size, editable background and physical-resolution controls |
 | [Image size](image-size.png) | Unit-aware Image Size with inherited unequal density, native sampling and all-layer/mask estimates |
 | [Layer organization](layer-organization.png) | Layer color labels, pixel/position lock controls and shared name/filter discovery |
+| [Copied raster-mask owner](mask-owner-editing.png) | Independent source/copy masks, explicit copied-mask painting target and retained owner properties |
 | [Multiple selected layers](layer-multi-selection.png) | Distinct selected/active layer feedback, shared properties and the selected count |
 | [Nested layer groups](layer-groups.png) | Hierarchy headers, isolated groups and the active raster painting target |
 | [Actual group composition](group-composition.png) | Read-only generated transparent, raster and isolated group blend topology |

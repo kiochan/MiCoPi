@@ -22,6 +22,12 @@ Select sibling raster layers and use **Group Selection (Ctrl+G)**. Group headers
 
 Group controls provide names, visibility, opacity, compositing policy and blending, plus child creation, duplication, reparenting, ungrouping and explicit **Delete Group and Contents**. **Group Compositing** selects Isolated or Pass Through; **Group Blend Mode** retains its value but is disabled under Pass Through. Unavailable Pass Through support is explained by the disabled choice. **Ungroup Active Layer's Parent (Ctrl+Shift+G)** targets the active raster's parent; a group's context action uses its explicit ID. Shortcuts remain configurable, and older explicit bindings take precedence over new defaults.
 
+On documents with raster masks, group structural commands and subtree/visible
+merges remain guarded pending complete owner handling. Group properties and mask
+painting are available. Plain [single-layer copy/delete](mask-owner-editing.md)
+preserves an individual child's mask and its existing parent; it does not enable
+the equivalent whole-group or multi-layer command.
+
 The registered `group.inspect {"group_id":1}` command opens an explicit group's desktop properties without changing the painting target or raster selection. Its queued effect captures document identity. Headless clients receive `ui_unavailable` and can inspect/edit through `group.query` and `group.set`.
 
 Blend selection uses the same family-ordered scrolling menu as Layers and Layer Filters, with a bounded height derived from configured appearance metrics. Unsupported modes stay visible but disabled; the active label remains readable. Runtime availability is exposed through `graph.read.available_blend_modes` and public `compositing.graph` state. Unsupported new-mode edits reject before changing the group.
@@ -64,7 +70,7 @@ Group edits require an idle drawing or non-drawing contact. Inherited visibility
 
 Flat raster storage remains the depth-first leaf order of the tree. Reordering moves owned pixel buffers rather than cloning images. `group.move` rejects duplicate references, ancestor-plus-descendant targets, cycles and invalid final child slots. Legacy flat layer moves cannot cross parent boundaries or split subtrees; the grouped UI uses explicit sibling operations instead.
 
-Ungroup removes the group's visibility, opacity and compositing boundary; it is not an appearance-preserving bake. Group deletion follows existing structural deletion policy and may remove locked descendants, with undo. Pixel baking keeps its separate lock guards. Merge Down requires adjacent raster siblings and retains their parent. Stamp Visible adds a root raster from the real composite; Flatten bakes the real composite and removes the hierarchy. Multi-layer transforms and raster/clipping masks remain planned.
+Ungroup removes the group's visibility, opacity and compositing boundary; it is not an appearance-preserving bake. Group deletion follows existing structural deletion policy and may remove locked descendants, with undo. Pixel baking keeps its separate lock guards. Merge Down requires adjacent raster siblings and retains their parent. Stamp Visible adds a root raster from the real composite; Flatten bakes the real composite and removes the hierarchy. Multi-layer transforms, clipping masks and complete group-mask structural/baking integration remain planned; see [raster-mask editing](raster-mask-editing.md) for the available painting and geometry subsets.
 
 [Selected-only merge](selected-merge.md) accepts explicit noncontiguous or cross-parent raster IDs. It bakes selected leaves plus intermediate group gates over transparency, excluding the lowest common parent's gate and all ancestors. The replacement is a direct child of that common parent above the highest original target branch. Every folder and unselected raw buffer remains, including empty groups. This can change interactions with unselected artwork; its plan and optional review expose placement and consumption without promising whole-composite equality.
 

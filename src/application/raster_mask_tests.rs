@@ -123,7 +123,7 @@ fn raster_mask_pending_edits_reject_before_finishing_live_brush_or_hand_contacts
                 json!({"layer_ids":[1,2]}),
                 "mask_editing_pending",
             ),
-            ("layer.duplicate", json!({}), "mask_editing_pending"),
+            ("layer.duplicate", json!({}), "stroke_active"),
             (
                 "layer.batch",
                 json!({"action":"layer.set","layer_ids":[1,2],"args":{"opacity":0.5}}),

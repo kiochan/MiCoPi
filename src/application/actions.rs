@@ -203,6 +203,14 @@ pub enum Operation {
     Events,
 }
 impl Operation {
+    #[cfg(feature = "desktop")]
+    pub(crate) fn is_contact_guarded_command(self) -> bool {
+        self.is_canvas_geometry_command()
+            || matches!(
+                self,
+                Self::DuplicateLayer | Self::DeleteLayer | Self::LayerBatch
+            )
+    }
     /// Presentation adapters preserve active contacts until these commands run
     /// through their shared admission checks; opening a form is not admission.
     #[cfg(feature = "desktop")]

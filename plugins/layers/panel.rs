@@ -136,6 +136,12 @@ fn batch_action(command: &str, ids: &[u64], mut args: Value) -> crate::applicati
         json!({"action":command,"layer_ids":ids,"args":args}),
     )
 }
+fn owner_contact_guarded(action: &crate::application::Action) -> bool {
+    matches!(
+        action.action.as_str(),
+        "layer.duplicate" | "layer.delete" | "layer.batch"
+    )
+}
 fn property_action(ids: &[u64], mut args: Value) -> Option<crate::application::Action> {
     if args.as_object().is_none_or(|args| args.is_empty()) {
         return None;
@@ -331,7 +337,56 @@ impl Editor {
         pending: Vec<crate::application::Action>,
         ctx: Option<&Context>,
     ) {
+        // A lost-focus name draft can precede a panel operation or a separately
+        // queued menu command. Keep that draft inert while shared admission is
+        // pending, or while a guarded argument dialog owns only a local draft.
+        let active_contact =
+            self.session.stroke.active() || self.session.pointer_checkpoint.is_some();
+        let guarded_pending = pending.iter().find(|action| owner_contact_guarded(action));
+        let defer_names = active_contact
+            && (guarded_pending.is_some()
+                || self
+                    .actions
+                    .iter()
+                    .any(|action| self.contact_guarded_ui_action(*action))
+                || self.contact_draft_modal());
+        if defer_names {
+            if let Some(ctx) = ctx {
+                for draft in &pending {
+                    if draft.action == "layer.rename" {
+                        let id = draft.args["layer_id"].as_u64().or_else(|| {
+                            let index = draft.args["index"]
+                                .as_u64()
+                                .map_or(self.session.doc.active, |index| index as usize);
+                            (index < self.session.doc.layers.len())
+                                .then(|| self.session.doc.layer_id(index))
+                        });
+                        if let (Some(id), Some(name)) = (id, draft.args["name"].as_str()) {
+                            ctx.data_mut(|data| {
+                                data.insert_temp(
+                                    Id::new(("layer-name", self.session.doc.identity, id)),
+                                    name.to_owned(),
+                                )
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        if active_contact {
+            if let Some(action) = guarded_pending {
+                self.core_at_revision(
+                    &action.action,
+                    action.args.clone(),
+                    action.expected_revision,
+                );
+                return;
+            }
+        }
         for mut action in pending {
+            if defer_names && action.action == "layer.rename" {
+                continue;
+            }
             let property_args = if action.action == "layer.set" {
                 Some(&action.args)
             } else if action.action == "layer.batch" && action.args["action"] == "layer.set" {
@@ -355,7 +410,12 @@ impl Editor {
                 || action.action.starts_with("mask.")
                 || matches!(
                     action.action.as_str(),
-                    "layer.merge" | "layer.merge_selected" | "layer.merge_selected.open"
+                    "layer.duplicate"
+                        | "layer.delete"
+                        | "layer.batch"
+                        | "layer.merge"
+                        | "layer.merge_selected"
+                        | "layer.merge_selected.open"
                 )
                 || action.action == "layer.merge_visible" && self.session.doc.has_groups()
                 || unsupported_blend;
@@ -1547,6 +1607,10 @@ impl Editor {
         self.dispatch_layer_pending_ui(pending, Some(ui.ctx()));
     }
 }
+
+#[cfg(test)]
+#[path = "owner_structure_ui_tests.rs"]
+mod owner_structure_ui_tests;
 
 #[cfg(test)]
 mod tests {

@@ -179,7 +179,10 @@ impl Document {
         index: usize,
         staged: Option<(Vec<u32>, crate::engine::selection::SelectionState)>,
     ) -> Result<(), String> {
-        self.require_mask_aware_edit()?;
+        if staged.is_some() {
+            // Transformed copies need owner-mask geometry, a separate contract.
+            self.require_mask_aware_edit()?;
+        }
         if let Some((pixels, selection)) = &staged {
             if pixels.len() != self.width * self.height {
                 return Err("Invalid copied pixel count".into());
@@ -219,44 +222,59 @@ impl Document {
             .iter()
             .map(|m| self.layers[self.layer_index(m.id).unwrap_or(index)].mode)
             .collect();
-        let prepared = self.prepare_group_plan(
+        let opacities: Vec<_> = metadata
+            .iter()
+            .map(|m| self.layers[self.layer_index(m.id).unwrap_or(index)].opacity)
+            .collect();
+        let mask_edit = self.plan_owner_mask_copy(index, self.next_layer_id)?;
+        let prepared = self.prepare_group_plan_with_masks(
             &graph,
             groups.as_ref(),
             &metadata,
             &modes,
+            &opacities,
             self.next_group_id,
+            &mask_edit.state,
             true,
         )?;
+        let copied_mask = self.stage_owner_mask_copy(&mask_edit);
+        let (layer, selection) = if let Some((pixels, selection)) = staged {
+            let source = &self.layers[index];
+            (
+                Layer {
+                    pixels,
+                    visible: source.visible,
+                    opacity: source.opacity,
+                    mode: source.mode,
+                },
+                Some(selection),
+            )
+        } else {
+            (self.layers[index].clone(), None)
+        };
         self.finish();
         let before = self.composition();
         let active = self.active;
-        let layer = if let Some((pixels, selection)) = staged {
+        if let Some(selection) = selection {
             self.selection = selection;
-            let source = &self.layers[index];
-            Layer {
-                pixels,
-                visible: source.visible,
-                opacity: source.opacity,
-                mode: source.mode,
-            }
-        } else {
-            self.layers[index].clone()
-        };
+        }
         self.layers.insert(index + 1, layer);
         self.layer_metadata = metadata;
         self.next_layer_id += 1;
         self.select_layer(index + 1);
+        let mask_change = self.publish_owner_mask_edit(mask_edit, copied_mask);
         self.graph = graph;
         self.groups = groups;
         self.install_group_plan(prepared);
         self.track_layer_order();
-        self.commit_composition(
+        self.commit_owner_composition(
             before,
             Some(LayerChange::Toggle {
                 index: index + 1,
                 active,
                 removed: None,
             }),
+            mask_change,
         );
         Ok(())
     }
@@ -425,7 +443,6 @@ impl Document {
         Ok(())
     }
     pub fn delete_layer(&mut self, index: usize) -> Result<(), String> {
-        self.require_mask_aware_edit()?;
         if index >= self.layers.len() {
             return Err("Layer does not exist".into());
         }
@@ -443,12 +460,19 @@ impl Document {
             .iter()
             .map(|m| self.layers[self.layer_index(m.id).unwrap()].mode)
             .collect();
-        let prepared = self.prepare_group_plan(
+        let opacities: Vec<_> = metadata
+            .iter()
+            .map(|m| self.layers[self.layer_index(m.id).unwrap()].opacity)
+            .collect();
+        let mask_edit = self.plan_owner_mask_delete(index)?;
+        let prepared = self.prepare_group_plan_with_masks(
             &graph,
             groups.as_ref(),
             &metadata,
             &modes,
+            &opacities,
             self.next_group_id,
+            &mask_edit.state,
             true,
         )?;
         self.finish();
@@ -470,17 +494,19 @@ impl Document {
             .or_else(|| selected_survivor.and_then(|id| self.layer_index(id)))
             .unwrap_or(index.min(self.layers.len() - 1));
         self.normalize_layer_selection();
+        let mask_change = self.publish_owner_mask_edit(mask_edit, None);
         self.graph = graph;
         self.groups = groups;
         self.install_group_plan(prepared);
         self.track_layer_order();
-        self.commit_composition(
+        self.commit_owner_composition(
             before,
             Some(LayerChange::Toggle {
                 index,
                 active,
                 removed,
             }),
+            mask_change,
         );
         Ok(())
     }

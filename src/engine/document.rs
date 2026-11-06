@@ -669,7 +669,17 @@ impl Document {
         }
     }
     fn commit_composition(&mut self, before: Composition, layer_change: Option<LayerChange>) {
-        self.stroke = Some(Self::composition_edit(before, layer_change, self.active));
+        self.commit_owner_composition(before, layer_change, None);
+    }
+    fn commit_owner_composition(
+        &mut self,
+        before: Composition,
+        layer_change: Option<LayerChange>,
+        mask_change: Option<MaskChange>,
+    ) {
+        let mut edit = Self::composition_edit(before, layer_change, self.active);
+        edit.mask_change = mask_change;
+        self.stroke = Some(edit);
         self.finish();
         self.render_error = None;
         self.invalidate();
@@ -1810,6 +1820,8 @@ mod mask_composition;
 mod mask_effects;
 #[path = "mask_geometry.rs"]
 mod mask_geometry;
+#[path = "mask_owner_editing.rs"]
+mod mask_owner_editing;
 #[path = "mix.rs"]
 mod mix;
 #[path = "raster_mask_editing.rs"]

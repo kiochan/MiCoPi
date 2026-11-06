@@ -20,6 +20,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Raster Mask Storage](raster-mask-storage.md) | A8 ownership/history/composition, MICOPI04 and verified replay foundation |
 | [Raster Mask Editing](raster-mask-editing.md) | Public mask painting/actions/effects/UI subset, raw-alpha Apply and remaining owner/structural boundaries |
 | [Raster Mask Canvas Geometry](mask-canvas-geometry.md) | All-plane framing, rotations/flips, Image Size/Trim, shared plans, budgets and atomic history/replay |
+| [Raster Mask Owner Editing](mask-owner-editing.md) | Plain single-layer copy/delete, fresh IDs, paint-target rules, compound Undo/outcomes and remaining structural boundaries |
 | [Color Blend Modes](blend-modes.md) | The 26-mode catalog, RGB/alpha semantics, family menus, availability and legacy DLL compatibility |
 | [Clipboard](clipboard.md) | Internal transfers, Windows PNG/DIB adapter, limits, external effects and native verification status |
 | [Selections](selections.md) | Marquee/lasso gestures, color commands, native clipping, history and limits |
@@ -50,6 +51,6 @@ The technical documentation is maintained in English. The project overview is al
 
 | Design | Status |
 | --- | --- |
-| [Paintable Raster Masks](raster-masks-design.md) | Foundations, painting/actions/effects/UI and document-wide geometry implemented; owner geometry/structural/merge/transfer integration remains planned |
+| [Paintable Raster Masks](raster-masks-design.md) | Foundations, painting/actions/effects/UI, document geometry and plain single-owner copy/delete implemented; owner transforms, group/subtree/batch structure, merges and transfers remain planned |
 
 Runnable material is indexed in [Examples](../examples/README.md); actual application captures are indexed in [Screenshots](screenshots/README.md). See [Contributing](../CONTRIBUTING.md) and [Changelog](../CHANGELOG.md) for the collaboration process and release history.

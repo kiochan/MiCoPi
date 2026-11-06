@@ -27,10 +27,8 @@ impl Session {
                     | Nudge
                     | RotateLayerClockwise
                     | RotateLayerCounterclockwise
-                    | DuplicateLayer
                     | LayerViaCopy
                     | LayerViaCut
-                    | DeleteLayer
                     | MergeDown
                     | MergeLayers
                     | MergeSelectedLayers

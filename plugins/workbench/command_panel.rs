@@ -276,14 +276,14 @@ impl Editor {
             message: String::new(),
         });
     }
-    pub(super) fn geometry_command_form(&self) -> bool {
+    pub(super) fn guarded_command_form(&self) -> bool {
         self.command_form.as_ref().is_some_and(|form| {
             self.session
                 .registry
                 .actions
                 .get(&form.action)
                 .and_then(|definition| definition.operation)
-                .is_some_and(crate::application::Operation::is_canvas_geometry_command)
+                .is_some_and(crate::application::Operation::is_contact_guarded_command)
         })
     }
     pub(super) fn plugin_command_window(&mut self, ctx: &Context) {
@@ -297,7 +297,7 @@ impl Editor {
         let before_sync = self.session.revision;
         if !definition
             .operation
-            .is_some_and(crate::application::Operation::is_canvas_geometry_command)
+            .is_some_and(crate::application::Operation::is_contact_guarded_command)
         {
             self.push_gui_parameters();
             self.push_gui_view();

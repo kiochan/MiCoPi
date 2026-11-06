@@ -2,7 +2,7 @@
 
 Document-wide geometry builds on [raster mask editing](raster-mask-editing.md) and the
 [native A8 sampler](native-plugins.md#optional-raw-a8-sampler). Complete owner
-Move/Free Transform, structural edits, merges and clipboard integration remain
+Move/Free Transform, group/subtree/batch structural edits, merges and clipboard integration remain
 separate roadmap work.
 
 ![Image Size with separate raster-mask and effective-cache estimates](screenshots/mask-canvas-geometry.png)
@@ -138,8 +138,10 @@ the project, PNG and verified recording.
 
 ## Remaining work and verification
 
-Owner-specific Move/Free Transform, owner duplication/deletion, grouped
-structural edits, merges/stamp/flatten, cut/paste and group-mask application
+Plain [single-layer owner copy/delete](mask-owner-editing.md) now has its own
+compound structural contract. Owner-specific Move/Free Transform, group/subtree
+and batch structural edits, Layer via Copy/Cut, merges/stamp/flatten, cut/paste
+and group-mask application
 remain guarded where integration is incomplete. Clipping masks remain planned.
 See the full [design matrix](raster-masks-design.md#structural-and-geometry-rules)
 and [roadmap](../ROADMAP.md).

@@ -195,7 +195,7 @@ pub(super) struct Editor {
     opacity_input: OpacityInput,
     native: Option<Native>,
     blocked: bool,
-    geometry_contact_allowed: bool,
+    contact_draft_allowed: bool,
     new_canvas: Option<canvas_new_document::NewCanvasDraft>,
     export_draft: Option<canvas_export::Draft>,
     new_open: bool,
@@ -328,7 +328,7 @@ impl Editor {
             opacity_input: OpacityInput::default(),
             native,
             blocked: false,
-            geometry_contact_allowed: false,
+            contact_draft_allowed: false,
             new_canvas: None,
             export_draft: None,
             new_open: false,
@@ -402,8 +402,8 @@ impl Editor {
     fn core(&mut self, id: &str, args: serde_json::Value) -> bool {
         self.core_at_revision(id, args, None)
     }
-    fn geometry_contact_modal(&self) -> bool {
-        self.geometry.is_some() || self.geometry_command_form()
+    fn contact_draft_modal(&self) -> bool {
+        self.geometry.is_some() || self.guarded_command_form()
     }
     fn core_at_revision(
         &mut self,
@@ -1107,13 +1107,13 @@ impl Studio {
             || self.editor.transform.is_some()
             || self.editor.command_form.is_some()
             || self.replay.open;
-        self.editor.geometry_contact_allowed = self.editor.geometry_contact_modal()
+        self.editor.contact_draft_allowed = self.editor.contact_draft_modal()
             && !self.settings_open
             && self.editor.palette.is_none()
             && !self.editor.new_open
             && self.editor.export_draft.is_none()
             && self.editor.transform.is_none()
-            && (self.editor.command_form.is_none() || self.editor.geometry_command_form())
+            && (self.editor.command_form.is_none() || self.editor.guarded_command_form())
             && !self.replay.open;
         if self.editor.blocked && self.editor.movement_gesture.is_some() {
             self.editor.finish_stroke();

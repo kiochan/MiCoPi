@@ -1391,5 +1391,6 @@
   "Preview uses visible artwork. Layers and raster masks are cropped; undo restores them.": "预览使用可见画面。裁剪图层和栅格蒙版，撤销可恢复。",
   "Raster Mask Buffers": "栅格蒙版缓冲区",
   "Reframe layers, raster masks and selections without scaling.": "调整图层、栅格蒙版和选区的画布范围，不缩放内容。",
-  "Scale every layer, raster mask and selection. Apply commits one edit.": "缩放所有图层、栅格蒙版和选区。应用后仅产生一次编辑。"
+  "Scale every layer, raster mask and selection. Apply commits one edit.": "缩放所有图层、栅格蒙版和选区。应用后仅产生一次编辑。",
+  "Finish the current contact before changing layer structure": "请先结束当前接触，再更改图层结构"
 }

@@ -2,12 +2,21 @@
 use crate::application::{ActionError, ActionResult, Operation, Session};
 use crate::engine::MAX_LAYERS;
 use serde_json::{json, Value};
+// The shared integer schema accepts integral JSON floats as well as u64s.
+// Decode every bounded selector consistently rather than silently using active.
+fn integer(value: &Value) -> Option<u64> {
+    value
+        .as_f64()
+        .filter(|number| {
+            number.is_finite() && number.fract() == 0. && (0.0..=u32::MAX as f64).contains(number)
+        })
+        .map(|number| number as u64)
+}
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     use Operation::*;
     let index = || -> Result<usize, ActionError> {
-        let by_index = args["index"].as_u64().map(|v| v as usize);
-        let by_id = args["layer_id"]
-            .as_u64()
+        let by_index = integer(&args["index"]).map(|v| v as usize);
+        let by_id = integer(&args["layer_id"])
             .map(|id| {
                 s.doc
                     .layer_index(id)
@@ -34,9 +43,24 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                     "Finish the current contact before selecting layers",
                 ));
             }
-            let ids: Vec<u64> = serde_json::from_value(args["layer_ids"].clone())?;
+            let invalid_ids = || {
+                ActionError::new(
+                    "invalid_layer_selection",
+                    "Layer IDs must be bounded integers",
+                )
+            };
+            let ids: Vec<u64> = args["layer_ids"]
+                .as_array()
+                .ok_or_else(invalid_ids)?
+                .iter()
+                .map(|value| integer(value).ok_or_else(invalid_ids))
+                .collect::<Result<_, _>>()?;
+            let active = args
+                .get("active_layer_id")
+                .map(|value| integer(value).ok_or_else(invalid_ids))
+                .transpose()?;
             s.doc
-                .set_layer_selection(&ids, args["active_layer_id"].as_u64())
+                .set_layer_selection(&ids, active)
                 .map_err(|e| ActionError::new("invalid_layer_selection", e))?;
             Ok(s.state())
         }
@@ -92,7 +116,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             Ok(s.state())
         }
         AddLayer => {
-            let parent = args.get("parent_id").and_then(Value::as_u64);
+            let parent = args.get("parent_id").and_then(integer);
             if let Some(id) = parent.filter(|id| *id != 0) {
                 s.doc
                     .group_layer_ids(id)
@@ -124,18 +148,61 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         }
         RenameLayer | DuplicateLayer | MoveLayer | DeleteLayer => {
             let i = index()?;
-            s.finish_stroke();
+            let source_layer_id = s.doc.layer_id(i);
+            let source_mask_ids: Vec<_> = s
+                .doc
+                .mask_state()
+                .items
+                .iter()
+                .filter(|mask| {
+                    mask.owner
+                        == crate::engine::raster_masks::MaskOwner::Layer {
+                            id: source_layer_id,
+                        }
+                })
+                .map(|mask| mask.id)
+                .collect();
+            if matches!(op, DuplicateLayer | DeleteLayer) {
+                if s.stroke.active() || s.pointer_checkpoint.is_some() {
+                    return Err(ActionError::new(
+                        "stroke_active",
+                        "Finish the current contact before changing layer structure",
+                    ));
+                }
+            } else {
+                s.finish_stroke();
+            }
             let result = match op {
                 RenameLayer => s
                     .doc
                     .rename_layer(i, args["name"].as_str().unwrap().to_owned()),
                 DuplicateLayer => s.doc.duplicate_layer(i),
-                MoveLayer => s.doc.move_layer(i, args["to"].as_u64().unwrap() as usize),
+                MoveLayer => s.doc.move_layer(i, integer(&args["to"]).unwrap() as usize),
                 DeleteLayer => s.doc.delete_layer(i),
                 _ => unreachable!(),
             };
             result.map_err(|e| ActionError::new("layer_edit", e))?;
-            Ok(s.state())
+            let mut state = s.state();
+            if op == DuplicateLayer {
+                let layer_id = s.doc.layer_id(s.doc.active);
+                let mask_ids: Vec<_> = s
+                    .doc
+                    .mask_state()
+                    .items
+                    .iter()
+                    .filter(|mask| {
+                        mask.owner == crate::engine::raster_masks::MaskOwner::Layer { id: layer_id }
+                    })
+                    .map(|mask| mask.id)
+                    .collect();
+                state["source_layer_id"] = json!(source_layer_id);
+                state["layer_id"] = json!(layer_id);
+                state["mask_ids"] = json!(mask_ids);
+            } else if op == DeleteLayer {
+                state["deleted_layer_id"] = json!(source_layer_id);
+                state["deleted_mask_ids"] = json!(source_mask_ids);
+            }
+            Ok(state)
         }
         SelectLayer | LayerProperties => {
             let i = index()?;

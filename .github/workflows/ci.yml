@@ -56,3 +56,5 @@ jobs:
         run: python scripts/smoke-mask-editing.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify mask-aware document geometry and outcome replay
         run: python scripts/smoke-mask-geometry.py --skip-gui --cli target/release/micopi-cli.exe
+      - name: Verify single-layer mask ownership and outcome replay
+        run: python scripts/smoke-mask-owners.py --skip-gui --cli target/release/micopi-cli.exe

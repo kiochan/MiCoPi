@@ -226,7 +226,7 @@ properties on hidden or disabled masks.
 
 The following remain guarded with `mask_editing_pending` while mask items exist:
 owner Move/Free Transform and layer rotations,
-owner duplication/deletion/transfer, grouped structural edits, batch layer edits,
+group/subtree duplication/deletion, owner transfer, grouped structural edits, batch layer edits,
 merge/stamp/flatten and cut/paste. Their mutation plans/previews are guarded too.
 Mask-aware layer ordering is supported; the guard is not a promise that every
 structural action is disabled or complete. Selection operations, supported
@@ -241,8 +241,10 @@ contacts, while mutations reject active Brush or Hand contacts. See the
 [geometry contract](mask-canvas-geometry.md) for native capability, separate
 budgets, cache damage and byte-rounding details.
 
-Linked/unlinked owner transforms, mask-aware duplication and owner deletion, complete
-merge/clipboard handling and clipping masks remain planned. The current native,
+Plain [single-layer owner duplicate/delete](mask-owner-editing.md) carries raw
+masks, source properties and target rules through one compound Undo/outcome.
+Linked/unlinked owner transforms, group/subtree and batch structure, Layer via
+Copy/Cut, complete merge/clipboard handling and clipping masks remain planned. The current native,
 host, transport and UI fixtures test their stated scopes; synthetic pen input
 does not establish physical tablet/driver compatibility. Final delivery evidence
 belongs in [Development](development.md) and the [Changelog](../CHANGELOG.md),

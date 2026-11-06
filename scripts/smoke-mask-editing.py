@@ -421,7 +421,6 @@ def boundary_cases():
         ('canvas.transform.configure', dict(parameters=dict(target='layer', translate_x=1))),
         ('canvas.transform.repeat', {}), ('canvas.transform.repeat_copy', {}),
         ('canvas.nudge', dict(direction='right', target='layer')),
-        ('layer.duplicate', {}), ('layer.delete', dict(layer_id=2)),
         ('layer.via_copy', {}), ('layer.via_cut', {}),
         ('layer.merge_down', {}), ('layer.merge', {}),
         ('layer.merge_selected', dict(layer_ids=[1, 2])),

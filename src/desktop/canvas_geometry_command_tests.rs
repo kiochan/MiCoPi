@@ -77,7 +77,7 @@ fn studio_geometry_registered_plan_form_and_cancel_preserve_shared_live_contacts
         let ctx = Context::default();
         app.editor.actions.push(Action::UiCommand(command));
         app.run_actions(&ctx);
-        assert!(app.editor.geometry_contact_modal());
+        assert!(app.editor.contact_draft_modal());
         before.assert_same(&app.editor);
         let _ = ctx.run(
             RawInput {

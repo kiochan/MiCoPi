@@ -194,6 +194,60 @@ The final 2026-11-06 GNU Release foundation desktop/CLI executables were 10,266,
 
 The mask-specific JSONL/MCP/GUI check passed, including four reviewed language captures. Separate runtime, workflow, linked-graph, replay, group, selected-merge and Pass Through GUI checks passed. Subsequent capture stabilization adds request/viewport correlation and retained callback acknowledgement; use the capture-aware checks below when validating current builds rather than treating file existence as completion.
 
+## Single-layer raster-mask ownership checks
+
+Run `python scripts/smoke-mask-owners.py --cli <built-cli> --gui <built-desktop>`
+with matching default plugins; `--skip-gui` selects JSONL/MCP. Independent small
+MICOPI04 fixtures compare exact raw copies, target/selection changes, inherited
+properties, filter lineage and grouped composition for plain single-layer
+duplicate/delete. They exercise fresh ID-array bindings, integral JSON-float
+selectors, one-step Undo/Redo, projects, contact admission, atomic recovery and
+DLL-free outcomes. The full run adds four native Layers captures. See
+[Mask Owner Editing](mask-owner-editing.md) for the remaining group/batch,
+selection-transfer, transform and merge boundaries.
+
+The focused shared run passed 11 ownership tests and the subsequent integer
+selector regression passed. Six desktop tests passed, covering actual menu
+actions, static/search forms, Brush/Hand continuity, dirty-name drafts and
+separately queued commands. The selector test reproduced a validated `2.0`
+silently choosing a different active layer before the fix, then passed after
+bounded integer decoding was shared by ID/index/move/parent selectors. Its final
+targeted run also covered selected-ID arrays and their optional active ID. The
+broad headless run passed 569 tests with 9 ignored before that final selection
+normalization; the focused selector test passed afterward. Scalar
+logical-budget tests allocate no 4096-square images. Failed operations and
+successful dry runs retain their zero-change audit events; partial journal
+failure retains the prior event count/head. Atomic workflows retain child
+revisions and ordinary Undo semantics, separately from each owner's compound
+edit. Physical tablets and broad throughput are not measured by these checks.
+
+The final desktop binary passed 765 library tests with 9 ignored, including the
+final selected-ID normalization, in serial isolated batches of eight. This
+retains the GNU test-process TLS workaround described below; it is not a fix or
+an established cause for the monolithic runner's TLS-index failure. The matching
+Release build passed all 22 owner cases: 450 JSONL commands, 521 MCP commands and
+GUI parity, including four reviewed native Layers captures. Every owner outcome
+archive restored without DLLs. Fixtures use 7-by-5 pixels and five masks, not
+large-image stress workloads.
+
+The unchanged native DLLs also passed the existing public-mask JSONL/MCP smoke
+(33 remaining boundaries), foundation/old-host compatibility, and all 31
+canvas-geometry cases (931 JSONL/1004 MCP commands), including the old painting
+sampler rejection check. Release runtime and workflow smokes passed full GUI
+parity, and the complete localization smoke passed external catalog reload,
+search/settings and four-language UI checks. The 21-command owner example
+produced a 120-by-96 PNG, a MICOPI04 project retaining copied mask ID 2 and a
+verified 19-event/78,278-byte archive. Archive bytes include paths, timestamps and
+all document outcomes; they are not an isolated compression ratio.
+All checks ran serially below normal priority on at most two logical
+CPUs; Cargo used one job and test binaries used one test thread.
+
+The Release desktop/CLI executables are 10,592,768/4,368,384 bytes, respectively,
+12.5/10.5 KiB above the preceding canvas-geometry stage. No dependency, native ABI,
+project format or recording format changes are introduced. Structural-copy
+correctness and allocation scope are covered; these checks do not establish a
+throughput improvement or physical pen latency.
+
 ## Mask-aware canvas geometry checks
 
 Build/stage the painting DLL with the independent A8 sampler, then run
