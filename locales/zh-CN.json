@@ -1380,5 +1380,16 @@
   "Apply Raster Mask to Layer": "应用栅格蒙版到图层",
   "Finish the current contact before editing raster masks": "请结束当前笔触后再编辑栅格蒙版",
   "This operation edits layer pixels. Select Pixels before continuing.": "此操作会编辑图层像素，请先将绘画目标切换为“像素”。",
-  "Raster mask ownership, properties and paint target": "栅格蒙版的所属、属性与绘画目标"
+  "Raster mask ownership, properties and paint target": "栅格蒙版的所属、属性与绘画目标",
+  "Crop layers, raster masks and selections to a pixel rectangle.": "将图层、栅格蒙版和选区裁剪到像素矩形。",
+  "Effective Mask Cache (estimate)": "有效蒙版缓存（估算）",
+  "Finish the current contact before changing canvas geometry": "请先结束当前笔触或拖动，再更改画布几何形状",
+  "Mask feather stays fixed in canvas pixels.": "蒙版羽化半径保持原画布像素数值。",
+  "New layer space is transparent; new mask space reveals pixels.": "新增图层区域为透明；新增蒙版区域不遮挡像素。",
+  "Painting DLL does not support raw raster-mask geometry": "绘画 DLL 不支持原始栅格蒙版几何操作",
+  "Plan Canvas Geometry": "规划画布几何操作",
+  "Preview uses visible artwork. Layers and raster masks are cropped; undo restores them.": "预览使用可见画面。裁剪图层和栅格蒙版，撤销可恢复。",
+  "Raster Mask Buffers": "栅格蒙版缓冲区",
+  "Reframe layers, raster masks and selections without scaling.": "调整图层、栅格蒙版和选区的画布范围，不缩放内容。",
+  "Scale every layer, raster mask and selection. Apply commits one edit.": "缩放所有图层、栅格蒙版和选区。应用后仅产生一次编辑。"
 }

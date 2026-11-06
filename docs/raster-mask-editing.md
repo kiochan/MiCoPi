@@ -10,12 +10,14 @@ registered commands run through the desktop, workflows, MCP and headless clients
 *Reviewed Windows development capture at a 300-logical-pixel panel width. The
 border selects the raw mask thumbnail independently of the active raster row.*
 
-**Geometry and structural integration are incomplete.** Mask-bearing documents
-still reject the guarded movement, transform, duplication, owner deletion,
-merge/flatten and transfer paths. `linked` is stored, editable metadata; it does
-not enable linked transforms yet. The full raster-mask roadmap item remains
-unchecked. See [remaining boundaries](#current-boundaries) and the complete
-[implementation design](raster-masks-design.md).
+**Owner geometry and structural integration are incomplete.**
+[Document-wide geometry](mask-canvas-geometry.md) transforms all raw masks with
+the canvas, including hidden, disabled and unlinked masks. Mask-bearing documents
+still reject guarded owner movement/Free Transform, layer rotations, duplication,
+owner deletion, merge/flatten and transfer paths. `linked` is stored, editable
+metadata; it does not enable linked owner transforms yet. The full raster-mask
+roadmap item remains unchecked. See [remaining boundaries](#current-boundaries)
+and the complete [implementation design](raster-masks-design.md).
 
 ## Owners and painting targets
 
@@ -223,7 +225,7 @@ properties on hidden or disabled masks.
 ## Current boundaries
 
 The following remain guarded with `mask_editing_pending` while mask items exist:
-canvas geometry/resampling/crop/trim, Move/Free Transform and layer rotations,
+owner Move/Free Transform and layer rotations,
 owner duplication/deletion/transfer, grouped structural edits, batch layer edits,
 merge/stamp/flatten and cut/paste. Their mutation plans/previews are guarded too.
 Mask-aware layer ordering is supported; the guard is not a promise that every
@@ -231,7 +233,15 @@ structural action is disabled or complete. Selection operations, supported
 ordinary pixel edits with the Pixels target, inspection, composition properties,
 export, project persistence and verified replay retain their own contracts.
 
-Linked/unlinked transforms, mask-aware duplication and owner deletion, complete
+Canvas framing/crop, document rotations/flips, Image Size and Trim stage every
+raw plane with layers and pixel selections before one Canvas Undo/outcome.
+Expansion fills new mask space with revealing white; numeric feather remains
+fixed in canvas pixels. Shared geometry/Image Size plans are read-only during
+contacts, while mutations reject active Brush or Hand contacts. See the
+[geometry contract](mask-canvas-geometry.md) for native capability, separate
+budgets, cache damage and byte-rounding details.
+
+Linked/unlinked owner transforms, mask-aware duplication and owner deletion, complete
 merge/clipboard handling and clipping masks remain planned. The current native,
 host, transport and UI fixtures test their stated scopes; synthetic pen input
 does not establish physical tablet/driver compatibility. Final delivery evidence

@@ -512,10 +512,39 @@ impl Studio {
                 self.editor.selected_merge = None;
                 continue;
             }
+            if action == Action::Cancel
+                && self.editor.geometry_contact_modal()
+                && !self.settings_open
+                && !self.replay.open
+                && self.editor.palette.is_none()
+                && !self.editor.new_open
+                && self.editor.export_draft.is_none()
+                && self.editor.transform.is_none()
+                && (self.editor.command_form.is_none() || self.editor.geometry_command_form())
+            {
+                self.editor.geometry = None;
+                self.editor.command_form = None;
+                continue;
+            }
             let group_edit = matches!(action, Action::UiCommand(10187 | 10200 | 10201))
                 || (matches!(action, Action::UiCommand(10147))
                     && self.editor.session.doc.has_groups());
-            if !group_edit {
+            let geometry_edit = match action {
+                Action::UiCommand(10144 | 10145 | 10166..=10174) => true,
+                Action::UiCommand(id) => self
+                    .editor
+                    .settings
+                    .keys
+                    .plugin_action(id)
+                    .and_then(|id| self.editor.session.registry.actions.get(id))
+                    .is_some_and(|definition| {
+                        definition
+                            .operation
+                            .is_some_and(crate::application::Operation::is_canvas_geometry_command)
+                    }),
+                _ => false,
+            };
+            if !group_edit && !geometry_edit {
                 self.editor.finish_stroke();
                 self.editor.pen_active = false;
             }

@@ -107,9 +107,6 @@ fn input(value: &mut f64, unit: Unit) -> DragValue<'_> {
 }
 impl Editor {
     pub(in crate::desktop) fn open_image_size(&mut self) {
-        self.finish_stroke();
-        self.push_gui_parameters();
-        self.push_gui_view();
         self.open_canvas_geometry(false);
         self.geometry.as_mut().unwrap().image_size = Some(Draft {
             revision: self.session.revision,
@@ -138,13 +135,24 @@ impl Editor {
             && self.session.pointer_checkpoint.is_none()
     }
     fn apply_image_size(&mut self, dialog: &CanvasDialog, d: &mut Draft) -> bool {
+        if !self.geometry_idle() {
+            d.error = GEOMETRY_CONTACT_ACTIVE.into();
+            return false;
+        }
         if !self.image_size_current(dialog, d) {
             d.error = "The canvas changed. Reopen this dialog.".into();
             return false;
         }
-        if let Err(error) = self.plan_image_size(d) {
-            d.error = error;
-            return false;
+        match self.plan_image_size(d) {
+            Err(error) => {
+                d.error = error;
+                return false;
+            }
+            Ok(plan) if !geometry_sampler_ready(&plan) => {
+                d.error = RAW_MASK_SAMPLER_UNAVAILABLE.into();
+                return false;
+            }
+            _ => {}
         }
         if self.core_at_revision("canvas.image_size", d.args(), Some(d.revision)) {
             self.sync_from_session();
@@ -190,7 +198,7 @@ impl Editor {
                 ScrollArea::vertical().id_salt("image-size-controls")
                     .max_height(scroll_height).auto_shrink([false, true])
                     .show(ui, |ui| {
-                        ui.weak(tr("Scale every layer and selection. Apply commits one edit."));
+                        ui.weak(tr("Scale every layer, raster mask and selection. Apply commits one edit."));
                         ui.label(format!("{}: {} × {} px", localize("Source Size"), dialog.source[0], dialog.source[1]));
                         ui.add_space(a.section_spacing);
                         ui.horizontal_wrapped(|ui| {
@@ -262,13 +270,18 @@ impl Editor {
                                 for (field,title) in [
                                     ("estimated_layer_bytes","Layer Buffers"),
                                     ("estimated_mask_bytes","Selection Buffers"),
+                                    ("estimated_raster_mask_bytes","Raster Mask Buffers"),
+                                    ("estimated_effective_mask_bytes","Effective Mask Cache (estimate)"),
                                     ("estimated_composite_bytes","Composite Buffer"),
                                     ("estimated_staged_bytes","Staged Edit Buffers"),
                                 ] {
+                                    if matches!(field,"estimated_raster_mask_bytes"|"estimated_effective_mask_bytes") && value["raster_mask_count"].as_u64().unwrap_or(0)==0 {continue;}
                                     if let Some(bytes) = value[field].as_u64() {
                                         ui.weak(format!("{}: {:.1} MiB", localize(title), bytes as f64 / (1024. * 1024.)));
                                     }
                                 }
+                                if value["raster_mask_count"].as_u64().unwrap_or(0)>0 {ui.weak(tr("Mask feather stays fixed in canvas pixels."));}
+                                if !geometry_sampler_ready(value) {ui.colored_label(Color32::LIGHT_RED,localize(RAW_MASK_SAMPLER_UNAVAILABLE));}
                                 if value["identity"] == true {ui.weak(tr("Dimensions are unchanged; Apply leaves the document unchanged."));}
                             }
                             Err(error) => {ui.colored_label(Color32::LIGHT_RED, localize(error));}
@@ -285,7 +298,9 @@ impl Editor {
                             ui.weak(tr("Physical units require known density. Set Document Resolution first."));
                         }
                         if d.unit != Unit::Pixels {ui.weak(tr("Physical dimensions round to whole pixels."));}
-                        if stale {
+                        if !self.geometry_idle() {
+                            ui.colored_label(Color32::LIGHT_RED,localize(GEOMETRY_CONTACT_ACTIVE));
+                        } else if stale {
                             ui.colored_label(Color32::LIGHT_RED, tr("The canvas changed. Reopen this dialog."));
                         } else if !d.error.is_empty() {
                             ui.colored_label(Color32::LIGHT_RED, localize(&d.error));
@@ -294,7 +309,9 @@ impl Editor {
                 ui.add_space(a.panel_padding);
                 ui.separator();
                 ui.horizontal(|ui| {
-                    apply = ui.add_enabled(!stale && plan.is_ok(), Button::new(tr("Apply"))).clicked();
+                    let response = ui.add_enabled(!stale && plan.as_ref().is_ok_and(geometry_sampler_ready), Button::new(tr("Apply")));
+                    #[cfg(test)] ui.data_mut(|data|data.insert_temp(Id::new("image-size-apply"),(response.rect,response.enabled())));
+                    apply = response.clicked();
                     cancel = ui.button(tr("Cancel")).clicked();
                 });
             });
@@ -310,6 +327,10 @@ impl Editor {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "image_size_mask_ui_tests.rs"]
+mod mask_ui_tests;
 
 #[cfg(test)]
 mod tests {

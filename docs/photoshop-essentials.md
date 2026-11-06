@@ -15,10 +15,10 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 | Area | Available foundation | Main gap |
 | --- | --- | --- |
 | Drawing | Native DLL tools, pressure, stabilization, spacing, pressure curve, size/shape cursor | Rich tips/dynamics and additional painting tools |
-| Layers | Stable IDs, multi-selection/batches, isolated/Pass Through groups and baking, locks/labels, selected-only merge/flatten/stamp | Masks, clipping and multi-layer transforms |
+| Layers | Stable IDs, multi-selection/batches, isolated/Pass Through groups and baking, locks/labels, selected-only merge/flatten/stamp, public raster-mask painting/effects and document geometry | Complete mask owner/merge/transfer integration, clipping and multi-layer transforms |
 | Selection/editing | Document masks, gestures, color matching, edge processing, selected painting and internal transfers | System clipboard and selection transforms |
 | Geometry | Anchored framing/crop, orthogonal geometry, Image Size/Trim, Move and affine Free Transform/repeat/skew | Off-canvas storage and richer project metadata |
-| Composition | Linked layer/filter/blend graphs and explicit free graphs | More adjustments, filters and mask-aware composition |
+| Composition | Linked layer/filter/blend graphs, explicit free graphs and generated layer/group raster-mask coverage gates | More adjustments, filters and clipping relationships |
 | Files | PNG/JPEG/BMP import, PNG export, projects and verified replay | Rich export and layered interchange |
 | Workspace | Independent/docked/tabbed windows, Tools/Options, searchable settings and shortcuts | Guides, snapping, view rotation and multiple documents |
 | Automation | Schemas, public state, nodes, JSONL, MCP and GUI attachment | Extend the same contracts with every new operation |
@@ -91,7 +91,8 @@ Acceptance: coordinate units, pivots, bounds, resampling and clipping are specif
 - [x] Add bounded mask identity/ownership/raw A8 storage, byte-tiled history and rollback, strict MICOPI04 projects, separate verified byte outcomes and generated typed layer/group coverage gates. Keep default legacy bytes/hashes and DLL-free restoration; explicitly reject pending editing paths. See [Raster-mask storage](raster-mask-storage.md).
 - [x] Add the public layer/group mask painting and effects subset: cached pressure/stabilized A8 Brush/Eraser, enable/invert/density/feather, selection conversion, raster-layer raw-alpha Apply, bounded sample queries, schema-derived actions/state/nodes and four-language thumbnails/target feedback. Preserve raw planes, selection clipping, atomic failure recovery, tiled Undo and verified replay. See [Raster mask editing](raster-mask-editing.md).
 - [x] Add the independent native dense/uniform A8 sampler prerequisite for mask-aware reframe, orthogonal geometry and nearest/bilinear/area sampling, preserving existing tables and byte arithmetic.
-- [ ] Complete raster-mask geometry, owner duplication/deletion, merges/flatten/clipboard mutations and group-mask application before marking the full mask feature complete.
+- [x] Integrate document-wide canvas framing/crop, rotations/flips, Image Size and Trim with every raw layer/group mask, including hidden/disabled/unlinked masks. Add shared frame plans, separate raw/effective budgets, Brush/Hand contact admission, complete atomic staging, one Canvas Undo/outcome and same-size replay/cache invalidation. Retain white expansion and fixed numeric feather; see [Mask canvas geometry](mask-canvas-geometry.md).
+- [ ] Complete owner linked/unlinked layer/mask Move/Free Transform, owner duplication/deletion, merges/flatten/clipboard mutations and group-mask application before marking the full mask feature complete.
 - [ ] Add clipping masks and mask-aware image graph ports/composition.
 - [ ] Add multi-layer align/distribute/link.
 - [ ] Add solid/gradient fill layers; evaluate pattern fills alongside the pattern library.

@@ -433,6 +433,8 @@ impl Editor {
                                 mods,
                             );
                         } else if !pressed {
+                            let finish_owned =
+                                self.input_owned || self.session.pointer_checkpoint.is_none();
                             if self.movement_gesture.is_some() {
                                 self.move_pointer(pos, 1., time, false, mods.shift);
                                 self.movement_release();
@@ -445,7 +447,7 @@ impl Editor {
                                 self.move_pointer(pos, 1., time, false, mods.shift);
                                 self.area_up();
                             }
-                            if !self.polygon_pending() {
+                            if !self.polygon_pending() && finish_owned {
                                 self.finish_stroke();
                             }
                         }
@@ -492,7 +494,10 @@ impl Editor {
                 }
             }
         }
-        if self.blocked && self.input_owned {
+        if self.blocked
+            && self.input_owned
+            && !(self.geometry_contact_allowed && self.geometry_contact_modal())
+        {
             self.finish_stroke();
         }
         self.image_rect = Rect::from_center_size(
@@ -581,6 +586,10 @@ impl Editor {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "geometry_contact_ui_tests.rs"]
+mod geometry_contact_ui_tests;
 
 #[cfg(test)]
 #[path = "mask_footer_tests.rs"]

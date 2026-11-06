@@ -629,6 +629,9 @@ impl Session {
             if matches!(op, Operation::ImageSize | Operation::ImageSizePlan) {
                 super::image_size::validate(&action.args)?;
             }
+            if op == Operation::CanvasGeometryPlan {
+                super::canvas_geometry::validate(&action.args)?;
+            }
             if op == Operation::LayerQuery {
                 super::layer_query::validate(&action.args)?;
             }

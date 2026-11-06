@@ -1296,7 +1296,7 @@ impl Document {
                         self.height = old.height;
                         self.layers = old.layers;
                         self.mask_planes = old.mask_planes;
-                        self.bump_mask_storage_epoch();
+                        self.invalidate_canvas_mask_geometry();
                         self.composite = vec![0; self.width * self.height];
                         self.replay_tiles.clear();
                     }
@@ -1808,6 +1808,8 @@ mod mask_apply;
 mod mask_composition;
 #[path = "mask_effects.rs"]
 mod mask_effects;
+#[path = "mask_geometry.rs"]
+mod mask_geometry;
 #[path = "mix.rs"]
 mod mix;
 #[path = "raster_mask_editing.rs"]

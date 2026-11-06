@@ -346,9 +346,8 @@ def negative_commands(plan, output, fixture_path, invalid_paths, target_path, al
     add('boundary-before', 'canvas.state')
     add('boundary-graph-before', 'graph.read')
     add('boundary-png-before', 'canvas.snapshot')
+    add('boundary-image-plan', 'canvas.image_size.plan', width=48)
     for index, (action, args) in enumerate([
-        ('canvas.resize', dict(width=48, height=32)),
-        ('canvas.image_size.plan', dict(width=48)),
         ('layer.merge_selected', dict(layer_ids=[1, 2])),
         ('layer.duplicate', {}), ('layer.translate', dict(dx=1, dy=0)),
         ('layer.batch', dict(action='layer.set', layer_ids=[1, 2], args=dict(opacity=.5))),
@@ -365,7 +364,8 @@ def negative_commands(plan, output, fixture_path, invalid_paths, target_path, al
         pressure_size=True, pressure_opacity=True)
     add('contact-down', 'canvas.pointer', phase='down', x=30, y=40, pressure=.25, pen=True, time=0)
     add('contact-before', 'canvas.state')
-    add('contact-blocked', 'canvas.resize', error='mask_editing_pending', width=48, height=32)
+    add('contact-image-plan', 'canvas.image_size.plan', width=48)
+    add('contact-blocked', 'canvas.resize', error='stroke_active', width=48, height=32)
     add('contact-after', 'canvas.state')
     add('contact-move', 'canvas.pointer', phase='move', x=65, y=24, pressure=.9, pen=True, time=40)
     add('contact-up', 'canvas.pointer', phase='up', x=78, y=38, pressure=.4, pen=True, time=80)
@@ -399,6 +399,12 @@ def negative_commands(plan, output, fixture_path, invalid_paths, target_path, al
 
 def validate_negatives(values, plan, output, planes, expected, source):
     at = lambda key: plan.at(values, key)
+    for key, active in [('boundary-image-plan', False), ('contact-image-plan', True)]:
+        preview = at(key)
+        assert (preview['width'], preview['height'], preview['raster_mask_count']) == (48, 32, 3)
+        assert preview['estimated_raster_mask_bytes'] == 48*32*3
+        assert preview['drawing'] == active and preview['contact_active'] == active
+        assert preview['requires_a8_sampler'] and preview['a8_sampler_available']
     assert at('boundary-before') == at('boundary-after'), 'Rejected operations changed live state'
     assert at('boundary-graph-before') == at('boundary-graph-after')
     assert image(at('boundary-png-before')) == image(at('boundary-png-after')) == (WIDTH, HEIGHT, expected)

@@ -23,6 +23,7 @@ pub(crate) mod groups;
 pub(crate) mod layer_batch;
 mod layer_transfer;
 mod layers;
+mod mask_geometry;
 pub(crate) mod movement;
 mod painting;
 pub(crate) mod raster_masks;
@@ -67,9 +68,23 @@ pub(crate) fn execute(
         TransformPlan => affine::describe(session, args),
         CanvasTrim | TrimBounds => trim::execute(session, op, args),
         ImageSize => resample::execute(session, args),
+        CanvasGeometryPlan => {
+            let plan = crate::application::canvas_geometry::plan(&session.doc, &args)?;
+            Ok(plan.state(
+                session.revision,
+                session.is_drawing(),
+                mask_geometry::available(session),
+                session.stroke.active() || session.pointer_checkpoint.is_some(),
+            ))
+        }
         ImageSizePlan => {
             let plan = crate::application::image_size::plan(&session.doc, &args)?;
-            Ok(plan.state(session.revision, session.is_drawing()))
+            Ok(plan.state(
+                session.revision,
+                session.is_drawing(),
+                mask_geometry::available(session),
+                session.stroke.active() || session.pointer_checkpoint.is_some(),
+            ))
         }
         RotateCanvasClockwise
         | RotateCanvasCounterclockwise

@@ -18,24 +18,13 @@ impl Session {
         if matches!(
             operation,
             Some(
-                CanvasSize
-                    | ImageSize
-                    | ImageSizePlan
-                    | CanvasTrim
-                    | TrimBounds
-                    | Crop
-                    | MovePixels
+                MovePixels
                     | TransformPixels
                     | TransformPreview
                     | TransformPlan
                     | TransformRepeat
                     | TransformRepeatCopy
                     | Nudge
-                    | RotateCanvasClockwise
-                    | RotateCanvasCounterclockwise
-                    | RotateCanvasHalf
-                    | FlipCanvasHorizontal
-                    | FlipCanvasVertical
                     | RotateLayerClockwise
                     | RotateLayerCounterclockwise
                     | DuplicateLayer

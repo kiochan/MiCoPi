@@ -119,6 +119,7 @@ pub enum Operation {
     TrimBounds,
     ImageSize,
     ImageSizePlan,
+    CanvasGeometryPlan,
     Crop,
     Open,
     Save,
@@ -202,6 +203,29 @@ pub enum Operation {
     Events,
 }
 impl Operation {
+    /// Presentation adapters preserve active contacts until these commands run
+    /// through their shared admission checks; opening a form is not admission.
+    #[cfg(feature = "desktop")]
+    pub(crate) fn is_canvas_geometry_command(self) -> bool {
+        matches!(
+            self,
+            Self::CanvasSize
+                | Self::Crop
+                | Self::ImageSize
+                | Self::ImageSizePlan
+                | Self::CanvasGeometryPlan
+                | Self::CanvasTrim
+                | Self::TrimBounds
+                | Self::RotateCanvasClockwise
+                | Self::RotateCanvasCounterclockwise
+                | Self::RotateCanvasHalf
+                | Self::FlipCanvasHorizontal
+                | Self::FlipCanvasVertical
+                | Self::RotateLayerClockwise
+                | Self::RotateLayerCounterclockwise
+                | Self::DocumentResolution
+        )
+    }
     pub fn is_replay(self) -> bool {
         matches!(
             self,
@@ -269,6 +293,9 @@ impl Operation {
         }
         if matches!(self, Self::ImageSize | Self::ImageSizePlan) {
             return super::image_size::schema();
+        }
+        if self == Self::CanvasGeometryPlan {
+            return super::canvas_geometry::schema();
         }
         if matches!(self, Self::New | Self::NewPlan) {
             return super::creation::schema();
@@ -488,6 +515,7 @@ impl Operation {
                 | Self::MergeSelectedLayersPlan
                 | Self::NewPlan
                 | Self::ImageSizePlan
+                | Self::CanvasGeometryPlan
                 | Self::DocumentInfo
                 | Self::TrimBounds
                 | Self::TransformState

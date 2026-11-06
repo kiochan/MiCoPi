@@ -1,0 +1,24 @@
+{"action":"canvas.new","args":{"width":120,"height":96}}
+{"action":"canvas.resolution","args":{"resolution_ppi":300}}
+{"action":"layer.rename","args":{"layer_id":1,"name":"Paper"}}
+{"action":"layer.fill_color","args":{"color":"#243044"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"layer_id":2,"name":"Soft cel"}}
+{"action":"layer.fill_color","args":{"color":"#E5A4C4"}}
+{"action":"group.create","args":{"name":"Color","members":[{"kind":"layer","id":2}]}}
+{"action":"mask.create","args":{"owner":{"kind":"layer","id":2},"source":"hide_all"}}
+{"action":"brush.set","args":{"color":"#FFFFFF","radius":18,"opacity":1,"stabilizer":0.5,"pressure_size":true,"pressure_opacity":true}}
+{"action":"canvas.stroke","args":{"tool":"brush","points":[{"x":18,"y":60,"pressure":0.2,"pen":true,"time":0},{"x":45,"y":30,"pressure":0.8,"pen":true,"time":15},{"x":75,"y":66,"pressure":1,"pen":true,"time":30},{"x":104,"y":38,"pressure":0.3,"pen":true,"time":45}]}}
+{"action":"mask.set","args":{"mask_id":1,"density":220,"feather_radius_px":3}}
+{"action":"mask.create","args":{"owner":{"kind":"group","id":1},"source":"reveal_all","select":false}}
+{"action":"mask.fill","args":{"mask_id":2,"value":200}}
+{"action":"canvas.geometry.plan","args":{"operation":"resize","width":160,"height":128,"anchor":"center"}}
+{"action":"pipeline.run","args":{"atomic":true,"steps":[{"id":"plan","action":"canvas.geometry.plan","args":{"operation":"resize","width":160,"height":128}},{"id":"resize","action":"canvas.resize","args":{"width":{"$ref":"plan#/result/width"},"height":{"$ref":"plan#/result/height"}}}]}}
+{"action":"canvas.rotate_90_cw","args":{}}
+{"action":"canvas.image_size.plan","args":{"width":96,"method":"area"}}
+{"action":"canvas.image_size","args":{"width":96,"method":"area"}}
+{"action":"canvas.crop","args":{"x":4,"y":4,"width":88,"height":112}}
+{"action":"canvas.export","args":{"path":"target/example-output/mask-geometry.png"}}
+{"action":"document.save","args":{"path":"target/example-output/mask-geometry.mcp"}}
+{"action":"replay.export","args":{"path":"target/example-output/mask-geometry.mcreplay"}}
+{"action":"replay.verify","args":{}}

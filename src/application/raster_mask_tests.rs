@@ -107,21 +107,42 @@ fn raster_mask_pending_edits_reject_before_finishing_live_brush_or_hand_contacts
             .collect();
         let mask = samples(&s, id);
         let history = s.doc.history_bytes();
-        for (action, args) in [
-            ("canvas.resize", json!({"width":8,"height":8})),
-            ("canvas.image_size.plan", json!({"width":8})),
-            ("layer.merge_selected", json!({"layer_ids":[1,2]})),
-            ("layer.duplicate", json!({})),
+        let plan = call(&mut s, "canvas.image_size.plan", json!({"width":8}));
+        assert_eq!(plan["raster_mask_count"], 1);
+        assert_eq!(plan["contact_active"], true);
+        assert_eq!(plan["estimated_raster_mask_bytes"], 8 * 6);
+        assert_eq!(s.state(), before);
+        for (action, args, code) in [
+            (
+                "canvas.resize",
+                json!({"width":8,"height":8}),
+                "stroke_active",
+            ),
+            (
+                "layer.merge_selected",
+                json!({"layer_ids":[1,2]}),
+                "mask_editing_pending",
+            ),
+            ("layer.duplicate", json!({}), "mask_editing_pending"),
             (
                 "layer.batch",
                 json!({"action":"layer.set","layer_ids":[1,2],"args":{"opacity":0.5}}),
+                "mask_editing_pending",
             ),
-            ("layer.translate", json!({"dx":1,"dy":0})),
-            ("group.create", json!({"members":[{"kind":"layer","id":1}]})),
-            ("clipboard.paste", json!({})),
+            (
+                "layer.translate",
+                json!({"dx":1,"dy":0}),
+                "mask_editing_pending",
+            ),
+            (
+                "group.create",
+                json!({"members":[{"kind":"layer","id":1}]}),
+                "mask_editing_pending",
+            ),
+            ("clipboard.paste", json!({}), "mask_editing_pending"),
         ] {
             let error = s.apply(Action::new(action, args)).unwrap_err();
-            assert_eq!(error.code, "mask_editing_pending", "{action}: {error}");
+            assert_eq!(error.code, code, "{action}: {error}");
             assert_eq!(s.state(), before, "{action}");
             assert_eq!(s.doc.composition(), metadata, "{action}");
             assert!(s.stroke.active(), "{action}");

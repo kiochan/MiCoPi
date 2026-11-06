@@ -195,6 +195,7 @@ pub(super) struct Editor {
     opacity_input: OpacityInput,
     native: Option<Native>,
     blocked: bool,
+    geometry_contact_allowed: bool,
     new_canvas: Option<canvas_new_document::NewCanvasDraft>,
     export_draft: Option<canvas_export::Draft>,
     new_open: bool,
@@ -327,6 +328,7 @@ impl Editor {
             opacity_input: OpacityInput::default(),
             native,
             blocked: false,
+            geometry_contact_allowed: false,
             new_canvas: None,
             export_draft: None,
             new_open: false,
@@ -400,6 +402,9 @@ impl Editor {
     fn core(&mut self, id: &str, args: serde_json::Value) -> bool {
         self.core_at_revision(id, args, None)
     }
+    fn geometry_contact_modal(&self) -> bool {
+        self.geometry.is_some() || self.geometry_command_form()
+    }
     fn core_at_revision(
         &mut self,
         id: &str,
@@ -408,7 +413,25 @@ impl Editor {
     ) -> bool {
         let mut action = crate::application::Action::new(id, args);
         action.expected_revision = expected_revision;
-        match self.session.apply(action) {
+        let geometry_command = self
+            .session
+            .registry
+            .actions
+            .get(id)
+            .and_then(|definition| definition.operation)
+            .is_some_and(crate::application::Operation::is_canvas_geometry_command);
+        let result = self.session.apply(action);
+        // Legacy owner turns can end a contact. Reconcile only after shared
+        // admission/execution, preserving live contacts on guarded rejection.
+        if geometry_command
+            && self.input_owned
+            && !self.session.stroke.active()
+            && self.session.pointer_checkpoint.is_none()
+        {
+            self.finish_stroke();
+            self.pen_active = false;
+        }
+        match result {
             Ok(value) => {
                 let message = match id {
                     "clipboard.system_copy" | "clipboard.system_copy_merged" => {
@@ -1084,6 +1107,14 @@ impl Studio {
             || self.editor.transform.is_some()
             || self.editor.command_form.is_some()
             || self.replay.open;
+        self.editor.geometry_contact_allowed = self.editor.geometry_contact_modal()
+            && !self.settings_open
+            && self.editor.palette.is_none()
+            && !self.editor.new_open
+            && self.editor.export_draft.is_none()
+            && self.editor.transform.is_none()
+            && (self.editor.command_form.is_none() || self.editor.geometry_command_form())
+            && !self.replay.open;
         if self.editor.blocked && self.editor.movement_gesture.is_some() {
             self.editor.finish_stroke();
         }
@@ -1565,3 +1596,6 @@ mod clipboard_presentation_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod canvas_geometry_command_tests;

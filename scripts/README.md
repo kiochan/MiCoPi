@@ -16,6 +16,7 @@ Run these tools from the repository root. Downloaded toolchains, builds, capture
 | capture_checks.py | Shared owned-window readiness, capture-status and independent PNG checks for GUI smoke scripts |
 | smoke-raster-masks.py | Verify A8 storage/composition, safe edit boundaries, legacy compatibility and DLL-free replay; optional GUI captures |
 | smoke-mask-editing.py | Verify eleven public mask actions, native density/feather and typed painting, workflow bindings, guarded edits and raw/verified replay across JSONL/MCP/GUI; optional four-language captures |
+| smoke-mask-geometry.py | Compare document framing, rotations/flips, image sampling and Trim against independent raw-mask references across JSONL/MCP/GUI, with undo, legacy capability rejection and DLL-free replay |
 | check-repository.py | Validate local Markdown links, example JSON and tracked-file boundaries |
 
 ```powershell
@@ -35,6 +36,14 @@ GUI smoke checks create their own isolated profiles and close only their own tes
 effects checks; an absent baseline is reported as skipped. Build/stage matching
 current DLLs before using the script. Captures remain under ignored
 `target/test-output/mask-editing-smoke/`. See [Raster Mask Editing](../docs/raster-mask-editing.md)
-for the implemented subset and the structural/geometry paths that remain guarded.
+for the implemented subset and the owner-editing paths that remain guarded.
+
+`smoke-mask-geometry.py --skip-gui` checks document-wide geometry through JSONL
+and MCP. Its optional `--legacy-painting` selects a preceding A8 painting DLL
+without the independent sampler table; absence is reported explicitly. The full
+run adds GUI transport parity and four-language dialog/native Layers captures
+under `target/test-output/mask-geometry-smoke/`. See
+[Mask Canvas Geometry](../docs/mask-canvas-geometry.md) for raw/effective coverage,
+admission and remaining owner-editing boundaries.
 
 See [Development](../docs/development.md) for prerequisites and [Project Structure](../docs/project-structure.md) for ownership rules.

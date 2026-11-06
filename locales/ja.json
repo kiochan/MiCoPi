@@ -1380,5 +1380,16 @@
   "Apply Raster Mask to Layer": "ラスターマスクをレイヤーに適用",
   "Finish the current contact before editing raster masks": "現在の入力を終了してからラスターマスクを編集してください",
   "This operation edits layer pixels. Select Pixels before continuing.": "この操作はレイヤーのピクセルを編集します。描画先を「ピクセル」に切り替えてください。",
-  "Raster mask ownership, properties and paint target": "ラスターマスクの対象、プロパティ、描画先"
+  "Raster mask ownership, properties and paint target": "ラスターマスクの対象、プロパティ、描画先",
+  "Crop layers, raster masks and selections to a pixel rectangle.": "レイヤー、ラスターマスク、選択範囲をピクセル矩形で切り抜きます。",
+  "Effective Mask Cache (estimate)": "有効マスクキャッシュ（推定）",
+  "Finish the current contact before changing canvas geometry": "キャンバスの形状を変更する前に、現在のストロークやドラッグを終了してください",
+  "Mask feather stays fixed in canvas pixels.": "マスクのぼかし半径はキャンバスのピクセル値を維持します。",
+  "New layer space is transparent; new mask space reveals pixels.": "追加されるレイヤー領域は透明で、マスク領域はピクセルを表示します。",
+  "Painting DLL does not support raw raster-mask geometry": "描画 DLL は生のラスターマスクの形状編集に対応していません",
+  "Plan Canvas Geometry": "キャンバス形状を計画",
+  "Preview uses visible artwork. Layers and raster masks are cropped; undo restores them.": "表示中の作品でプレビューします。レイヤーとラスターマスクを切り抜き、元に戻すと復元します。",
+  "Raster Mask Buffers": "ラスターマスクのバッファー",
+  "Reframe layers, raster masks and selections without scaling.": "拡大縮小せずにレイヤー、ラスターマスク、選択範囲のキャンバス範囲を変更します。",
+  "Scale every layer, raster mask and selection. Apply commits one edit.": "すべてのレイヤー、ラスターマスク、選択範囲を拡大縮小します。適用は1回の編集として記録されます。"
 }

@@ -29,12 +29,19 @@ pub(crate) fn dimensions(
 fn run(s: &mut Session, args: Value) -> Result<(), String> {
     let plan = crate::application::image_size::plan(&s.doc, &args).map_err(|e| e.message)?;
     let (w, h) = (plan.width, plan.height);
-    s.finish_stroke();
     // Preserve raw words and history for an identity resize, including old plugins.
     if (w, h) == (s.doc.width, s.doc.height) {
         return Ok(());
     }
     let options = plan.method.native();
+    let masks = super::mask_geometry::stage(
+        s,
+        w,
+        h,
+        &super::mask_geometry::Sampling::Resample(micopi_plugin_api::Resample {
+            method: options.method,
+        }),
+    )?;
     let state = s.doc.selection();
     let transform = |mask: &Option<crate::engine::selection::Mask>| {
         mask.as_ref()
@@ -53,7 +60,12 @@ fn run(s: &mut Session, args: Value) -> Result<(), String> {
             super::native::resample_pixels(s, &options, &l.pixels, s.doc.width, s.doc.height, w, h)
         })
         .collect::<Result<Vec<_>, _>>()?;
-    s.doc.replace_geometry(w, h, pixels, selection)
+    if masks.is_empty() {
+        s.doc.replace_geometry(w, h, pixels, selection)
+    } else {
+        s.doc
+            .replace_geometry_with_masks(w, h, pixels, masks, selection, s.doc.info())
+    }
 }
 pub(crate) fn execute(s: &mut Session, args: Value) -> ActionResult {
     if s.stroke.active() || s.pointer_checkpoint.is_some() {

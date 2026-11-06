@@ -90,54 +90,7 @@ impl Document {
         info: crate::engine::document_info::Info,
     ) -> Result<(), String> {
         self.require_mask_aware_edit()?;
-        info.validate()?;
-        if width == 0
-            || height == 0
-            || width > MAX_SIDE
-            || height > MAX_SIDE
-            || width * height * self.layers.len() > 64 * 1024 * 1024
-            || pixels.len() != self.layers.len()
-            || pixels.iter().any(|p| p.len() != width * height)
-        {
-            return Err("Invalid staged geometry dimensions".into());
-        }
-        selection.validate(width, height)?;
-        if width == self.width
-            && height == self.height
-            && self.selection == selection
-            && self.document_info == info
-            && pixels.iter().zip(&self.layers).all(|(p, l)| *p == l.pixels)
-        {
-            return Ok(());
-        }
-        self.finish();
-        let before = self.composition();
-        let layers = pixels
-            .into_iter()
-            .zip(&self.layers)
-            .map(|(pixels, old)| Layer {
-                pixels,
-                visible: old.visible,
-                opacity: old.opacity,
-                mode: old.mode,
-            })
-            .collect();
-        let saved = CanvasState {
-            width: self.width,
-            height: self.height,
-            layers: std::mem::replace(&mut self.layers, layers),
-            mask_planes: std::mem::take(&mut self.mask_planes),
-        };
-        self.last_transform = None;
-        self.document_info = info;
-        self.width = width;
-        self.height = height;
-        self.selection = selection;
-        self.composite = vec![0; width * height];
-        self.replay_tiles.clear();
-        self.track_layer_order();
-        self.commit_composition(before, Some(LayerChange::Canvas(Arc::new(saved))));
-        Ok(())
+        self.replace_geometry_with_masks(width, height, pixels, Vec::new(), selection, info)
     }
     /// Validate staged frame-bounded transforms before publication or preview.
     pub(crate) fn validate_pixel_transform(
@@ -221,15 +174,22 @@ impl Document {
     /// Preserve document coordinates within a new frame. Positive offsets move content right/down.
     pub fn reframe(&mut self, width: usize, height: usize, dx: i32, dy: i32) -> Result<(), String> {
         self.require_mask_aware_edit()?;
-        if width == 0
-            || height == 0
-            || width > MAX_SIDE
-            || height > MAX_SIDE
-            || width * height * self.layers.len() > 64 * 1024 * 1024
+        self.reframe_with_masks(width, height, dx, dy, Vec::new())
+    }
+    /// Reuse the established RGBA/selection frame copy with complete raw masks
+    /// already sampled by the native painting plugin. No A8 pixel math lives here.
+    pub(crate) fn reframe_with_masks(
+        &mut self,
+        width: usize,
+        height: usize,
+        dx: i32,
+        dy: i32,
+        masks: Vec<(u64, crate::engine::raster_masks::SamplePlane)>,
+    ) -> Result<(), String> {
+        self.validate_canvas_mask_geometry(width, height, &masks)?;
+        if (width, height, dx, dy) == (self.width, self.height, 0, 0)
+            && self.canvas_mask_geometry_matches(&masks)
         {
-            return Err("Canvas size exceeds document limits".into());
-        }
-        if (width, height, dx, dy) == (self.width, self.height, 0, 0) {
             return Ok(());
         }
         let sx = (-i64::from(dx)).max(0).min(self.width as i64) as usize;
@@ -249,30 +209,16 @@ impl Document {
                             ..(sy + row) * self.width + sx + copy_width],
                     );
             }
-            layers.push(Layer {
-                pixels,
-                visible: layer.visible,
-                opacity: layer.opacity,
-                mode: layer.mode,
-            });
+            layers.push(pixels);
         }
-        self.finish();
-        let before = self.composition();
-        self.selection = selection;
-        let saved = CanvasState {
-            width: self.width,
-            height: self.height,
-            layers: std::mem::replace(&mut self.layers, layers),
-            mask_planes: std::mem::take(&mut self.mask_planes),
-        };
-        self.last_transform = None;
-        self.width = width;
-        self.height = height;
-        self.composite = vec![0; width * height];
-        self.replay_tiles.clear();
-        self.track_layer_order();
-        self.commit_composition(before, Some(LayerChange::Canvas(Arc::new(saved))));
-        Ok(())
+        self.replace_geometry_with_masks(
+            width,
+            height,
+            layers,
+            masks,
+            selection,
+            self.document_info,
+        )
     }
 }
 

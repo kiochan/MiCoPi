@@ -39,20 +39,31 @@ fn analyze(s: &mut Session, args: &Value) -> Result<Value, String> {
 }
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     if op == Operation::CanvasTrim {
-        s.finish_stroke();
+        super::mask_geometry::require_idle(s)?;
     }
     let b = analyze(s, &args).map_err(|e| ActionError::new("trim", e))?;
     if op == Operation::TrimBounds {
         return Ok(b);
     }
     if b["would_change"] == true {
+        let width = b["width"].as_u64().unwrap() as usize;
+        let height = b["height"].as_u64().unwrap() as usize;
+        let dx = -(b["x"].as_i64().unwrap() as i32);
+        let dy = -(b["y"].as_i64().unwrap() as i32);
+        let masks = super::mask_geometry::stage(
+            s,
+            width,
+            height,
+            &super::mask_geometry::Sampling::Reframe(abi::A8Reframe {
+                x: dx,
+                y: dy,
+                fill: 255,
+                reserved: 0,
+            }),
+        )
+        .map_err(|e| ActionError::new("trim", e))?;
         s.doc
-            .reframe(
-                b["width"].as_u64().unwrap() as usize,
-                b["height"].as_u64().unwrap() as usize,
-                -(b["x"].as_i64().unwrap() as i32),
-                -(b["y"].as_i64().unwrap() as i32),
-            )
+            .reframe_with_masks(width, height, dx, dy, masks)
             .map_err(|e| ActionError::new("trim", e))?;
     }
     Ok(s.state())

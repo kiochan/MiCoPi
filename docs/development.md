@@ -194,6 +194,84 @@ The final 2026-11-06 GNU Release foundation desktop/CLI executables were 10,266,
 
 The mask-specific JSONL/MCP/GUI check passed, including four reviewed language captures. Separate runtime, workflow, linked-graph, replay, group, selected-merge and Pass Through GUI checks passed. Subsequent capture stabilization adds request/viewport correlation and retained callback acknowledgement; use the capture-aware checks below when validating current builds rather than treating file existence as completion.
 
+## Mask-aware canvas geometry checks
+
+Build/stage the painting DLL with the independent A8 sampler, then run
+`python scripts/smoke-mask-geometry.py --cli <built-cli> --gui <built-desktop>`.
+Use `--skip-gui` for JSONL/MCP only. The optional `--legacy-painting` path selects
+the preceding A8 painting DLL without the sampler table; absence is explicitly
+reported. Small independently encoded MICOPI04 fixtures compare all nine expand
+and shrink anchors, crop, five orthogonal transforms, three sampling methods
+and Trim against exact raw RGBA/A8/selection references. The check verifies
+one-step undo, retained IDs/properties, exact density, independent composed
+pixels, transport parity, project roundtrips and DLL-free outcome playback.
+The full run also captures real framing/Image Size/Trim dialogs and narrow/wide
+native Layers panels in English, Chinese, Japanese and Korean.
+
+Engine `mask_geometry` tests cover complete bundle admission, semantic uniform
+equality, same-size raw-only changes and cache/tile invalidation. Session
+`mask_canvas` regressions additionally exercise Brush/Hand contact continuity,
+logical budgets without large allocations, native sampling failure, renderer
+and partial-journal failure, atomic rollback, plan bindings and inert workflow
+editing/dry runs. UI tests check owned and unrelated releases, stale drafts,
+menu/shortcut adapters, configurable sizing and visible short-window footers.
+Journal fault injection is tested in Rust, not through a public transport hook.
+See [Mask Canvas Geometry](mask-canvas-geometry.md) for fixed-pixel feather
+rounding and the remaining owner-editing boundaries. These synthetic checks
+do not establish physical tablet compatibility.
+
+The broad library runs passed 746 desktop and 557 headless tests, each with
+9 ignored. A preceding single-process GNU libtest attempt completed 199 tests
+before aborting with
+`out of TLS indexes`; its cause remains unproven. Both complete binaries were
+therefore enumerated and checked in fresh batches of 16 exact test names, one
+process/test thread at a time, with all 755 desktop and 566 headless names
+accounted for. This is test isolation, not a demonstrated fix for a
+shipping-runtime defect. Workers stayed
+below normal priority on at most two logical CPUs; no large-image benchmark was
+run for this change.
+
+A subsequent desktop-only cleanup reconciles local pen/hand flags after a
+successful legacy owner turn without ending a contact on protected rejection.
+Its four command tests passed, including both tools, directions, static/search
+dispatch and masked/position-locked targets; the 15 canvas-dialog regressions
+and two owned/external contact regressions also passed after that change. The
+headless execution core is unchanged by this localized presentation correction.
+
+The final Release geometry smoke passed 31 independently referenced cases:
+931 JSONL commands, 1,006 MCP commands including 35 remaining owner-edit guards,
+and matching attached-GUI results. It retained all five hidden/disabled/unlinked
+layer/group masks, selections, exact density, properties, targets and one-step
+Undo/Redo, verified project roundtrips and restored every outcome archive without
+DLLs. The preceding painting DLL retained identity requests and safely rejected
+nonidentity raw-mask sampling. Twenty-four request-correlated root/native PNGs
+totaled 11,245,177 bytes. Reviewed captures include all four Image Size languages,
+Japanese framing, Korean Trim and narrow English Layers; one English Image Size
+capture is promoted to the guide. The independent 7-by-5 fixture has 175 logical
+raw-A8 bytes. Rust regressions, rather than a public fault-injection API, cover
+native/renderer/partial-journal failures.
+
+Public mask editing also passed its updated 387-command JSONL and 464-command MCP
+transport subset, including 35 remaining guarded boundaries, old 40-byte effects
+rejection and DLL-free replay. The storage regression passed legacy 01/02/03 and
+old-reader rejection, contact continuity and separate raw outcomes. Its former
+Image Size-plan rejection was replaced with idle/live read-only plan checks.
+Runtime JSONL/MCP/GUI parity, streaming input and settings checks passed.
+The workflow smoke passed cross-client pixel parity, inert dry runs/patching and
+project roundtrips. Full localization switching/persistence and valid/invalid
+host/plugin catalog reloads passed with unchanged PNG/workflow data.
+The 24-command mask-geometry example ran with isolated output/profile paths,
+produced an 88-by-112 PNG/project/archive and verified all 21 committed events
+with no pending samples.
+
+The final GNU Release desktop/CLI binaries are 10,579,968/4,357,632 bytes,
+83/59 KiB above the public mask-editing build, including the earlier native-sampler
+host prerequisite. The painting/compositor DLLs retain the prerequisite's
+359,936/287,232-byte sizes and hashes. No Cargo dependency is added. Geometry
+borrows raw sources and allocates bounded cold outputs; typed MOVE still uses
+cached instances/loans and dirty regions. These size/scope observations do not
+measure cold-operation peak memory or physical pen latency.
+
 ## Native raw-A8 sampling prerequisite
 
 The independent `micopi_a8_sampler_v1` table adds borrowed dense/uniform reframe,
@@ -228,7 +306,7 @@ table rejects nondefault effects before mutation, including hidden/disabled
 masks; an absent baseline is explicitly skipped. Output and captures stay under
 `target/test-output/mask-editing-smoke/`. See [Raster Mask Editing](raster-mask-editing.md)
 for all eleven action schemas, stable-ID/target semantics and the remaining
-guarded geometry, structural, merge and transfer paths. The full raster-mask
+guarded owner geometry, structural, merge and transfer paths. The full raster-mask
 roadmap item remains unchecked.
 
 The current compositor effects tail is 72 bytes on x64, with capability `0x8`

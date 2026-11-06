@@ -2,7 +2,7 @@
 
 This document tracks the staged implementation of first-class, paintable raster masks. The raster-mask feature item in the [editing checklist](photoshop-essentials.md#p4--layer-organization-and-masks) remains unchecked until the complete document, input, composition, persistence and presentation contract passes its acceptance checks.
 
-The [native A8 prerequisites](native-plugins.md#optional-native-mask-composition), [document/event foundation](raster-mask-storage.md) and a first [public editing subset](raster-mask-editing.md) are implemented. The subset provides eleven registered actions, typed pressure/stabilized painting, density/feather, selection conversion, raster-layer raw-alpha application and compiled Layers controls. Complete linked/unlinked geometry, structural edits, merge/clipboard handling and final measured delivery remain open. The full raster-mask item stays unchecked. Untouched documents retain their existing serialization and recording hashes. The implementation is independent and imports no PhotoCraft source.
+The [native A8 prerequisites](native-plugins.md#optional-native-mask-composition), [document/event foundation](raster-mask-storage.md), [public editing subset](raster-mask-editing.md) and [document-wide geometry](mask-canvas-geometry.md) are implemented. The editing subset provides eleven registered actions, typed pressure/stabilized painting, density/feather, selection conversion, raster-layer raw-alpha application and compiled Layers controls. Canvas framing/crop, document rotations/flips, Image Size and Trim stage every raw mask with shared history/outcomes. Owner linked/unlinked geometry, structural edits, merge/clipboard handling and full-feature delivery remain open. The full raster-mask item stays unchecked. Untouched documents retain their existing serialization and recording hashes. The implementation is independent and imports no PhotoCraft source.
 
 ## Ownership and implemented data model
 
@@ -44,7 +44,7 @@ struct MaskPlane {
 
 The [storage guide](raster-mask-storage.md#ownership-and-limits) specifies the metadata contract; the [editing guide](raster-mask-editing.md#registered-actions-and-public-state) specifies public action/state schemas. Each layer or group owns at most one mask. Owners use explicit kind tags because layer and group numeric IDs occupy different namespaces. Mask IDs have their own document-scoped, monotonic allocator, bounded to the existing stable-ID integer range. Committed Undo does not reuse an allocated ID; failed atomic execution restores the allocator.
 
-Every raw A8 plane has the current canvas dimensions. Zero hides and 255 reveals; it is coverage, not an RGBA image with transparency. The separate budget is 64 MiB of logical A8 samples across at most 32 owner masks, with existing 4096-pixel side bounds. Validation counts logical samples even if uniform storage avoids materializing an all-white or all-black plane. Future duplication and geometry must use the same checked area/count arithmetic and owner-uniqueness checks before publication.
+Every raw A8 plane has the current canvas dimensions. Zero hides and 255 reveals; it is coverage, not an RGBA image with transparency. The separate budget is 64 MiB of logical A8 samples across at most 32 owner masks, with existing 4096-pixel side bounds. Validation counts logical samples even if uniform storage avoids materializing an all-white or all-black plane. Document geometry uses the same checked area/count arithmetic and owner-uniqueness checks before publication; future duplication and owner geometry must retain these rules.
 
 Only metadata belongs in `Composition.raster_masks`: the versioned collection, allocator and paint target. The entire default field is omitted so untouched documents retain legacy metadata and recording hashes; an explicit record requires `version`, `items` and `next_id`. Raw byte planes never enter that JSON metadata. Uniform in-memory storage materializes once at contact start and does not trigger whole-plane copy-on-write during MOVE.
 
@@ -78,15 +78,18 @@ The optional 72-byte x64 effects table retains that 40-byte prefix and adds crea
 
 The independent [raw A8 sampler](native-plugins.md#optional-raw-a8-sampler)
 provides validated native reframe, orthogonal geometry and resampling over
-borrowed dense/uniform sources. This prerequisite does not by itself lift any
-document boundary below. The remaining integration must stage all owner planes
-and preserve the history, cache and outcome rules together.
+borrowed dense/uniform sources. The host's [document geometry integration](mask-canvas-geometry.md)
+stages all owner planes with RGBA and pixel selections, checks the complete
+stable-ID bundle and budgets, then publishes one Canvas history/outcome. Hidden,
+disabled and unlinked masks participate; expansion fills new raw-mask space with
+255. Density and numeric feather are retained, and effective coverage is rebuilt
+under its canonical rounding policy. Owner-specific geometry remains separate.
 
-The following behaviors remain acceptance requirements. Until each path stages masks correctly, existing mask-unaware structural, geometric and cut/paste edits reject mask-bearing documents with `mask_editing_pending`. Corresponding plans/previews are guarded before finishing a live contact. See the [current boundary list](raster-mask-storage.md#temporary-editing-boundaries); these guards preserve data rather than implementing the eventual operations.
+The table combines the implemented document subset with remaining acceptance requirements. Until each pending path stages masks correctly, existing mask-unaware owner-geometry, structural and cut/paste edits reject mask-bearing documents with `mask_editing_pending`. Corresponding plans/previews are guarded before finishing a live contact. See the [current boundary list](raster-mask-storage.md#temporary-editing-boundaries); these guards preserve data rather than implementing the eventual operations.
 
 | Operation | Required mask behavior |
 | --- | --- |
-| Canvas crop, anchored size, document flip/quarter turn, Image Size | Reframe or sample every mask with the canvas, independent of the mask's link flag; include masks in preflight cost/budget plans |
+| Canvas crop, anchored size, document rotation/flip, Image Size, Trim — implemented | Reframe or sample every mask with the canvas, independent of enable/visibility/link flags; include raw/effective masks in preflight cost/budget plans |
 | Pixel-layer Move/Free Transform | Transform the owner's linked mask with pixels under one history/outcome; leave an unlinked mask in canvas coordinates |
 | Mask-target Move/Free Transform | Transform only the selected mask; do not move the owner's raw pixels |
 | Selection-only geometry | Preserve raw layer/group masks |
@@ -125,7 +128,7 @@ The compiled Layers UI shows adjacent pixel/raw-grayscale mask thumbnails, disti
 
 1. **Native prerequisites — implemented:** independent typed A8 painting/composition capabilities, exact byte references, dirty/stride/alias/prewrite rejection, legacy-prefix and missing-tail tests. This gate does not expose document masks.
 2. **Document and event foundation — implemented:** bounded identity/ownership/raw storage, A8 tiled history, rollback, generated composition, MICOPI04 payload and verified outcome encoding. Regression coverage includes old hashes, old-reader rejection, uniform/random/boundary planes, malformed payloads, journal failures and DLL-free playback. See [Raster Mask Storage](raster-mask-storage.md).
-3. **Editing completeness — partial:** Session pressure/stabilized Brush and revealing Eraser, fractional selection clipping, whole-plane edits, density/feather and raster-owner raw-alpha Apply are implemented. Linked/unlinked geometry, owner duplication/deletion and every merge/flatten/clipboard boundary remain planned. Replace temporary guards only with validated atomic staging and verified outcomes.
+3. **Editing completeness — partial:** Session pressure/stabilized Brush and revealing Eraser, fractional selection clipping, whole-plane edits, density/feather, raster-owner raw-alpha Apply and document-wide framing/crop/rotation/flip/Image Size/Trim are implemented. Owner linked/unlinked Move/Free Transform, duplication/deletion and every merge/flatten/clipboard boundary remain planned. Replace temporary guards only with validated atomic staging and verified outcomes.
 4. **Public workflow — verified subset:** eleven registered actions, metadata state and schema-derived nodes expose guaranteed result bindings, MCP/headless dispatch and compiled target/property controls. Independent JSONL/MCP/GUI references, atomic failures, read-only contacts and twenty English/CJK captures verify this subset. They do not complete the structural/geometry matrix in gate 3.
 5. **Measured delivery — verified public subset:** native references, rejection/ABI checks and bounded scratch benchmarks exercise specific scopes. The source-matched Release build, full desktop/headless suites, independent transport references, twenty real multilingual captures and default-plugin portable startup passed. A reviewed panel capture, runnable example and English guides/changelog document the subset. See [Development](development.md#public-raster-mask-editing-checks) for actual runs, timing exclusions, binary/storage costs and the remaining geometry/structural limits.
 
@@ -146,5 +149,7 @@ The full raster-mask checklist is complete only after all five gates pass. Synth
 | `src/application/atomic.rs`, `src/application/replay.rs` | Shared checkpoints, complete save verification and failure publication |
 | `src/plugins/raster_masks.rs`, `src/plugins/tools.rs`, `src/plugins/native.rs` | Registered schemas/state/dispatch, cached typed A8 contacts and optional effects lifecycle; no duplicated pixel algorithms |
 | `plugins/layers/masks.rs` | Compiled target/raw-thumbnail/property controls dispatching shared commands |
-| Existing geometry/structural adapters | Planned mask-aware staged geometry, owner edits and baking to replace temporary guards |
+| `src/application/canvas_geometry.rs`, `src/application/image_size.rs` | Read-only shared frame/unit plans, separate raster/A8 budgets, contact state and capability reporting |
+| `src/plugins/mask_geometry.rs`, `src/engine/mask_geometry.rs` | Borrowed native A8 staging and complete stable-ID all-plane Canvas publication/history/cache/replay invalidation |
+| Existing owner-geometry/structural adapters | Planned owner edits and baking to replace remaining temporary guards |
 | `tests/`, `scripts/`, `examples/`, `docs/` | Compatibility fixtures, transport checks, executable examples, reviewed captures and public contracts |

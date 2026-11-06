@@ -2,12 +2,23 @@
 
 These are actual application captures, not interface mockups. Current images come from isolated GUI smoke checks and design previews of MiCoPi builds. Documentation deliberately reuses stable filenames so image updates do not require changing every guide.
 
+`mask-canvas-geometry.png` is the reviewed English final Release capture from
+`scripts/smoke-mask-geometry.py` on 2026-11-06. The real Image Size dialog exposes
+separate raw-A8/effective-cache estimates and the fixed-pixel feather policy.
+The deliberately small 7-by-5 independent fixture has five layer/group masks;
+costs round below the displayed 0.1 MiB precision. All four Image Size languages,
+Japanese framing, Korean Trim and narrow English Layers captures were reviewed.
+The same run verifies 31 document-geometry cases across JSONL/MCP/GUI, Undo/Redo,
+projects, old-sampler rejection and DLL-free outcomes without changing artwork
+when these dialogs open or cancel.
+
 `pass-through.png` is the English final Release capture from `scripts/smoke-pass-through.py` on 2026-11-06; all four language captures were reviewed. The registered `group.inspect` command opens the actual group inspector, showing the separate compositing policy, disabled retained color mode and active painting layer. A generated pressure stroke supplies the artwork. Inspection and language switching preserve the hierarchy, effective graph and PNG bytes. The same run verifies independent partial-alpha results across JSONL/MCP/GUI, old-DLL rejection, projects, baking and DLL-independent replay; native/control tests cover exact Mix math, nested gates, metrics and live-contact continuity.
 
 `blend-modes.png` is the English Release capture from `scripts/smoke-blend-modes.py` on 2026-11-06; English, Chinese, Japanese and Korean captures were reviewed. Soft Light is applied to a generated pressure-sensitive stroke over a midtone layer. The same isolated run compares all 26 modes across JSONL/MCP/GUI, rejects extended-mode edits/projects with the old compositor, and verifies projects and DLL-independent replay. Actual dropdown interactions, bounded scrolling, unavailable entries and configured narrow/CJK metrics have desktop regression coverage. Artist-owned layer names remain untranslated.
 
 | Image | Purpose |
 | --- | --- |
+| [Mask canvas geometry](mask-canvas-geometry.png) | Real Image Size dialog with separate raw-A8/effective-cache costs and fixed-pixel feather policy |
 | [Pass Through](pass-through.png) | Real group policy inspector with a retained isolated blend mode |
 | [Blend modes](blend-modes.png) | Shared Soft Light layer properties and pressure-sensitive drawing |
 | [Atomic workflow](atomic-workflow.png) | Default atomic execution control in the plugin node editor |

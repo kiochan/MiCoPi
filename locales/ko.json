@@ -1380,5 +1380,16 @@
   "Apply Raster Mask to Layer": "래스터 마스크를 레이어에 적용",
   "Finish the current contact before editing raster masks": "현재 입력을 끝낸 뒤 래스터 마스크를 편집하세요",
   "This operation edits layer pixels. Select Pixels before continuing.": "이 작업은 레이어 픽셀을 편집합니다. 계속하려면 그리기 대상을 픽셀로 바꾸세요.",
-  "Raster mask ownership, properties and paint target": "래스터 마스크 대상, 속성 및 그리기 대상"
+  "Raster mask ownership, properties and paint target": "래스터 마스크 대상, 속성 및 그리기 대상",
+  "Crop layers, raster masks and selections to a pixel rectangle.": "레이어, 래스터 마스크와 선택 영역을 픽셀 사각형으로 자릅니다.",
+  "Effective Mask Cache (estimate)": "유효 마스크 캐시 (예상)",
+  "Finish the current contact before changing canvas geometry": "캔버스 지오메트리를 변경하기 전에 현재 스트로크나 드래그를 끝내세요",
+  "Mask feather stays fixed in canvas pixels.": "마스크 페더 반경은 캔버스 픽셀 값을 유지합니다.",
+  "New layer space is transparent; new mask space reveals pixels.": "새 레이어 영역은 투명하며 새 마스크 영역은 픽셀을 표시합니다.",
+  "Painting DLL does not support raw raster-mask geometry": "페인팅 DLL이 원시 래스터 마스크 지오메트리를 지원하지 않습니다",
+  "Plan Canvas Geometry": "캔버스 지오메트리 계획",
+  "Preview uses visible artwork. Layers and raster masks are cropped; undo restores them.": "표시되는 그림으로 미리 봅니다. 레이어와 래스터 마스크를 자르며 실행 취소로 복원합니다.",
+  "Raster Mask Buffers": "래스터 마스크 버퍼",
+  "Reframe layers, raster masks and selections without scaling.": "크기를 조정하지 않고 레이어, 래스터 마스크와 선택 영역의 캔버스 범위를 변경합니다.",
+  "Scale every layer, raster mask and selection. Apply commits one edit.": "모든 레이어, 래스터 마스크와 선택 영역을 조정합니다. 적용하면 하나의 편집으로 기록됩니다."
 }

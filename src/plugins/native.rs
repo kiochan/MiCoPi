@@ -3810,3 +3810,13 @@ pub(crate) fn affine_bounds(s: &Session) -> Result<[usize; 4], String> {
         (out.y + out.height) as usize,
     ])
 }
+
+#[cfg(test)]
+impl NativePlugin {
+    pub(crate) fn replace_a8_sampler_for_test(
+        &mut self,
+        api: Option<abi::A8SamplerApi>,
+    ) -> Option<abi::A8SamplerApi> {
+        std::mem::replace(&mut self.a8_sampler, api)
+    }
+}

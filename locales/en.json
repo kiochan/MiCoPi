@@ -1380,5 +1380,16 @@
   "Apply Raster Mask to Layer": "Apply Raster Mask to Layer",
   "Finish the current contact before editing raster masks": "Finish the current contact before editing raster masks",
   "This operation edits layer pixels. Select Pixels before continuing.": "This operation edits layer pixels. Select Pixels before continuing.",
-  "Raster mask ownership, properties and paint target": "Raster mask ownership, properties and paint target"
+  "Raster mask ownership, properties and paint target": "Raster mask ownership, properties and paint target",
+  "Crop layers, raster masks and selections to a pixel rectangle.": "Crop layers, raster masks and selections to a pixel rectangle.",
+  "Effective Mask Cache (estimate)": "Effective Mask Cache (estimate)",
+  "Finish the current contact before changing canvas geometry": "Finish the current contact before changing canvas geometry",
+  "Mask feather stays fixed in canvas pixels.": "Mask feather stays fixed in canvas pixels.",
+  "New layer space is transparent; new mask space reveals pixels.": "New layer space is transparent; new mask space reveals pixels.",
+  "Painting DLL does not support raw raster-mask geometry": "Painting DLL does not support raw raster-mask geometry",
+  "Plan Canvas Geometry": "Plan Canvas Geometry",
+  "Preview uses visible artwork. Layers and raster masks are cropped; undo restores them.": "Preview uses visible artwork. Layers and raster masks are cropped; undo restores them.",
+  "Raster Mask Buffers": "Raster Mask Buffers",
+  "Reframe layers, raster masks and selections without scaling.": "Reframe layers, raster masks and selections without scaling.",
+  "Scale every layer, raster mask and selection. Apply commits one edit.": "Scale every layer, raster mask and selection. Apply commits one edit."
 }

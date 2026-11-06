@@ -1615,6 +1615,36 @@
           "estimated_staged_bytes": {
             "type": "integer",
             "minimum": 0
+          },
+          "raster_mask_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 32
+          },
+          "estimated_raster_mask_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 67108864
+          },
+          "estimated_effective_mask_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 67108864
+          },
+          "raster_mask_feather_policy": {
+            "type": "string",
+            "enum": [
+              "fixed_canvas_pixels"
+            ]
+          },
+          "requires_a8_sampler": {
+            "type": "boolean"
+          },
+          "a8_sampler_available": {
+            "type": "boolean"
+          },
+          "contact_active": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1632,7 +1662,269 @@
           "estimated_layer_bytes",
           "estimated_mask_bytes",
           "estimated_composite_bytes",
-          "estimated_staged_bytes"
+          "estimated_staged_bytes",
+          "raster_mask_count",
+          "estimated_raster_mask_bytes",
+          "estimated_effective_mask_bytes",
+          "raster_mask_feather_policy",
+          "requires_a8_sampler",
+          "a8_sampler_available",
+          "contact_active"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "canvas.geometry.plan",
+      "title": "Plan Canvas Geometry",
+      "operation": "canvas_geometry_plan",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "source_width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "source_height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "resize",
+              "crop",
+              "rotate_90_cw",
+              "rotate_90_ccw",
+              "rotate_180",
+              "flip_horizontal",
+              "flip_vertical"
+            ]
+          },
+          "offset_x": {
+            "type": "integer",
+            "minimum": -4096,
+            "maximum": 4096
+          },
+          "offset_y": {
+            "type": "integer",
+            "minimum": -4096,
+            "maximum": 4096
+          },
+          "identity": {
+            "type": "boolean"
+          },
+          "layer_count": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16
+          },
+          "pixel_selection_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
+          },
+          "raster_mask_count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 32
+          },
+          "estimated_layer_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1073741824
+          },
+          "estimated_selection_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1073741824
+          },
+          "estimated_raster_mask_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1073741824
+          },
+          "estimated_effective_mask_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1073741824
+          },
+          "estimated_composite_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1073741824
+          },
+          "estimated_staged_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1073741824
+          },
+          "cost_model": {
+            "type": "string",
+            "enum": [
+              "dense_outputs"
+            ]
+          },
+          "raster_mask_fill": {
+            "type": "integer",
+            "enum": [
+              255
+            ]
+          },
+          "raster_mask_feather_policy": {
+            "type": "string",
+            "enum": [
+              "fixed_canvas_pixels"
+            ]
+          },
+          "requires_a8_sampler": {
+            "type": "boolean"
+          },
+          "a8_sampler_available": {
+            "type": "boolean"
+          },
+          "document_info": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "resolution_ppi": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2400,
+                "description": "Editable nominal scalar; inspect per-axis PPI for exact imported metric density. Setting this replaces imported density."
+              },
+              "initial_background": {
+                "type": "string",
+                "description": "Creation fill intent, not a permanent compositing background."
+              },
+              "width_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height_mm": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_explicit": {
+                "type": "boolean",
+                "description": "An explicit document resolution also writes PNG density at 72 PPI."
+              },
+              "png_density": {
+                "type": "object",
+                "properties": {
+                  "xppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "yppu": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  },
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "meter",
+                      "unspecified"
+                    ]
+                  }
+                },
+                "required": [
+                  "xppu",
+                  "yppu",
+                  "unit"
+                ],
+                "additionalProperties": false,
+                "description": "Exact imported PNG pHYs. Zero axes or unspecified units have no known physical size."
+              },
+              "physical_size_known": {
+                "type": "boolean"
+              },
+              "resolution_source": {
+                "type": "string",
+                "enum": [
+                  "png",
+                  "document"
+                ]
+              },
+              "resolution_ppi_x": {
+                "type": "number",
+                "minimum": 0
+              },
+              "resolution_ppi_y": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "width",
+              "height",
+              "resolution_ppi",
+              "initial_background",
+              "physical_size_known",
+              "resolution_source"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "boolean"
+          },
+          "contact_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source_width",
+          "source_height",
+          "width",
+          "height",
+          "operation",
+          "offset_x",
+          "offset_y",
+          "identity",
+          "layer_count",
+          "pixel_selection_count",
+          "raster_mask_count",
+          "estimated_layer_bytes",
+          "estimated_selection_bytes",
+          "estimated_raster_mask_bytes",
+          "estimated_effective_mask_bytes",
+          "estimated_composite_bytes",
+          "estimated_staged_bytes",
+          "cost_model",
+          "raster_mask_fill",
+          "raster_mask_feather_policy",
+          "requires_a8_sampler",
+          "a8_sampler_available",
+          "document_info",
+          "revision",
+          "drawing",
+          "contact_active"
         ],
         "additionalProperties": false
       }

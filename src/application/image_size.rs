@@ -69,23 +69,38 @@ pub(crate) struct Plan {
     info: Info,
     layers: usize,
     masks: usize,
+    raster_masks: usize,
+    effect_masks: usize,
 }
 impl Plan {
     pub(crate) fn identity(&self) -> bool {
         self.source == [self.width, self.height]
     }
-    pub(crate) fn state(&self, revision: u64, drawing: bool) -> Value {
+    pub(crate) fn state(
+        &self,
+        revision: u64,
+        drawing: bool,
+        sampler_available: bool,
+        contact_active: bool,
+    ) -> Value {
         let pixels = self.width * self.height;
         let layers = pixels * self.layers * 4;
         let masks = pixels * self.masks;
+        let raster_masks = pixels * self.raster_masks;
         json!({"source_width":self.source[0],"source_height":self.source[1],
             "width":self.width,"height":self.height,"method":self.method,
             "identity":self.identity(),"document_info":self.info.state(self.width,self.height),
             "layer_count":self.layers,"mask_count":self.masks,
+            "raster_mask_count":self.raster_masks,
+            "estimated_raster_mask_bytes":raster_masks,
+            "estimated_effective_mask_bytes":pixels*self.effect_masks,
+            "raster_mask_feather_policy":"fixed_canvas_pixels",
+            "requires_a8_sampler":self.raster_masks!=0&&!self.identity(),
+            "a8_sampler_available":sampler_available,
             "estimated_layer_bytes":layers,"estimated_mask_bytes":masks,
             "estimated_composite_bytes":pixels*4,
-            "estimated_staged_bytes":if self.identity(){0}else{layers+masks},
-            "revision":revision,"drawing":drawing})
+            "estimated_staged_bytes":if self.identity(){0}else{layers+masks+raster_masks},
+            "revision":revision,"drawing":drawing,"contact_active":contact_active})
     }
 }
 pub(crate) fn plan(doc: &Document, args: &Value) -> Result<Plan, ActionError> {
@@ -118,6 +133,8 @@ pub(crate) fn plan(doc: &Document, args: &Value) -> Result<Plan, ActionError> {
     if width * height * doc.layers.len() > 64 * 1024 * 1024 {
         return Err(invalid("Image size exceeds document pixel budget"));
     }
+    doc.validate_canvas_geometry_frame(width, height)
+        .map_err(invalid)?;
     let selection = doc.selection();
     Ok(Plan {
         source,
@@ -127,6 +144,13 @@ pub(crate) fn plan(doc: &Document, args: &Value) -> Result<Plan, ActionError> {
         info,
         layers: doc.layers.len(),
         masks: usize::from(selection.current.is_some()) + usize::from(selection.previous.is_some()),
+        raster_masks: doc.mask_state().items.len(),
+        effect_masks: doc
+            .mask_state()
+            .items
+            .iter()
+            .filter(|mask| mask.density != 255 || mask.feather_radius_px != 0)
+            .count(),
     })
 }
 pub(crate) fn schema() -> Value {

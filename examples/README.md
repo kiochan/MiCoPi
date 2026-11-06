@@ -35,6 +35,7 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 | [replay.jsonl](automation/replay.jsonl) | Verified history, sealed archives, project persistence and PNG time-lapse frames; use a fresh frames directory |
 | [draw.jsonl](automation/draw.jsonl) | Pressure-sensitive, stabilized drawing and project/PNG export |
 | [raster-masks.jsonl](automation/raster-masks.jsonl) | Dynamic mask IDs, layer/group coverage, pressure/stabilized A8 painting, density/feather, raw inspection, selection conversion, projects and verified replay |
+| [mask-geometry.jsonl](automation/mask-geometry.jsonl) | Pressure-painted layer/group masks, read-only frame costs, atomic plan bindings, document rotations, image sampling, crop and verified project/PNG/replay output |
 | [native-actions.jsonl](automation/native-actions.jsonl) | Actual DLL checkerboard and region processing |
 | [ai-pipeline.jsonl](automation/ai-pipeline.jsonl) | Discovery, state, cross-plugin calls and typed pipeline execution |
 | [nodes.jsonl](automation/nodes.jsonl) | Non-destructive image graph and PNG export |

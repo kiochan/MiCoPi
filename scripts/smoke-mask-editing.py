@@ -415,10 +415,6 @@ def run_mcp(cli, flags, plan, require_masks=True):
 
 def boundary_cases():
     cases = [
-        ('canvas.resize', dict(width=8, height=8)),
-        ('canvas.image_size', dict(width=8)), ('canvas.image_size.plan', dict(width=8)),
-        ('canvas.trim', {}), ('canvas.trim_bounds', {}),
-        ('canvas.crop', dict(x=0, y=0, width=8, height=8)),
         ('canvas.move', dict(dx=1, dy=0, target='layer')),
         ('canvas.transform', dict(target='layer', translate_x=1)),
         ('canvas.transform.plan', dict(target='layer', translate_x=1)),
@@ -441,8 +437,6 @@ def boundary_cases():
         ('clipboard.cut', {}), ('clipboard.paste', {}), ('clipboard.paste_in_place', {}),
     ]
     cases += [(action, {}) for action in [
-        'canvas.rotate_90_cw', 'canvas.rotate_90_ccw', 'canvas.rotate_180',
-        'canvas.flip_horizontal', 'canvas.flip_vertical',
         'layer.rotate_90_cw', 'layer.rotate_90_ccw', 'layer.rotate_180',
         'layer.flip_horizontal', 'layer.flip_vertical',
     ]]
@@ -490,7 +484,7 @@ def negatives(plan, output, project):
     add('contact-before', 'canvas.state')
     add('contact-raw-before', 'mask.snapshot', mask_id=1, width=WIDTH, height=HEIGHT)
     add('contact-property-rejected', 'mask.set', error='stroke_active', mask_id=1, density=0)
-    add('contact-geometry-rejected', 'canvas.resize', error='mask_editing_pending', width=8, height=8)
+    add('contact-geometry-rejected', 'canvas.resize', error='stroke_active', width=8, height=8)
     add('contact-after', 'canvas.state')
     add('contact-raw-after', 'mask.snapshot', mask_id=1, width=WIDTH, height=HEIGHT)
     add('contact-move', 'canvas.pointer', phase='move', x=10, y=7, pressure=.9,

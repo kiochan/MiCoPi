@@ -1,6 +1,7 @@
 //! The single document owner and action boundary, independent of windows and egui.
 mod actions;
 mod atomic;
+pub(crate) mod canvas_geometry;
 pub mod codec;
 pub(crate) mod creation;
 mod mask_boundary;
@@ -41,6 +42,8 @@ mod layer_organization_tests;
 pub(crate) mod layer_query;
 #[cfg(test)]
 mod linked_graph_tests;
+#[cfg(test)]
+mod mask_canvas_geometry_tests;
 #[cfg(test)]
 mod pass_through_tests;
 #[cfg(test)]

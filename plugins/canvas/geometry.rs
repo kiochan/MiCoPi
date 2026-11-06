@@ -1,5 +1,6 @@
 //! Canvas framing controls; all commits go through public document actions.
 use super::*;
+use serde_json::{json, Value};
 #[path = "image_size.rs"]
 mod image_size;
 #[path = "trim.rs"]
@@ -7,6 +8,8 @@ mod trim;
 pub(super) struct CanvasDialog {
     identity: u64,
     source: [usize; 2],
+    revision: u64,
+    error: String,
     crop: bool,
     trim: Option<trim::TrimDraft>,
     image_size: Option<image_size::Draft>,
@@ -20,11 +23,32 @@ pub(super) struct CanvasDialog {
 impl CanvasDialog {
     pub(super) fn accept_local_view(&mut self, identity: u64, before: u64, after: u64) {
         if self.identity == identity {
+            if self.revision == before {
+                self.revision = after;
+            }
+            if let Some(draft) = self.trim.as_mut() {
+                if draft.revision == before {
+                    draft.revision = after;
+                }
+            }
             if let Some(draft) = self.image_size.as_mut() {
                 draft.accept_local_view(before, after);
             }
         }
     }
+    fn arguments(&self) -> Value {
+        if self.crop {
+            json!({"x":self.x,"y":self.y,"width":self.width,"height":self.height})
+        } else {
+            json!({"width":self.width,"height":self.height,"anchor":ANCHORS[self.anchor]})
+        }
+    }
+}
+
+const RAW_MASK_SAMPLER_UNAVAILABLE: &str = "Painting DLL does not support raw raster-mask geometry";
+const GEOMETRY_CONTACT_ACTIVE: &str = "Finish the current contact before changing canvas geometry";
+fn geometry_sampler_ready(plan: &Value) -> bool {
+    plan["requires_a8_sampler"] != true || plan["a8_sampler_available"] == true
 }
 
 #[cfg(test)]
@@ -187,12 +211,13 @@ const LABELS: [&str; 9] = [
 ];
 impl Editor {
     pub(super) fn open_canvas_geometry(&mut self, crop: bool) {
-        self.finish_stroke();
         self.area_drag = None;
         self.area_target = None;
         self.geometry = Some(CanvasDialog {
             identity: self.session.doc.identity,
             source: [self.session.doc.width, self.session.doc.height],
+            revision: self.session.revision,
+            error: String::new(),
             crop,
             trim: None,
             image_size: None,
@@ -202,6 +227,63 @@ impl Editor {
             height: self.session.doc.height,
             anchor: 4,
         });
+    }
+    fn geometry_idle(&self) -> bool {
+        !self.session.stroke.active() && self.session.pointer_checkpoint.is_none()
+    }
+    fn plan_canvas_geometry(&mut self, dialog: &CanvasDialog) -> Result<Value, String> {
+        let mut args = dialog.arguments();
+        args["operation"] = json!(if dialog.crop { "crop" } else { "resize" });
+        self.session
+            .apply(crate::application::Action::new(
+                "canvas.geometry.plan",
+                args,
+            ))
+            .map(|mut response| response["result"].take())
+            .map_err(|error| error.message)
+    }
+    fn canvas_geometry_current(&self, dialog: &CanvasDialog) -> bool {
+        dialog.identity == self.session.doc.identity
+            && dialog.source == [self.session.doc.width, self.session.doc.height]
+            && dialog.revision == self.session.revision
+    }
+    fn apply_canvas_geometry(&mut self, dialog: &mut CanvasDialog) -> bool {
+        if !self.geometry_idle() {
+            dialog.error = GEOMETRY_CONTACT_ACTIVE.into();
+            return false;
+        }
+        if !self.canvas_geometry_current(dialog) {
+            dialog.error = "The canvas changed. Reopen this dialog.".into();
+            return false;
+        }
+        match self.plan_canvas_geometry(dialog) {
+            Err(error) => {
+                dialog.error = error;
+                return false;
+            }
+            Ok(plan) if !geometry_sampler_ready(&plan) => {
+                dialog.error = RAW_MASK_SAMPLER_UNAVAILABLE.into();
+                return false;
+            }
+            _ => {}
+        }
+        if self.core_at_revision(
+            if dialog.crop {
+                "canvas.crop"
+            } else {
+                "canvas.resize"
+            },
+            dialog.arguments(),
+            Some(dialog.revision),
+        ) {
+            self.sync_from_session();
+            self.fit = true;
+            self.pan = Vec2::ZERO;
+            true
+        } else {
+            dialog.error = self.status.clone();
+            false
+        }
     }
     pub(super) fn crop_outline(&self, painter: &Painter, color: Color32) {
         if let Some(d) = &self.geometry {
@@ -250,128 +332,182 @@ impl Editor {
             self.image_size_window(ctx, d);
             return;
         }
-        let stale = d.identity != self.session.doc.identity
-            || d.source != [self.session.doc.width, self.session.doc.height];
+        let stale = !self.canvas_geometry_current(&d);
+        let idle = self.geometry_idle();
         let mut open = true;
         let mut apply = false;
         let mut cancel = false;
         let a = self.settings.ui.clone();
+        let screen = ctx.content_rect();
+        let frame = Frame::window(&ctx.style()).inner_margin(Margin::same(a.panel_padding as i8));
+        let width = (a.control_height * 14.).min(
+            (screen.width() - a.outer_padding * 2. - frame.total_margin().sum().x)
+                .max(a.control_height * 8.),
+        );
+        let scroll_height =
+            (screen.height() - a.control_height * 5. - a.panel_padding * 4. - a.outer_padding * 2.)
+                .max(a.control_height * 2.);
+        let footer_height = a.control_height + a.panel_padding + a.item_spacing * 3. + 1.;
+        let before_args = d.arguments();
         Window::new(tr(if d.crop { "Crop Canvas" } else { "Canvas Size" }))
             .id(Id::new("canvas-geometry"))
             .open(&mut open)
             .collapsible(false)
             .resizable(false)
-            .default_width(a.control_height * 14.)
-            .min_width(a.control_height * 14.)
+            .frame(frame)
+            .default_width(width)
+            .min_width(width)
+            .max_width(width)
+            .min_height(scroll_height + footer_height)
             .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
             .show(ctx, |ui| {
-                ui.weak(tr(if d.crop {
-                    "Crop all layers to a pixel rectangle."
-                } else {
-                    "Reframe all layers without scaling. New space is transparent."
-                }));
-                ui.add_space(a.panel_padding);
-                Grid::new("canvas-geometry-fields")
-                    .num_columns(2)
+                let mut valid = false;
+                ScrollArea::vertical()
+                    .id_salt("canvas-geometry-controls")
+                    .max_height(scroll_height)
+                    .auto_shrink([false, true])
                     .show(ui, |ui| {
-                        if d.crop {
-                            ui.label("X");
-                            ui.add(
-                                DragValue::new(&mut d.x)
-                                    .range(0..=d.source[0] - 1)
-                                    .suffix(" px"),
-                            );
-                            ui.end_row();
-                            ui.label("Y");
-                            ui.add(
-                                DragValue::new(&mut d.y)
-                                    .range(0..=d.source[1] - 1)
-                                    .suffix(" px"),
-                            );
-                            ui.end_row();
-                            d.width = d.width.min(d.source[0] - d.x);
-                            d.height = d.height.min(d.source[1] - d.y);
+                        ui.weak(tr(if d.crop {
+                            "Crop layers, raster masks and selections to a pixel rectangle."
+                        } else {
+                            "Reframe layers, raster masks and selections without scaling."
+                        }));
+                        if !d.crop {
+                            ui.weak(tr(
+                                "New layer space is transparent; new mask space reveals pixels.",
+                            ));
                         }
-                        ui.label(tr("Width"));
-                        ui.add(
-                            DragValue::new(&mut d.width)
-                                .range(1..=if d.crop { d.source[0] - d.x } else { 4096 })
-                                .suffix(" px"),
-                        );
-                        ui.end_row();
-                        ui.label(tr("Height"));
-                        ui.add(
-                            DragValue::new(&mut d.height)
-                                .range(1..=if d.crop { d.source[1] - d.y } else { 4096 })
-                                .suffix(" px"),
-                        );
-                        ui.end_row();
-                    });
-                if !d.crop {
-                    ui.add_space(a.panel_padding);
-                    ui.label(tr("Anchor"));
-                    Grid::new("canvas-anchor")
-                        .spacing(vec2(4., 4.))
-                        .show(ui, |ui| {
-                            for (i, label) in LABELS.iter().enumerate() {
-                                if ui.selectable_label(d.anchor == i, tr(*label)).clicked() {
-                                    d.anchor = i;
-                                }
-                                if i % 3 == 2 {
+                        ui.add_space(a.panel_padding);
+                        Grid::new("canvas-geometry-fields")
+                            .num_columns(2)
+                            .show(ui, |ui| {
+                                if d.crop {
+                                    ui.label("X");
+                                    ui.add(
+                                        DragValue::new(&mut d.x)
+                                            .range(0..=d.source[0] - 1)
+                                            .suffix(" px"),
+                                    );
                                     ui.end_row();
+                                    ui.label("Y");
+                                    ui.add(
+                                        DragValue::new(&mut d.y)
+                                            .range(0..=d.source[1] - 1)
+                                            .suffix(" px"),
+                                    );
+                                    ui.end_row();
+                                    d.width = d.width.min(d.source[0] - d.x);
+                                    d.height = d.height.min(d.source[1] - d.y);
+                                }
+                                ui.label(tr("Width"));
+                                ui.add(
+                                    DragValue::new(&mut d.width)
+                                        .range(1..=if d.crop { d.source[0] - d.x } else { 4096 })
+                                        .suffix(" px"),
+                                );
+                                ui.end_row();
+                                ui.label(tr("Height"));
+                                ui.add(
+                                    DragValue::new(&mut d.height)
+                                        .range(1..=if d.crop { d.source[1] - d.y } else { 4096 })
+                                        .suffix(" px"),
+                                );
+                                ui.end_row();
+                            });
+                        if !d.crop {
+                            ui.add_space(a.panel_padding);
+                            ui.label(tr("Anchor"));
+                            Grid::new("canvas-anchor")
+                                .spacing(vec2(a.item_spacing, a.item_spacing))
+                                .show(ui, |ui| {
+                                    for (i, label) in LABELS.iter().enumerate() {
+                                        if ui.selectable_label(d.anchor == i, tr(*label)).clicked()
+                                        {
+                                            d.anchor = i;
+                                        }
+                                        if i % 3 == 2 {
+                                            ui.end_row();
+                                        }
+                                    }
+                                });
+                        }
+                        ui.add_space(a.panel_padding);
+                        ui.weak(tr(
+                            "Pixels outside the new canvas are removed. Undo restores them.",
+                        ));
+                        if d.arguments() != before_args {
+                            d.error.clear();
+                        }
+                        let plan = self.plan_canvas_geometry(&d);
+                        valid = !stale && idle && plan.as_ref().is_ok_and(geometry_sampler_ready);
+                        match &plan {
+                            Ok(plan) => {
+                                if plan["raster_mask_count"].as_u64().unwrap_or(0) > 0 {
+                                    for (field, title) in [
+                                        ("estimated_raster_mask_bytes", "Raster Mask Buffers"),
+                                        (
+                                            "estimated_effective_mask_bytes",
+                                            "Effective Mask Cache (estimate)",
+                                        ),
+                                    ] {
+                                        if let Some(bytes) = plan[field].as_u64() {
+                                            ui.weak(format!(
+                                                "{}: {:.1} MiB",
+                                                localize(title),
+                                                bytes as f64 / 1048576.
+                                            ));
+                                        }
+                                    }
+                                }
+                                if !geometry_sampler_ready(plan) {
+                                    ui.colored_label(
+                                        Color32::LIGHT_RED,
+                                        localize(RAW_MASK_SAMPLER_UNAVAILABLE),
+                                    );
                                 }
                             }
-                        });
-                }
-                ui.add_space(a.panel_padding);
-                ui.weak(tr(
-                    "Pixels outside the new canvas are removed. Undo restores them.",
-                ));
-                let dimensions: Result<[usize; 2], String> = Ok([d.width, d.height]);
-                let valid = !stale
-                    && dimensions.as_ref().is_ok_and(|[w, h]| {
-                        w * h * self.session.doc.layers.len() <= 64 * 1024 * 1024
+                            Err(error) => {
+                                ui.colored_label(Color32::LIGHT_RED, localize(error));
+                            }
+                        }
+                        if !idle {
+                            ui.colored_label(Color32::LIGHT_RED, localize(GEOMETRY_CONTACT_ACTIVE));
+                        } else if stale {
+                            ui.colored_label(
+                                Color32::LIGHT_RED,
+                                tr("The canvas changed. Reopen this dialog."),
+                            );
+                        } else if !d.error.is_empty() {
+                            ui.colored_label(Color32::LIGHT_RED, localize(&d.error));
+                        }
                     });
-                if stale {
-                    ui.colored_label(
-                        Color32::LIGHT_RED,
-                        tr("The canvas changed. Reopen this dialog."),
-                    );
-                } else if !valid {
-                    ui.colored_label(
-                        Color32::LIGHT_RED,
-                        tr("Canvas size exceeds document limits"),
-                    );
-                }
+                ui.add_space(a.panel_padding);
+                ui.separator();
                 ui.horizontal(|ui| {
-                    apply = ui.add_enabled(valid, Button::new(tr("Apply"))).clicked();
+                    let response = ui.add_enabled(valid, Button::new(tr("Apply")));
+                    #[cfg(test)]
+                    ui.data_mut(|data| {
+                        data.insert_temp(
+                            Id::new("canvas-geometry-apply"),
+                            (response.rect, response.enabled()),
+                        )
+                    });
+                    apply = response.clicked();
                     cancel = ui.button(tr("Cancel")).clicked();
                 });
             });
         if ctx.input(|i| i.key_pressed(Key::Escape)) {
             cancel = true;
         }
-        if apply {
-            let (action, args) = if d.crop {
-                (
-                    "canvas.crop",
-                    serde_json::json!({"x":d.x,"y":d.y,"width":d.width,"height":d.height}),
-                )
-            } else {
-                (
-                    "canvas.resize",
-                    serde_json::json!({"width":d.width,"height":d.height,"anchor":ANCHORS[d.anchor]}),
-                )
-            };
-            if self.core(action, args) {
-                self.sync_from_session();
-                self.fit = true;
-                self.pan = Vec2::ZERO;
-                return;
-            }
+        if apply && self.apply_canvas_geometry(&mut d) {
+            return;
         }
         if open && !cancel {
             self.geometry = Some(d);
         }
     }
 }
+
+#[cfg(test)]
+#[path = "geometry_mask_ui_tests.rs"]
+pub(super) mod mask_ui_tests;

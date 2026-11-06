@@ -13,6 +13,7 @@ pub(super) struct TrimDraft {
     sides: [bool; 4],
     last_args: Option<Value>,
     preview: Option<Value>,
+    geometry_plan: Option<Value>,
     error: String,
 }
 impl TrimDraft {
@@ -27,9 +28,6 @@ impl TrimDraft {
 }
 impl Editor {
     pub(in crate::desktop) fn open_trim_canvas(&mut self) {
-        self.finish_stroke();
-        self.push_gui_parameters();
-        self.push_gui_view();
         self.open_canvas_geometry(true);
         self.geometry.as_mut().unwrap().trim = Some(TrimDraft {
             revision: self.session.revision,
@@ -38,24 +36,27 @@ impl Editor {
             sides: [true; 4],
             last_args: None,
             preview: None,
+            geometry_plan: None,
             error: String::new(),
         });
     }
     pub(super) fn trim_canvas_window(&mut self, ctx: &Context, mut d: CanvasDialog) {
         let mut t = d.trim.take().unwrap();
-        let before = self.session.revision;
-        self.push_gui_parameters();
-        self.push_gui_view();
-        if t.revision == before {
-            t.revision = self.session.revision;
-        }
-        let stale = self.session.is_drawing()
-            || d.identity != self.session.doc.identity
+        let stale = d.identity != self.session.doc.identity
             || d.source != [self.session.doc.width, self.session.doc.height]
             || t.revision != self.session.revision;
         let a = self.settings.ui.clone();
+        let idle = self.geometry_idle();
+        let screen = ctx.content_rect();
         let frame = Frame::window(&ctx.style()).inner_margin(Margin::same(a.panel_padding as i8));
-        let width = a.control_height * 16.;
+        let width = (a.control_height * 16.).min(
+            (screen.width() - a.outer_padding * 2. - frame.total_margin().sum().x)
+                .max(a.control_height * 8.),
+        );
+        let scroll_height =
+            (screen.height() - a.control_height * 5. - a.panel_padding * 4. - a.outer_padding * 2.)
+                .max(a.control_height * 2.);
+        let footer_height = a.control_height + a.panel_padding + a.item_spacing * 3. + 1.;
         let outer_width = width + frame.total_margin().sum().x;
         let mut open = true;
         let mut apply = false;
@@ -69,14 +70,16 @@ impl Editor {
             .default_width(width)
             .min_width(width)
             .max_width(width)
+            .min_height(scroll_height + footer_height)
             // Keep the central drawing visible; the dialog remains draggable.
             .default_pos(pos2(
                 ctx.content_rect().right() - outer_width - a.outer_padding,
                 ctx.content_rect().center().y - a.control_height * 8.,
             ))
             .show(ctx, |ui| {
+                ScrollArea::vertical().id_salt("trim-canvas-controls").max_height(scroll_height).auto_shrink([false,true]).show(ui,|ui| {
                 ui.weak(tr(
-                    "Preview uses visible artwork. All layers are cropped; undo restores them.",
+                    "Preview uses visible artwork. Layers and raster masks are cropped; undo restores them.",
                 ));
                 ui.add_space(a.panel_padding);
                 ui.horizontal(|ui| {
@@ -116,6 +119,7 @@ impl Editor {
                 if !stale && t.last_args.as_ref() != Some(&args) {
                     t.last_args = Some(args.clone());
                     t.preview = None;
+                    t.geometry_plan = None;
                     t.error.clear();
                     let mut action = crate::application::Action::new("canvas.trim_bounds", args);
                     action.expected_revision = Some(t.revision);
@@ -129,6 +133,10 @@ impl Editor {
                                 d.y = p["y"].as_u64().unwrap() as usize;
                                 d.width = p["width"].as_u64().unwrap() as usize;
                                 d.height = p["height"].as_u64().unwrap() as usize;
+                                match self.plan_canvas_geometry(&d) {
+                                    Ok(plan) => t.geometry_plan = Some(plan),
+                                    Err(error) => t.error = error,
+                                }
                                 t.preview = Some(p);
                             }
                             Err(error) => t.error = error.to_string(),
@@ -137,7 +145,8 @@ impl Editor {
                     ctx.request_repaint();
                 }
                 ui.add_space(a.panel_padding);
-                if stale {
+                if !idle {ui.colored_label(Color32::LIGHT_RED,localize(GEOMETRY_CONTACT_ACTIVE));}
+                else if stale {
                     ui.colored_label(
                         Color32::LIGHT_RED,
                         tr("The canvas changed. Reopen this dialog."),
@@ -152,11 +161,17 @@ impl Editor {
                         ui.weak(tr("No removable border."));
                     }
                 }
+                if t.geometry_plan.as_ref().is_some_and(|plan|!geometry_sampler_ready(plan)) {
+                    ui.colored_label(Color32::LIGHT_RED,localize(RAW_MASK_SAMPLER_UNAVAILABLE));
+                }
                 ui.weak(tr("The selection does not limit trimming."));
+                });
+                ui.add_space(a.panel_padding);
+                ui.separator();
                 ui.horizontal(|ui| {
-                    apply = ui
-                        .add_enabled(!stale && t.has_preview(), Button::new(tr("Apply")))
-                        .clicked();
+                    let response = ui.add_enabled(!stale && idle && t.error.is_empty() && t.has_preview() && t.geometry_plan.as_ref().is_some_and(geometry_sampler_ready),Button::new(tr("Apply")));
+                    #[cfg(test)] ui.data_mut(|data|data.insert_temp(Id::new("canvas-trim-apply"),(response.rect,response.enabled())));
+                    apply = response.clicked();
                     cancel = ui.button(tr("Cancel")).clicked();
                 });
             });

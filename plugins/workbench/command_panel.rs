@@ -276,6 +276,16 @@ impl Editor {
             message: String::new(),
         });
     }
+    pub(super) fn geometry_command_form(&self) -> bool {
+        self.command_form.as_ref().is_some_and(|form| {
+            self.session
+                .registry
+                .actions
+                .get(&form.action)
+                .and_then(|definition| definition.operation)
+                .is_some_and(crate::application::Operation::is_canvas_geometry_command)
+        })
+    }
     pub(super) fn plugin_command_window(&mut self, ctx: &Context) {
         let Some(mut form) = self.command_form.take() else {
             return;
@@ -283,16 +293,21 @@ impl Editor {
         // Canvas fitting may settle after the command opens in this frame.
         // Bind that pending local state before rendering the form, while keeping
         // a revision mismatch caused by an intervening external edit stale.
+        let definition = self.session.registry.actions[&form.action].clone();
         let before_sync = self.session.revision;
-        self.push_gui_parameters();
-        self.push_gui_view();
+        if !definition
+            .operation
+            .is_some_and(crate::application::Operation::is_canvas_geometry_command)
+        {
+            self.push_gui_parameters();
+            self.push_gui_view();
+        }
         if form.revision == before_sync {
             form.revision = self.session.revision;
         }
         let mut open = true;
         let mut run = false;
         let mut invalid = false;
-        let definition = self.session.registry.actions[&form.action].clone();
         let title = tr_for(
             self.session
                 .registry
