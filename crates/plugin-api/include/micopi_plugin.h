@@ -17,6 +17,13 @@ typedef struct {
     uint32_t width, height, stride, origin_x, origin_y;
 } MicopiPixels;
 typedef int32_t (*MicopiTransform)(void *, MicopiPixels *);
+/* Mutable one-byte coverage; length/stride use bytes. Write only width bytes per
+   row, and do not retain any pointer beyond its synchronous transform call. */
+typedef struct {
+    uint8_t *data; size_t len;
+    uint32_t width, height, stride, origin_x, origin_y;
+} MicopiA8Pixels;
+typedef int32_t (*MicopiA8Transform)(void *, MicopiA8Pixels *);
 typedef struct {
     uint32_t abi_version, struct_size;
     void *context;
@@ -64,6 +71,13 @@ typedef struct {
     int32_t (*pixels)(void *, MicopiRegion, MicopiTransform, void *);
     int32_t (*pick)(void *, float, float, uint32_t *);
 } MicopiToolHost;
+/* Optional complete tail for A8 target contacts. The legacy pixels callback
+   stays RGBA-only. Host snapshots byte tiles before loan; failure rolls back
+   the entire contact. Check the base struct_size before reading this tail. */
+typedef struct {
+    MicopiToolHost base;
+    int32_t (*a8)(void *, MicopiRegion, MicopiA8Transform, void *);
+} MicopiToolHostA8;
 typedef struct {
     uint32_t abi_version, struct_size;
     void *(*create)(void);
@@ -87,6 +101,10 @@ typedef struct {
 const MicopiToolOptionsApi *micopi_tool_options_v1(void);
 #define MICOPI_TOOL_OPTION_ALPHA_LOCK 1u
 #define MICOPI_TOOL_OPTION_SELECTION 2u
+/* Both options capability and flag. Requires complete MicopiToolHostA8, cannot
+   combine with alpha lock. Brush value=(54R+183G+19B+128)>>8; eraser reveals 255.
+   Selection scales dab opacity once before rounded byte interpolation. */
+#define MICOPI_TOOL_OPTION_A8_TARGET 4u
 typedef struct {
     const uint8_t *data; size_t len;
     uint32_t width, height, stride;
@@ -137,11 +155,22 @@ typedef struct {
     const uint32_t *data; size_t len;
     uint32_t opacity, visible, mode;
 } MicopiCompositeLayer;
+/* Immutable full-frame A8 coverage. Null data requires len=stride=0 and
+   constant<=255; non-null data requires constant=0 and full-frame row storage.
+   Input must not alias output; pointers stay scoped to the render call. */
+typedef struct {
+    const uint8_t *data; size_t len;
+    uint32_t stride, constant;
+} MicopiCompositeMask;
 typedef struct {
     /* Kinds 0 layer, 1 filter, 2 blend, 3 output. Optional kind 4 is transparent
        zero; it requires MICOPI_COMPOSITOR_TRANSPARENT and a=b=mode=amount=0.
        Optional kind 5 requires MICOPI_COMPOSITOR_MIX: a before, b after, mode=0,
-       finite amount in [0,1]; both input indices must precede this instruction. */
+       finite amount in [0,1]; both input indices must precede this instruction.
+       Masked-renderer kinds: 6 coverage source(a descriptor,b=mode=amount=0);
+       7 apply coverage(a image,b coverage,mode=0,amount opacity in[0,1]);
+       8 masked mix(a before,b after,mode prior coverage slot,amount opacity).
+       Coverage and image instruction slots are distinct types. */
     uint32_t kind, a, b, mode; float amount;
 } MicopiCompositeNode;
 typedef struct {
@@ -159,6 +188,7 @@ typedef struct {
    Otherwise round weighted alpha/255; zero output alpha yields zero. RGB rounds
    half-up against the unrounded weighted alpha, preserving premultiplied mixing. */
 #define MICOPI_COMPOSITOR_MIX (UINT64_C(1) << 1)
+#define MICOPI_COMPOSITOR_MASKS (UINT64_C(1) << 2)
 typedef struct { MicopiCompositorApi base; uint64_t capabilities; } MicopiCompositorApiFeatures;
 /* Stable color blend IDs; IDs 0..7 keep the original arithmetic. */
 #define MICOPI_BLEND_NORMAL UINT32_C(0)
@@ -201,6 +231,15 @@ typedef struct {
     MicopiCompositorApiFeatures base;
     uint64_t supported_blend_modes;
 } MicopiCompositorApiModes;
+typedef int32_t (*MicopiCompositeRenderMaskedFn)(
+    const MicopiCompositeNode *, size_t, const MicopiCompositeLayer *, size_t,
+    const MicopiCompositeMask *, size_t, uint32_t, uint32_t, MicopiPixels *);
+/* Read only when the original header covers this complete tail and capabilities
+   includes MICOPI_COMPOSITOR_MASKS. Prefix render never accepts kinds 6/7/8. */
+typedef struct {
+    MicopiCompositorApiModes base;
+    MicopiCompositeRenderMaskedFn render_masked;
+} MicopiCompositorApiMasks;
 const MicopiCompositorApi *micopi_compositor_v1(void);
 /* Independent optional exact geometry table, with immutable source and disjoint
    output. Local origins are zero; dimensions/stride are bounded to 4096.

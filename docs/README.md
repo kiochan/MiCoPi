@@ -42,4 +42,10 @@ The technical documentation is maintained in English. The project overview is al
 | [Localization](localization.md) | Language settings, catalogs, fallback and contributions |
 | [Settings schema](reference/settings.schema.json) | Machine-readable configuration reference |
 
+## Implementation designs
+
+| Design | Status |
+| --- | --- |
+| [Paintable Raster Masks](raster-masks-design.md) | Planned document/history/replay and UI integration; native A8 prerequisites are separate from feature availability |
+
 Runnable material is indexed in [Examples](../examples/README.md); actual application captures are indexed in [Screenshots](screenshots/README.md). See [Contributing](../CONTRIBUTING.md) and [Changelog](../CHANGELOG.md) for the collaboration process and release history.

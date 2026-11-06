@@ -31,7 +31,7 @@ The headless build excludes desktop/OpenGL. Runtime releases need their plugin d
 
 ## Checks
 
-Unit tests cover document/history, codec, schemas, actions, public state, pipelines, workflow graphs, settings, shortcuts, pen routing, docking, Windows ABI and offscreen presentation. Build plugin DLLs first. Four explicitly ignored tests cover the independent DLL fixture and optional benchmarks; build.ps1 -Test runs the DLL lifecycle fixture separately.
+Unit tests cover document/history, codec, schemas, actions, public state, pipelines, workflow graphs, settings, shortcuts, pen routing, docking, Windows ABI and offscreen presentation. Build plugin DLLs first. Explicitly ignored tests cover the independent DLL fixture and optional benchmarks; build.ps1 -Test runs the DLL lifecycle fixture separately.
 
 ```powershell
 python scripts/smoke-runtime.py
@@ -143,6 +143,24 @@ Run `python scripts/smoke-physical-creation.py --cli <built-cli> --gui <built-de
 ## Physical Image Size checks
 
 Run `python scripts/smoke-physical-resample.py --cli <built-cli> --gui <built-desktop>` for exact-axis physical/pixel equivalence, unknown-density handling, source metadata retention, native output parity across transports, project/undo/replay checks and four-language Image Size cancellation captures. Use `--skip-gui` for transport-only checks. Library tests cover read-only plans during contacts, rejected active mutations, all-layer/mask estimates and budgets, static preflight versus evolving pipeline context, native/encoding/journal rollback and inert workflow editing. Desktop regressions cover unit switching, external density/revision changes and narrow CJK footers. No DLL ABI or pen-MOVE path change is required.
+
+## Native A8 prerequisite checks
+
+Build and stage the matching painting/compositor DLLs before host tests. Run `cargo test --lib --locked -p micopi-plugin-api -p micopi-painting-tools -p micopi-compositing`, `python scripts/check-native-abi.py` and `python scripts/smoke-native-masks.py`. The header check compiles C11/C++17 fixtures with the existing portable compiler or explicit `--cc`; it creates no binaries. The actual-DLL check uses synthetic scoped A8/selection loans, independent coverage arithmetic, dirty stride/guard fixtures and legacy prefix parity. Optional `--old-painting` and `--old-compositor` paths add preceding-DLL comparisons. Native crate tests and the conformance script also run in CI.
+
+These checks cover primitives, not application mask history or physical tablet compatibility. Full document integration remains specified in [Raster Masks Design](raster-masks-design.md). Native failures on UP/CANCEL, including the final stabilizer tail, must propagate to the caller; malformed A8 metadata and aliases reject before writes. Host tests retain old-prefix negotiation, actual load/dispatch and all existing document/replay behavior. Run the ignored DLL lifecycle fixture against the built incompatible DLL as in the standard build script.
+
+After builds and smoke processes finish, the ignored Release `a8_raster_cost` and `masked_region_cost` native tests measure prepared typed-painting and coverage-composition workloads. Keep native kernel/loan costs separate from Session/history/journal, encoded output, GUI and hardware input latency. Their checks and fixture preparation remain outside timers; no CI timing threshold is applied.
+
+On 2026-11-06, Rust 1.90 GNU Release in this Windows x64 environment (12 logical processors; reported AMD64 Family 23 Model 113) measured five interleaved native test-binary medians of 25.97 ms A8 and 35.32 ms opaque grayscale RGBA for 5,120 prepared pen samples/80 strokes on 512×384, with pressure dynamics, stabilization and fractional selection. Both used 33,840 scoped loans and matched every output pixel. These different storage/sink workloads do not establish an application speedup. Timers include configure, samples and native raster/loans; allocation, resets, reference checks, Session/history/journal, DLL loading, encoding, I/O, GUI and physical pen input are excluded.
+
+One native test-binary observation of a five-instruction 1024-square MaskedMix with two full-range ARGB sources and a full-range A8 plane measured 19.36/31.71/29.63 ms at opacity bytes 0/128/255. Native validation and composition are included; source/output allocation, fixture generation and full independent reference comparisons are outside the timers, as are Session/history/journal, encoding and presentation. The kernel uses fixed per-pixel scratch and no image intermediates.
+
+Actual-DLL legacy rendering retained complete bytes for all 26 modes across five interleaved old/new 1024-square pairs per mode. Initial median changes ranged from −9.2% to +13.4%, including a +13.4% Linear Burn result. An 11-pair follow-up interleaved Normal/Linear Burn/Soft Light, reversed DLL loading, used ABBA callback order and swapped output allocations each repeat: medians were 28.08/28.75, 32.56/30.63 and 82.08/78.67 ms respectively (old/new); Normal's median paired ratio was +0.14%. The initial slowdown did not reproduce consistently. Broad sample variation and changing directions do not prove unchanged throughput or a general speedup. These timers include ctypes/native validation/composition and exclude allocation, preparation, comparisons/hashing, Session/history, GUI and hardware input.
+
+The four old/new host and painting/compositor combinations also ran the same 57-action fixture. Original RGBA planes including hidden RGB, composition, PNGs, fractional selection, groups, filters, selected-only merge, Undo/Redo and reopened projects matched exactly. One shared generated save/open path kept file-context metadata equal, allowing identical state/surface hashes across runs. Old/new core/replay-only readers verified the same archive's head/state/surface hashes without algorithm DLLs. Existing preview files and manifest sets remained unchanged.
+
+The final desktop/CLI executables are 10,089,472/3,963,392 bytes (1/1.5 KiB above the selected-merge preview). Painting is 356,864 bytes (+1 KiB) and compositing 278,016 bytes (+4 KiB); no dependency is added. These are individual binary sizes rather than package or peak-memory costs. The application still has no document mask target or public coverage nodes; native prerequisites do not alter project or recording formats.
 
 ## Selected-layer merge checks
 

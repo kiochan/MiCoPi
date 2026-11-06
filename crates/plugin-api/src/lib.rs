@@ -68,7 +68,20 @@ pub struct Pixels {
     pub origin_x: u32,
     pub origin_y: u32,
 }
+/// Mutable one-byte coverage region. Stride and length are measured in bytes;
+/// write only width bytes per row. The borrow lasts for one transform callback.
+#[repr(C)]
+pub struct A8Pixels {
+    pub data: *mut u8,
+    pub len: usize,
+    pub width: u32,
+    pub height: u32,
+    pub stride: u32,
+    pub origin_x: u32,
+    pub origin_y: u32,
+}
 pub type Transform = unsafe extern "C" fn(*mut c_void, *mut Pixels) -> i32;
+pub type A8Transform = unsafe extern "C" fn(*mut c_void, *mut A8Pixels) -> i32;
 #[repr(C)]
 pub struct HostApi {
     pub abi_version: u32,
@@ -188,6 +201,15 @@ pub struct ToolHost {
     pub pixels: unsafe extern "C" fn(*mut c_void, Region, Option<Transform>, *mut c_void) -> i32,
     pub pick: unsafe extern "C" fn(*mut c_void, f32, f32, *mut u32) -> i32,
 }
+/// Optional complete tool-host tail for TOOL_OPTION_A8_TARGET contacts. This
+/// never redirects the legacy RGBA callback. The host snapshots byte tiles before
+/// lending storage and rolls back the entire contact on any callback failure.
+#[repr(C)]
+pub struct ToolHostA8 {
+    pub base: ToolHost,
+    pub a8:
+        Option<unsafe extern "C" fn(*mut c_void, Region, Option<A8Transform>, *mut c_void) -> i32>,
+}
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct ToolApi {
@@ -232,6 +254,11 @@ pub struct ToolOptionsApi {
 pub type ToolOptionsEntry = unsafe extern "C" fn() -> *const ToolOptionsApi;
 pub const TOOL_OPTION_ALPHA_LOCK: u32 = 1;
 pub const TOOL_OPTION_SELECTION: u32 = 2;
+/// ToolOptionsApiExt capability and ToolOptionsExt flag. Freeze the A8 target at
+/// DOWN, require a complete ToolHostA8 before touching storage, and reject its
+/// combination with alpha lock. Encoded-RGB grayscale is (54R+183G+19B+128)>>8;
+/// erasing reveals 255. Selection scales dab opacity once before byte mixing.
+pub const TOOL_OPTION_A8_TARGET: u32 = 4;
 /// Borrowed full-canvas 8-bit coverage, frozen until the contact ends.
 /// A null pointer with all other fields zero means unrestricted painting.
 #[repr(C)]
@@ -378,11 +405,26 @@ pub struct CompositeLayer {
     pub visible: u32,
     pub mode: u32,
 }
+/// Immutable full-canvas coverage for the optional masked renderer. A null data
+/// pointer requires len=stride=0 and constant in 0..=255. Otherwise constant=0,
+/// stride is at least canvas width and len covers the final row. Storage must not
+/// alias mutable output and no pointer may outlive the render call.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct CompositeMask {
+    pub data: *const u8,
+    pub len: usize,
+    pub stride: u32,
+    pub constant: u32,
+}
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct CompositeNode {
     // 0 layer, 1 filter, 2 blend, 3 output. Capability-gated: 4 transparent,
     // 5 premultiplied mix (a before, b after, mode=0, finite amount in 0..=1).
+    // Masked-renderer only: 6 coverage source (a descriptor, b=mode=amount=0),
+    // 7 apply coverage (a image, b coverage, mode=0, amount opacity in 0..=1),
+    // 8 masked mix (a before, b after, mode prior coverage slot, amount opacity).
     pub kind: u32,
     pub a: u32,
     pub b: u32,
@@ -414,6 +456,9 @@ pub const COMPOSITOR_TRANSPARENT: u64 = 1;
 /// zero output alpha yields zero, and RGB rounds half-up against the unrounded
 /// weighted alpha. Both input indices must refer to prior instruction slots.
 pub const COMPOSITOR_MIX: u64 = 1 << 1;
+/// Kinds 6/7/8 require the complete CompositorApiMasks tail and render_masked.
+/// Image and coverage slots are distinct types, although both use prior indices.
+pub const COMPOSITOR_MASKS: u64 = 1 << 2;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct CompositorApiFeatures {
@@ -461,6 +506,25 @@ pub const BLEND_MODES_ALL: u64 = (1 << BLEND_MODE_COUNT) - 1;
 pub struct CompositorApiModes {
     pub base: CompositorApiFeatures,
     pub supported_blend_modes: u64,
+}
+pub type CompositeRenderMaskedFn = unsafe extern "C" fn(
+    *const CompositeNode,
+    usize,
+    *const CompositeLayer,
+    usize,
+    *const CompositeMask,
+    usize,
+    u32,
+    u32,
+    *mut Pixels,
+) -> i32;
+/// Read only when the original header advertises this entire tail and the
+/// capability bitmap includes COMPOSITOR_MASKS. Prefix render retains its
+/// original instruction contract and does not accept kinds 6/7/8.
+#[repr(C)]
+pub struct CompositorApiMasks {
+    pub base: CompositorApiModes,
+    pub render_masked: Option<CompositeRenderMaskedFn>,
 }
 pub type CompositorEntry = unsafe extern "C" fn() -> *const CompositorApi;
 
@@ -628,6 +692,47 @@ pub type ProjectiveEntry = unsafe extern "C" fn() -> *const ProjectiveApi;
 mod transform_layout_tests {
     use super::*;
     use std::mem::{offset_of, size_of};
+    #[test]
+    fn a8_extensions_preserve_published_tool_and_compositor_prefixes() {
+        assert_eq!(size_of::<Pixels>(), 40);
+        assert_eq!(size_of::<A8Pixels>(), 40);
+        assert_eq!(offset_of!(A8Pixels, data), 0);
+        assert_eq!(offset_of!(A8Pixels, len), 8);
+        assert_eq!(offset_of!(A8Pixels, width), 16);
+        assert_eq!(offset_of!(A8Pixels, origin_y), 32);
+        assert_eq!(size_of::<ToolParameters>(), 32);
+        assert_eq!(size_of::<ToolSample>(), 44);
+        assert_eq!(size_of::<ToolOutput>(), 20);
+        assert_eq!(size_of::<ToolHost>(), 32);
+        assert_eq!(offset_of!(ToolHost, pixels), 16);
+        assert_eq!(offset_of!(ToolHost, pick), 24);
+        assert_eq!(size_of::<ToolHostA8>(), 40);
+        assert_eq!(offset_of!(ToolHostA8, base), 0);
+        assert_eq!(offset_of!(ToolHostA8, a8), 32);
+        assert_eq!(size_of::<ToolApi>(), 32);
+        assert_eq!(size_of::<ToolOptions>(), 16);
+        assert_eq!(size_of::<ToolOptionsExt>(), 20);
+        assert_eq!(size_of::<ToolOptionsSelection>(), 56);
+        assert_eq!(size_of::<ToolOptionsApi>(), 16);
+        assert_eq!(size_of::<ToolOptionsApiExt>(), 24);
+        assert_eq!(TOOL_OPTION_A8_TARGET, 4);
+        assert_eq!(
+            TOOL_OPTION_A8_TARGET & (TOOL_OPTION_ALPHA_LOCK | TOOL_OPTION_SELECTION),
+            0
+        );
+        assert_eq!(size_of::<CompositeMask>(), 24);
+        assert_eq!(offset_of!(CompositeMask, len), 8);
+        assert_eq!(offset_of!(CompositeMask, stride), 16);
+        assert_eq!(offset_of!(CompositeMask, constant), 20);
+        assert_eq!(size_of::<CompositorApiMasks>(), 40);
+        assert_eq!(offset_of!(CompositorApiMasks, base), 0);
+        assert_eq!(offset_of!(CompositorApiMasks, render_masked), 32);
+        assert_eq!(COMPOSITOR_MASKS, 4);
+        assert_eq!(
+            COMPOSITOR_MASKS & (COMPOSITOR_TRANSPARENT | COMPOSITOR_MIX),
+            0
+        );
+    }
     #[test]
     fn independent_projective_table_preserves_the_published_affine_layout() {
         assert_eq!(size_of::<Affine>(), 56);

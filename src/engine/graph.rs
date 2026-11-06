@@ -304,6 +304,9 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 pub trait Renderer {
+    fn supports_masks(&self) -> bool {
+        false
+    }
     fn supports_mix(&self) -> bool {
         false
     }
@@ -321,6 +324,22 @@ pub trait Renderer {
         height: u32,
         output: &mut abi::Pixels,
     ) -> Result<(), String>;
+    /// Optional native prerequisite. Document mask ownership and graph syntax
+    /// remain separate contracts; old renderers keep the unmasked path.
+    fn render_masked(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        width: u32,
+        height: u32,
+        output: &mut abi::Pixels,
+    ) -> Result<(), String> {
+        if !masks.is_empty() || nodes.iter().any(|node| node.kind >= 6) {
+            return Err("The compositor does not support mask coverage".into());
+        }
+        self.render(nodes, layers, width, height, output)
+    }
 }
 impl Graph {
     pub fn from_layers(layers: &[super::Layer]) -> Self {

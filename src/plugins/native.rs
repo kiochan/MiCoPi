@@ -35,10 +35,16 @@ type SelectionTable = (
     Option<abi::SelectionEdgesFn>,
     Option<abi::SelectionTransferFn>,
 );
+type CompositorTable = (
+    abi::CompositorApi,
+    u64,
+    u64,
+    Option<abi::CompositeRenderMaskedFn>,
+);
 // The v1 callback prefix remains usable when an optional feature tail is absent.
 unsafe fn decode_compositor_table(
     pointer: *const abi::CompositorApi,
-) -> Result<(abi::CompositorApi, u64, u64), String> {
+) -> Result<CompositorTable, String> {
     if pointer.is_null() {
         return Err("Compositor returned a null ABI table".into());
     }
@@ -66,7 +72,20 @@ unsafe fn decode_compositor_table(
     if modes & abi::BLEND_MODES_LEGACY != abi::BLEND_MODES_LEGACY {
         return Err("Compositor blend mode mask omits legacy modes".into());
     }
-    Ok((api, capabilities, modes))
+    let masked = if capabilities & abi::COMPOSITOR_MASKS != 0 {
+        if header.struct_size < std::mem::size_of::<abi::CompositorApiMasks>() as u32 {
+            return Err("Compositor mask capability requires a complete table".into());
+        }
+        let callback =
+            std::ptr::read_unaligned(pointer.cast::<abi::CompositorApiMasks>()).render_masked;
+        if callback.is_none() {
+            return Err("Compositor mask capability is missing render_masked".into());
+        }
+        callback
+    } else {
+        None
+    };
+    Ok((api, capabilities, modes, masked))
 }
 // Read only advertised, complete optional tails; legacy prefixes remain usable.
 unsafe fn decode_selection_table(
@@ -332,7 +351,7 @@ impl Module {
             Ok(None)
         }
     }
-    unsafe fn compositor_api(&self) -> Result<Option<(abi::CompositorApi, u64, u64)>, String> {
+    unsafe fn compositor_api(&self) -> Result<Option<CompositorTable>, String> {
         #[cfg(windows)]
         {
             let address =
@@ -450,6 +469,7 @@ pub struct NativePlugin {
     compositor: Option<abi::CompositorApi>,
     compositor_capabilities: u64,
     compositor_blend_modes: u64,
+    compositor_masked: Option<abi::CompositeRenderMaskedFn>,
     _module: Module,
 }
 impl std::fmt::Debug for NativePlugin {
@@ -531,10 +551,12 @@ impl NativePlugin {
         if tool_options.is_some() && tools.is_none() {
             return Err("Tool options require a tool API".into());
         }
-        let (compositor, compositor_capabilities, compositor_blend_modes) =
+        let (compositor, compositor_capabilities, compositor_blend_modes, compositor_masked) =
             match unsafe { module.compositor_api()? } {
-                Some((api, capabilities, modes)) => (Some(api), capabilities, modes),
-                None => (None, 0, 0),
+                Some((api, capabilities, modes, masked)) => {
+                    (Some(api), capabilities, modes, masked)
+                }
+                None => (None, 0, 0, None),
             };
         if api.describe.is_none()
             || (api.invoke.is_none() && tools.is_none() && compositor.is_none())
@@ -571,6 +593,7 @@ impl NativePlugin {
                 compositor,
                 compositor_capabilities,
                 compositor_blend_modes,
+                compositor_masked,
                 _module: module,
             }),
             contributions,
@@ -578,6 +601,9 @@ impl NativePlugin {
     }
 }
 impl crate::engine::graph::Renderer for NativePlugin {
+    fn supports_masks(&self) -> bool {
+        self.compositor_masked.is_some()
+    }
     fn supports_mix(&self) -> bool {
         self.compositor_capabilities & abi::COMPOSITOR_MIX != 0
     }
@@ -626,6 +652,55 @@ impl crate::engine::graph::Renderer for NativePlugin {
             Ok(())
         } else {
             Err(format!("Compositor execution failed: {status}"))
+        }
+    }
+    fn render_masked(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        width: u32,
+        height: u32,
+        output: &mut abi::Pixels,
+    ) -> Result<(), String> {
+        if masks.is_empty() && nodes.iter().all(|node| node.kind < 6) {
+            return self.render(nodes, layers, width, height, output);
+        }
+        let render = self
+            .compositor_masked
+            .ok_or("The compositor does not support mask coverage")?;
+        if nodes.iter().any(|node| node.kind == 4) && !self.supports_transparent() {
+            return Err("Compositor does not support transparent image nodes".into());
+        }
+        if nodes.iter().any(|node| node.kind == 5) && !self.supports_mix() {
+            return Err("The compositor does not support backdrop mixing".into());
+        }
+        if layers
+            .iter()
+            .any(|layer| !self.supports_blend_mode(layer.mode))
+            || nodes
+                .iter()
+                .any(|node| node.kind == 2 && !self.supports_blend_mode(node.mode))
+        {
+            return Err("The compositor does not support this blend mode".into());
+        }
+        let status = unsafe {
+            render(
+                nodes.as_ptr(),
+                nodes.len(),
+                layers.as_ptr(),
+                layers.len(),
+                masks.as_ptr(),
+                masks.len(),
+                width,
+                height,
+                output,
+            )
+        };
+        if status == abi::OK {
+            Ok(())
+        } else {
+            Err(format!("Masked compositor execution failed: {status}"))
         }
     }
 }
@@ -1100,6 +1175,9 @@ unsafe extern "C" fn edit_region(
     (*host).busy = false;
     status
 }
+#[cfg(test)]
+#[path = "native_masks_tests.rs"]
+mod masks_tests;
 #[cfg(test)]
 mod tests {
     use super::*;

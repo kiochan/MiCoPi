@@ -134,6 +134,8 @@ The host owns transaction and verification rules. Plugins own drawing and proces
 
 ## Tests and local output
 
+Native A8 prerequisites live in the existing SDK/header, `plugins/painting/src/raster.rs` and `plugins/compositing/src/masks.rs`. `src/plugins/native_masks_tests.rs` checks negotiation and dispatch; `tests/fixtures/native-layout.c`, `scripts/check-native-abi.py` and `scripts/smoke-native-masks.py` check C/C++ layouts and actual DLL behavior. The planned document byte-plane, history and replay ownership is specified in [Raster Masks Design](raster-masks-design.md); these native components alone do not provide application masks.
+
 Unit tests stay near their implementation. Shared support lives under `tests/reference/`, ABI rejection fixtures under `tests/fixtures/native-incompatible/`, and historical recording fixtures under `tests/fixtures/replay/`. Keep each binary fixture with its provenance and expected hashes. See [Development](development.md) for commands and `tests/README.md` for shared support.
 
 Generated smoke captures, extracted packages, benchmarks and artwork from examples belong under ignored `target/test-output/` or `target/example-output/`. Only reviewed screenshots are promoted to `docs/screenshots/`; portable deliverables stay under ignored `dist/`.

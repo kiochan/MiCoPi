@@ -4,6 +4,9 @@ use micopi_plugin_api as abi;
 mod blend_tests;
 mod blends;
 #[cfg(test)]
+mod mask_tests;
+mod masks;
+#[cfg(test)]
 mod mix_tests;
 pub fn over(dst: u32, src: u32, mode: u32) -> u32 {
     if mode >= abi::BLEND_COLOR_BURN {
@@ -265,16 +268,19 @@ static BASE: abi::PluginApi = abi::PluginApi {
     destroy: None,
     invoke: None,
 };
-static COMPOSITOR: abi::CompositorApiModes = abi::CompositorApiModes {
-    base: abi::CompositorApiFeatures {
-        base: abi::CompositorApi {
-            abi_version: 1,
-            struct_size: std::mem::size_of::<abi::CompositorApiModes>() as u32,
-            render: Some(render),
+static COMPOSITOR: abi::CompositorApiMasks = abi::CompositorApiMasks {
+    base: abi::CompositorApiModes {
+        base: abi::CompositorApiFeatures {
+            base: abi::CompositorApi {
+                abi_version: 1,
+                struct_size: std::mem::size_of::<abi::CompositorApiMasks>() as u32,
+                render: Some(render),
+            },
+            capabilities: abi::COMPOSITOR_TRANSPARENT | abi::COMPOSITOR_MIX | abi::COMPOSITOR_MASKS,
         },
-        capabilities: abi::COMPOSITOR_TRANSPARENT | abi::COMPOSITOR_MIX,
+        supported_blend_modes: abi::BLEND_MODES_ALL,
     },
-    supported_blend_modes: abi::BLEND_MODES_ALL,
+    render_masked: Some(masks::render_masked),
 };
 #[no_mangle]
 pub extern "C" fn micopi_plugin_v1() -> *const abi::PluginApi {
@@ -282,7 +288,7 @@ pub extern "C" fn micopi_plugin_v1() -> *const abi::PluginApi {
 }
 #[no_mangle]
 pub extern "C" fn micopi_compositor_v1() -> *const abi::CompositorApi {
-    &COMPOSITOR.base.base
+    &COMPOSITOR.base.base.base
 }
 
 #[cfg(test)]
@@ -399,16 +405,18 @@ mod tests {
         assert_eq!(base.abi_version, 1);
         assert_eq!(
             base.struct_size as usize,
-            std::mem::size_of::<abi::CompositorApiModes>()
+            std::mem::size_of::<abi::CompositorApiMasks>()
         );
         let complete = unsafe { &*(micopi_compositor_v1().cast::<abi::CompositorApiFeatures>()) };
         assert_eq!(
             complete.capabilities,
-            abi::COMPOSITOR_TRANSPARENT | abi::COMPOSITOR_MIX
+            abi::COMPOSITOR_TRANSPARENT | abi::COMPOSITOR_MIX | abi::COMPOSITOR_MASKS
         );
         let modes = unsafe { &*(micopi_compositor_v1().cast::<abi::CompositorApiModes>()) };
         assert_eq!(modes.supported_blend_modes, abi::BLEND_MODES_ALL);
         assert!(base.render.is_some());
+        let masks = unsafe { &*(micopi_compositor_v1().cast::<abi::CompositorApiMasks>()) };
+        assert!(masks.render_masked.is_some());
     }
 
     #[test]

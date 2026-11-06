@@ -78,6 +78,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Plugins and localization
 
+- Add native A8 painting and typed coverage composition prerequisites for planned raster masks. Extend unchanged C ABI prefixes with explicit capability/size-checked tool loans and a separate masked compositor, uniform/strided byte descriptors and bounded typed source/apply/before-after gates. Reuse pressure/stabilization/spacing, grayscale Brush and reveal-white Eraser; preserve the RGBA raster kernel and old compositor callback. Reject malformed spans, metadata/selection aliases and incomplete tables before writes, and propagate UP/CANCEL final-tail loan failures to standalone tool clients. Add Rust/C/C++ layout checks, independent byte/rational references, actual-DLL conformance and native CI checks; verify four old/new host/DLL combinations and DLL-free outcome archives, record scoped kernel/binary costs, and document storage/history/replay/geometry integration gates. Application raster/clipping masks and public mask nodes remain planned.
+
 - Unify package version/author/host compatibility metadata, path-based lifecycle inventory, contribution ownership and dependency-aware enable/disable plans. Settings and the read-only `plugins.plan` action share the planner; activation and DLL changes require restart.
 - Embed only English and load Chinese, Japanese and Korean from external JSON catalogs, with profile overrides and bounded background hot reload. Keep the last valid translations after malformed edits and keep locale I/O off the drawing thread.
 - Add owner-scoped plugin catalogs and translated command search, including a multilingual Quick tools example. A package's translations cannot replace another owner's labels.

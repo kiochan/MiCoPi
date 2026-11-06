@@ -24,6 +24,7 @@ pub struct Brush {
 struct State {
     selection: abi::Coverage,
     alpha_locked: bool,
+    a8_target: bool,
     filter: Stabilizer,
     contact: Option<Contact>,
     spacing: f32,
@@ -34,6 +35,7 @@ impl Default for State {
         Self {
             selection: Default::default(),
             alpha_locked: false,
+            a8_target: false,
             filter: Default::default(),
             contact: None,
             spacing: 0.11,
@@ -140,6 +142,14 @@ impl State {
                     raster: Raster {
                         selection: self.selection,
                         alpha_locked: self.alpha_locked,
+                        a8_value: self.a8_target.then(|| {
+                            let color = parameters.color;
+                            ((54 * ((color >> 16) & 255)
+                                + 183 * ((color >> 8) & 255)
+                                + 19 * (color & 255)
+                                + 128)
+                                >> 8) as u8
+                        }),
                         spacing: self.spacing,
                         width: p.width,
                         height: p.height,
@@ -197,10 +207,18 @@ impl State {
                     contact.last = p;
                 }
                 if p.phase == abi::UP {
-                    self.finish(host);
+                    let status = self.finish(host);
+                    if status != abi::OK {
+                        return status;
+                    }
                 }
             }
-            abi::CANCEL => self.finish(host),
+            abi::CANCEL => {
+                let status = self.finish(host);
+                if status != abi::OK {
+                    return status;
+                }
+            }
             _ => return abi::ERROR,
         }
         if let Some(contact) = &self.contact {
@@ -215,7 +233,8 @@ impl State {
         }
         abi::OK
     }
-    fn finish(&mut self, host: &abi::ToolHost) {
+    fn finish(&mut self, host: &abi::ToolHost) -> i32 {
+        let mut status = abi::OK;
         if let Some(mut contact) = self.contact.take() {
             if contact.handler != 4 {
                 if let Some(sample) = self.filter.finish() {
@@ -224,8 +243,12 @@ impl State {
                         .line(host, sample.x, sample.y, contact.brush(sample.pressure));
                 }
             }
+            if contact.raster.failed {
+                status = abi::ERROR;
+            }
         }
         self.filter.cancel();
+        status
     }
 }
 unsafe extern "C" fn create() -> *mut c_void {
@@ -256,6 +279,9 @@ unsafe extern "C" fn pointer(
     let state = &mut *state.cast::<State>();
     *out = abi::ToolOutput::default();
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        if state.a8_target && (handler == 1 || handler == 2) && raster::a8_loan(host).is_none() {
+            return abi::ERROR;
+        }
         state.input(
             handler,
             *sample,
@@ -317,7 +343,13 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
     };
     if (header.struct_size > std::mem::size_of::<abi::ToolOptions>() as u32
         && header.struct_size < std::mem::size_of::<abi::ToolOptionsExt>() as u32)
-        || flags & !(abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_SELECTION) != 0
+        || flags
+            & !(abi::TOOL_OPTION_ALPHA_LOCK
+                | abi::TOOL_OPTION_SELECTION
+                | abi::TOOL_OPTION_A8_TARGET)
+            != 0
+        || flags & (abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_A8_TARGET)
+            == (abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_A8_TARGET)
     {
         return abi::ERROR;
     }
@@ -348,6 +380,7 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
     state.spacing = options.spacing;
     state.minimum_opacity = options.minimum_opacity;
     state.alpha_locked = flags & abi::TOOL_OPTION_ALPHA_LOCK != 0;
+    state.a8_target = flags & abi::TOOL_OPTION_A8_TARGET != 0;
     state.selection = mask;
     abi::OK
 }
@@ -357,13 +390,15 @@ static OPTIONS: abi::ToolOptionsApiExt = abi::ToolOptionsApiExt {
         struct_size: std::mem::size_of::<abi::ToolOptionsApiExt>() as u32,
         configure: Some(configure),
     },
-    features: abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_SELECTION,
+    features: abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_SELECTION | abi::TOOL_OPTION_A8_TARGET,
 };
 #[no_mangle]
 pub extern "C" fn micopi_tool_options_v1() -> *const abi::ToolOptionsApi {
     &OPTIONS.base
 }
 
+#[cfg(test)]
+mod a8_tests;
 #[cfg(test)]
 mod option_tests {
     use super::*;
@@ -440,7 +475,7 @@ mod option_tests {
         };
         assert_eq!(unsafe { configure(ptr, &extended.base) }, abi::OK);
         assert!(state.alpha_locked);
-        extended.flags = 4;
+        extended.flags = 8;
         assert_eq!(unsafe { configure(ptr, &extended.base) }, abi::ERROR);
         assert!(state.alpha_locked);
         extended.flags = abi::TOOL_OPTION_SELECTION;
