@@ -1,17 +1,8 @@
 //! Built-in layers plugin action handlers; callable without a GUI.
+use super::bounded_integer as integer;
 use crate::application::{ActionError, ActionResult, Operation, Session};
 use crate::engine::MAX_LAYERS;
 use serde_json::{json, Value};
-// The shared integer schema accepts integral JSON floats as well as u64s.
-// Decode every bounded selector consistently rather than silently using active.
-fn integer(value: &Value) -> Option<u64> {
-    value
-        .as_f64()
-        .filter(|number| {
-            number.is_finite() && number.fract() == 0. && (0.0..=u32::MAX as f64).contains(number)
-        })
-        .map(|number| number as u64)
-}
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     use Operation::*;
     let index = || -> Result<usize, ActionError> {

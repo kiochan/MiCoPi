@@ -194,6 +194,67 @@ The final 2026-11-06 GNU Release foundation desktop/CLI executables were 10,266,
 
 The mask-specific JSONL/MCP/GUI check passed, including four reviewed language captures. Separate runtime, workflow, linked-graph, replay, group, selected-merge and Pass Through GUI checks passed. Subsequent capture stabilization adds request/viewport correlation and retained callback acknowledgement; use the capture-aware checks below when validating current builds rather than treating file existence as completion.
 
+## Raster-mask group hierarchy checks
+
+Run `python scripts/smoke-mask-groups.py --cli <built-cli> --gui <built-desktop>`
+with matching default plugins; `--skip-gui` selects JSONL/MCP. Tiny independently
+encoded project/tree/raw references distinguish preserved ownership from changed
+composition. The supported subset is empty/sibling/selected group creation and
+hierarchy reparent/order. It does not enable subtree copy/delete, ungrouping,
+masked batches, owner geometry or merges. See [Mask Group Editing](mask-group-editing.md).
+
+The focused shared run passed 10 tests, including raw-buffer/target preservation,
+one-step history, zero A8 changes, exact partial-opacity references, numeric and
+required result-ID bindings, capacity/depth/cycle admission, recorded contact
+continuity, hidden/disabled capabilities and renderer/journal/atomic recovery.
+The complete headless library run passed 579 tests with 9 ignored in serial
+isolated batches of eight. A first focused run exposed an overly strict fixture
+expectation for filter-node positions: existing linked-stack reordering arranges
+nodes automatically. The corrected check retains exact identities/types/effects
+and parameters, and exact positions when raster order is unchanged. No production
+layout change was made for that fixture.
+
+Eight focused desktop tests passed actual group toolbar/destination-menu edits,
+Ctrl+G and pending-name ordering, dynamic forms, local/external Brush/Hand
+continuity and Commands palette lifecycle. Opening/cancelling search or selecting
+a guarded form preserves the contact; Bindings mode and unrelated executed
+commands retain existing cleanup. These checks count recorded and pending raw
+samples together. Presentation dispatch can legitimately publish its own UI
+event/revision without ending the native contact.
+
+The final desktop library run passed 783 tests with 9 ignored in serial isolated
+batches of eight. Together with the 579/9 headless run, these cover the shared
+contracts and the final palette/input adapters. As with preceding GNU runs,
+process isolation avoids the monolithic test runner's TLS-index failure; its
+cause remains unproven. It is not a shipping runtime fix. All workers run below
+normal priority on at most two logical CPUs, with one Cargo job/test thread.
+
+The matching Release group smoke passed all 15 independent tree cases: 316
+JSONL commands, 396 MCP commands and GUI parity, with four reviewed native Layers
+captures. It verifies preserved raw ownership/targets, independent composition,
+typed pipeline/workflow bindings and integral numeric selectors, including
+rejection of non-root members under explicit `parent_id: 0.0`. Checks also cover
+zero A8 changes, contact admission, atomic recovery and DLL-free outcome playback.
+Fixtures remain 7-by-5 pixels with five masks.
+
+Release executables are 10,597,376 bytes for desktop and 4,372,992 for CLI, each
+4.5 KiB above the preceding single-owner stage. No dependency, native ABI or
+project/recording format changes are introduced. Buffer-pointer and outcome
+assertions cover allocation scope and recording damage; these are not a pen
+latency or throughput benchmark. Physical tablet compatibility remains untested.
+
+Existing Release smokes also passed single-owner copy/delete (22 cases,
+450 JSONL/518 MCP commands), public mask editing (30 remaining guarded paths),
+mask foundations/previous-host rejection, canvas geometry (31 cases,
+931 JSONL/1001 MCP commands and the previous sampler check), and unmasked group
+editing. Runtime, workflow and complete localization smokes passed GUI parity,
+external catalog reload, search/settings persistence and unchanged artwork.
+
+The published 26-command group example produced a 120-by-96 PNG, a MICOPI04
+project retaining masks 1/2 and three groups, and a verified sealed
+24-event/113,087-byte archive. Archive bytes include paths, timestamps and all
+document outcomes; they are not an isolated compression ratio.
+
 ## Single-layer raster-mask ownership checks
 
 Run `python scripts/smoke-mask-owners.py --cli <built-cli> --gui <built-desktop>`

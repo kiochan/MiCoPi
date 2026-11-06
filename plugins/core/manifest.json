@@ -5065,7 +5065,8 @@
           "layers",
           "active_layer",
           "revision",
-          "drawing"
+          "drawing",
+          "group_id"
         ]
       }
     },
@@ -5223,7 +5224,8 @@
           "layers",
           "active_layer",
           "revision",
-          "drawing"
+          "drawing",
+          "group_id"
         ]
       }
     },

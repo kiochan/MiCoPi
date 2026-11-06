@@ -18,6 +18,7 @@ Run these tools from the repository root. Downloaded toolchains, builds, capture
 | smoke-mask-editing.py | Verify eleven public mask actions, native density/feather and typed painting, workflow bindings, guarded edits and raw/verified replay across JSONL/MCP/GUI; optional four-language captures |
 | smoke-mask-geometry.py | Compare document framing, rotations/flips, image sampling and Trim against independent raw-mask references across JSONL/MCP/GUI, with undo, legacy capability rejection and DLL-free replay |
 | smoke-mask-owners.py | Compare single-layer mask copies/deletions, independent storage, ID bindings, targets, grouped composition, undo, rollback and DLL-free replay across JSONL/MCP/GUI |
+| smoke-mask-groups.py | Compare mask-preserving group creation/reparenting, raw ownership, explicit targets, composition, undo, rollback and DLL-free replay across JSONL/MCP/GUI |
 | check-repository.py | Validate local Markdown links, example JSON and tracked-file boundaries |
 
 ```powershell
@@ -52,6 +53,14 @@ the full run adds attached-GUI parity and four native Layers captures. It uses
 small independently written project fixtures and integral JSON-float selectors,
 and keeps output under `target/test-output/mask-owners-smoke/`. See
 [Mask Owner Editing](../docs/mask-owner-editing.md) for exact target/ID semantics
-and the group/batch/transfer paths that remain guarded.
+and the remaining group/batch/transfer boundaries.
+
+`smoke-mask-groups.py --skip-gui` checks mask-preserving group creation and
+hierarchy moves through JSONL/MCP; the full run adds GUI parity and four native
+Layers captures. Tiny independent tree/raw/composition references cover typed
+result bindings, targets, Undo, contacts, rollback and DLL-free outcomes. Output
+stays under `target/test-output/mask-groups-smoke/`. See
+[Mask Group Editing](../docs/mask-group-editing.md) for the supported subset and
+remaining group copy/delete, ungroup, batch and geometry boundaries.
 
 See [Development](../docs/development.md) for prerequisites and [Project Structure](../docs/project-structure.md) for ownership rules.

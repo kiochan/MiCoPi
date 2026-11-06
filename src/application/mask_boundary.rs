@@ -38,9 +38,6 @@ impl Session {
                     | FlattenImage
                     | StampVisible
                     | LayerBatch
-                    | GroupCreate
-                    | GroupCreateSelected
-                    | GroupMove
                     | GroupUngroup
                     | GroupUngroupParent
                     | GroupDelete

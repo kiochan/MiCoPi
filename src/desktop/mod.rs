@@ -403,7 +403,7 @@ impl Editor {
         self.core_at_revision(id, args, None)
     }
     fn contact_draft_modal(&self) -> bool {
-        self.geometry.is_some() || self.guarded_command_form()
+        self.geometry.is_some() || self.guarded_command_form() || self.command_palette_open()
     }
     fn core_at_revision(
         &mut self,
@@ -1109,7 +1109,7 @@ impl Studio {
             || self.replay.open;
         self.editor.contact_draft_allowed = self.editor.contact_draft_modal()
             && !self.settings_open
-            && self.editor.palette.is_none()
+            && (self.editor.palette.is_none() || self.editor.command_palette_open())
             && !self.editor.new_open
             && self.editor.export_draft.is_none()
             && self.editor.transform.is_none()

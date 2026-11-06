@@ -268,6 +268,13 @@ impl Document {
             GroupTree::flat(&self.layer_metadata.iter().map(|m| m.id).collect::<Vec<_>>())
         })
     }
+    fn validate_group_owner_edit(&self) -> Result<(), String> {
+        if self.stroke.is_some() {
+            return Err("Finish the current contact before editing groups".into());
+        }
+        self.validate_mask_storage()?;
+        self.ensure_graph_renderer()
+    }
     fn commit_tree(&mut self, tree: GroupTree, next: u64) -> Result<(), String> {
         self.ensure_group_renderer()?;
         let ids = tree.layer_ids()?;
@@ -286,10 +293,19 @@ impl Document {
             .map(|i| self.layer_metadata[*i].clone())
             .collect();
         let modes: Vec<_> = order.iter().map(|i| self.layers[*i].mode).collect();
+        let opacities: Vec<_> = order.iter().map(|i| self.layers[*i].opacity).collect();
         let groups = (!tree.groups.is_empty()).then_some(tree);
         let graph = self.reindexed_graph(&metadata, None)?;
-        let prepared =
-            self.prepare_group_plan(&graph, groups.as_ref(), &metadata, &modes, next, true)?;
+        let prepared = self.prepare_group_plan_with_masks(
+            &graph,
+            groups.as_ref(),
+            &metadata,
+            &modes,
+            &opacities,
+            next,
+            self.mask_state(),
+            true,
+        )?;
         if self.groups == groups && order.iter().enumerate().all(|(i, j)| i == *j) {
             return Ok(());
         }
@@ -324,6 +340,7 @@ impl Document {
         name: Option<String>,
         parent: Option<u64>,
     ) -> Result<u64, String> {
+        self.validate_group_owner_edit()?;
         self.ensure_group_renderer()?;
         if !self.graph.linked {
             return Err("Groups require linked layer-filter composition".into());
@@ -407,6 +424,7 @@ impl Document {
         parent: u64,
         index: usize,
     ) -> Result<(), String> {
+        self.validate_group_owner_edit()?;
         if items.is_empty() {
             return Err("Move at least one tree item".into());
         }

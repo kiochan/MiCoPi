@@ -97,8 +97,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         Ui => {
             let id = args["id"].as_str().unwrap();
             if id == "group.inspect" {
-                let group = args["value"]
-                    .as_u64()
+                let group = super::bounded_integer(&args["value"])
                     .filter(|id| (1..=u32::MAX as u64).contains(id))
                     .ok_or_else(|| {
                         ActionError::new("invalid_group", "A valid group ID is required")
@@ -153,9 +152,14 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 ));
             }
             let id = args["id"].as_str().unwrap();
-            s.ui[id] = args.get("value").cloned().unwrap_or(Value::Null);
+            s.ui[id] = if id == "group.inspect" {
+                json!(super::bounded_integer(&args["value"]).expect("Validated group identity"))
+            } else {
+                args.get("value").cloned().unwrap_or(Value::Null)
+            };
             let mut effect = args.clone();
             if id == "group.inspect" {
+                effect["value"] = s.ui[id].clone();
                 effect["document_identity"] = json!(s.doc.identity);
             }
             s.ui_effects.push_back(effect);

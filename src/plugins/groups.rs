@@ -1,4 +1,5 @@
 //! Explicit group structure and inspection share the document's cached composition.
+use super::bounded_integer;
 use crate::application::{ActionError, ActionResult, Operation, Session};
 use crate::engine::{
     graph::BlendMode,
@@ -43,6 +44,26 @@ pub(crate) fn schema(op: Operation) -> Value {
 fn group_error(message: impl Into<String>) -> ActionError {
     ActionError::new("group_edit", message)
 }
+fn integer(value: &Value) -> Result<u64, ActionError> {
+    bounded_integer(value).ok_or_else(|| group_error("Group selectors must be bounded integers"))
+}
+fn items(value: &Value) -> Result<Vec<GroupItem>, ActionError> {
+    value
+        .as_array()
+        .ok_or_else(|| group_error("Group entries must be an array"))?
+        .iter()
+        .map(|item| {
+            let id = integer(&item["id"])?;
+            if id == 0 {
+                return Err(group_error("Group entry IDs must be positive"));
+            }
+            // Preserve strict typed-reference validation after numeric decoding.
+            let mut item = item.clone();
+            item["id"] = json!(id);
+            Ok(serde_json::from_value(item)?)
+        })
+        .collect()
+}
 /// Literal validation cannot assume that earlier workflow steps already ran.
 pub(crate) fn validate(op: Operation, args: &Value) -> Result<(), ActionError> {
     if op == Operation::GroupQuery {
@@ -56,10 +77,10 @@ pub(crate) fn validate(op: Operation, args: &Value) -> Result<(), ActionError> {
         }
     }
     for key in ["members", "items"] {
-        if let Some(items) = args.get(key) {
-            let items: Vec<GroupItem> = serde_json::from_value(items.clone())?;
-            let unique: BTreeSet<_> = items.iter().copied().collect();
-            if unique.len() != items.len() {
+        if let Some(value) = args.get(key) {
+            let entries = items(value)?;
+            let unique: BTreeSet<_> = entries.iter().copied().collect();
+            if unique.len() != entries.len() {
                 return Err(group_error("Group entry references must be unique"));
             }
         }
@@ -82,7 +103,8 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         return query(s, &args);
     }
     require_idle(s)?;
-    let id = args["group_id"].as_u64().unwrap_or(0);
+    let id = args.get("group_id").map(integer).transpose()?.unwrap_or(0);
+    let parent = args.get("parent_id").map(integer).transpose()?;
     let name = args["name"].as_str().map(str::to_owned);
     let mut result_id = id;
     let mut merged_layer = None;
@@ -98,11 +120,11 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                     })
                     .collect()
             } else {
-                serde_json::from_value(args["members"].clone())?
+                items(&args["members"])?
             };
             result_id = s
                 .doc
-                .group_create(&members, name, args["parent_id"].as_u64())
+                .group_create(&members, name, parent)
                 .map_err(group_error)?;
         }
         GroupProperties => {
@@ -126,12 +148,12 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 .map_err(group_error)?;
         }
         GroupMove => {
-            let items: Vec<GroupItem> = serde_json::from_value(args["items"].clone())?;
+            let entries = items(&args["items"])?;
             s.doc
                 .group_move(
-                    &items,
-                    args["parent_id"].as_u64().unwrap(),
-                    args["index"].as_u64().unwrap() as usize,
+                    &entries,
+                    parent.ok_or_else(|| group_error("Group move requires parent_id"))?,
+                    integer(&args["index"])? as usize,
                 )
                 .map_err(group_error)?;
         }

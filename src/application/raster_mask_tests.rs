@@ -134,11 +134,6 @@ fn raster_mask_pending_edits_reject_before_finishing_live_brush_or_hand_contacts
                 json!({"dx":1,"dy":0}),
                 "mask_editing_pending",
             ),
-            (
-                "group.create",
-                json!({"members":[{"kind":"layer","id":1}]}),
-                "mask_editing_pending",
-            ),
             ("clipboard.paste", json!({}), "mask_editing_pending"),
         ] {
             let error = s.apply(Action::new(action, args)).unwrap_err();

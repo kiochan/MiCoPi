@@ -208,7 +208,12 @@ impl Operation {
         self.is_canvas_geometry_command()
             || matches!(
                 self,
-                Self::DuplicateLayer | Self::DeleteLayer | Self::LayerBatch
+                Self::DuplicateLayer
+                    | Self::DeleteLayer
+                    | Self::LayerBatch
+                    | Self::GroupCreate
+                    | Self::GroupCreateSelected
+                    | Self::GroupMove
             )
     }
     /// Presentation adapters preserve active contacts until these commands run

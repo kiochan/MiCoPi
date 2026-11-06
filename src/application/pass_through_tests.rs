@@ -729,7 +729,7 @@ fn group_inspection_reports_headless_unavailability_and_queues_bound_desktop_foc
     let original = raw(&s);
     let history = s.doc.history_bytes();
     assert_eq!(
-        s.apply(Action::new("group.inspect", json!({"group_id":id})))
+        s.apply(Action::new("group.inspect", json!({"group_id":id as f64})))
             .unwrap_err()
             .code,
         "ui_unavailable"
@@ -743,7 +743,7 @@ fn group_inspection_reports_headless_unavailability_and_queues_bound_desktop_foc
         json!({"phase":"down","x":0.5,"y":0.5,"pen":true,"tool_override":"hand"}),
     );
     let identity = s.doc.identity;
-    call(&mut s, "group.inspect", json!({"group_id":id}));
+    call(&mut s, "group.inspect", json!({"group_id":id as f64}));
     assert!(s.stroke.active());
     assert_eq!(s.doc.composition(), composition);
     assert_eq!(raw(&s), original);

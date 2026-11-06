@@ -58,3 +58,5 @@ jobs:
         run: python scripts/smoke-mask-geometry.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify single-layer mask ownership and outcome replay
         run: python scripts/smoke-mask-owners.py --skip-gui --cli target/release/micopi-cli.exe
+      - name: Verify mask-preserving group creation and hierarchy moves
+        run: python scripts/smoke-mask-groups.py --skip-gui --cli target/release/micopi-cli.exe

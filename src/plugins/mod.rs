@@ -7,6 +7,15 @@ pub(crate) mod registry;
 pub mod tools;
 pub use packages::{PluginInfo, PluginPlan, PluginStatus};
 pub use registry::*;
+/// Match the integer schema for bounded command selectors, including `2.0`.
+pub(super) fn bounded_integer(value: &serde_json::Value) -> Option<u64> {
+    value
+        .as_f64()
+        .filter(|number| {
+            number.is_finite() && number.fract() == 0. && (0.0..=u32::MAX as f64).contains(number)
+        })
+        .map(|number| number as u64)
+}
 pub fn panel_key(id: &str) -> u32 {
     id.bytes().fold(2166136261, |hash, b| {
         (hash ^ b as u32).wrapping_mul(16777619)

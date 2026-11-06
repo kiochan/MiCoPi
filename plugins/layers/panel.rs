@@ -139,7 +139,12 @@ fn batch_action(command: &str, ids: &[u64], mut args: Value) -> crate::applicati
 fn owner_contact_guarded(action: &crate::application::Action) -> bool {
     matches!(
         action.action.as_str(),
-        "layer.duplicate" | "layer.delete" | "layer.batch"
+        "layer.duplicate"
+            | "layer.delete"
+            | "layer.batch"
+            | "group.create"
+            | "group.create_selected"
+            | "group.move"
     )
 }
 fn property_action(ids: &[u64], mut args: Value) -> Option<crate::application::Action> {
@@ -1611,6 +1616,10 @@ impl Editor {
 #[cfg(test)]
 #[path = "owner_structure_ui_tests.rs"]
 mod owner_structure_ui_tests;
+
+#[cfg(test)]
+#[path = "group_structure_ui_tests.rs"]
+mod group_structure_ui_tests;
 
 #[cfg(test)]
 mod tests {

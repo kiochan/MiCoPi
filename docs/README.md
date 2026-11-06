@@ -21,6 +21,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Raster Mask Editing](raster-mask-editing.md) | Public mask painting/actions/effects/UI subset, raw-alpha Apply and remaining owner/structural boundaries |
 | [Raster Mask Canvas Geometry](mask-canvas-geometry.md) | All-plane framing, rotations/flips, Image Size/Trim, shared plans, budgets and atomic history/replay |
 | [Raster Mask Owner Editing](mask-owner-editing.md) | Plain single-layer copy/delete, fresh IDs, paint-target rules, compound Undo/outcomes and remaining structural boundaries |
+| [Raster Mask Group Editing](mask-group-editing.md) | Group creation and hierarchy moves with retained mask owners/data, explicit targets and reversible composition |
 | [Color Blend Modes](blend-modes.md) | The 26-mode catalog, RGB/alpha semantics, family menus, availability and legacy DLL compatibility |
 | [Clipboard](clipboard.md) | Internal transfers, Windows PNG/DIB adapter, limits, external effects and native verification status |
 | [Selections](selections.md) | Marquee/lasso gestures, color commands, native clipping, history and limits |
@@ -51,6 +52,6 @@ The technical documentation is maintained in English. The project overview is al
 
 | Design | Status |
 | --- | --- |
-| [Paintable Raster Masks](raster-masks-design.md) | Foundations, painting/actions/effects/UI, document geometry and plain single-owner copy/delete implemented; owner transforms, group/subtree/batch structure, merges and transfers remain planned |
+| [Paintable Raster Masks](raster-masks-design.md) | Foundations, painting/actions/effects/UI, document geometry, single-owner copy/delete and group creation/movement implemented; owner transforms, group copy/delete/ungroup, batches, merges and transfers remain planned |
 
 Runnable material is indexed in [Examples](../examples/README.md); actual application captures are indexed in [Screenshots](screenshots/README.md). See [Contributing](../CONTRIBUTING.md) and [Changelog](../CHANGELOG.md) for the collaboration process and release history.

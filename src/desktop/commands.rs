@@ -58,7 +58,8 @@ pub(super) fn vk_to_key(vk: u16) -> Option<Key> {
 impl Editor {
     pub(super) fn contact_guarded_ui_action(&self, action: Action) -> bool {
         match action {
-            Action::UiCommand(10140 | 10144 | 10145 | 10166..=10174) => true,
+            Action::OpenPalette
+            | Action::UiCommand(10140 | 10144 | 10145 | 10166..=10174 | 10200) => true,
             Action::UiCommand(id) => self
                 .settings
                 .keys
@@ -72,9 +73,16 @@ impl Editor {
             _ => false,
         }
     }
+    pub(super) fn command_palette_open(&self) -> bool {
+        self.palette
+            .as_ref()
+            .is_some_and(|palette| palette.mode == Mode::Commands)
+    }
     pub(super) fn open_palette(&mut self, mode: Mode) {
         self.register_commands();
-        self.finish_stroke();
+        if mode != Mode::Commands {
+            self.finish_stroke();
+        }
         self.palette = Some(Palette::new(mode, &self.settings.keys));
         self.palette_focus = true;
         self.binding_index = None;
@@ -157,6 +165,7 @@ impl Editor {
         let Some(mut p) = self.palette.take() else {
             return;
         };
+        let command_mode = p.mode == Mode::Commands;
         let mut open = true;
         let mut execute = None;
         let mut edit = None;
@@ -472,6 +481,11 @@ impl Editor {
                 open = false;
             }
         }
+        if command_mode && p.mode != Mode::Commands {
+            // Shortcut editing keeps its existing contact-ending behavior.
+            self.finish_stroke();
+            self.pen_active = false;
+        }
         if open {
             self.palette = Some(p);
         } else {
@@ -532,14 +546,20 @@ impl Studio {
                 && self.editor.contact_draft_modal()
                 && !self.settings_open
                 && !self.replay.open
-                && self.editor.palette.is_none()
+                && (self.editor.palette.is_none() || self.editor.command_palette_open())
                 && !self.editor.new_open
                 && self.editor.export_draft.is_none()
                 && self.editor.transform.is_none()
                 && (self.editor.command_form.is_none() || self.editor.guarded_command_form())
             {
-                self.editor.geometry = None;
-                self.editor.command_form = None;
+                if self.editor.command_palette_open() {
+                    self.editor.palette = None;
+                    self.editor.binding_index = None;
+                    self.editor.capture_binding = false;
+                } else {
+                    self.editor.geometry = None;
+                    self.editor.command_form = None;
+                }
                 continue;
             }
             let group_edit = matches!(action, Action::UiCommand(10187 | 10200 | 10201))

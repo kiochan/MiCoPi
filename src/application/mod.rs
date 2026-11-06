@@ -45,6 +45,8 @@ mod linked_graph_tests;
 #[cfg(test)]
 mod mask_canvas_geometry_tests;
 #[cfg(test)]
+mod mask_group_editing_tests;
+#[cfg(test)]
 mod mask_owner_editing_tests;
 #[cfg(test)]
 mod pass_through_tests;

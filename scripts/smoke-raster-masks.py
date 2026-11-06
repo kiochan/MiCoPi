@@ -351,7 +351,7 @@ def negative_commands(plan, output, fixture_path, invalid_paths, target_path, al
         ('layer.merge_selected', dict(layer_ids=[1, 2])),
         ('layer.translate', dict(dx=1, dy=0)),
         ('layer.batch', dict(action='layer.set', layer_ids=[1, 2], args=dict(opacity=.5))),
-        ('group.create', dict(members=[dict(kind='layer', id=1)])), ('clipboard.paste', {}),
+        ('clipboard.paste', {}),
     ]):
         add(f'pending-{index}', action, error='mask_editing_pending', **args)
     for index, (path, error) in enumerate(invalid_paths):

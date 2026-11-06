@@ -138,7 +138,9 @@ one owned A8 output; retained sources, history, effects and recording have their
 existing additional costs. Uniform masks still count their full logical area
 for the 32-mask/64 MiB raw-A8 limit.
 
-Group/subtree duplication and deletion, structural layer batches, Layer via
+[Group creation and hierarchy movement](mask-group-editing.md) separately retain
+all existing owners, raw planes and targets through one structural Undo/outcome.
+Group/subtree duplication and deletion, ungrouping, structural layer batches, Layer via
 Copy/Cut, owner Move/Free Transform and layer rotations, merges/stamp/flatten,
 clipboard mutations and group-mask Apply remain guarded where incomplete.
 Clipping masks remain planned. The full [mask design](raster-masks-design.md)
