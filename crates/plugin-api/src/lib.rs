@@ -628,6 +628,46 @@ pub type ResampleMaskFn =
     unsafe extern "C" fn(*const Resample, *const Coverage, *mut u8, usize, u32, u32) -> i32;
 pub type ResampleEntry = unsafe extern "C" fn() -> *const ResampleApi;
 
+/// Independent stateless A8 sampler. All three callbacks are mandatory in v1;
+/// existing GeometryApi and ResampleApi prefixes remain unchanged.
+pub const A8_SAMPLER_SYMBOL: &[u8] = b"micopi_a8_sampler_v1\0";
+/// Place the source at signed destination offsets within +/-4096, clipping
+/// excess and filling uncovered pixels with fill (0..=255). Reserved is zero.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct A8Reframe {
+    pub x: i32,
+    pub y: i32,
+    pub fill: u32,
+    pub reserved: u32,
+}
+/// Exact existing Geometry kinds/offsets with explicit uncovered A8 fill.
+#[repr(C)]
+pub struct A8Geometry {
+    pub geometry: Geometry,
+    pub fill: u32,
+}
+/// Source dimensions and strides are in bytes and bounded to 4096. The source
+/// is a validated dense or uniform CompositeMask. Output is a disjoint full
+/// frame (origin zero), preserving row padding. No pointer survives a callback.
+pub type A8ReframeFn =
+    unsafe extern "C" fn(*const A8Reframe, *const CompositeMask, u32, u32, *mut A8Pixels) -> i32;
+pub type A8GeometryFn =
+    unsafe extern "C" fn(*const A8Geometry, *const CompositeMask, u32, u32, *mut A8Pixels) -> i32;
+/// Methods 0/1/2 use the existing exact u8 nearest/bilinear/area rules.
+pub type A8ResampleFn =
+    unsafe extern "C" fn(*const Resample, *const CompositeMask, u32, u32, *mut A8Pixels) -> i32;
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct A8SamplerApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub reframe: Option<A8ReframeFn>,
+    pub geometry: Option<A8GeometryFn>,
+    pub resample: Option<A8ResampleFn>,
+}
+pub type A8SamplerEntry = unsafe extern "C" fn() -> *const A8SamplerApi;
+
 /// Independent read-only automatic trim analysis. No pointer survives a call.
 pub const TRIM_SYMBOL: &[u8] = b"micopi_trim_v1\0";
 #[repr(C)]
@@ -737,6 +777,23 @@ pub type ProjectiveEntry = unsafe extern "C" fn() -> *const ProjectiveApi;
 mod transform_layout_tests {
     use super::*;
     use std::mem::{offset_of, size_of};
+    #[test]
+    fn independent_a8_sampler_preserves_existing_geometry_and_resample_tables() {
+        assert_eq!(size_of::<Geometry>(), 12);
+        assert_eq!(size_of::<GeometryApi>(), 24);
+        assert_eq!(size_of::<Resample>(), 4);
+        assert_eq!(size_of::<ResampleApi>(), 24);
+        assert_eq!(size_of::<ResampleApiExt>(), 32);
+        assert_eq!(size_of::<A8Reframe>(), 16);
+        assert_eq!(offset_of!(A8Reframe, fill), 8);
+        assert_eq!(offset_of!(A8Reframe, reserved), 12);
+        assert_eq!(size_of::<A8Geometry>(), 16);
+        assert_eq!(offset_of!(A8Geometry, fill), 12);
+        assert_eq!(size_of::<A8SamplerApi>(), 32);
+        assert_eq!(offset_of!(A8SamplerApi, reframe), 8);
+        assert_eq!(offset_of!(A8SamplerApi, geometry), 16);
+        assert_eq!(offset_of!(A8SamplerApi, resample), 24);
+    }
     #[test]
     fn a8_extensions_preserve_published_tool_and_compositor_prefixes() {
         assert_eq!(size_of::<Pixels>(), 40);

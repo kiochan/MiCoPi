@@ -1,5 +1,6 @@
 //! All point filtering, pressure dynamics, dab spacing and brush rasterization live
 //! in this DLL. The host supplies only scoped pixels, history and color sampling.
+mod a8_sampler;
 mod affine;
 mod geometry;
 mod input;

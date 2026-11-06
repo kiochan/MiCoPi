@@ -31,6 +31,13 @@ The headless build excludes desktop/OpenGL. Runtime releases need their plugin d
 
 ## Checks
 
+On the maintainer's interactive desktop, keep one build/test worker active at
+a time, below normal priority and restricted to at most two logical CPUs. Use
+Cargo `-j 1` and test `--test-threads=1`. Keep existing profiles/compiler flags
+to reuse caches. Source review/editing may run concurrently; large-image stress
+and benchmark runs remain separate, necessary checks rather than background
+work. CI is independent of these local responsiveness limits.
+
 Unit tests cover document/history, codec, schemas, actions, public state, pipelines, workflow graphs, settings, shortcuts, pen routing, docking, Windows ABI and offscreen presentation. Build plugin DLLs first. Explicitly ignored tests cover the independent DLL fixture and optional benchmarks; build.ps1 -Test runs the DLL lifecycle fixture separately.
 
 ```powershell
@@ -186,6 +193,30 @@ storage contracts and the retained temporary boundaries.
 The final 2026-11-06 GNU Release foundation desktop/CLI executables were 10,266,624/4,146,688 bytes, 173/179 KiB above the native-prerequisite build. Matching painting/compositor DLLs remained 356,864/278,016 bytes with identical hashes, and no dependency was added. These are historical executable sizes, not current editing-build sizes, portable-package size, peak memory, input latency or a throughput measurement.
 
 The mask-specific JSONL/MCP/GUI check passed, including four reviewed language captures. Separate runtime, workflow, linked-graph, replay, group, selected-merge and Pass Through GUI checks passed. Subsequent capture stabilization adds request/viewport correlation and retained callback acknowledgement; use the capture-aware checks below when validating current builds rather than treating file existence as completion.
+
+## Native raw-A8 sampling prerequisite
+
+The independent `micopi_a8_sampler_v1` table adds borrowed dense/uniform reframe,
+orthogonal geometry and nearest/bilinear/area sampling. Build/stage the painting
+DLL first, then run the native `a8_sampler` and host `a8_sampler` test filters;
+the x64 C11/C++17 fixture includes the new requests, table offsets and signatures.
+See [Native Plugins](native-plugins.md#optional-raw-a8-sampler) for the contract.
+This native prerequisite does not remove the document editing guards by itself.
+
+The isolated Release painting run passed 70 tests with 11 ignored; SDK passed
+4 tests. Five host tests passed, including actual DLL borrowed strided/uniform
+calls, prewrite rejection, strict table negotiation and the preserved preceding
+painting DLL's absent sampler entry. The latter baseline already supports A8
+painting; it is not the pre-A8 baseline expected by `smoke-native-masks.py`'s
+optional `--old-painting` comparison. No larger timing benchmark was run.
+
+The matching painting DLL is 359,936 bytes, 3 KiB above the 356,864-byte mask
+editing build. Its SHA-256 is
+`a7d3a6199ab307c401209c8992f26115367c3a11180156ff88c4c5624b657408`.
+No Cargo dependency or legacy table size changes. These sizes and native tests
+do not measure complete document operations, pen latency or hardware support.
+Local native build/test and targeted host workers ran sequentially at below
+normal priority on at most two logical CPUs, with one Cargo job/test thread.
 
 ## Public raster-mask editing checks
 

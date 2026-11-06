@@ -298,6 +298,27 @@ typedef struct {
 #define MICOPI_RESAMPLE_AREA (1u << 2)
 typedef struct { MicopiResampleApi base; uint32_t features; } MicopiResampleApiExt;
 const MicopiResampleApi *micopi_resample_v1(void);
+/* Independent stateless A8 sampler. All three v1 callbacks are mandatory.
+   The old GeometryApi and ResampleApi layouts remain unchanged. Source/output
+   dimensions and strides are bounded to 4096, lengths to 4096*4096 bytes.
+   CompositeMask accepts validated dense or uniform sources. Output is a
+   disjoint full frame with zero origin; preserve row padding and reject
+   invalid options, descriptors and aliases before any write. */
+typedef struct { int32_t x, y; uint32_t fill, reserved; } MicopiA8Reframe;
+typedef struct { MicopiGeometry geometry; uint32_t fill; } MicopiA8Geometry;
+/* Reframe/geometry offsets are signed destination pixels within +/-4096.
+   Fill is 0..255; reserved is zero. No pointer outlives any callback. */
+typedef int32_t (*MicopiA8ReframeFn)(const MicopiA8Reframe *, const MicopiCompositeMask *, uint32_t, uint32_t, MicopiA8Pixels *);
+typedef int32_t (*MicopiA8GeometryFn)(const MicopiA8Geometry *, const MicopiCompositeMask *, uint32_t, uint32_t, MicopiA8Pixels *);
+/* Methods 0/1/2 retain the existing exact u8 nearest/bilinear/area arithmetic. */
+typedef int32_t (*MicopiA8ResampleFn)(const MicopiResample *, const MicopiCompositeMask *, uint32_t, uint32_t, MicopiA8Pixels *);
+typedef struct {
+    uint32_t abi_version, struct_size;
+    MicopiA8ReframeFn reframe;
+    MicopiA8GeometryFn geometry;
+    MicopiA8ResampleFn resample;
+} MicopiA8SamplerApi;
+const MicopiA8SamplerApi *micopi_a8_sampler_v1(void);
 /* Independent read-only trim analysis. Modes: 0 alpha <= tolerance, 1 top-left
    RGBA, 2 bottom-right RGBA. Color matching uses max channel difference; two
    zero-alpha colors match regardless of hidden RGB. Tolerance 0..255.

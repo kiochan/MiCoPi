@@ -92,6 +92,8 @@ Choose checks that exercise the changed behavior:
 
 Use locked dependencies (`--locked`); use `--offline` when the local cache suffices. Smoke scripts accept `--cli` and `--gui` to select built executables. Use isolated profiles, keep captures under `target/test-output/`, and close only processes created by the check. Report what ran and any remaining limitations; do not rerun an entire suite for documentation-only edits.
 
+Keep the maintainer's desktop responsive during local verification: run only one build/test worker at a time, below normal priority, with at most two logical CPUs. Use Cargo `-j 1` and test `--test-threads=1`; retain existing profiles and compiler flags so caches remain reusable. Run large-image stress/benchmark workloads only when needed, separately and under the same limits. Source review and editing may proceed in parallel. These local limits do not restrict CI workers.
+
 ## Change summaries and commits
 
 - Include a concise plan checklist in every milestone/progress report to the maintainer: completed work, the current in-progress item and next planned steps. Keep implemented behavior distinct from pending validation or planned features; include the actual checks and commit hash when a milestone is committed. Link the full roadmap rather than repeating the entire backlog.

@@ -35,6 +35,19 @@ ABI_ASSERT(offsetof(MicopiCompositorApiMaskEffects, create_mask_effects) == 40, 
 ABI_ASSERT(offsetof(MicopiCompositorApiMaskEffects, mask_effect_region) == 56, "Mask effects region offset");
 ABI_ASSERT(offsetof(MicopiCompositorApiMaskEffects, reserve_mask_effects) == 64, "Mask effects reserve offset");
 ABI_ASSERT(MICOPI_COMPOSITOR_MASK_EFFECTS == 8, "Independent mask effects capability");
+ABI_ASSERT(sizeof(MicopiGeometry) == 12, "Legacy geometry request");
+ABI_ASSERT(sizeof(MicopiGeometryApi) == 24, "Legacy geometry table");
+ABI_ASSERT(sizeof(MicopiResampleApi) == 24, "Legacy resample table");
+ABI_ASSERT(sizeof(MicopiResampleApiExt) == 32, "Legacy resample area tail");
+ABI_ASSERT(sizeof(MicopiA8Reframe) == 16, "A8 reframe request");
+ABI_ASSERT(offsetof(MicopiA8Reframe, fill) == 8, "A8 reframe fill offset");
+ABI_ASSERT(offsetof(MicopiA8Reframe, reserved) == 12, "A8 reframe reserved offset");
+ABI_ASSERT(sizeof(MicopiA8Geometry) == 16, "A8 exact geometry request");
+ABI_ASSERT(offsetof(MicopiA8Geometry, fill) == 12, "A8 geometry fill offset");
+ABI_ASSERT(sizeof(MicopiA8SamplerApi) == 32, "Independent A8 sampler table");
+ABI_ASSERT(offsetof(MicopiA8SamplerApi, reframe) == 8, "A8 reframe callback offset");
+ABI_ASSERT(offsetof(MicopiA8SamplerApi, geometry) == 16, "A8 geometry callback offset");
+ABI_ASSERT(offsetof(MicopiA8SamplerApi, resample) == 24, "A8 resample callback offset");
 
 static int32_t masked(const MicopiCompositeNode *nodes, size_t count,
                       const MicopiCompositeLayer *layers, size_t layer_count,
@@ -61,6 +74,21 @@ static int32_t reserve_effects(void *context, uint32_t width, uint32_t height, u
     (void)context; (void)width; (void)height; (void)radius;
     return MICOPI_OK;
 }
+static int32_t a8_reframe(const MicopiA8Reframe *request, const MicopiCompositeMask *source,
+                           uint32_t width, uint32_t height, MicopiA8Pixels *output) {
+    (void)request; (void)source; (void)width; (void)height; (void)output;
+    return MICOPI_OK;
+}
+static int32_t a8_geometry(const MicopiA8Geometry *request, const MicopiCompositeMask *source,
+                            uint32_t width, uint32_t height, MicopiA8Pixels *output) {
+    (void)request; (void)source; (void)width; (void)height; (void)output;
+    return MICOPI_OK;
+}
+static int32_t a8_resample(const MicopiResample *request, const MicopiCompositeMask *source,
+                            uint32_t width, uint32_t height, MicopiA8Pixels *output) {
+    (void)request; (void)source; (void)width; (void)height; (void)output;
+    return MICOPI_OK;
+}
 int main(void) {
     MicopiCompositeRenderMaskedFn callback = masked;
     MicopiToolHostA8 host;
@@ -70,11 +98,18 @@ int main(void) {
     effects.destroy_mask_effects = destroy_effects;
     effects.mask_effect_region = effect_region;
     effects.reserve_mask_effects = reserve_effects;
+    MicopiA8SamplerApi sampler;
+    sampler.reframe = a8_reframe;
+    sampler.geometry = a8_geometry;
+    sampler.resample = a8_resample;
     return callback == masked && host.a8 == byte_loan
         && effects.create_mask_effects == create_effects
         && effects.destroy_mask_effects == destroy_effects
         && effects.mask_effect_region == effect_region
-        && effects.reserve_mask_effects == reserve_effects ? 0 : 1;
+        && effects.reserve_mask_effects == reserve_effects
+        && sampler.reframe == a8_reframe
+        && sampler.geometry == a8_geometry
+        && sampler.resample == a8_resample ? 0 : 1;
 }
 #ifdef __cplusplus
 }

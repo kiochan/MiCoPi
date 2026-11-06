@@ -104,6 +104,29 @@ fn run<T: Sample + area::AreaSample>(
         }
     }
 }
+pub(super) fn a8(
+    method: u32,
+    source: &[u8],
+    sw: usize,
+    sh: usize,
+    source_stride: usize,
+    output: &mut [u8],
+    width: usize,
+    height: usize,
+    stride: usize,
+) {
+    run(
+        method,
+        source,
+        sw,
+        sh,
+        source_stride,
+        output,
+        width,
+        height,
+        stride,
+    );
+}
 unsafe extern "C" fn pixels(
     o: *const abi::Resample,
     s: *const abi::Pixels,

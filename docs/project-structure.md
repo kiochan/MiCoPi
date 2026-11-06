@@ -80,6 +80,7 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/raster_mask_tests.rs`, `src/application/raster_mask_tests.rs` | Raw storage/history/project regressions, target boundaries and Session rollback/persistence checks |
 | `src/application/raster_mask_workflow_tests.rs`, `src/application/raster_mask_failure_tests.rs`, `scripts/smoke-mask-editing.py` | Dynamic schema/result binding, mask-edit rollback, retained raw-alpha semantics and transport/UI checks |
 | `src/engine/canvas_editing.rs` | Staged geometry, shared transform validation/publication and borrowed-source preview composition |
+| `plugins/painting/src/a8_sampler.rs`, `src/plugins/native_a8_sampler_tests.rs` | Optional borrowed dense/uniform A8 reframe/permutation/sampling ABI, native validation and host negotiation checks |
 | `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
 | `src/engine/group_merge.rs`, `src/application/group_merge_tests.rs`, `scripts/smoke-group-merge.py` | Staged subtree/visible-group baking, retained hidden branches and shared action/history/replay verification |
 | `src/engine/selected_merge.rs`, `src/plugins/selected_merge.rs` | Pure explicit-target/LCA projection plans, staged selected-only baking, shared merge dispatch and bounded presentation requests |

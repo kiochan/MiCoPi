@@ -258,6 +258,7 @@ fn cached_effect_instance_is_created_once_even_after_errors_and_destroyed_with_i
         projective: None,
         resample: None,
         resample_features: 0,
+        a8_sampler: None,
         compositor: None,
         compositor_capabilities: 0,
         compositor_blend_modes: 0,

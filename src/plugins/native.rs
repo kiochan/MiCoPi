@@ -180,6 +180,24 @@ unsafe fn decode_resample_table(
     };
     Ok((std::ptr::read_unaligned(pointer), features))
 }
+unsafe fn decode_a8_sampler_table(
+    pointer: *const abi::A8SamplerApi,
+) -> Result<abi::A8SamplerApi, String> {
+    if pointer.is_null() {
+        return Err("A8 sampler returned a null table".into());
+    }
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.abi_version != 1
+        || header.struct_size < std::mem::size_of::<abi::A8SamplerApi>() as u32
+    {
+        return Err("Incompatible A8 sampler ABI".into());
+    }
+    let api = std::ptr::read_unaligned(pointer);
+    if api.reframe.is_none() || api.geometry.is_none() || api.resample.is_none() {
+        return Err("A8 sampler is missing required reframe/geometry/resample callbacks".into());
+    }
+    Ok(api)
+}
 unsafe fn decode_move_table(pointer: *const abi::MoveApi) -> Result<abi::MoveApi, String> {
     if pointer.is_null() {
         return Err("Null move table".into());
@@ -329,6 +347,23 @@ impl Module {
             }
             let entry = std::mem::transmute::<*mut c_void, abi::ResampleEntry>(address);
             decode_resample_table(entry()).map(Some)
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(None)
+        }
+    }
+
+    unsafe fn a8_sampler_api(&self) -> Result<Option<abi::A8SamplerApi>, String> {
+        #[cfg(windows)]
+        {
+            let address =
+                GetProcAddress(self.handle as *mut c_void, abi::A8_SAMPLER_SYMBOL.as_ptr());
+            if address.is_null() {
+                return Ok(None);
+            }
+            let entry = std::mem::transmute::<*mut c_void, abi::A8SamplerEntry>(address);
+            decode_a8_sampler_table(entry()).map(Some)
         }
         #[cfg(not(windows))]
         {
@@ -510,6 +545,7 @@ pub struct NativePlugin {
     projective: Option<abi::ProjectiveApi>,
     resample: Option<abi::ResampleApi>,
     resample_features: u32,
+    a8_sampler: Option<abi::A8SamplerApi>,
     compositor: Option<abi::CompositorApi>,
     compositor_capabilities: u64,
     compositor_blend_modes: u64,
@@ -548,6 +584,69 @@ impl NativePlugin {
     }
     pub(super) fn has_actions(&self) -> bool {
         self.api.invoke.is_some()
+    }
+    pub(crate) fn supports_a8_sampler(&self) -> bool {
+        self.a8_sampler.is_some()
+    }
+    pub(crate) fn a8_reframe(
+        &self,
+        request: &abi::A8Reframe,
+        source: &abi::CompositeMask,
+        source_width: u32,
+        source_height: u32,
+        output: &mut abi::A8Pixels,
+    ) -> Result<(), String> {
+        let callback = self
+            .a8_sampler
+            .as_ref()
+            .and_then(|api| api.reframe)
+            .ok_or("Painting DLL does not support A8 reframe sampling")?;
+        let status = unsafe { callback(request, source, source_width, source_height, output) };
+        if status == abi::OK {
+            Ok(())
+        } else {
+            Err(format!("Native A8 reframe sampling failed: {status}"))
+        }
+    }
+    pub(crate) fn a8_geometry(
+        &self,
+        request: &abi::A8Geometry,
+        source: &abi::CompositeMask,
+        source_width: u32,
+        source_height: u32,
+        output: &mut abi::A8Pixels,
+    ) -> Result<(), String> {
+        let callback = self
+            .a8_sampler
+            .as_ref()
+            .and_then(|api| api.geometry)
+            .ok_or("Painting DLL does not support A8 geometry sampling")?;
+        let status = unsafe { callback(request, source, source_width, source_height, output) };
+        if status == abi::OK {
+            Ok(())
+        } else {
+            Err(format!("Native A8 geometry sampling failed: {status}"))
+        }
+    }
+    pub(crate) fn a8_resample(
+        &self,
+        request: &abi::Resample,
+        source: &abi::CompositeMask,
+        source_width: u32,
+        source_height: u32,
+        output: &mut abi::A8Pixels,
+    ) -> Result<(), String> {
+        let callback = self
+            .a8_sampler
+            .as_ref()
+            .and_then(|api| api.resample)
+            .ok_or("Painting DLL does not support A8 resample sampling")?;
+        let status = unsafe { callback(request, source, source_width, source_height, output) };
+        if status == abi::OK {
+            Ok(())
+        } else {
+            Err(format!("Native A8 resample sampling failed: {status}"))
+        }
     }
     pub(super) fn load(
         parent: &Path,
@@ -600,6 +699,7 @@ impl NativePlugin {
             Some((api, features)) => (Some(api), features),
             None => (None, 0),
         };
+        let a8_sampler = unsafe { module.a8_sampler_api()? };
         let tools = unsafe { module.tool_api()? };
         let tool_options = unsafe { module.tool_options_api()? };
         let (selection_mix, selection_color, selection_edges, selection_transfer) =
@@ -654,6 +754,7 @@ impl NativePlugin {
                 projective,
                 resample,
                 resample_features,
+                a8_sampler,
                 compositor,
                 compositor_capabilities,
                 compositor_blend_modes,
@@ -1323,6 +1424,9 @@ unsafe extern "C" fn edit_region(
     (*host).busy = false;
     status
 }
+#[cfg(test)]
+#[path = "native_a8_sampler_tests.rs"]
+mod a8_sampler_tests;
 #[cfg(test)]
 #[path = "native_mask_effects_tests.rs"]
 mod mask_effects_tests;

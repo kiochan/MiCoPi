@@ -29,7 +29,7 @@ pub(super) fn disjoint<T>(a: *const T, an: usize, b: *mut T, bn: usize) -> bool 
         _ => false,
     }
 }
-fn run<T: Copy + Default>(
+pub(super) fn run<T: Copy>(
     o: &abi::Geometry,
     source: &[T],
     sw: usize,
@@ -39,11 +39,12 @@ fn run<T: Copy + Default>(
     tw: usize,
     th: usize,
     ts: usize,
+    fill: T,
 ) {
     let rotated = if o.kind <= 1 { (sh, sw) } else { (sw, sh) };
     if (o.x, o.y) != (0, 0) || (tw, th) != rotated {
         for y in 0..th {
-            target[y * ts..y * ts + tw].fill(T::default());
+            target[y * ts..y * ts + tw].fill(fill);
         }
     }
     for by in (0..sh).step_by(32) {
@@ -96,6 +97,7 @@ unsafe extern "C" fn pixels(
         d.width as usize,
         d.height as usize,
         d.stride as usize,
+        0,
     );
     abi::OK
 }
@@ -129,6 +131,7 @@ unsafe extern "C" fn mask(
         w as usize,
         h as usize,
         w as usize,
+        0,
     );
     abi::OK
 }

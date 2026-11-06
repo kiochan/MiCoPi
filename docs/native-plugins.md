@@ -225,6 +225,41 @@ The synchronous callback receives fixed-layout `SelectionEdges` (`kind` 0 expand
 
 `Geometry` has `kind` 0 clockwise quarter turn, 1 counterclockwise quarter turn, 2 half turn, 3 horizontal flip or 4 vertical flip, then signed destination offsets `x`/`y` (each within ±4096). Both callbacks are synchronous, with disjoint immutable source and mutable destination storage; no pointer survives a call. Pixel descriptors have local origin zero. Coverage output is dense with exactly width × height bytes. Sides and strides are 1–4096, stride is at least width and storage is bounded to 4096² elements. Destination size may differ from source; transformed coordinates outside it are clipped, uncovered pixels become zero and stride padding stays untouched. The kernel allocates no buffers and leaves source unchanged. The host owns validation, buffer budgets, mask compression, locks/selection clipping, history and publication. See [Canvas geometry](canvas-editing.md#exact-rotation-and-flips).
 
+## Optional raw A8 sampler
+
+`micopi_a8_sampler_v1` returns an independent `A8SamplerApi` /
+`MicopiA8SamplerApi`. On x64 its 32-byte layout has the version/size header,
+then mandatory `reframe`, `geometry` and `resample` callbacks at offsets 8, 16
+and 24. The host accepts ABI version 1 and a complete table; an absent export
+retains existing capabilities, while a malformed advertised table rejects the
+native package. Existing tool, selection, geometry and resampling prefixes do
+not change. This prerequisite alone does not enable document mask geometry.
+
+All three callbacks synchronously borrow a request, immutable `CompositeMask`,
+explicit source width/height and mutable `A8Pixels` output. A uniform source has
+null data, zero length/stride and a byte-valued constant. A dense source has
+constant zero and validated strided bytes. Both source and target sides are
+1–4096; strides are at least width and at most 4096, storage is at most 4096²
+bytes, and the output is a complete frame with origin zero. Padding is retained.
+Uniform inputs do not allocate or materialize a source plane.
+
+`A8Reframe` is 16 bytes: signed destination placement `x`/`y`, byte-valued
+`fill` stored as `u32`, and zero `reserved`. Offsets are within ±4096; crop uses
+negative offsets. `A8Geometry` is 16 bytes: the existing 12-byte `Geometry`,
+then byte-valued `fill`. Geometry kinds retain the old quarter/half-turn and
+flip IDs. Clipped coordinates are discarded and uncovered output receives the
+explicit fill. `Resample.method` retains nearest/bilinear/area IDs 0/1/2 and
+their existing integer arithmetic. Dense geometry and sampling share the old
+native byte kernels; no compressed pixel-selection adapter is required.
+
+Alignment, address spans, layouts, request options and source/output/metadata
+aliasing validate before any writable pixel reference. Failure leaves output
+untouched. No pointers survive a callback, and no sampler instance or per-point
+dispatch is introduced. The host owns target allocation, raw-plane budgets,
+identity/ownership, history and verified publication. See
+[Raster Masks Design](raster-masks-design.md#structural-and-geometry-rules) for
+the separate integration requirements.
+
 ## Optional image resampling table
 
 `micopi_resample_v1` returns independent `ResampleApi` / `MicopiResampleApi` (ABI 1, complete advertised size). Read the fixed header before callbacks; absent exports/callbacks and truncated/incompatible tables reject image sizing while retaining unrelated legacy capabilities. No prior table prefix changes.

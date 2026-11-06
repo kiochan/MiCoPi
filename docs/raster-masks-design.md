@@ -76,6 +76,12 @@ The optional 72-byte x64 effects table retains that 40-byte prefix and adds crea
 
 ## Structural and geometry rules
 
+The independent [raw A8 sampler](native-plugins.md#optional-raw-a8-sampler)
+provides validated native reframe, orthogonal geometry and resampling over
+borrowed dense/uniform sources. This prerequisite does not by itself lift any
+document boundary below. The remaining integration must stage all owner planes
+and preserve the history, cache and outcome rules together.
+
 The following behaviors remain acceptance requirements. Until each path stages masks correctly, existing mask-unaware structural, geometric and cut/paste edits reject mask-bearing documents with `mask_editing_pending`. Corresponding plans/previews are guarded before finishing a live contact. See the [current boundary list](raster-mask-storage.md#temporary-editing-boundaries); these guards preserve data rather than implementing the eventual operations.
 
 | Operation | Required mask behavior |
