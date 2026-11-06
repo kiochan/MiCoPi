@@ -598,7 +598,7 @@ impl Editor {
                 )
             });
         }
-        let mut changes = json!({"group_id":id});
+        let mut changes = json!({ "group_id": id });
         // egui normally drops text focus on release; commit before a neighboring drag starts.
         let property_bounds = ui.max_rect().intersect(ui.clip_rect());
         let pressed_elsewhere = response.has_focus()
@@ -719,14 +719,14 @@ impl Editor {
             {
                 pending.push(crate::application::Action::new(
                     "group.select_layers",
-                    json!({"group_id":id}),
+                    json!({ "group_id": id }),
                 ));
             }
             ui.menu_button(tr("Group Actions"), |ui| {
                 if ui.button(tr("New Layer in Group")).clicked() {
                     pending.push(crate::application::Action::new(
                         "layer.add",
-                        json!({"parent_id":id}),
+                        json!({ "parent_id": id }),
                     ));
                     ui.close();
                 }
@@ -758,7 +758,7 @@ impl Editor {
                     if response.clicked() {
                         pending.push(crate::application::Action::new(
                             command,
-                            json!({"group_id":id}),
+                            json!({ "group_id": id }),
                         ));
                         ui.close();
                     }
@@ -846,10 +846,21 @@ impl Editor {
             }
             ui.data_mut(|data| data.insert_temp(key, workspace));
         }
+        let icon_side = a.control_height.min(rect.height() - a.item_spacing);
         let icon = Rect::from_min_size(
-            pos2(disclosure.right(), rect.center().y - a.icon_size * 0.5),
-            Vec2::splat(a.icon_size),
+            pos2(disclosure.right(), rect.center().y - icon_side * 0.5),
+            Vec2::splat(icon_side),
         );
+        if self
+            .session
+            .doc
+            .mask_state()
+            .items
+            .iter()
+            .any(|mask| mask.owner == crate::engine::raster_masks::MaskOwner::Group { id: row.id })
+        {
+            self.paint_target_thumbnail_border(ui, icon, false);
+        }
         ui.painter().text(
             icon.center(),
             Align2::CENTER_CENTER,
@@ -857,11 +868,22 @@ impl Editor {
             FontId::new(a.icon_size, FontFamily::Name("Material".into())),
             colors.muted,
         );
+        let mask_rect =
+            Rect::from_min_size(pos2(icon.right() + a.item_spacing, icon.top()), icon.size());
+        let mask_response = self.mask_thumbnail_ui(
+            ui,
+            crate::engine::raster_masks::MaskOwner::Group { id: row.id },
+            mask_rect,
+            pending,
+        );
+        let content_right = mask_response
+            .as_ref()
+            .map_or(icon.right(), |_| mask_rect.right());
         layer_text(
             ui,
             row.name.clone(),
             Rect::from_min_max(
-                pos2(icon.right() + a.item_spacing, rect.top()),
+                pos2(content_right + a.item_spacing, rect.top()),
                 pos2(
                     rect.right() - a.panel_padding - a.control_height * 1.8,
                     rect.bottom(),
@@ -915,7 +937,13 @@ impl Editor {
                 json!({"group_id":row.id,"visible":!row.visible}),
             ));
         }
-        if response.clicked() && !toggle.clicked() && !eye_response.clicked() {
+        if response.clicked()
+            && !toggle.clicked()
+            && !eye_response.clicked()
+            && !mask_response
+                .as_ref()
+                .is_some_and(|response| response.clicked())
+        {
             self.focus_group_ui(ui.ctx(), Some(row.id));
         }
         response.on_hover_text(format!(
@@ -1011,7 +1039,7 @@ mod tests {
             if name != "Ink" {
                 assert!(app.editor.core("layer.add", json!({})));
             }
-            assert!(app.editor.core("layer.rename", json!({"name":name})));
+            assert!(app.editor.core("layer.rename", json!({ "name": name })));
         }
         let ids = (0..3)
             .map(|i| app.editor.session.doc.layer_id(i))
@@ -1397,7 +1425,7 @@ mod tests {
                 .session
                 .apply(crate::application::Action::new(
                     "group.inspect",
-                    json!({"group_id":group}),
+                    json!({ "group_id": group }),
                 ))
                 .unwrap();
             assert_eq!(app.editor.focused_group_ui(&ctx), None);
@@ -1487,7 +1515,7 @@ mod tests {
             .session
             .apply(crate::application::Action::new(
                 "group.inspect",
-                json!({"group_id":group}),
+                json!({ "group_id": group }),
             ))
             .unwrap();
         let effect = app.editor.session.ui_effects.pop_back().unwrap();
@@ -1686,13 +1714,13 @@ mod tests {
         );
         assert!(app.editor.dispatch_group_ui(
             &ctx,
-            crate::application::Action::new("group.duplicate", json!({"group_id":group}))
+            crate::application::Action::new("group.duplicate", json!({ "group_id": group }))
         ));
         let copy = app.editor.focused_group_ui(&ctx).unwrap();
         assert_ne!(copy, group);
         assert!(app.editor.dispatch_group_ui(
             &ctx,
-            crate::application::Action::new("group.ungroup", json!({"group_id":copy}))
+            crate::application::Action::new("group.ungroup", json!({ "group_id": copy }))
         ));
         assert_eq!(app.editor.focused_group_ui(&ctx), None);
     }
@@ -1714,7 +1742,8 @@ mod tests {
         let size = vec2(244., 1100.);
         app.editor.focus_group_ui(&ctx, Some(group));
         let before = app.editor.session.doc.composition();
-        let mut stale = crate::application::Action::new("group.merge", json!({"group_id":group}));
+        let mut stale =
+            crate::application::Action::new("group.merge", json!({ "group_id": group }));
         stale.expected_revision = Some(app.editor.session.revision - 1);
         assert!(!app.editor.dispatch_group_ui(&ctx, stale));
         assert!(app.editor.status.contains("revision_conflict"));
@@ -1807,7 +1836,7 @@ mod tests {
         assert_eq!(recorded["events"][0]["source"]["action"], "group.merge");
         assert_eq!(
             recorded["events"][0]["source"]["args"],
-            json!({"group_id":group})
+            json!({ "group_id": group })
         );
         let output = frame(&mut app, &ctx, size, vec![], 6.);
         assert!(!output

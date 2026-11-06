@@ -1,8 +1,8 @@
 """Verify the document A8 foundation through JSONL, MCP, GUI and outcome replay.
 
 The MICOPI04 fixture and integer pixel references are built independently here.
-This gate has no public mask painting or mask creation commands. Synthetic RGBA
-contacts exercise pressure/stabilizer continuity; they do not certify tablets.
+This check focuses on storage and outcomes; smoke-mask-editing.py exercises the
+public mask tools. Synthetic contacts do not certify physical tablets.
 """
 import argparse
 import base64
@@ -377,8 +377,12 @@ def negative_commands(plan, output, fixture_path, invalid_paths, target_path, al
     add('target-before', 'canvas.state')
     add('target-before-png', 'canvas.snapshot')
     add('target-fill', 'layer.fill_color', error='mask_target_pending', color='#FFFFFF')
-    add('target-pointer', 'canvas.pointer', error='mask_target_pending', phase='down', x=30, y=40,
-        pressure=.5, pen=True, time=0)
+    # Read-only/navigation tools remain usable while an A8 target is selected.
+    # Brush/Eraser A8 contacts are covered by the public-editing fixture.
+    add('target-pointer', 'canvas.pointer', phase='down', x=30, y=40,
+        pressure=.5, pen=True, time=0, tool_override='hand')
+    add('target-pointer-up', 'canvas.pointer', phase='up', x=30, y=40,
+        pressure=.5, pen=True, time=1, tool_override='hand')
     add('target-after', 'canvas.state')
     add('target-after-png', 'canvas.snapshot')
     add('target-rejected-save', 'document.save', path=str(output/'rejected-target.mcp'))
@@ -403,7 +407,13 @@ def validate_negatives(values, plan, output, planes, expected, source):
     assert not at('contact-done')['drawing']
     assert image(at('contact-restored')) == (WIDTH, HEIGHT, expected)
     assert at('boundary-verify')['valid']
-    assert at('target-after') == at('target-before') and not at('target-after')['drawing']
+    target_after = dict(at('target-after'))
+    assert target_after.pop('revision') == at('target-before')['revision'] + 2
+    target_expected = {key: value for key, value in at('target-before').items() if key != 'revision'}
+    # Starting Hand navigation exits Fit without changing pan, zoom or artwork.
+    target_expected['view'] = dict(target_expected['view'], fit=False)
+    assert target_after == target_expected, (target_after, target_expected)
+    assert not at('target-after')['drawing']
     assert image(at('target-before-png')) == image(at('target-after-png')) == (WIDTH, HEIGHT, expected)
     rejected = read_project(output/'rejected-target.mcp')
     original = read_project(source)
@@ -451,12 +461,12 @@ def fixtures(output):
         path = output/f'{label}.mcp'
         path.write_bytes(data)
         invalid.append((path, 'io'))
-    for label, field, value in [('hidden-density', 'density', 128), ('hidden-feather', 'feather_radius_px', 3)]:
+    for label, field, value in [('hidden-density', 'density', 256), ('hidden-feather', 'feather_radius_px', 257)]:
         unsupported = copy.deepcopy(composition)
         unsupported['raster_masks']['items'][0].update(enabled=False, **{field: value})
         path = output/f'{label}.mcp'
         path.write_bytes(project_bytes(unsupported, layers, planes))
-        invalid.append((path, 'renderer_missing'))
+        invalid.append((path, 'io'))
     return composition, layers, planes, source, target_path, allocator_path, invalid
 
 

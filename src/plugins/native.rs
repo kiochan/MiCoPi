@@ -41,6 +41,44 @@ type CompositorTable = (
     u64,
     Option<abi::CompositeRenderMaskedFn>,
 );
+type MaskEffectsTable = (
+    abi::MaskEffectsCreateFn,
+    abi::MaskEffectsDestroyFn,
+    abi::MaskEffectRegionFn,
+    abi::MaskEffectsReserveFn,
+);
+unsafe fn decode_mask_effects_table(
+    pointer: *const abi::CompositorApi,
+    capabilities: u64,
+) -> Result<Option<MaskEffectsTable>, String> {
+    if capabilities & abi::COMPOSITOR_MASK_EFFECTS == 0 {
+        return Ok(None);
+    }
+    if pointer.is_null() {
+        return Err("Compositor mask effects returned a null table".into());
+    }
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if capabilities & abi::COMPOSITOR_MASKS == 0
+        || header.struct_size < std::mem::size_of::<abi::CompositorApiMaskEffects>() as u32
+    {
+        return Err("Compositor mask effects require masks and a complete effects table".into());
+    }
+    let effects = std::ptr::read_unaligned(pointer.cast::<abi::CompositorApiMaskEffects>());
+    match (
+        effects.create_mask_effects,
+        effects.destroy_mask_effects,
+        effects.mask_effect_region,
+        effects.reserve_mask_effects,
+    ) {
+        (Some(create), Some(destroy), Some(region), Some(reserve)) => {
+            Ok(Some((create, destroy, region, reserve)))
+        }
+        _ => Err(
+            "Compositor mask effects are missing required lifecycle/reserve/region callbacks"
+                .into(),
+        ),
+    }
+}
 // The v1 callback prefix remains usable when an optional feature tail is absent.
 unsafe fn decode_compositor_table(
     pointer: *const abi::CompositorApi,
@@ -85,6 +123,7 @@ unsafe fn decode_compositor_table(
     } else {
         None
     };
+    decode_mask_effects_table(pointer, capabilities)?;
     Ok((api, capabilities, modes, masked))
 }
 // Read only advertised, complete optional tails; legacy prefixes remain usable.
@@ -351,7 +390,9 @@ impl Module {
             Ok(None)
         }
     }
-    unsafe fn compositor_api(&self) -> Result<Option<CompositorTable>, String> {
+    unsafe fn compositor_api(
+        &self,
+    ) -> Result<Option<(CompositorTable, Option<MaskEffectsTable>)>, String> {
         #[cfg(windows)]
         {
             let address =
@@ -360,7 +401,10 @@ impl Module {
                 return Ok(None);
             }
             let entry = std::mem::transmute::<*mut c_void, abi::CompositorEntry>(address);
-            decode_compositor_table(entry()).map(Some)
+            let pointer = entry();
+            let table = decode_compositor_table(pointer)?;
+            let effects = decode_mask_effects_table(pointer, table.1)?;
+            Ok(Some((table, effects)))
         }
         #[cfg(not(windows))]
         {
@@ -470,7 +514,22 @@ pub struct NativePlugin {
     compositor_capabilities: u64,
     compositor_blend_modes: u64,
     compositor_masked: Option<abi::CompositeRenderMaskedFn>,
+    compositor_effects: Option<MaskEffectsTable>,
+    mask_effect_instance: std::sync::Mutex<Option<MaskEffectInstance>>,
     _module: Module,
+}
+struct MaskEffectInstance {
+    pointer: usize,
+    destroy: abi::MaskEffectsDestroyFn,
+}
+impl Drop for MaskEffectInstance {
+    fn drop(&mut self) {
+        // NativePlugin declares this cache before its module, so the callback
+        // remains loaded until its instance has been destroyed.
+        unsafe {
+            (self.destroy)(self.pointer as *mut c_void);
+        }
+    }
 }
 impl std::fmt::Debug for NativePlugin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -551,13 +610,18 @@ impl NativePlugin {
         if tool_options.is_some() && tools.is_none() {
             return Err("Tool options require a tool API".into());
         }
-        let (compositor, compositor_capabilities, compositor_blend_modes, compositor_masked) =
-            match unsafe { module.compositor_api()? } {
-                Some((api, capabilities, modes, masked)) => {
-                    (Some(api), capabilities, modes, masked)
-                }
-                None => (None, 0, 0, None),
-            };
+        let (
+            compositor,
+            compositor_capabilities,
+            compositor_blend_modes,
+            compositor_masked,
+            compositor_effects,
+        ) = match unsafe { module.compositor_api()? } {
+            Some(((api, capabilities, modes, masked), effects)) => {
+                (Some(api), capabilities, modes, masked, effects)
+            }
+            None => (None, 0, 0, None, None),
+        };
         if api.describe.is_none()
             || (api.invoke.is_none() && tools.is_none() && compositor.is_none())
             || api.create.is_some() != api.destroy.is_some()
@@ -594,6 +658,8 @@ impl NativePlugin {
                 compositor_capabilities,
                 compositor_blend_modes,
                 compositor_masked,
+                compositor_effects,
+                mask_effect_instance: Default::default(),
                 _module: module,
             }),
             contributions,
@@ -601,6 +667,82 @@ impl NativePlugin {
     }
 }
 impl crate::engine::graph::Renderer for NativePlugin {
+    fn supports_mask_effects(&self) -> bool {
+        self.compositor_effects.is_some()
+    }
+    fn reserve_mask_effects(&self, width: u32, height: u32, radius: u32) -> Result<(), String> {
+        let (create, destroy, _, reserve) = self
+            .compositor_effects
+            .ok_or("The compositor does not support mask density and feather")?;
+        let mut cached = self
+            .mask_effect_instance
+            .lock()
+            .map_err(|_| "Mask effect instance is unavailable")?;
+        if cached.is_none() {
+            let pointer = unsafe { create() };
+            if pointer.is_null() {
+                return Err("Compositor mask effect instance creation failed".into());
+            }
+            *cached = Some(MaskEffectInstance {
+                pointer: pointer as usize,
+                destroy,
+            });
+        }
+        let status = unsafe {
+            reserve(
+                cached.as_ref().unwrap().pointer as *mut c_void,
+                width,
+                height,
+                radius,
+            )
+        };
+        if status == abi::OK {
+            Ok(())
+        } else {
+            Err(format!("Mask effects reservation failed: {status}"))
+        }
+    }
+    fn mask_effect_region(
+        &self,
+        request: &abi::MaskEffectRequest,
+        source: &abi::CompositeMask,
+        width: u32,
+        height: u32,
+        output: &mut abi::A8Pixels,
+    ) -> Result<(), String> {
+        let (create, destroy, region, _) = self
+            .compositor_effects
+            .ok_or("The compositor does not support mask density and feather")?;
+        let mut cached = self
+            .mask_effect_instance
+            .lock()
+            .map_err(|_| "Mask effect instance is unavailable")?;
+        if cached.is_none() {
+            let pointer = unsafe { create() };
+            if pointer.is_null() {
+                return Err("Compositor mask effect instance creation failed".into());
+            }
+            *cached = Some(MaskEffectInstance {
+                pointer: pointer as usize,
+                destroy,
+            });
+        }
+        let status = unsafe {
+            region(
+                cached.as_ref().unwrap().pointer as *mut c_void,
+                request,
+                source,
+                width,
+                height,
+                output,
+            )
+        };
+        if status == abi::OK {
+            Ok(())
+        } else {
+            Err(format!("Mask effects execution failed: {status}"))
+        }
+    }
     fn supports_masks(&self) -> bool {
         self.compositor_masked.is_some()
     }
@@ -1088,7 +1230,7 @@ unsafe extern "C" fn dispatch(
     })();
     let (status, value) = match result {
         Ok(value) => (abi::OK, value),
-        Err(error) => (abi::ERROR, json!({"error":error})),
+        Err(error) => (abi::ERROR, json!({ "error": error })),
     };
     let bytes = serde_json::to_vec(&value).unwrap_or_default();
     let written = (reply.write)(reply.context, abi::Bytes::borrowed(&bytes));
@@ -1181,6 +1323,9 @@ unsafe extern "C" fn edit_region(
     (*host).busy = false;
     status
 }
+#[cfg(test)]
+#[path = "native_mask_effects_tests.rs"]
+mod mask_effects_tests;
 #[cfg(test)]
 #[path = "native_masks_tests.rs"]
 mod masks_tests;
@@ -2279,6 +2424,7 @@ mod tests {
             busy: false,
             failed: false,
             write_pixels: true,
+            mask_lease: None,
             denied: None,
         };
         let region = abi::Region {
@@ -2534,6 +2680,7 @@ mod tests {
             busy: false,
             failed: false,
             write_pixels: false,
+            mask_lease: None,
             denied: None,
         };
         let region = abi::Region {
@@ -2693,6 +2840,10 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+#[path = "native_mask_tools_tests.rs"]
+mod mask_tool_tests;
+
 /// Cached for the document session; moved into a contact for allocation-free moves.
 pub(crate) struct ToolInstance {
     selection: Option<crate::engine::selection::Mask>,
@@ -2724,15 +2875,24 @@ impl ToolInstance {
             selection: None,
         })
     }
-    pub(crate) fn pointer(
+    pub(crate) fn prepare_contact(
         &mut self,
-        session: &mut Session,
-        handler: u32,
-        sample: abi::ToolSample,
-        parameters: Option<&abi::ToolParameters>,
+        session: &Session,
         painting: bool,
-    ) -> Result<abi::ToolOutput, ActionError> {
-        if parameters.is_some() && painting {
+        a8_target: bool,
+    ) -> Result<(), ActionError> {
+        if painting {
+            if a8_target
+                && self
+                    .plugin
+                    .tool_options
+                    .is_none_or(|(_, features)| features & abi::TOOL_OPTION_A8_TARGET == 0)
+            {
+                return Err(ActionError::new(
+                    "tool_options_unsupported",
+                    "Tool DLL does not support raster-mask painting",
+                ));
+            }
             let selection = session.doc.selection().current.clone();
             if selection.is_some()
                 && self
@@ -2747,7 +2907,7 @@ impl ToolInstance {
             }
             self.selection = selection;
             let p = &session.parameters;
-            let locked = session.doc.alpha_locked(session.doc.active);
+            let locked = !a8_target && session.doc.alpha_locked(session.doc.active);
             if let Some((api, features)) = self.plugin.tool_options {
                 if locked && features & abi::TOOL_OPTION_ALPHA_LOCK == 0 {
                     return Err(ActionError::new(
@@ -2763,6 +2923,10 @@ impl ToolInstance {
                 };
                 let flags = if locked {
                     abi::TOOL_OPTION_ALPHA_LOCK
+                } else {
+                    0
+                } | if a8_target {
+                    abi::TOOL_OPTION_A8_TARGET
                 } else {
                     0
                 };
@@ -2784,17 +2948,14 @@ impl ToolInstance {
                         selection: self.selection.as_ref().map(coverage).unwrap_or_default(),
                     };
                     unsafe { (api.configure.unwrap())(self.state, &extended.base.base) }
-                } else if features & abi::TOOL_OPTION_ALPHA_LOCK != 0 {
+                } else if features & (abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_A8_TARGET) != 0
+                {
                     let extended = abi::ToolOptionsExt {
                         base: abi::ToolOptions {
                             struct_size: std::mem::size_of::<abi::ToolOptionsExt>() as u32,
                             ..options
                         },
-                        flags: if locked {
-                            abi::TOOL_OPTION_ALPHA_LOCK
-                        } else {
-                            0
-                        },
+                        flags,
                     };
                     unsafe { (api.configure.unwrap())(self.state, &extended.base) }
                 } else {
@@ -2817,19 +2978,42 @@ impl ToolInstance {
                 ));
             }
         }
+        Ok(())
+    }
+    pub(crate) fn pointer(
+        &mut self,
+        session: &mut Session,
+        handler: u32,
+        sample: abi::ToolSample,
+        parameters: Option<&abi::ToolParameters>,
+        painting: bool,
+        mask_lease: Option<crate::engine::raster_masks::MaskLease>,
+    ) -> Result<abi::ToolOutput, ActionError> {
         let mut context = ToolContext {
             session,
             busy: false,
             failed: false,
             write_pixels: painting,
+            mask_lease,
             denied: None,
         };
-        let host = abi::ToolHost {
-            abi_version: abi::TOOL_ABI_VERSION,
-            struct_size: std::mem::size_of::<abi::ToolHost>() as u32,
-            context: (&mut context as *mut ToolContext).cast(),
-            pixels: tool_pixels,
-            pick: tool_pick,
+        let host = abi::ToolHostA8 {
+            base: abi::ToolHost {
+                abi_version: abi::TOOL_ABI_VERSION,
+                struct_size: if mask_lease.is_some() {
+                    std::mem::size_of::<abi::ToolHostA8>()
+                } else {
+                    std::mem::size_of::<abi::ToolHost>()
+                } as u32,
+                context: (&mut context as *mut ToolContext).cast(),
+                pixels: tool_pixels,
+                pick: tool_pick,
+            },
+            a8: if mask_lease.is_some() {
+                Some(tool_a8)
+            } else {
+                None
+            },
         };
         let mut output = abi::ToolOutput::default();
         let status = unsafe {
@@ -2838,7 +3022,7 @@ impl ToolInstance {
                 handler,
                 &sample,
                 parameters.map_or(std::ptr::null(), |p| p as *const _),
-                &host,
+                &host.base,
                 &mut output,
             )
         };
@@ -2885,6 +3069,7 @@ struct ToolContext {
     busy: bool,
     failed: bool,
     write_pixels: bool,
+    mask_lease: Option<crate::engine::raster_masks::MaskLease>,
     denied: Option<ActionError>,
 }
 unsafe extern "C" fn tool_pixels(
@@ -2908,6 +3093,14 @@ unsafe extern "C" fn tool_pixels(
     let session = &mut *(*context).session;
     if !(*context).write_pixels || session.read_depth != 0 {
         (*context).failed = true;
+        return abi::ERROR;
+    }
+    if (*context).mask_lease.is_some() {
+        (*context).failed = true;
+        (*context).denied = Some(ActionError::new(
+            "tool_target",
+            "An A8 mask contact cannot borrow mutable RGBA pixels",
+        ));
         return abi::ERROR;
     }
     if let Err(error) = PixelAccess::Pixels.require(&session.doc, session.doc.active) {
@@ -2949,6 +3142,59 @@ unsafe extern "C" fn tool_pixels(
     if status != abi::OK || !session.doc.locked_tool_region_valid(x, y, w, h) {
         (*context).failed = true;
         return abi::ERROR;
+    }
+    status
+}
+unsafe extern "C" fn tool_a8(
+    context: *mut c_void,
+    region: abi::Region,
+    transform: Option<abi::A8Transform>,
+    user: *mut c_void,
+) -> i32 {
+    if context.is_null() {
+        return abi::ERROR;
+    }
+    let context = context.cast::<ToolContext>();
+    if (*context).busy {
+        (*context).failed = true;
+        return abi::ERROR;
+    }
+    let Some(transform) = transform else {
+        (*context).failed = true;
+        return abi::ERROR;
+    };
+    let session = &mut *(*context).session;
+    if !(*context).write_pixels || session.read_depth != 0 {
+        (*context).failed = true;
+        return abi::ERROR;
+    }
+    let Some(lease) = (*context).mask_lease else {
+        (*context).failed = true;
+        (*context).denied = Some(ActionError::new(
+            "tool_target",
+            "An RGBA contact cannot borrow a mutable A8 mask",
+        ));
+        return abi::ERROR;
+    };
+    let mut pixels = match session.doc.mask_region(
+        lease,
+        region.x as usize,
+        region.y as usize,
+        region.width as usize,
+        region.height as usize,
+    ) {
+        Ok(pixels) => pixels,
+        Err(error) => {
+            (*context).failed = true;
+            (*context).denied = Some(ActionError::new("mask_lease", error));
+            return abi::ERROR;
+        }
+    };
+    (*context).busy = true;
+    let status = transform(user, &mut pixels);
+    (*context).busy = false;
+    if status != abi::OK {
+        (*context).failed = true;
     }
     status
 }

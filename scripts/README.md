@@ -15,6 +15,7 @@ Run these tools from the repository root. Downloaded toolchains, builds, capture
 | smoke-captures.py | Verify concurrent root/native capture identities, exact PNG sizes, terminal failures and unchanged artwork |
 | capture_checks.py | Shared owned-window readiness, capture-status and independent PNG checks for GUI smoke scripts |
 | smoke-raster-masks.py | Verify A8 storage/composition, safe edit boundaries, legacy compatibility and DLL-free replay; optional GUI captures |
+| smoke-mask-editing.py | Verify eleven public mask actions, native density/feather and typed painting, workflow bindings, guarded edits and raw/verified replay across JSONL/MCP/GUI; optional four-language captures |
 | check-repository.py | Validate local Markdown links, example JSON and tracked-file boundaries |
 
 ```powershell
@@ -23,9 +24,17 @@ python scripts/check-repository.py
 python scripts/smoke-runtime.py
 python scripts/smoke-workflows.py
 python scripts/smoke-localization.py
+python scripts/smoke-mask-editing.py --cli <built-cli> --gui <built-desktop>
 python scripts/package.py
 ```
 
 GUI smoke checks create their own isolated profiles and close only their own test process. Use `--cli` and `--gui` to select debug binaries when iterating. `package.py` packages already built binaries; it does not download dependencies, rebuild the application or publish anything.
+
+`smoke-mask-editing.py --skip-gui` runs the transport-only subset. Its optional
+`--legacy-compositor` path selects a preserved masks-only 40-byte DLL for missing
+effects checks; an absent baseline is reported as skipped. Build/stage matching
+current DLLs before using the script. Captures remain under ignored
+`target/test-output/mask-editing-smoke/`. See [Raster Mask Editing](../docs/raster-mask-editing.md)
+for the implemented subset and the structural/geometry paths that remain guarded.
 
 See [Development](../docs/development.md) for prerequisites and [Project Structure](../docs/project-structure.md) for ownership rules.

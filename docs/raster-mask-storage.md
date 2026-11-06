@@ -1,12 +1,12 @@
 # Raster mask storage and verified outcomes
 
-The document foundation for raster masks is implemented: stable ownership, raw A8 planes, byte-tile Undo, mask-aware image composition, a binary project payload and verified replay. This is delivery gate 2 of [Raster Masks Design](raster-masks-design.md), following the [native A8 prerequisites](native-plugins.md#optional-native-mask-composition).
+The document foundation for raster masks is implemented: stable ownership, raw A8 planes, byte-tile Undo, mask-aware image composition, a binary project payload and verified replay. This guide specifies delivery gate 2 of [Raster Masks Design](raster-masks-design.md), following the [native A8 prerequisites](native-plugins.md#optional-native-mask-composition). The first [public editing subset](raster-mask-editing.md) now builds on that foundation.
 
-**Paintable document masks are not yet a public feature.** There are no registered mask creation/property/painting commands, mask workflow actions or Layers mask-thumbnail controls. The typed desktop/Session A8 contact route, density/feather effects and complete structural/geometry integration remain planned. Engine APIs and regression fixtures exercise the foundation without advertising those pending operations as available.
+The public subset includes registered mask actions/state, pressure/stabilized A8 contacts, density/feather effects and Layers target/property controls. **Complete structural/geometry integration remains planned.** The full raster-mask feature item stays unchecked; [temporary editing boundaries](#temporary-editing-boundaries) continue to protect mask-bearing documents from unsupported edits.
 
 ![Release workbench showing a stored mask fixture and generated Actual Composition](screenshots/raster-mask-foundation.png)
 
-This real Release capture shows a loaded regression project with layer, Isolated group and Pass Through group masks. Actual Composition displays generated gates; the Layers panel does not yet provide mask painting controls. The fitted graph is an overview; zoom in to inspect its typed coverage ports.
+This real foundation-stage Release capture predates the editing controls. It shows a loaded regression project with layer, Isolated group and Pass Through group masks, with generated Actual Composition gates. The fitted graph is an overview; zoom in to inspect its typed coverage ports.
 
 ## Ownership and limits
 
@@ -32,15 +32,15 @@ The bounds are:
 - At most 32 masks, with one plane per metadata ID in the same sorted order.
 - Canvas dimensions from 1 through 4096 pixels per side.
 - At most 64 MiB of logical A8 samples across masks, using checked `width × height × count` arithmetic. This is separate from the existing raster-pixel budget.
-- Density stored as a byte and feather radius bounded to 256 pixels. These metadata bounds do not imply that the density/feather rendering effects are implemented.
+- Density stored as a byte and feather radius bounded to 256 pixels; evaluating nondefault properties requires the optional native effects capability.
 
-Every raw mask has the current canvas dimensions. Zero hides and 255 reveals. `SamplePlane::Uniform(u8)` stores a constant plane without a frame-sized allocation; `Dense(Vec<u8>)` stores exactly one byte per canvas pixel. Uniform storage still consumes its full logical sample budget. Raw planes, eventual effective-coverage caches and contact leases are separate responsibilities.
+Every raw mask has the current canvas dimensions. Zero hides and 255 reveals. `SamplePlane::Uniform(u8)` stores a constant plane without a frame-sized allocation; `Dense(Vec<u8>)` stores exactly one byte per canvas pixel. Uniform storage still consumes its full logical sample budget. Raw planes, effective-coverage caches and contact leases are separate responsibilities. Derived coverage has a separate 64 MiB logical bound and is never serialized as raw state.
 
 ## Engine edits, contacts and history
 
-Cold engine helpers create/delete masks, update metadata, replace an entire plane and choose a paint target. They validate ownership and dimensions; renderer-dependent mutations also preflight composition/capability requirements before publishing changes. These are engine-level building blocks for future registered commands, rather than a second public editing workflow.
+Cold engine helpers create/delete masks, update metadata, replace an entire plane and choose a paint target. They validate ownership and dimensions; renderer-dependent mutations also preflight composition/capability requirements before publishing changes. The registered public handlers in `src/plugins/raster_masks.rs` use these helpers through Session rather than maintaining a second writable document.
 
-`begin_mask_stroke(id)` resolves a visible owner and materializes a uniform plane once at DOWN. Its cached `MaskLease` carries document identity, mask ID, direct storage slot and storage epoch. Each new contact advances the epoch, including when an existing dense allocation is reused; a lease from a previous contact cannot become valid again. Storage replacement, removal or restoration invalidates leases independently of content revisions.
+`begin_mask_stroke(id)` resolves a visible owner and materializes a uniform plane once at DOWN. The host prepares capabilities/options first, then reserves native halo capacity without running a full-frame feather kernel and materializes any constant effective cache once. Its cached `MaskLease` carries document identity, mask ID, direct storage slot and storage epoch. Each new contact advances the epoch, including when an existing dense allocation is reused; a lease from a previous contact cannot become valid again. Storage replacement, removal or restoration invalidates leases independently of content revisions.
 
 `prepare_mask_region` and `mask_region` use scalar lease checks and a direct slot. A scoped `A8Pixels` descriptor carries byte length, dimensions, stride and canvas origin for the synchronous native loan. Callers must not retain its pointer or reenter the document while using it. No per-MOVE metadata serialization, discovery, file I/O or whole-plane copying is introduced. The dense pointer stays stable for that contact.
 
@@ -50,15 +50,19 @@ Structural create/delete/replace history owns removed planes through shared immu
 
 Paint-target selection is metadata without a separate pixel Undo entry. Explicit `layer.select` and `layer.selection.set` with `active_layer_id` select layer pixels, including when the same layer is already active. A multi-selection change without an explicit active layer preserves the paint target. Existing RGBA loans reject a mask target with `mask_target_pending`; they do not silently redirect writes into A8 storage.
 
+The typed Session Brush/Eraser route now lends A8 storage using the cached lease and native instance. Pressure, stabilization and frozen fractional selection clipping remain in the painting DLL; Eraser reveals toward 255. Fill/Invert replace the entire raw plane independently of the pixel selection. Queries and bounded snapshots preserve active contacts; mutations reject them without finishing the contact. See [Raster Mask Editing](raster-mask-editing.md) for the eleven actions and their guaranteed workflow result ports.
+
 ## Generated composition
 
 Masks require linked layer/filter composition and a compositor with the optional mask capability. The host compiles generated `MaskSource`, `ApplyMask` and `MaskedMix` nodes with typed coverage ports and stable mask IDs. Source Layer Filters remain editable source data; generated Actual Composition is a separate view and cannot be submitted as that source graph.
 
-A layer's enabled mask gates its filtered result and combines with layer opacity once. An isolated group mask gates the completed isolated result. A Pass Through group mask gates the completed before/after change with group opacity once. Disabling source filters preserves the mask and group composition gates. Disabled masks reveal fully. Composition passes fixed-size raw-plane descriptors through cached slots; it does not materialize uniform masks or rebuild JSON per damage update.
+A layer's enabled mask gates its filtered result and combines with layer opacity once. An isolated group mask gates the completed isolated result. A Pass Through group mask gates the completed before/after change with group opacity once. Disabling source filters preserves the mask and group composition gates. Disabled masks reveal fully. Composition passes fixed-size effective-coverage descriptors through cached slots; it does not materialize uniform masks or rebuild JSON per damage update.
 
 Generated masks retain the existing graph bounds, including 64 nodes and the native instruction/value budget. A flat stack of sixteen masked rasters without extra filter nodes fits the 64-node bound; additional filters or nested boundaries can exceed it and are rejected before mutation. Preflight validates coverage/image port domains, owner identities, dimensions, capabilities and declared modes, including hidden and disabled branches.
 
-Rendering currently supports only `density: 255` and `feather_radius_px: 0`. Nondefault bounded metadata can be retained by storage and verified outcome restoration, but renderer-dependent edits and live rendering reject it explicitly. This also applies to hidden or disabled masks. Raw engine project load/save remains archival and DLL-independent; normal Session project publication preflights renderer capabilities and supported effects. Replay can display a recorded verified surface without evaluating those pending effects.
+Rendering supports native feather-first density effects through the optional 72-byte compositor tail and capability `0x8`; default properties still use the unchanged 40-byte mask prefix. A compositor without effects rejects nondefault properties before live publication, including hidden/disabled masks. The exact three-box approximation, density rounding and support radius are specified in [effective coverage](raster-mask-editing.md#non-destructive-effective-coverage). Raw edits dirty the affected output expanded by exactly the declared feather radius. Parameter changes invalidate a full effective plane. Caches are reusable derived data, independent of raw history and replay.
+
+Raw engine project load/save remains archival and DLL-independent; normal Session project publication preflights renderer capabilities and supported effects. Replay can display a recorded verified surface without evaluating effects. `mask.apply` is a cold staged raw-alpha bake for raster owners, retaining source filters and opacity; it can round differently from live coverage/opacity combination and does not implement group subtree baking.
 
 ## MICOPI04 project format
 
@@ -107,7 +111,7 @@ Existing mask-unaware operations reject a document with mask items before changi
 
 The guarded families include canvas sizing/resampling/crop/trim/rotation/flips, pixel movement and transforms, layer rotation/duplication/deletion/transfer, batch layer edits, group structural edits, merges/stamp/flatten and cut/paste transfers. Corresponding mutation plans/previews are guarded as well. Switching to an unlinked image graph is rejected. These boundaries are deliberately broader than the future linked/unlinked rules; they are removed only as each operation gains mask-aware atomic staging, history and verified outcomes.
 
-Ordinary permitted pixel edits with the layer-pixel target, read-only inspection, selection operations, supported composition properties, export, project persistence and verified replay retain their own contracts. Presence of a mask does not grant pixel permissions or bypass layer locks. The future mask-specific contact policy remains separate from RGBA access declarations.
+Ordinary permitted pixel edits with the layer-pixel target, read-only inspection, selection operations, supported composition properties, mask-aware layer ordering, export, project persistence and verified replay retain their own contracts. Presence of a mask does not grant RGBA pixel permissions or bypass layer locks. Mask-plane contact permission is separate from RGBA access declarations; applying a mask to raw alpha checks pixel and transparency locks.
 
 ## Verification and next gate
 
@@ -115,4 +119,4 @@ Focused regressions cover metadata namespaces/budgets, byte tile boundaries and 
 
 `scripts/smoke-raster-masks.py` independently writes the binary fixture, compares integer layer/group references across JSONL, MCP and the desktop, checks safe rejections and unchanged raw planes, then verifies saved projects and DLL-free replay. It also tests previous-host rejection when `--baseline-cli` is available and captures English, Chinese, Japanese and Korean Actual Composition views. See [Development](development.md#raster-mask-document-foundation-checks) for measured storage and binary costs.
 
-The next gate completes document painting, properties and every structural/geometry boundary, followed by registered contracts and multilingual UI. See [Raster Masks Design](raster-masks-design.md#delivery-and-acceptance-gates) and the [Roadmap](../ROADMAP.md). Synthetic pointer and pixel fixtures do not establish physical tablet compatibility.
+The editing subset adds native effect/reference/reservation tests, typed contact routing, workflow/result binding, raw-alpha application and compiled target/property tests. Its focused transport check is `scripts/smoke-mask-editing.py`; final delivery evidence is recorded separately in Development. The next completeness work replaces every outstanding structural/geometry/merge/transfer guard with mask-aware staging. See [Raster Masks Design](raster-masks-design.md#delivery-and-acceptance-gates) and the [Roadmap](../ROADMAP.md). Synthetic pointer and pixel fixtures do not establish physical tablet compatibility.

@@ -186,7 +186,7 @@ impl Document {
             }
             if require {
                 self.ensure_raster_mask_renderer()?;
-                Self::ensure_raster_mask_properties(masks)?;
+                self.ensure_raster_mask_properties(masks)?;
             }
             for (i, id) in ids.iter().enumerate() {
                 masked_layers[i] = masks.items.iter().any(|m| {

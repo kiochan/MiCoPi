@@ -73,6 +73,14 @@ impl Editor {
                     } else {
                         status
                     };
+                    let status = if matches!(
+                        self.session.doc.mask_state().target,
+                        crate::engine::raster_masks::PaintTarget::Mask { .. }
+                    ) {
+                        format!("{} · {}", localize("Mask"), localize(status))
+                    } else {
+                        status
+                    };
                     let details = format!(
                         "{} × {} px · History {:.1} MB",
                         self.session.doc.width,
@@ -573,3 +581,7 @@ impl Editor {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "mask_footer_tests.rs"]
+mod mask_footer_tests;

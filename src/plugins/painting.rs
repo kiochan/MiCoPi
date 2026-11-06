@@ -67,7 +67,9 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             if matches!(
                 kind,
                 crate::application::ToolKind::Brush | crate::application::ToolKind::Eraser
-            ) {
+            ) && s.doc.mask_state().target
+                == crate::engine::raster_masks::PaintTarget::LayerPixels
+            {
                 super::PixelAccess::Pixels.require(&s.doc, s.doc.active)?;
             }
             if let Some(tool) = args["tool"].as_str() {

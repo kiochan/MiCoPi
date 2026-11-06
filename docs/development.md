@@ -166,19 +166,176 @@ The native-prerequisite desktop/CLI executables were 10,089,472/3,963,392 bytes 
 
 ## Raster-mask document foundation checks
 
-Run `python scripts/smoke-raster-masks.py --cli <built-cli> --gui <built-desktop>` with matching native DLLs. Its independent MICOPI04 writer and integer references check raw A8 ownership, filtered layer coverage, isolated and Pass Through group gates, project/save signature protection, pressure/stabilizer RGBA contact continuity and explicit rejection of pending mask edits. JSONL, MCP and GUI use the shared Session contracts. The script also checks byte-outcome compaction, DLL-free replay, admission failures without the mask renderer or with unsupported density/feather, legacy projects and recording hashes, and four-language Actual Composition captures. Use `--skip-gui` for transport-only CI; pass `--baseline-cli <preceding-host>` for old-reader rejection. An absent preceding executable is explicitly skipped rather than downloaded.
+The measurements and original delivery results in this subsection describe the
+historical foundation stage, before public A8 editing. Current public editing
+checks and native effects measurements are documented in the next subsection.
+
+Run `python scripts/smoke-raster-masks.py --cli <built-cli> --gui <built-desktop>` with matching native DLLs. Its independent MICOPI04 writer and integer references check raw A8 ownership, filtered layer coverage, isolated and Pass Through group gates, project/save signature protection, pressure/stabilizer RGBA contact continuity and explicit rejection of pending mask-unaware edits. JSONL, MCP and GUI use the shared Session contracts. The script also checks byte-outcome compaction, DLL-free replay, admission failures without the mask renderer or with out-of-range density/feather metadata, legacy projects and recording hashes, and four-language Actual Composition captures. Use `--skip-gui` for transport-only CI; pass `--baseline-cli <preceding-host>` for old-reader rejection. An absent preceding executable is explicitly skipped rather than downloaded.
 
 The 97 by 65 fixture owns three planes: 18,915 logical A8 bytes, represented by two 6,305-byte dense planes and one uniform byte. Its sample payload is 12,611 bytes and the MICOPI04 suffix excluding recording is 12,662 bytes, including 51 bytes of count/entry/recording-length framing. These are deterministic file-storage costs, not peak memory, application throughput or pen latency. Cold-save tests separately verify complete-file equivalence between constant dense and uniform storage while retaining the live pointer, history and dirty state. Raw undo/lease/rollback, malformed storage, byte references/XOR/markers, legacy hashes, graph domains/budgets, once-only opacity and target/preflight boundaries have focused engine/application/UI regressions.
 
 One final captured run produced a 200,970-byte, 17-event MCP archive and a 200,537-byte embedded archive. All twelve A8 tile changes belonged to genesis; later RGBA painting, history, property and raster-count changes did not repeat unchanged mask planes. Archive bytes vary with recorded paths/timestamps and include the other document outcomes; this is not an isolated mask compression ratio or an A8 painting throughput measurement.
 
-Full mask editing remains pending. The current engine lease and native sink tests do not prove that a desktop A8 contact has been routed, and synthetic RGBA contact checks do not establish physical tablet compatibility. See [Raster-mask storage](raster-mask-storage.md) for implemented contracts and temporary editing boundaries.
+At the foundation stage, public mask painting was still pending, and its engine
+lease/native sink tests did not prove desktop A8 routing. The public editing
+subset is checked separately below; complete structural/geometry integration
+remains pending. Neither stage's synthetic contact checks establish physical
+tablet compatibility. See [Raster-mask storage](raster-mask-storage.md) for
+storage contracts and the retained temporary boundaries.
 
-The final 2026-11-06 GNU Release foundation desktop/CLI executables are 10,266,624/4,146,688 bytes, 173/179 KiB above the native-prerequisite build. Matching painting/compositor DLLs remain 356,864/278,016 bytes with identical hashes, and no dependency is added. These are executable sizes, not portable-package size, peak memory, input latency or a throughput measurement.
+The final 2026-11-06 GNU Release foundation desktop/CLI executables were 10,266,624/4,146,688 bytes, 173/179 KiB above the native-prerequisite build. Matching painting/compositor DLLs remained 356,864/278,016 bytes with identical hashes, and no dependency was added. These are historical executable sizes, not current editing-build sizes, portable-package size, peak memory, input latency or a throughput measurement.
 
 The mask-specific JSONL/MCP/GUI check passed, including four reviewed language captures. Separate runtime, workflow, linked-graph, replay, group, selected-merge and Pass Through GUI checks passed. Subsequent capture stabilization adds request/viewport correlation and retained callback acknowledgement; use the capture-aware checks below when validating current builds rather than treating file existence as completion.
 
+## Public raster-mask editing checks
+
+Build/stage the matching painting and compositor DLLs, then run
+`python scripts/smoke-mask-editing.py --cli <built-cli> --gui <built-desktop>`.
+Use `--skip-gui` for the JSONL/MCP/outcome subset. The optional
+`--legacy-compositor <preserved-masks-only-dll>` checks that a preceding 40-byte
+table rejects nondefault effects before mutation, including hidden/disabled
+masks; an absent baseline is explicitly skipped. Output and captures stay under
+`target/test-output/mask-editing-smoke/`. See [Raster Mask Editing](raster-mask-editing.md)
+for all eleven action schemas, stable-ID/target semantics and the remaining
+guarded geometry, structural, merge and transfer paths. The full raster-mask
+roadmap item remains unchecked.
+
+The current compositor effects tail is 72 bytes on x64, with capability `0x8`
+and create/destroy/region/reserve callbacks after the preserved 40-byte Masks
+prefix. Host tests reject truncated/missing/incorrect tails and retain old
+prefix behavior. Native tests compare independent feather/density and raw-invert
+references, strided/edge/ROI output, malformed descriptors, aliases and prewrite
+failure. The cache-local implementation uses a reusable `u32` column-sum vector,
+two A8 scratch buffers and exact three-box support `R` per axis. Logical native
+scratch is bounded to 32 MiB plus 16 KiB; raw and derived host planes each have
+separate 64 MiB logical budgets.
+
+Uniform-mask DOWN reserves native capacity without zeroing/feathering a full
+frame, then materializes constant raw/effective storage once. Typed MOVE uses
+cached A8 leases, tool/effects instances, fractional selection and dirty regions;
+no per-sample JSON, discovery, file I/O or whole-plane storage clone is added.
+The demanded output and its halo can still span the frame for a large brush or
+radius. Tests cover lease epochs, contact continuity, single-stroke Undo,
+allocator/revision/raw-state rollback, guaranteed workflow result binding,
+pixel-versus-mask targets and read-only snapshots. Apply tests retain filters
+and layer properties and explicitly check the live-alpha 69 versus raw-bake 68
+rounding case. Group-mask Apply remains unsupported.
+
+Rollback retains an active checkpoint's cached lease, while a private monotonic
+nonce prevents abandoned contacts from becoming valid again on the next DOWN.
+Two regressions failed against the previous document-local epoch increment and
+passed after this correction; the focused headless mask run passed 23 tests.
+The nonce is not serialized, exposed as public state or incremented on MOVE.
+Accepted pointer samples retain the existing per-sample Session revisions; one
+completed contact uses one Undo entry and bounded provisional outcome segments.
+
+The completed library runs passed 710 desktop and 531 headless tests, each with
+9 ignored tests. The native effects run passed 33 compositor tests with 5 ignored,
+and the SDK run passed 3 tests; the C11/C++17 ABI fixture check also passed.
+These counts describe those recorded runs, not a physical-device claim or a
+claim that every guarded mask feature is complete.
+
+A Release public-editing smoke passed 387 JSONL commands and 475 MCP commands,
+including 46 guarded geometry/boundary cases, locks, contacts and rollback. It
+compared independent raw-A8/effective/composite references, rejected effects
+through the previous 40-byte compositor, verified DLL-free playback and passed
+GUI parity plus 20 exact-size English/Chinese/Japanese/Korean root/native captures.
+Those PNGs totaled 4,759,101 bytes. Its 19 by 13, two-mask fixture had 494 logical
+raw A8 bytes, a 248-byte sample payload and a 286-byte MICOPI04 suffix excluding
+the recording. The exported recording was 90,782 bytes with 63 events, 21 A8 tile
+changes and 51 mask-version events; the embedded recording was 90,348 bytes.
+These concrete file observations include other outcomes and recorded paths;
+they are not an isolated compression ratio or peak-memory measurement.
+
+The separate runnable mask example completed 18 commands with valid 15-event
+replay; its PNG/project/archive outputs were 15,263/804,486/94,167 bytes. Runtime's
+125-command JSONL/MCP/GUI check, workflow transport/GUI parity and four-language
+switching/persistence checks also passed, preserving canvas and workflow data.
+The replay transport check passed with a 1,166,711-byte recording. Foundation
+transport checks retained MICOPI01/02/03 compatibility,
+preceding-host MICOPI04 rejection and a verified 204,344-byte, 17-event archive.
+Windows CI runs the public-editing transport subset after staging the matching
+native DLLs. Physical tablet and driver compatibility remain untested.
+
+### Scoped native effects measurements
+
+The ignored Release tests `mask_effects_native_4096_cold_and_warm_cost` and
+`mask_effects_interleaved_dll_cache_local_cost` measure prepared 4096-square
+inputs at density 203, radii 8 and 256. Run them with the existing portable
+environment/target arguments:
+
+```powershell
+cargo test --release --offline --locked -p micopi-compositing mask_effects_native_4096_cold_and_warm_cost -- --ignored --nocapture
+cargo test --release --offline --locked -p micopi-compositing mask_effects_interleaved_dll_cache_local_cost -- --ignored --nocapture
+```
+
+The paired fixture requires two preserved
+**effects-capable** 72-byte DLLs; set `MICOPI_MASK_BASELINE_DLL` and
+`MICOPI_MASK_CANDIDATE_DLL` to their paths. A masks-only 40-byte stable DLL cannot
+serve as this benchmark baseline. These ignored tests apply no CI timing threshold.
+
+Recorded opaque-DLL pairs alternated callback order and compared all output bytes
+and ROI padding. Fresh full-frame medians used three pairs; warm influence-ROI
+medians used 32 pairs and reused output allocations after capacity-only reserve.
+The baseline here is an earlier effects implementation, not the previously
+distributed masks-only application. For 32 by 32 raw damage, the host-demanded
+output expands to 48 by 48 at `R=8` or 544 by 544 at `R=256`; the native source
+halo expands again to 64 by 64 or 1056 by 1056 respectively.
+
+| Source | Radius | Full-frame baseline / candidate (ms) | Influence-ROI baseline / candidate (ms) |
+| --- | ---: | ---: | ---: |
+| Dense white | 8 | 1548.03 / 518.44 | 0.1191 / 0.1189 |
+| Dense white | 256 | 1474.85 / 515.66 | 33.9955 / 32.9740 |
+| Deterministic dense pattern | 8 | 1581.11 / 506.45 | 0.1157 / 0.1148 |
+| Deterministic dense pattern | 256 | 1474.18 / 489.74 | 31.8461 / 30.7866 |
+
+A separate direct-callback run used 128 warm, fixed 32 by 32 output requests.
+Candidate dense-pattern medians were 0.0644 ms at radius 8 and 8.4979 ms at
+radius 256; these fixed outputs are smaller than the host-expanded influence
+regions above and must not be substituted for their cost. Fresh capacity-only
+reserve observations ranged from 0.0249 to 0.0413 ms, with zero scratch lengths
+and 33,570,816 reserved logical bytes. Uniform descriptors avoided feather
+scratch entirely unless reserve was explicitly requested. Pointers/capacities
+remained reusable and independent center/edge references matched.
+
+Region timers include the C callback, validation and kernel, with native scratch
+allocation included for fresh full-frame work. Reserve timers include capacity
+allocation but no pixel processing. DLL loading/instance creation, prepared
+source/output allocation, host raw/effective caches, history/replay, composition,
+encoding, I/O, reference comparisons, GUI and physical pen input are outside
+these timers. The measurements are local observations, not application speedup,
+frame-rate, allocation-residency or tablet-latency guarantees.
+
+The previously delivered `MiCoPi-0.21.0-1b8fc9d-Windows-x64.zip` packages the
+validated `eff8e54` runtime with later license/document-link fixes. It does not
+contain this new editing subset or its effects DLL. Its 443 entries, 148-package
+license manifest, 66 Markdown files and 43 examples were checked independently;
+do not present the new source/benchmark results as validation of different
+binaries, or imply that the earlier stable package exposes these new controls.
+
+The final editing desktop/CLI sizes are 10,494,976/4,297,216 bytes,
+199/122.5 KiB above the `eff8e54` capture-stabilized executables. Compositing is
+287,232 bytes, 9 KiB above its preceding 278,016-byte DLL; painting remains
+356,864 bytes. No Cargo dependency is added. These individual file sizes are
+separate from package size, peak memory and latency. The final source-matched
+GNU Release build completed after the private lease-nonce correction.
+
+The final Release mask smoke repeated JSONL/MCP/GUI parity after that correction;
+all twenty captured PNGs were byte-identical to the reviewed candidate captures.
+The portable preflight contains 446 files and the unchanged 148-package license
+manifest. Its extracted CLI and desktop each ran the 18-command example with
+default plugin discovery and a Windows-system-only PATH, verified both masks and
+the journal, and closed the owned GUI normally. Packaging uses the normalized
+Git snapshot: exact lock/policy hashes can legitimately differ from a CRLF
+working copy, and the strict license verifier is not bypassed. No DLL, executable,
+personal settings or generated output is added to source history.
+
 ## Workspace and native capture checks
+
+The capture contracts remain current. The recorded counts, executable sizes and
+regression results in this subsection describe the earlier `eff8e54`
+capture-stabilization delivery; they are not fresh results for the public mask
+editing candidate documented above.
 
 Run `python scripts/smoke-captures.py --cli <built-cli> --gui <built-desktop>` for concurrent root/native requests, multiple paths in one viewport, narrow/wide resizing, hidden/docked targets and file failures. It checks request-specific terminal records, independent PNG CRCs/RGBA and exact owned-process client pixels, plus unchanged artwork/composition and capture-only revisions. A successful final scenario saves nine captures and reports four explicit failures. Use `python scripts/smoke-localization.py --cli <built-cli> --gui <built-desktop>` for the full English/Chinese/Japanese/Korean form/settings/hot-reload workload with correlated capture checks. One complete run validates 106 PNGs: 90 root frames at 1700 by 1150, eight narrow floating frames at 350 by 375 and eight wide frames at 1250 by 188 in the tested 1.25-scale desktop. Those dimensions describe that environment, not fixed application sizes.
 
@@ -186,7 +343,7 @@ The capture helper waits for actual native readiness and gives each placement, r
 
 The encoder starts on demand and has two reserved/queued image slots plus one active job, with a 16 Mi-pixel per-image bound. It uses existing image/PNG dependencies, Fast compression and atomic publication. The pointer/DLL path is unchanged, and UI callbacks perform framebuffer readback without PNG conversion or file writes. Counts and bounds are not a process-wide memory measurement, an input-latency guarantee or physical tablet validation. See [Capture Requests](capture-requests.md) for deadlines, external effects, diagnostic schemas and replay boundaries.
 
-The final GNU Release desktop/CLI executables are 10,291,200/4,171,776 bytes, increases of 24/24.5 KiB over the mask document foundation. Painting/compositor DLLs retain their exact hashes and 356,864/278,016-byte sizes; Cargo dependencies are unchanged. Full library suites passed 669 desktop and 497 headless tests, with 9 ignored in each; the final capture subset passed 26 desktop and 6 headless checks. Focused capture and full localization checks each passed twice across candidate/final executables, including independent client-size checks and reviewed captures. Runtime, workflow, replay, raster-mask and native-window checks also completed. One runtime attempt rejected an Eraser stroke against an alpha-locked layer; the unchanged 125-command diagnostic rerun passed, and its first tool-state cause could not be recovered. The runtime helper now preserves the failing command, state and events if that condition recurs; it is not reported as a fixed drawing bug.
+The capture-stabilization GNU Release desktop/CLI executables were 10,291,200/4,171,776 bytes, increases of 24/24.5 KiB over the mask document foundation. Painting/compositor DLLs retained their exact hashes and 356,864/278,016-byte sizes; Cargo dependencies were unchanged. Full library suites passed 669 desktop and 497 headless tests, with 9 ignored in each; the final capture subset passed 26 desktop and 6 headless checks. Focused capture and full localization checks each passed twice across that candidate/final pair, including independent client-size checks and reviewed captures. Runtime, workflow, replay, raster-mask and native-window checks also completed. One runtime attempt rejected an Eraser stroke against an alpha-locked layer; the unchanged 125-command diagnostic rerun passed, and its first tool-state cause could not be recovered. The runtime helper now preserves the failing command, state and events if that condition recurs; it is not reported as a fixed drawing bug.
 
 ## Selected-layer merge checks
 

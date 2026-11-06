@@ -180,7 +180,7 @@ impl PixelAccess {
         {
             return Err(ActionError::new(
                 "mask_target_pending",
-                "Select a layer to edit its pixels; document mask painting is not available yet",
+                "This operation edits layer pixels. Select Pixels before continuing.",
             ));
         }
         if self == Self::Geometry && document.has_raster_masks() {

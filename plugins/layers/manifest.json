@@ -67,6 +67,2013 @@
           "runtime"
         ]
       }
+    },
+    {
+      "id": "mask.query",
+      "title": "Inspect Raster Masks",
+      "operation": "mask_query",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "owner": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "layer",
+                        "group"
+                      ]
+                    },
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "linked": {
+                  "type": "boolean"
+                },
+                "density": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "feather_radius_px": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 256
+                }
+              },
+              "required": [
+                "id",
+                "owner",
+                "enabled",
+                "linked",
+                "density",
+                "feather_radius_px"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "layer_pixels",
+                  "mask"
+                ]
+              },
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "next_id": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967296
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "composition": {
+                "type": "boolean"
+              },
+              "effects": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "composition",
+              "effects"
+            ],
+            "additionalProperties": false
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "logical_bytes": {
+                "type": "integer"
+              },
+              "feather_radius_px": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "count",
+              "logical_bytes",
+              "feather_radius_px"
+            ],
+            "additionalProperties": false
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "version",
+          "items",
+          "target",
+          "width",
+          "height",
+          "next_id",
+          "capabilities",
+          "limits",
+          "revision"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "mask.create",
+      "title": "Add Raster Mask",
+      "operation": "mask_create",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "raster_masks": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "items": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "layer",
+                            "group"
+                          ]
+                        },
+                        "id": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4294967295
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "density": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "feather_radius_px": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 256
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "owner",
+                    "enabled",
+                    "linked",
+                    "density",
+                    "feather_radius_px"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "layer_pixels",
+                      "mask"
+                    ]
+                  },
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "next_id": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967296
+              },
+              "capabilities": {
+                "type": "object",
+                "properties": {
+                  "composition": {
+                    "type": "boolean"
+                  },
+                  "effects": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "composition",
+                  "effects"
+                ],
+                "additionalProperties": false
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "logical_bytes": {
+                    "type": "integer"
+                  },
+                  "feather_radius_px": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "count",
+                  "logical_bytes",
+                  "feather_radius_px"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "version",
+              "items",
+              "target",
+              "width",
+              "height",
+              "next_id",
+              "capabilities",
+              "limits"
+            ],
+            "additionalProperties": false
+          },
+          "mask_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "raster_masks",
+          "mask_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "mask.delete",
+      "title": "Delete Raster Mask",
+      "operation": "mask_delete",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "raster_masks": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "items": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "layer",
+                            "group"
+                          ]
+                        },
+                        "id": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4294967295
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "density": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "feather_radius_px": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 256
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "owner",
+                    "enabled",
+                    "linked",
+                    "density",
+                    "feather_radius_px"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "layer_pixels",
+                      "mask"
+                    ]
+                  },
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "next_id": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967296
+              },
+              "capabilities": {
+                "type": "object",
+                "properties": {
+                  "composition": {
+                    "type": "boolean"
+                  },
+                  "effects": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "composition",
+                  "effects"
+                ],
+                "additionalProperties": false
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "logical_bytes": {
+                    "type": "integer"
+                  },
+                  "feather_radius_px": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "count",
+                  "logical_bytes",
+                  "feather_radius_px"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "version",
+              "items",
+              "target",
+              "width",
+              "height",
+              "next_id",
+              "capabilities",
+              "limits"
+            ],
+            "additionalProperties": false
+          },
+          "mask_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "raster_masks",
+          "mask_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "mask.set",
+      "title": "Set Raster Mask Properties",
+      "operation": "mask_properties",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "raster_masks": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "items": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "layer",
+                            "group"
+                          ]
+                        },
+                        "id": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4294967295
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "density": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "feather_radius_px": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 256
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "owner",
+                    "enabled",
+                    "linked",
+                    "density",
+                    "feather_radius_px"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "layer_pixels",
+                      "mask"
+                    ]
+                  },
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "next_id": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967296
+              },
+              "capabilities": {
+                "type": "object",
+                "properties": {
+                  "composition": {
+                    "type": "boolean"
+                  },
+                  "effects": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "composition",
+                  "effects"
+                ],
+                "additionalProperties": false
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "logical_bytes": {
+                    "type": "integer"
+                  },
+                  "feather_radius_px": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "count",
+                  "logical_bytes",
+                  "feather_radius_px"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "version",
+              "items",
+              "target",
+              "width",
+              "height",
+              "next_id",
+              "capabilities",
+              "limits"
+            ],
+            "additionalProperties": false
+          },
+          "mask_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "raster_masks",
+          "mask_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "mask.target",
+      "title": "Select Painting Target",
+      "operation": "mask_target",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "raster_masks": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "items": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "layer",
+                            "group"
+                          ]
+                        },
+                        "id": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4294967295
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "density": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "feather_radius_px": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 256
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "owner",
+                    "enabled",
+                    "linked",
+                    "density",
+                    "feather_radius_px"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "layer_pixels",
+                      "mask"
+                    ]
+                  },
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "next_id": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967296
+              },
+              "capabilities": {
+                "type": "object",
+                "properties": {
+                  "composition": {
+                    "type": "boolean"
+                  },
+                  "effects": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "composition",
+                  "effects"
+                ],
+                "additionalProperties": false
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "logical_bytes": {
+                    "type": "integer"
+                  },
+                  "feather_radius_px": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "count",
+                  "logical_bytes",
+                  "feather_radius_px"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "version",
+              "items",
+              "target",
+              "width",
+              "height",
+              "next_id",
+              "capabilities",
+              "limits"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "raster_masks"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "mask.fill",
+      "title": "Fill Raster Mask",
+      "operation": "mask_fill",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "raster_masks": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "items": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "layer",
+                            "group"
+                          ]
+                        },
+                        "id": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4294967295
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "density": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "feather_radius_px": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 256
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "owner",
+                    "enabled",
+                    "linked",
+                    "density",
+                    "feather_radius_px"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "layer_pixels",
+                      "mask"
+                    ]
+                  },
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "next_id": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967296
+              },
+              "capabilities": {
+                "type": "object",
+                "properties": {
+                  "composition": {
+                    "type": "boolean"
+                  },
+                  "effects": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "composition",
+                  "effects"
+                ],
+                "additionalProperties": false
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "logical_bytes": {
+                    "type": "integer"
+                  },
+                  "feather_radius_px": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "count",
+                  "logical_bytes",
+                  "feather_radius_px"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "version",
+              "items",
+              "target",
+              "width",
+              "height",
+              "next_id",
+              "capabilities",
+              "limits"
+            ],
+            "additionalProperties": false
+          },
+          "mask_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "raster_masks",
+          "mask_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "mask.invert",
+      "title": "Invert Raster Mask",
+      "operation": "mask_invert",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "raster_masks": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "items": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "layer",
+                            "group"
+                          ]
+                        },
+                        "id": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4294967295
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "density": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "feather_radius_px": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 256
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "owner",
+                    "enabled",
+                    "linked",
+                    "density",
+                    "feather_radius_px"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "layer_pixels",
+                      "mask"
+                    ]
+                  },
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "next_id": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967296
+              },
+              "capabilities": {
+                "type": "object",
+                "properties": {
+                  "composition": {
+                    "type": "boolean"
+                  },
+                  "effects": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "composition",
+                  "effects"
+                ],
+                "additionalProperties": false
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "logical_bytes": {
+                    "type": "integer"
+                  },
+                  "feather_radius_px": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "count",
+                  "logical_bytes",
+                  "feather_radius_px"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "version",
+              "items",
+              "target",
+              "width",
+              "height",
+              "next_id",
+              "capabilities",
+              "limits"
+            ],
+            "additionalProperties": false
+          },
+          "mask_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "raster_masks",
+          "mask_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "mask.from_selection",
+      "title": "Replace Mask from Selection",
+      "operation": "mask_from_selection",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "raster_masks": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "items": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "layer",
+                            "group"
+                          ]
+                        },
+                        "id": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4294967295
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "density": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "feather_radius_px": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 256
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "owner",
+                    "enabled",
+                    "linked",
+                    "density",
+                    "feather_radius_px"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "layer_pixels",
+                      "mask"
+                    ]
+                  },
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "next_id": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967296
+              },
+              "capabilities": {
+                "type": "object",
+                "properties": {
+                  "composition": {
+                    "type": "boolean"
+                  },
+                  "effects": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "composition",
+                  "effects"
+                ],
+                "additionalProperties": false
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "logical_bytes": {
+                    "type": "integer"
+                  },
+                  "feather_radius_px": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "count",
+                  "logical_bytes",
+                  "feather_radius_px"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "version",
+              "items",
+              "target",
+              "width",
+              "height",
+              "next_id",
+              "capabilities",
+              "limits"
+            ],
+            "additionalProperties": false
+          },
+          "mask_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "raster_masks",
+          "mask_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "mask.to_selection",
+      "title": "Load Mask as Selection",
+      "operation": "mask_to_selection",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "raster_masks": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "items": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "layer",
+                            "group"
+                          ]
+                        },
+                        "id": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4294967295
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "density": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "feather_radius_px": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 256
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "owner",
+                    "enabled",
+                    "linked",
+                    "density",
+                    "feather_radius_px"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "layer_pixels",
+                      "mask"
+                    ]
+                  },
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "next_id": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967296
+              },
+              "capabilities": {
+                "type": "object",
+                "properties": {
+                  "composition": {
+                    "type": "boolean"
+                  },
+                  "effects": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "composition",
+                  "effects"
+                ],
+                "additionalProperties": false
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "logical_bytes": {
+                    "type": "integer"
+                  },
+                  "feather_radius_px": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "count",
+                  "logical_bytes",
+                  "feather_radius_px"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "version",
+              "items",
+              "target",
+              "width",
+              "height",
+              "next_id",
+              "capabilities",
+              "limits"
+            ],
+            "additionalProperties": false
+          },
+          "mask_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "raster_masks",
+          "mask_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "mask.snapshot",
+      "title": "Read Raw Mask Samples",
+      "operation": "mask_snapshot",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "mask_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "x": {
+            "type": "integer"
+          },
+          "y": {
+            "type": "integer"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "encoding": {
+            "type": "string",
+            "enum": [
+              "a8"
+            ]
+          },
+          "samples": {
+            "type": "array",
+            "maxItems": 65536,
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "mask_id",
+          "x",
+          "y",
+          "width",
+          "height",
+          "encoding",
+          "samples",
+          "revision"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "mask.apply",
+      "title": "Apply Raster Mask to Layer",
+      "operation": "mask_apply",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "raster_masks": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "items": {
+                "type": "array",
+                "maxItems": 32,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "owner": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "layer",
+                            "group"
+                          ]
+                        },
+                        "id": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 4294967295
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "linked": {
+                      "type": "boolean"
+                    },
+                    "density": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "feather_radius_px": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 256
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "owner",
+                    "enabled",
+                    "linked",
+                    "density",
+                    "feather_radius_px"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "target": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "layer_pixels",
+                      "mask"
+                    ]
+                  },
+                  "id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "additionalProperties": false
+              },
+              "width": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "height": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4096
+              },
+              "next_id": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 4294967296
+              },
+              "capabilities": {
+                "type": "object",
+                "properties": {
+                  "composition": {
+                    "type": "boolean"
+                  },
+                  "effects": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "composition",
+                  "effects"
+                ],
+                "additionalProperties": false
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "count": {
+                    "type": "integer"
+                  },
+                  "logical_bytes": {
+                    "type": "integer"
+                  },
+                  "feather_radius_px": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "count",
+                  "logical_bytes",
+                  "feather_radius_px"
+                ],
+                "additionalProperties": false
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "version",
+              "items",
+              "target",
+              "width",
+              "height",
+              "next_id",
+              "capabilities",
+              "limits"
+            ],
+            "additionalProperties": false
+          },
+          "mask_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "bake_mode": {
+            "type": "string",
+            "enum": [
+              "raw_alpha"
+            ]
+          }
+        },
+        "required": [
+          "raster_masks",
+          "mask_id",
+          "layer_id",
+          "bake_mode"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "states": [
+    {
+      "id": "layers.masks",
+      "title": "Raster mask ownership, properties and paint target",
+      "action": "mask.query",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "owner": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "layer",
+                        "group"
+                      ]
+                    },
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "linked": {
+                  "type": "boolean"
+                },
+                "density": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "feather_radius_px": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 256
+                }
+              },
+              "required": [
+                "id",
+                "owner",
+                "enabled",
+                "linked",
+                "density",
+                "feather_radius_px"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "target": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "layer_pixels",
+                  "mask"
+                ]
+              },
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "next_id": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967296
+          },
+          "capabilities": {
+            "type": "object",
+            "properties": {
+              "composition": {
+                "type": "boolean"
+              },
+              "effects": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "composition",
+              "effects"
+            ],
+            "additionalProperties": false
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "logical_bytes": {
+                "type": "integer"
+              },
+              "feather_radius_px": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "count",
+              "logical_bytes",
+              "feather_radius_px"
+            ],
+            "additionalProperties": false
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "version",
+          "items",
+          "target",
+          "width",
+          "height",
+          "next_id",
+          "capabilities",
+          "limits",
+          "revision"
+        ],
+        "additionalProperties": false
+      }
     }
   ]
 }

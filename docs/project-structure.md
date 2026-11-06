@@ -70,8 +70,15 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/raster_masks.rs`, `src/engine/raster_mask_editing.rs` | Bounded stable-ID mask metadata, raw uniform/dense A8 storage, contact leases and independent byte-tile history |
 | `src/engine/raster_mask_project.rs` | MICOPI04 byte-plane directory, strict payload validation and cold uniform canonicalization |
 | `src/engine/mask_composition.rs`, `src/engine/mask_composition_tests.rs`, `src/engine/mask_graph_tests.rs` | Generated layer/group coverage gates, cached descriptors, typed ports and exact composition/budget checks |
-| `src/engine/mask_boundary.rs`, `src/application/mask_boundary.rs` | Temporary guards for mask-unaware structural, geometric and transfer edits before public mask integration |
+| `src/engine/mask_effects.rs`, `src/engine/mask_effects_tests.rs` | Separate effective-A8 caches, exact feather influence damage and cold capacity preparation |
+| `src/engine/mask_apply.rs` | Staged raster-owner raw-alpha mask baking with retained filters/opacity and shared Undo |
+| `src/plugins/raster_masks.rs` | Eleven mask action schemas/handlers, metadata state, bounded raw snapshots and guaranteed workflow results |
+| `src/plugins/tools.rs`, `src/plugins/native_mask_tools_tests.rs` | Cached typed A8 contact routing, capability admission and scoped cross-domain loan checks |
+| `plugins/compositing/src/mask_effects.rs`, `src/plugins/native_mask_effects_tests.rs` | Independent native density/feather/inversion kernel, instance/reserve ABI and lifecycle negotiation |
+| `plugins/layers/masks.rs` | Compiled raw grayscale thumbnails, painting-target feedback and revision-guarded property drafts |
+| `src/engine/mask_boundary.rs`, `src/application/mask_boundary.rs` | Remaining rejection guards for mask-unaware structural, geometric, merge and transfer edits |
 | `src/engine/raster_mask_tests.rs`, `src/application/raster_mask_tests.rs` | Raw storage/history/project regressions, target boundaries and Session rollback/persistence checks |
+| `src/application/raster_mask_workflow_tests.rs`, `src/application/raster_mask_failure_tests.rs`, `scripts/smoke-mask-editing.py` | Dynamic schema/result binding, mask-edit rollback, retained raw-alpha semantics and transport/UI checks |
 | `src/engine/canvas_editing.rs` | Staged geometry, shared transform validation/publication and borrowed-source preview composition |
 | `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
 | `src/engine/group_merge.rs`, `src/application/group_merge_tests.rs`, `scripts/smoke-group-merge.py` | Staged subtree/visible-group baking, retained hidden branches and shared action/history/replay verification |
@@ -144,7 +151,9 @@ The host owns transaction and verification rules. Plugins own drawing and proces
 
 ## Tests and local output
 
-Native A8 prerequisites live in the existing SDK/header, `plugins/painting/src/raster.rs` and `plugins/compositing/src/masks.rs`. `src/plugins/native_masks_tests.rs` checks negotiation and dispatch; `tests/fixtures/native-layout.c`, `scripts/check-native-abi.py` and `scripts/smoke-native-masks.py` check C/C++ layouts and actual DLL behavior. The implemented document byte-plane/history/project/replay foundation is specified in [Raster Mask Storage](raster-mask-storage.md). Public mask painting, commands, property effects, complete geometry/structural integration and thumbnail controls remain planned in [Raster Masks Design](raster-masks-design.md); the full feature is not yet available.
+Native A8 prerequisites live in the existing SDK/header, `plugins/painting/src/raster.rs` and `plugins/compositing/src/masks.rs`. `src/plugins/native_masks_tests.rs` checks negotiation and dispatch; `tests/fixtures/native-layout.c`, `scripts/check-native-abi.py` and `scripts/smoke-native-masks.py` check C/C++ layouts and actual DLL behavior. The document byte-plane/history/project/replay foundation is specified in [Raster Mask Storage](raster-mask-storage.md). The first [Raster Mask Editing](raster-mask-editing.md) subset adds registered commands/state, typed pressure/stabilized painting, cached native density/feather, raw snapshots, raster-owner Apply and compiled thumbnail/property controls. Complete geometry, structural, merge and transfer integration remains planned in [Raster Masks Design](raster-masks-design.md); the full mask roadmap item stays unchecked.
+
+Compositor effect tests and reusable-capacity benchmarks live beside `plugins/compositing/src/mask_effects.rs`; engine cache/apply tests, Session workflow/failure tests and compiled Layers tests retain their own scopes. `scripts/smoke-mask-editing.py` exercises the public routes. These file locations describe ownership and available checks; they do not imply that a pending suite, GUI capture or physical tablet validation has passed.
 
 Unit tests stay near their implementation. Shared support lives under `tests/reference/`, ABI rejection fixtures under `tests/fixtures/native-incompatible/`, and historical recording fixtures under `tests/fixtures/replay/`. Keep each binary fixture with its provenance and expected hashes. See [Development](development.md) for commands and `tests/README.md` for shared support.
 

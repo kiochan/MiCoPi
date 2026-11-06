@@ -95,6 +95,15 @@ impl Operation {
         matches!(
             self,
             Self::DocumentResolution
+                | Self::MaskCreate
+                | Self::MaskDelete
+                | Self::MaskProperties
+                | Self::MaskTarget
+                | Self::MaskFill
+                | Self::MaskInvert
+                | Self::MaskFromSelection
+                | Self::MaskToSelection
+                | Self::MaskApply
                 | Self::RotateCanvasClockwise
                 | Self::RotateCanvasCounterclockwise
                 | Self::RotateCanvasHalf

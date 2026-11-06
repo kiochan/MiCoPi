@@ -84,7 +84,69 @@ The new synchronous callback receives the existing instructions/layers followed 
 
 Masked-renderer kinds 6/7/8 add coverage source (`a` is the descriptor index, other fields zero), ApplyMask (`a` image, `b` coverage, `mode=0`) and MaskedMix (`a` before, `b` after, `mode` coverage slot). Slots carry distinct image/coverage types within the same 64-word scratch budget; references must precede the instruction, and the final slot must be an image. Types validate even on disconnected instructions. ApplyMask and MaskedMix require finite `amount` in 0–1. Set `o=round_half_up(amount*255)` and `t=round_half_up(o*coverage/255)` once. ApplyMask uses `floor(alpha*t/255)`, retains RGB when that alpha is nonzero and otherwise returns zero. MaskedMix uses the existing exact premultiplied Mix at `t`, including its endpoint identities. The original callback rejects kinds 6–8. An unmasked call through the new host adapter retains the legacy callback path.
 
-These are native prerequisites. Document mask ownership, public mask graph syntax, actions, byte-tile history, persistence and the Layers UI remain planned in [Raster Masks Design](raster-masks-design.md).
+These primitives are used by the implemented [document/history/project foundation](raster-mask-storage.md) and first [public editing subset](raster-mask-editing.md). Generated coverage gates are not independently creatable editable source-filter nodes. Registered mask actions/state become workflow nodes through their schemas; complete geometry/structural integration remains planned in [Raster Masks Design](raster-masks-design.md).
+
+### Optional native mask effects
+
+`CompositorApiMaskEffects` / `MicopiCompositorApiMaskEffects` retains the complete
+40-byte Masks prefix and appends four callbacks on x64: `create_mask_effects` at
+offset 40, `destroy_mask_effects` at 48, `mask_effect_region` at 56 and
+`reserve_mask_effects` at 64, making the table 72 bytes. Capability
+`COMPOSITOR_MASK_EFFECTS` / `MICOPI_COMPOSITOR_MASK_EFFECTS` is `0x8` and requires
+the Masks bit `0x4`. The host reads these callbacks only when both the capability
+and complete tail are advertised. Null callbacks, a truncated table (including
+an incomplete 64-byte experimental effects tail), or effects without Masks reject
+loading. Without the effects bit the tail is ignored; the 40-byte masked-render
+prefix and older prefixes retain their existing contracts.
+
+Create/destroy own an opaque effects instance. The host lazily caches one per
+loaded compositor behind its lifecycle guard and destroys it before unloading
+the DLL. It does not create instances per MOVE. Callbacks are synchronous; no
+host image or output pointer is retained. The instance owns two reusable byte
+buffers, at most 32 MiB of logical scratch, plus a `u32` column workspace of at
+most 16 KiB. Capacities do not shrink between regions.
+
+`MaskEffectRequest` is 16 bytes: `u32 flags`, `density`, `feather_radius` and
+`reserved`. Normal flags are zero, density is 0–255, radius is 0–256, and reserved
+is zero. The region callback receives that request, an immutable full-frame
+`CompositeMask`, the frame width/height, and a separate mutable `A8Pixels` output
+ROI with canvas-relative origin. Frame sides are 1–4096. The uniform descriptor
+retains its null-pointer/zero-length/zero-stride/byte-constant rules; dense input
+has constant zero and validated full-frame storage. Output stride padding is
+preserved. Descriptor metadata, all source/output spans and persistent instance
+scratch must be disjoint from writable output. Invalid flags, bounds, sizes,
+alignment or aliasing reject before output writes.
+
+Feather uses split radii `a=floor((R+2)/3)`, `b=floor((R+1)/3)`, `c=floor(R/3)` in
+the order `H(a),V(a),H(b),V(b),H(c),V(c)`. Each pass clamps to the canvas edge and
+rounds the byte mean as `floor((sum+r)/(2*r+1))`; zero-radius passes are identities.
+Total support is exactly `R` on each axis. Density runs after all passes:
+`255-floor(((255-feathered)*density+127)/255)`. All-white input stays white at
+edges. Region evaluation copies only its demanded ROI plus the necessary halo
+into reused scratch and writes only the ROI. Uniform input, density zero and
+radius-zero paths do not need the feather scratch.
+
+`MASK_EFFECT_INVERT_RAW` / `MICOPI_MASK_EFFECT_INVERT_RAW` is flag `1`, admitted
+only with radius zero and density 255. It writes `255-raw` and is a separate cold
+raw edit; it does not invert the derived feather/density output. Unknown flag
+combinations reject. Public `mask.invert` uses this native operation and preserves
+effect metadata.
+
+The reserve callback receives instance, frame width/height and radius. It reserves
+full-frame byte and column capacities without changing lengths, zero-filling or
+running a pixel kernel. Uniform-mask contact preparation uses it before raw and
+constant effective storage materialize once. Later dirty regions fit that warmed
+capacity; dense cold rebuilds may still perform full-frame work. The host owns
+effective-cache invalidation and expands raw damage by exactly `R`. Raw and
+effective host A8 planes each have separate 64 MiB logical budgets; neither
+effective caches nor native scratch enter history or project/replay payloads.
+
+Missing effects support rejects nondefault density/feather before live mutation
+or project publication, including hidden/disabled branches. Verified outcome
+restoration remains DLL-independent. Independent kernel/reference, stride/ROI,
+border, malformed descriptor, alias/prewrite, reservation and old-tail tests live
+with the compositor and host bridge; their synthetic scope does not establish
+tablet compatibility.
 
 ## Contributions and automation
 
@@ -123,7 +185,7 @@ The host rejects locked painting if this capability is absent. Locked brushes bl
 
 `TOOL_OPTION_A8_TARGET` / `MICOPI_TOOL_OPTION_A8_TARGET` is bit `0x4` in the existing options feature/flag tails. Supporting tools freeze this explicit target at DOWN. It cannot combine with alpha lock; selection clipping remains independent. `ToolHostA8` / `MicopiToolHostA8` appends an optional `a8` region-loan callback to the unchanged 32-byte tool-host prefix, yielding a complete 40-byte x64 table. Read it only for an explicitly configured A8 target after checking the complete size and nonnull callback. Missing, truncated or lost A8 hosts reject the contact rather than calling the RGBA loan.
 
-`A8Pixels` mirrors the 40-byte `Pixels` descriptor with a mutable byte pointer; lengths and strides count bytes. Its transform is synchronous and scoped to one region. The host must capture byte undo tiles before lending storage, preserve identity/permissions for the contact and roll back the complete stroke on failure. It must separately reject an RGBA loan on an A8 target and an A8 loan on an RGBA target; action `HostApi.edit_region` keeps its RGBA contract. The current application does not yet issue A8 contacts.
+`A8Pixels` mirrors the 40-byte `Pixels` descriptor with a mutable byte pointer; lengths and strides count bytes. Its transform is synchronous and scoped to one region. The host captures byte undo tiles before lending storage, preserves identity/permissions for the contact and rolls back the complete stroke on failure. It separately rejects an RGBA loan on an A8 target and an A8 loan on an RGBA target; action `HostApi.edit_region` keeps its RGBA contract. The typed Session Brush/Eraser route issues A8 contacts using a cached mask lease and tool instance, with capabilities/options prepared before raw materialization at DOWN. Read-only, reentrant and stale loans reject without creating a second editing path.
 
 The painting DLL reuses pressure, spacing, interpolation and stabilization. Only its dab sink differs. Brush freezes `(54*R+183*G+19*B+128)/256` using integer division on encoded RGB; Eraser and pen eraser reveal toward 255. With effective dab byte `a`, blend `round_half_up((old*(255-a)+target*a)/255)`. Frozen fractional selection coverage multiplies dab strength once. Validate region/origin/stride/storage, reject misaligned metadata before dereferencing, and reject writable storage overlapping the descriptor, dab parameters or immutable selection before forming a mutable slice. Preserve row padding. Final UP/CANCEL stabilization failures return an error after clearing the contact; the host must roll back all its captured tiles. No JSON, mask compression, whole-plane copy or extra options call occurs per MOVE.
 

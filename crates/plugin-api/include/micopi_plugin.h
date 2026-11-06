@@ -240,6 +240,38 @@ typedef struct {
     MicopiCompositorApiModes base;
     MicopiCompositeRenderMaskedFn render_masked;
 } MicopiCompositorApiMasks;
+/* Optional effective-A8 kernel. Requires complete tail plus MASKS capability;
+   the original 40-byte mask-compositor prefix is unchanged. */
+#define MICOPI_COMPOSITOR_MASK_EFFECTS (UINT64_C(1) << 3)
+#define MICOPI_MASK_EFFECT_MAX_RADIUS 256u
+/* Raw inversion only: requires density=255 and feather_radius=0. */
+#define MICOPI_MASK_EFFECT_INVERT_RAW 1u
+/* Normal flags=0; reserved=0. For R, a=(R+2)/3,b=(R+1)/3,c=R/3.
+   Apply H(a),V(a),H(b),V(b),H(c),V(c), clamping each box to canvas edges
+   and rounding each byte mean half-up. Support is exactly R per axis.
+   Then coverage=255-round_half_up((255-feathered)*density/255). */
+typedef struct {
+    uint32_t flags, density, feather_radius, reserved;
+} MicopiMaskEffectRequest;
+typedef void *(*MicopiMaskEffectsCreateFn)(void);
+typedef void (*MicopiMaskEffectsDestroyFn)(void *);
+/* Reserve two full-frame A8 capacities plus one u32 column row: dimensions
+   1..4096, radius 0..256, at most 32 MiB + 16 KiB. Lengths/pixels stay unchanged. */
+typedef int32_t (*MicopiMaskEffectsReserveFn)(void *, uint32_t, uint32_t, uint32_t);
+/* Immutable full-canvas CompositeMask, frame dimensions 1..4096; disjoint
+   A8Pixels output origin/size requests the ROI. Validate before writes.
+   Instances reuse ROI+halo scratch. No source/output pointer outlives the call. */
+typedef int32_t (*MicopiMaskEffectRegionFn)(
+    void *, const MicopiMaskEffectRequest *, const MicopiCompositeMask *,
+    uint32_t, uint32_t, MicopiA8Pixels *);
+typedef struct {
+    MicopiCompositorApiMasks base;
+    MicopiMaskEffectsCreateFn create_mask_effects;
+    MicopiMaskEffectsDestroyFn destroy_mask_effects;
+    MicopiMaskEffectRegionFn mask_effect_region;
+    /* All four callbacks and the complete 72-byte table are required by cap 8. */
+    MicopiMaskEffectsReserveFn reserve_mask_effects;
+} MicopiCompositorApiMaskEffects;
 const MicopiCompositorApi *micopi_compositor_v1(void);
 /* Independent optional exact geometry table, with immutable source and disjoint
    output. Local origins are zero; dimensions/stride are bounded to 4096.

@@ -326,7 +326,7 @@ impl Session {
         let mut parameters = json!(self.parameters);
         parameters["spacing"] = json!(self.parameters.spacing);
         parameters["minimum_opacity"] = json!(self.parameters.minimum_opacity);
-        json!({"document_info":self.doc.info().state(self.doc.width,self.doc.height),"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"selected_layer_ids":self.doc.selected_layer_ids(),"groups":self.doc.groups_state(),"layers":(0..self.doc.layers.len()).map(|index|self.layer_state(index)).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"last_transform":crate::plugins::affine::repeat_state(self),"movement_defaults":self.movement_defaults,"movement_options":self.movement_options(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
+        json!({"document_info":self.doc.info().state(self.doc.width,self.doc.height),"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"selected_layer_ids":self.doc.selected_layer_ids(),"groups":self.doc.groups_state(),"raster_masks":crate::plugins::raster_masks::state(self),"layers":(0..self.doc.layers.len()).map(|index|self.layer_state(index)).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"last_transform":crate::plugins::affine::repeat_state(self),"movement_defaults":self.movement_defaults,"movement_options":self.movement_options(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
     }
     pub(crate) fn layer_state(&self, index: usize) -> Value {
         let l = &self.doc.layers[index];
@@ -618,6 +618,9 @@ impl Session {
         validate(&definition.schema(), &action.args)?;
         if let Some(op) = definition.operation {
             validate(&op.schema(), &action.args)?;
+            if op.is_mask() {
+                crate::plugins::raster_masks::validate(op, &action.args)?;
+            }
             if matches!(op, Operation::New | Operation::NewPlan) {
                 // Unit-dependent bounds are not expressible by the shared schema
                 // subset. Reject literal creation errors before earlier steps run.

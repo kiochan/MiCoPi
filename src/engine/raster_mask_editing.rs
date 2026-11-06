@@ -3,6 +3,11 @@ use super::*;
 use crate::engine::raster_masks::{
     MaskLease, MaskMetadata, MaskOwner, MaskPlane, MaskState, PaintTarget, PlaneView, SamplePlane,
 };
+use std::sync::atomic::{AtomicU64, Ordering};
+
+// Restoring an active checkpoint retains its cached lease, but the next contact
+// must not reuse a nonce abandoned by rollback or document replacement.
+static NEXT_MASK_STORAGE_EPOCH: AtomicU64 = AtomicU64::new(1);
 
 impl Document {
     pub fn mask_state(&self) -> &MaskState {
@@ -68,7 +73,7 @@ impl Document {
         }
     }
     pub(super) fn bump_mask_storage_epoch(&mut self) {
-        self.mask_storage_epoch = self.mask_storage_epoch.wrapping_add(1);
+        self.mask_storage_epoch = NEXT_MASK_STORAGE_EPOCH.fetch_add(1, Ordering::Relaxed);
     }
     fn mark_mask_plane(&mut self, id: u64) {
         let count = self.width.div_ceil(TILE) * self.height.div_ceil(TILE);
@@ -125,6 +130,7 @@ impl Document {
         let prepared = self.prepare_raster_mask_plan(&candidate, true)?;
         let before = self.composition();
         let removed = self.mask_planes.remove(slot);
+        self.remove_mask_effect_cache(id);
         self.raster_masks = candidate;
         self.replay_mask_tiles.retain(|(mask, _)| *mask != id);
         self.bump_mask_storage_epoch();
@@ -160,6 +166,7 @@ impl Document {
         let prepared = self.prepare_raster_mask_plan(&candidate, true)?;
         let before = self.composition();
         self.raster_masks = candidate;
+        self.invalidate_mask_effect_id(self.raster_masks.items[slot].id);
         self.install_group_plan(prepared);
         self.commit_composition(before, None);
         Ok(true)
@@ -205,6 +212,7 @@ impl Document {
                 content_revision: revision,
             },
         );
+        self.invalidate_mask_effect_id(id);
         self.bump_mask_storage_epoch();
         self.mark_mask_plane(id);
         let mut edit = Self::composition_edit(before, None, self.active);
@@ -255,10 +263,8 @@ impl Document {
         if !self.mask_owner_visible(self.raster_masks.items[slot].owner) {
             return Err("Raster mask owner is hidden".into());
         }
-        if let SamplePlane::Uniform(value) = self.mask_planes[slot].samples {
-            self.mask_planes[slot].samples =
-                SamplePlane::Dense(vec![value; self.width * self.height]);
-        }
+        self.prepare_mask_effects()?;
+        self.prepare_mask_contact_storage(slot)?;
         self.bump_mask_storage_epoch();
         let lease = MaskLease {
             document_identity: self.identity,
@@ -338,7 +344,12 @@ impl Document {
         self.mask_planes[lease.slot].content_revision = self.mask_planes[lease.slot]
             .content_revision
             .wrapping_add(1);
-        self.damage([x, y, x + width, y + height]);
+        let influence =
+            self.invalidate_mask_effect_region(lease.slot, [x, y, x + width, y + height]);
+        let metadata = &self.raster_masks.items[lease.slot];
+        if metadata.enabled && metadata.density > 0 {
+            self.damage(influence);
+        }
         Ok(())
     }
     /// The returned descriptor is valid only for the current synchronous loan.
@@ -372,9 +383,12 @@ impl Document {
                     let id = plane.id;
                     self.mask_planes.insert(*slot, Arc::unwrap_or_clone(plane));
                     self.mark_mask_plane(id);
+                    self.invalidate_mask_effect_id(id);
                 } else {
                     let plane = self.mask_planes.remove(*slot);
+                    self.remove_mask_effect_cache(plane.id);
                     self.replay_mask_tiles.retain(|(mask, _)| *mask != plane.id);
+                    self.invalidate_mask_effect_id(plane.id);
                     *removed = Some(Arc::new(plane));
                 }
             }
@@ -391,6 +405,7 @@ impl Document {
                 let old = std::mem::replace(saved, Arc::new(current));
                 self.mask_planes[*slot] = Arc::unwrap_or_clone(old);
                 self.mark_mask_plane(id);
+                self.invalidate_mask_effect_id(id);
             }
         }
         self.bump_mask_storage_epoch();
@@ -423,6 +438,15 @@ impl Document {
             self.mask_planes[slot].content_revision =
                 self.mask_planes[slot].content_revision.wrapping_add(1);
             self.replay_mask_tiles.insert((id, tile));
+            self.invalidate_mask_effect_region(
+                slot,
+                [
+                    x,
+                    y,
+                    (x + TILE).min(self.width),
+                    (y + TILE).min(self.height),
+                ],
+            );
         }
     }
     /// Restore verified byte cells without invoking a renderer or copying a whole
@@ -461,6 +485,8 @@ impl Document {
         }
         self.mask_contact = None;
         self.raster_masks = state.clone();
+        self.retain_mask_effect_caches();
+        self.invalidate_mask_effects();
         self.bump_mask_storage_epoch();
         self.replay_mask_tiles.clear();
         let ids = self

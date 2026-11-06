@@ -4,6 +4,7 @@ use super::native::ToolInstance;
 use crate::application::{
     parse_color, ActionError, Parameters, Pointer, PointerPhase, Session, ToolKind,
 };
+use crate::engine::raster_masks::{MaskLease, PaintTarget};
 use micopi_plugin_api as abi;
 #[derive(Default)]
 pub struct StrokeEngine {
@@ -15,6 +16,7 @@ struct Contact {
     handler: u32,
     kind: ToolKind,
     write_pixels: bool,
+    mask_lease: Option<MaskLease>,
     flags: u32,
     last: Pointer,
 }
@@ -70,18 +72,28 @@ impl StrokeEngine {
                 })?;
             let parameters = parameters(&s.parameters)?;
             let painting = matches!(kind, ToolKind::Brush | ToolKind::Eraser);
-            if painting {
-                super::PixelAccess::Pixels.require(&s.doc, s.doc.active)?;
-                if s.doc.has_raster_masks() {
-                    s.doc
-                        .ensure_graph_renderer()
-                        .map_err(|error| ActionError::new("mask_renderer", error))?;
+            let mask_id = if painting {
+                match s.doc.mask_state().target {
+                    PaintTarget::Mask { id } => Some(id),
+                    PaintTarget::LayerPixels => None,
                 }
-                if s.doc.alpha_locked(s.doc.active) && (kind == ToolKind::Eraser || p.eraser) {
-                    return Err(ActionError::new(
-                        "alpha_locked",
-                        "Unlock layer transparency before erasing",
-                    ));
+            } else {
+                None
+            };
+            if painting {
+                if mask_id.is_none() {
+                    super::PixelAccess::Pixels.require(&s.doc, s.doc.active)?;
+                    if s.doc.has_raster_masks() {
+                        s.doc
+                            .ensure_graph_renderer()
+                            .map_err(|error| ActionError::new("mask_renderer", error))?;
+                    }
+                    if s.doc.alpha_locked(s.doc.active) && (kind == ToolKind::Eraser || p.eraser) {
+                        return Err(ActionError::new(
+                            "alpha_locked",
+                            "Unlock layer transparency before erasing",
+                        ));
+                    }
                 }
                 if p.x < 0. || p.y < 0. || p.x >= s.doc.width as f32 || p.y >= s.doc.height as f32 {
                     return Err(ActionError::new(
@@ -89,11 +101,11 @@ impl StrokeEngine {
                         "Stroke starts outside the canvas",
                     ));
                 }
-                if !s.doc.layer_visible(s.doc.active) {
+                if mask_id.is_none() && !s.doc.layer_visible(s.doc.active) {
                     return Err(ActionError::new("hidden_layer", "Current layer is hidden"));
                 }
             }
-            let instance = match s.tool_instances.remove(&owner) {
+            let mut instance = match s.tool_instances.remove(&owner) {
                 Some(instance) => instance,
                 None => {
                     ToolInstance::new(s.registry.native_plugins.get(&owner).cloned().ok_or_else(
@@ -101,15 +113,33 @@ impl StrokeEngine {
                     )?)?
                 }
             };
-            if painting {
+            // Capability/options preparation is cold and must reject before a
+            // uniform mask materializes or any document contact is opened.
+            instance.prepare_contact(s, painting, mask_id.is_some())?;
+            let mask_lease = if let Some(id) = mask_id {
+                Some(
+                    s.doc
+                        .begin_mask_stroke(id)
+                        .map_err(|error| ActionError::new("mask_painting", error))?,
+                )
+            } else if painting {
+                if s.doc.has_raster_masks() {
+                    s.doc
+                        .prepare_mask_effects()
+                        .map_err(|error| ActionError::new("mask_renderer", error))?;
+                }
                 s.doc.begin_plugin_stroke();
-            }
+                None
+            } else {
+                None
+            };
             let contact = Contact {
                 instance,
                 owner,
                 handler,
                 kind,
                 write_pixels: painting,
+                mask_lease,
                 flags: 0,
                 last: p,
             };
@@ -150,7 +180,14 @@ impl StrokeEngine {
         let ended = matches!(p.phase, PointerPhase::Up | PointerPhase::Cancel);
         let result = contact
             .instance
-            .pointer(s, contact.handler, sample, parameters, painting)
+            .pointer(
+                s,
+                contact.handler,
+                sample,
+                parameters,
+                painting,
+                contact.mask_lease,
+            )
             .and_then(|output| {
                 if (ended && output.flags & (abi::DRAWING | abi::PANNING) != 0)
                     || (!painting && output.flags & abi::DRAWING != 0)

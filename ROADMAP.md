@@ -17,7 +17,7 @@ This roadmap starts from the **0.21.0 implementation and subsequent work on main
 - Unified package metadata, host compatibility checks, lifecycle diagnostics and dependency-aware enable/disable plans shared by Settings and automation.
 - English-only embedding; external Chinese, Japanese and Korean catalogs with profile overrides, owner-scoped plugin catalogs and background hot reload.
 
-Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no verified system-clipboard interoperability, off-canvas layer storage or raster/clipping masks. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
+Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no verified system-clipboard interoperability or off-canvas layer storage. Raster masks have a public painting/effects subset; their geometry/structural integration and clipping masks remain incomplete. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
 
 ## Delivery order
 
@@ -38,7 +38,7 @@ The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essenti
 
 ## M1 — Reliable document foundation
 
-Layer organization now includes persistent pixel/position locks, color labels, read-only name/metadata filtering, stable-ID multi-selection and explicit shared-handler batches with one Undo/Redo group and verified outcome. These are shared with nodes/MCP/headless and retain host-enforced native write permissions; raster/clipping masks and multi-layer Free Transform remain planned in the [editing checklist](docs/photoshop-essentials.md).
+Layer organization now includes persistent pixel/position locks, color labels, read-only name/metadata filtering, stable-ID multi-selection and explicit shared-handler batches with one Undo/Redo group and verified outcome. These are shared with nodes/MCP/headless and retain host-enforced native write permissions. Raster masks have a public painting/effects subset; their complete integration, clipping masks and multi-layer Free Transform remain planned in the [editing checklist](docs/photoshop-essentials.md).
 
 - [ ] Audit rollback across single actions, active-contact transitions, structural edits and project lifecycle operations. Make unsupported atomic effects explicit before execution.
 - [ ] Add durable recovery checkpoints and a recovery UI. Recover only validated committed outcomes; never rerun DLL commands or external side effects to restore a canvas.
@@ -71,7 +71,8 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 - [x] Add opt-in versioned Pass Through groups with seeded backdrop composition and once-only integer premultiplied group opacity, a capability-gated image Mix node, shared inspection/eligibility, undo and renderer-independent outcome replay. Keep isolated defaults and hashes unchanged; reject backdrop-dependent subtree baking. See [Pass Through](docs/pass-through.md).
 - [x] Add native A8 tool loans and typed uniform/strided coverage composition as independently tested mask prerequisites, with compatible SDK tails, explicit capability negotiation and actual-DLL conformance.
 - [x] Add the mask document/event foundation: bounded stable-ID A8 planes, byte-tiled history/rollback, strict MICOPI04 storage, separate verified byte outcomes and generated typed layer/Isolated/Pass Through coverage gates. Preserve default legacy writers/hashes and DLL-free restoration; reject unsupported edits before mutation. See [Raster-mask storage](docs/raster-mask-storage.md).
-- [ ] Complete paintable layer/group masks with typed pressure/stabilized routing, selection conversion, enable/invert/density/feather/apply, mask-aware geometry/merges/clipboard, registered public actions/state/nodes and four-language controls. Storage and generated gates do not provide these editing controls. See [Raster Masks Design](docs/raster-masks-design.md).
+- [x] Expose the first layer/group mask editing subset: cached typed pressure/stabilized Brush/Eraser, selection conversion, enable/invert/density/feather, raster-layer raw-alpha application, bounded raw inspection, shared action/state/workflow contracts and four-language target/thumbnail controls. Retain source pixels, byte-tiled Undo, atomic rollback and verified outcomes. See [Raster mask editing](docs/raster-mask-editing.md).
+- [ ] Complete mask-aware canvas/layer/mask geometry, owner duplication/deletion, every merge/flatten/clipboard boundary and group-mask application. The full raster-mask feature remains unchecked until this matrix, public contracts and delivery gates pass. See [Raster Masks Design](docs/raster-masks-design.md).
 - [x] Make implemented structural/multi-layer edits undoable with buffer ownership and explicit batch undo groups, separately from atomic failure rollback.
 - [x] Add bounded selection persistence, native shape/combine commands, PS selection shortcuts and drawing/action output clipping.
 - [x] Add direct rectangle/ellipse marquee and freehand/polygonal lasso gestures, reversible previews and connected-fill selection traversal.
@@ -88,7 +89,7 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 - [x] Preserve exact PNG density in native document metadata, import/export and recorded-state output, including unknown/asymmetric axes and strict bounded validation.
 - [x] Add shared PNG export sizing in pixels/physical units/percent, native composed-frame sampling, read-only previews, artifact digests and source-preserving desktop controls.
 - [x] Add shared New Canvas plans and pixel/millimeter/inch input, preserving pixel presets, legacy metadata and verified creation lifecycle outcomes.
-- [x] Add Image Size physical-unit input, all-layer/mask plans, exact-density conversion and revision-guarded desktop controls.
+- [x] Add Image Size physical-unit input, all-layer/pixel-selection plans, exact-density conversion and revision-guarded desktop controls.
 - [ ] Improve dirty-state and save/recovery feedback.
 
 **Acceptance:** an artist can create, select, transform and organize a small illustration, save/reopen it, undo/redo its structural edits and replay the same visible results. GUI, MCP and headless actions produce matching pixels for shared fixtures. Graph references remain valid after layer changes. Selected-only merge preserves unselected storage and surviving filter identities, reports its explicit destination/hidden consumption, rejects unsupported topology before allocation and restores all consumed content on Undo; the selected-only result need not preserve outside-backdrop or interleaved-stack appearance.

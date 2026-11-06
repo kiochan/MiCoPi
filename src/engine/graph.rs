@@ -341,6 +341,26 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 pub trait Renderer {
+    fn supports_mask_effects(&self) -> bool {
+        false
+    }
+    /// Reserve reusable native halo capacity at the cold mask-contact boundary,
+    /// without evaluating a full-frame feather kernel or changing any pixels.
+    fn reserve_mask_effects(&self, _width: u32, _height: u32, _radius: u32) -> Result<(), String> {
+        Err("The compositor does not support raster mask effect reservation".into())
+    }
+    /// Evaluate native feather/density against immutable full-frame raw A8.
+    /// The output is a disjoint global-coordinate region in a reusable cache.
+    fn mask_effect_region(
+        &self,
+        _request: &abi::MaskEffectRequest,
+        _source: &abi::CompositeMask,
+        _width: u32,
+        _height: u32,
+        _output: &mut abi::A8Pixels,
+    ) -> Result<(), String> {
+        Err("The compositor does not support raster mask effects".into())
+    }
     fn supports_masks(&self) -> bool {
         false
     }

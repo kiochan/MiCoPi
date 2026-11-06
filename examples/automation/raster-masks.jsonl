@@ -1,0 +1,18 @@
+{"action":"canvas.new","args":{"width":320,"height":240}}
+{"action":"layer.rename","args":{"layer_id":1,"name":"Paper"}}
+{"action":"layer.fill_color","args":{"color":"#77708B"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"layer_id":2,"name":"Ink cel"}}
+{"action":"layer.fill_color","args":{"color":"#F0AAC2"}}
+{"action":"group.create","args":{"name":"Soft color","members":[{"kind":"layer","id":2}]}}
+{"action":"pipeline.run","args":{"atomic":true,"steps":[{"id":"layer_mask","action":"mask.create","args":{"owner":{"kind":"layer","id":2},"source":"reveal_all"}},{"id":"layer_effects","action":"mask.set","args":{"mask_id":{"$ref":"layer_mask#/result/mask_id"},"density":215,"feather_radius_px":6}},{"id":"group_mask","action":"mask.create","args":{"owner":{"kind":"group","id":1},"source":"reveal_all","select":false}},{"id":"group_fill","action":"mask.fill","args":{"mask_id":{"$ref":"group_mask#/result/mask_id"},"value":160}},{"id":"group_effects","action":"mask.set","args":{"mask_id":{"$ref":"group_mask#/result/mask_id"},"density":192,"feather_radius_px":12}}]}}
+{"action":"brush.set","args":{"color":"#000000","radius":34,"opacity":1,"stabilizer":0.55,"pressure_size":true,"pressure_opacity":true}}
+{"action":"canvas.stroke","args":{"tool":"brush","points":[{"x":42,"y":75,"pressure":0.2,"pen":true,"time":0},{"x":110,"y":150,"pressure":0.7,"pen":true,"time":24},{"x":190,"y":100,"pressure":1,"pen":true,"time":48},{"x":275,"y":155,"pressure":0.3,"pen":true,"time":72}]}}
+{"action":"mask.query","args":{}}
+{"action":"mask.snapshot","args":{"mask_id":1,"x":80,"y":80,"width":32,"height":24}}
+{"action":"mask.to_selection","args":{"mask_id":1,"effective":true}}
+{"action":"mask.target","args":{"target":{"kind":"layer_pixels"}}}
+{"action":"canvas.export","args":{"path":"target/example-output/raster-masks.png"}}
+{"action":"document.save","args":{"path":"target/example-output/raster-masks.mcp"}}
+{"action":"replay.export","args":{"path":"target/example-output/raster-masks.mcreplay"}}
+{"action":"replay.verify","args":{}}

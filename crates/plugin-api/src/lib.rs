@@ -526,6 +526,51 @@ pub struct CompositorApiMasks {
     pub base: CompositorApiModes,
     pub render_masked: Option<CompositeRenderMaskedFn>,
 }
+/// Optional effective-A8 region kernel. Requires the complete effects tail and
+/// COMPOSITOR_MASKS. The existing 40-byte mask-compositor prefix is unchanged.
+pub const COMPOSITOR_MASK_EFFECTS: u64 = 1 << 3;
+pub const MASK_EFFECT_MAX_RADIUS: u32 = 256;
+/// A raw edit, admitted only with density=255 and feather_radius=0.
+pub const MASK_EFFECT_INVERT_RAW: u32 = 1;
+/// Normal flags=0. Feather precedes density. With R=feather_radius, apply
+/// H(a),V(a),H(b),V(b),H(c),V(c), where a=(R+2)/3,b=(R+1)/3,c=R/3.
+/// Each box clamps to the canvas edge and rounds its byte mean half-up.
+/// Total spatial support is R per axis. Finally output
+/// 255-round_half_up((255-feathered)*density/255). Reserved must be zero.
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct MaskEffectRequest {
+    pub flags: u32,
+    pub density: u32,
+    pub feather_radius: u32,
+    pub reserved: u32,
+}
+pub type MaskEffectsCreateFn = unsafe extern "C" fn() -> *mut c_void;
+pub type MaskEffectsDestroyFn = unsafe extern "C" fn(*mut c_void);
+/// Reserve two full-frame A8 capacities and one u32 column row, without changing
+/// their lengths or processing pixels. Dimensions 1..=4096, radius 0..=256;
+/// maximum scratch capacity is 32 MiB plus 16 KiB.
+pub type MaskEffectsReserveFn = unsafe extern "C" fn(*mut c_void, u32, u32, u32) -> i32;
+/// Immutable full-frame source, dimensions 1..=4096. Output is a separate A8
+/// region with a canvas-relative origin. Validate every descriptor/alias before
+/// writes. The instance owns reusable ROI+halo scratch; pointers never escape.
+pub type MaskEffectRegionFn = unsafe extern "C" fn(
+    *mut c_void,
+    *const MaskEffectRequest,
+    *const CompositeMask,
+    u32,
+    u32,
+    *mut A8Pixels,
+) -> i32;
+#[repr(C)]
+pub struct CompositorApiMaskEffects {
+    pub base: CompositorApiMasks,
+    pub create_mask_effects: Option<MaskEffectsCreateFn>,
+    pub destroy_mask_effects: Option<MaskEffectsDestroyFn>,
+    pub mask_effect_region: Option<MaskEffectRegionFn>,
+    /// Mandatory with COMPOSITOR_MASK_EFFECTS; incomplete experimental tails reject.
+    pub reserve_mask_effects: Option<MaskEffectsReserveFn>,
+}
 pub type CompositorEntry = unsafe extern "C" fn() -> *const CompositorApi;
 
 /// Independent optional exact geometry extension. Existing selection/tool tables are unchanged.
@@ -728,6 +773,24 @@ mod transform_layout_tests {
         assert_eq!(offset_of!(CompositorApiMasks, base), 0);
         assert_eq!(offset_of!(CompositorApiMasks, render_masked), 32);
         assert_eq!(COMPOSITOR_MASKS, 4);
+        assert_eq!(size_of::<MaskEffectRequest>(), 16);
+        assert_eq!(offset_of!(MaskEffectRequest, density), 4);
+        assert_eq!(offset_of!(MaskEffectRequest, feather_radius), 8);
+        assert_eq!(size_of::<CompositorApiMaskEffects>(), 72);
+        assert_eq!(
+            offset_of!(CompositorApiMaskEffects, create_mask_effects),
+            40
+        );
+        assert_eq!(
+            offset_of!(CompositorApiMaskEffects, destroy_mask_effects),
+            48
+        );
+        assert_eq!(offset_of!(CompositorApiMaskEffects, mask_effect_region), 56);
+        assert_eq!(
+            offset_of!(CompositorApiMaskEffects, reserve_mask_effects),
+            64
+        );
+        assert_eq!(COMPOSITOR_MASK_EFFECTS, 8);
         assert_eq!(
             COMPOSITOR_MASKS & (COMPOSITOR_TRANSPARENT | COMPOSITOR_MIX),
             0

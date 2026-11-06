@@ -25,6 +25,7 @@ mod layer_transfer;
 mod layers;
 pub(crate) mod movement;
 mod painting;
+pub(crate) mod raster_masks;
 pub(crate) mod resample;
 pub(crate) mod selected_merge;
 mod selection;
@@ -40,6 +41,10 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        MaskQuery | MaskCreate | MaskDelete | MaskProperties | MaskTarget | MaskFill
+        | MaskInvert | MaskFromSelection | MaskToSelection | MaskSnapshot | MaskApply => {
+            raster_masks::execute(session, op, args)
+        }
         MergeLayers | MergeSelectedLayers | MergeSelectedLayersPlan | OpenSelectedMerge => {
             selected_merge::execute(session, op, args)
         }

@@ -3,6 +3,7 @@ use micopi_plugin_api as abi;
 #[cfg(test)]
 mod blend_tests;
 mod blends;
+mod mask_effects;
 #[cfg(test)]
 mod mask_tests;
 mod masks;
@@ -268,19 +269,28 @@ static BASE: abi::PluginApi = abi::PluginApi {
     destroy: None,
     invoke: None,
 };
-static COMPOSITOR: abi::CompositorApiMasks = abi::CompositorApiMasks {
-    base: abi::CompositorApiModes {
-        base: abi::CompositorApiFeatures {
-            base: abi::CompositorApi {
-                abi_version: 1,
-                struct_size: std::mem::size_of::<abi::CompositorApiMasks>() as u32,
-                render: Some(render),
+static COMPOSITOR: abi::CompositorApiMaskEffects = abi::CompositorApiMaskEffects {
+    base: abi::CompositorApiMasks {
+        base: abi::CompositorApiModes {
+            base: abi::CompositorApiFeatures {
+                base: abi::CompositorApi {
+                    abi_version: 1,
+                    struct_size: std::mem::size_of::<abi::CompositorApiMaskEffects>() as u32,
+                    render: Some(render),
+                },
+                capabilities: abi::COMPOSITOR_TRANSPARENT
+                    | abi::COMPOSITOR_MIX
+                    | abi::COMPOSITOR_MASKS
+                    | abi::COMPOSITOR_MASK_EFFECTS,
             },
-            capabilities: abi::COMPOSITOR_TRANSPARENT | abi::COMPOSITOR_MIX | abi::COMPOSITOR_MASKS,
+            supported_blend_modes: abi::BLEND_MODES_ALL,
         },
-        supported_blend_modes: abi::BLEND_MODES_ALL,
+        render_masked: Some(masks::render_masked),
     },
-    render_masked: Some(masks::render_masked),
+    create_mask_effects: Some(mask_effects::create),
+    destroy_mask_effects: Some(mask_effects::destroy),
+    mask_effect_region: Some(mask_effects::region),
+    reserve_mask_effects: Some(mask_effects::reserve),
 };
 #[no_mangle]
 pub extern "C" fn micopi_plugin_v1() -> *const abi::PluginApi {
@@ -288,7 +298,7 @@ pub extern "C" fn micopi_plugin_v1() -> *const abi::PluginApi {
 }
 #[no_mangle]
 pub extern "C" fn micopi_compositor_v1() -> *const abi::CompositorApi {
-    &COMPOSITOR.base.base.base
+    &COMPOSITOR.base.base.base.base
 }
 
 #[cfg(test)]
@@ -405,18 +415,28 @@ mod tests {
         assert_eq!(base.abi_version, 1);
         assert_eq!(
             base.struct_size as usize,
-            std::mem::size_of::<abi::CompositorApiMasks>()
+            std::mem::size_of::<abi::CompositorApiMaskEffects>()
         );
         let complete = unsafe { &*(micopi_compositor_v1().cast::<abi::CompositorApiFeatures>()) };
         assert_eq!(
             complete.capabilities,
-            abi::COMPOSITOR_TRANSPARENT | abi::COMPOSITOR_MIX | abi::COMPOSITOR_MASKS
+            abi::COMPOSITOR_TRANSPARENT
+                | abi::COMPOSITOR_MIX
+                | abi::COMPOSITOR_MASKS
+                | abi::COMPOSITOR_MASK_EFFECTS
         );
         let modes = unsafe { &*(micopi_compositor_v1().cast::<abi::CompositorApiModes>()) };
         assert_eq!(modes.supported_blend_modes, abi::BLEND_MODES_ALL);
         assert!(base.render.is_some());
         let masks = unsafe { &*(micopi_compositor_v1().cast::<abi::CompositorApiMasks>()) };
         assert!(masks.render_masked.is_some());
+        let effects = unsafe { &*(micopi_compositor_v1().cast::<abi::CompositorApiMaskEffects>()) };
+        assert!(
+            effects.create_mask_effects.is_some()
+                && effects.destroy_mask_effects.is_some()
+                && effects.mask_effect_region.is_some()
+                && effects.reserve_mask_effects.is_some()
+        );
     }
 
     #[test]

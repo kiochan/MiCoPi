@@ -2,7 +2,7 @@ use super::*;
 use crate::engine::{
     graph::{Filter, Renderer},
     groups::{GroupItem, GroupPolicy},
-    raster_masks::MaskMetadata,
+    raster_masks::{MaskMetadata, SamplePlane},
 };
 
 fn renderer() -> Arc<dyn Renderer> {
@@ -398,7 +398,7 @@ fn planning_is_metadata_only_and_unsupported_effects_reject_before_publish() {
         .prepare_raster_mask_plan(&unsupported, true)
         .err()
         .unwrap()
-        .contains("pending native effects"));
+        .contains("mask effects support"));
     assert!(
         doc.prepare_raster_mask_plan(&unsupported, false).is_ok(),
         "Verified restoration does not execute effects"

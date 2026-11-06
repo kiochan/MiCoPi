@@ -52,3 +52,5 @@ jobs:
         run: python scripts/smoke-runtime.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify raster-mask storage, composition and outcome replay
         run: python scripts/smoke-raster-masks.py --skip-gui --cli target/release/micopi-cli.exe
+      - name: Verify public mask editing, effects and outcome replay
+        run: python scripts/smoke-mask-editing.py --skip-gui --cli target/release/micopi-cli.exe

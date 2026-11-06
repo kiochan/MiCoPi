@@ -29,6 +29,12 @@ ABI_ASSERT(offsetof(MicopiCompositeMask, constant) == 20, "Uniform byte offset")
 ABI_ASSERT(sizeof(MicopiCompositorApiMasks) == 40, "Complete masked compositor tail");
 ABI_ASSERT(offsetof(MicopiCompositorApiMasks, render_masked) == 32, "Masked callback offset");
 ABI_ASSERT(MICOPI_COMPOSITOR_MASKS == 4, "Independent mask capability");
+ABI_ASSERT(sizeof(MicopiMaskEffectRequest) == 16, "Mask effect request layout");
+ABI_ASSERT(sizeof(MicopiCompositorApiMaskEffects) == 72, "Complete mask effects and reserve tail");
+ABI_ASSERT(offsetof(MicopiCompositorApiMaskEffects, create_mask_effects) == 40, "Mask effects create offset");
+ABI_ASSERT(offsetof(MicopiCompositorApiMaskEffects, mask_effect_region) == 56, "Mask effects region offset");
+ABI_ASSERT(offsetof(MicopiCompositorApiMaskEffects, reserve_mask_effects) == 64, "Mask effects reserve offset");
+ABI_ASSERT(MICOPI_COMPOSITOR_MASK_EFFECTS == 8, "Independent mask effects capability");
 
 static int32_t masked(const MicopiCompositeNode *nodes, size_t count,
                       const MicopiCompositeLayer *layers, size_t layer_count,
@@ -43,11 +49,32 @@ static int32_t byte_loan(void *context, MicopiRegion region,
     (void)context; (void)region; (void)transform; (void)user;
     return MICOPI_OK;
 }
+static void *create_effects(void) { return NULL; }
+static void destroy_effects(void *context) { (void)context; }
+static int32_t effect_region(void *context, const MicopiMaskEffectRequest *request,
+                             const MicopiCompositeMask *source, uint32_t width,
+                             uint32_t height, MicopiA8Pixels *output) {
+    (void)context; (void)request; (void)source; (void)width; (void)height; (void)output;
+    return MICOPI_OK;
+}
+static int32_t reserve_effects(void *context, uint32_t width, uint32_t height, uint32_t radius) {
+    (void)context; (void)width; (void)height; (void)radius;
+    return MICOPI_OK;
+}
 int main(void) {
     MicopiCompositeRenderMaskedFn callback = masked;
     MicopiToolHostA8 host;
     host.a8 = byte_loan;
-    return callback == masked && host.a8 == byte_loan ? 0 : 1;
+    MicopiCompositorApiMaskEffects effects;
+    effects.create_mask_effects = create_effects;
+    effects.destroy_mask_effects = destroy_effects;
+    effects.mask_effect_region = effect_region;
+    effects.reserve_mask_effects = reserve_effects;
+    return callback == masked && host.a8 == byte_loan
+        && effects.create_mask_effects == create_effects
+        && effects.destroy_mask_effects == destroy_effects
+        && effects.mask_effect_region == effect_region
+        && effects.reserve_mask_effects == reserve_effects ? 0 : 1;
 }
 #ifdef __cplusplus
 }

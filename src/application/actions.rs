@@ -151,6 +151,17 @@ pub enum Operation {
     SelectLayer,
     LayerProperties,
     LayerQuery,
+    MaskQuery,
+    MaskCreate,
+    MaskDelete,
+    MaskProperties,
+    MaskTarget,
+    MaskFill,
+    MaskInvert,
+    MaskFromSelection,
+    MaskToSelection,
+    MaskSnapshot,
+    MaskApply,
     LayerSelection,
     LayerBatch,
     GroupQuery,
@@ -207,6 +218,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self.is_mask() {
+            return crate::plugins::raster_masks::schema(self);
+        }
         if matches!(
             self,
             Self::MergeLayers
@@ -469,6 +483,8 @@ impl Operation {
                 | Self::State
                 | Self::LayerQuery
                 | Self::GroupQuery
+                | Self::MaskQuery
+                | Self::MaskSnapshot
                 | Self::MergeSelectedLayersPlan
                 | Self::NewPlan
                 | Self::ImageSizePlan
@@ -487,6 +503,22 @@ impl Operation {
                 | Self::ExportPreview
                 | Self::SettingsRead
                 | Self::WindowState
+        )
+    }
+    pub(crate) fn is_mask(self) -> bool {
+        matches!(
+            self,
+            Self::MaskQuery
+                | Self::MaskCreate
+                | Self::MaskDelete
+                | Self::MaskProperties
+                | Self::MaskTarget
+                | Self::MaskFill
+                | Self::MaskInvert
+                | Self::MaskFromSelection
+                | Self::MaskToSelection
+                | Self::MaskSnapshot
+                | Self::MaskApply
         )
     }
 }

@@ -6,6 +6,8 @@ use std::{hash::Hasher, sync::Arc};
 
 #[path = "groups.rs"]
 mod groups;
+#[path = "masks.rs"]
+mod masks;
 #[path = "merge_selected.rs"]
 mod merge_selected;
 pub(in crate::desktop) use merge_selected::SelectedMergeDraft;
@@ -350,6 +352,7 @@ impl Editor {
                         )
                 });
             let requires_idle = action.action.starts_with("group.")
+                || action.action.starts_with("mask.")
                 || matches!(
                     action.action.as_str(),
                     "layer.merge" | "layer.merge_selected" | "layer.merge_selected.open"
@@ -607,7 +610,7 @@ impl Editor {
                 (false, "Hide Selected Layers"),
             ] {
                 if ui.button(tr(title)).clicked() {
-                    action = property_action(&targets, json!({"visible":visible}));
+                    action = property_action(&targets, json!({ "visible": visible }));
                     ui.close();
                 }
             }
@@ -638,7 +641,7 @@ impl Editor {
                 } else {
                     "Duplicate Layer"
                 },
-                serde_json::json!({"layer_id":id}),
+                serde_json::json!({ "layer_id": id }),
                 count + targets.len() <= 16,
             ),
             (
@@ -680,7 +683,7 @@ impl Editor {
                 } else {
                     "Delete Layer"
                 },
-                serde_json::json!({"layer_id":id}),
+                serde_json::json!({ "layer_id": id }),
                 count > targets.len(),
             ),
         ] {
@@ -733,9 +736,9 @@ impl Editor {
                     "Merge Down"
                 },
                 if multi {
-                    serde_json::json!({"layer_ids":targets})
+                    serde_json::json!({ "layer_ids": targets })
                 } else {
-                    serde_json::json!({"layer_id":id})
+                    serde_json::json!({ "layer_id": id })
                 },
                 multi || index > 0 && !protected(index) && !protected(index - 1),
             ),
@@ -779,7 +782,7 @@ impl Editor {
         {
             action = Some(Action::new(
                 "layer.merge_selected.open",
-                json!({"layer_ids":targets}),
+                json!({ "layer_ids": targets }),
             ));
             ui.close();
         }
@@ -927,7 +930,7 @@ impl Editor {
                 if let Some(parent) = focus {
                     pending.push(crate::application::Action::new(
                         "layer.add",
-                        json!({"parent_id":parent}),
+                        json!({ "parent_id": parent }),
                     ));
                 } else {
                     self.actions.push(Action::NewLayer);
@@ -1175,6 +1178,7 @@ impl Editor {
             }
             ui.add_space(self.settings.ui.item_spacing);
         }
+        self.mask_properties_ui(ui, &mut pending);
         let indices = self.layer_filters_ui(ui);
         ui.add_space(a.item_spacing);
         let colors = theme::Colors::new(&a);
@@ -1366,9 +1370,11 @@ impl Editor {
                 ),
                 Vec2::splat(thumb_size),
             );
+            let pixels_active = index == self.session.doc.active
+                && self.session.doc.mask_state().target.is_default();
+            self.paint_target_thumbnail_border(ui, thumb, pixels_active);
             ui.painter()
-                .rect_filled(thumb.expand(1.), 5., colors.border);
-            ui.painter().rect_filled(thumb, 4., Color32::from_gray(248));
+                .rect_filled(thumb, a.corner_radius * 0.5, Color32::from_gray(248));
             // A 16×16 sampled mesh keeps thumbnails cheap even on 4096px documents.
             let mut mesh = egui::Mesh::default();
             for y in 0..16 {
@@ -1394,13 +1400,50 @@ impl Editor {
                 }
             }
             ui.painter().add(Shape::mesh(mesh));
+            let pixel_response = ui
+                .interact(
+                    thumb,
+                    ui.id().with((
+                        "layer-pixels",
+                        self.session.doc.identity,
+                        self.session.doc.layer_id(index),
+                    )),
+                    Sense::click(),
+                )
+                .on_hover_text(tr("Paint Layer Pixels"));
+            #[cfg(test)]
+            ui.data_mut(|data| {
+                data.insert_temp(
+                    Id::new((
+                        "layer-pixels-control",
+                        self.session.doc.identity,
+                        self.session.doc.layer_id(index),
+                    )),
+                    thumb,
+                )
+            });
+            let mask_rect = Rect::from_min_size(
+                pos2(thumb.right() + a.item_spacing, thumb.top()),
+                thumb.size(),
+            );
+            let mask_response = self.mask_thumbnail_ui(
+                ui,
+                crate::engine::raster_masks::MaskOwner::Layer {
+                    id: self.session.doc.layer_id(index),
+                },
+                mask_rect,
+                &mut pending,
+            );
             let name = if self.session.doc.custom_layer_name(index).is_empty() {
                 localize(format!("Layer {:02}", index + 1))
             } else {
                 self.session.doc.layer_name(index)
             };
             let properties = LayerProperties::read(self, index);
-            let text_left = thumb.right() + a.panel_padding;
+            let text_left = mask_response
+                .as_ref()
+                .map_or(thumb.right(), |_| mask_rect.right())
+                + a.panel_padding;
             let text_right = r.right() - a.panel_padding;
             layer_text(
                 ui,
@@ -1473,7 +1516,20 @@ impl Editor {
                 hint.push_str(&localize("Active painting layer"));
             }
             let response = response.on_hover_text(hint);
-            if response.clicked() && !toggle.clicked() {
+            if pixel_response.clicked() && index == self.session.doc.active {
+                self.focus_group_ui(ui.ctx(), None);
+                pending.push(crate::application::Action::new(
+                    "mask.target",
+                    json!({"target":{"kind":"layer_pixels"}}),
+                ));
+            }
+            if (response.clicked() || pixel_response.clicked())
+                && !toggle.clicked()
+                && !mask_response
+                    .as_ref()
+                    .is_some_and(|response| response.clicked())
+                && !(pixel_response.clicked() && index == self.session.doc.active)
+            {
                 self.focus_group_ui(ui.ctx(), None);
                 self.layer_row_selection(
                     ui.ctx(),
@@ -1905,10 +1961,10 @@ mod tests {
             }
             assert!(app
                 .editor
-                .core("layer.rename", json!({"name":format!("L{i}")})));
+                .core("layer.rename", json!({ "name": format!("L{i}") })));
             assert!(app.editor.core(
                 "layer.fill_color",
-                json!({"color":format!("#{:06X}",0x224466+i*0x110000)})
+                json!({ "color": format!("#{:06X}", 0x224466 + i * 0x110000) })
             ));
         }
         let ids = (0..4)
@@ -2343,7 +2399,7 @@ mod tests {
                     "layer.merge_visible" => menu_click(&mut app, "Merge Visible"),
                     "layer.merge_selected" => menu_click(&mut app, "Merge Selected Layers"),
                     "layer.merge" => crate::application::Action::new(command, json!({})),
-                    _ => crate::application::Action::new(command, json!({"group_id":group})),
+                    _ => crate::application::Action::new(command, json!({ "group_id": group })),
                 };
                 let state = app.editor.session.state();
                 let pixels = app
@@ -2904,7 +2960,7 @@ mod tests {
             for width in [176., 244., 480.] {
                 let mut app = layers();
                 app.editor.settings.ui.language = language;
-                assert!(app.editor.core("layer.rename", json!({"name":name})));
+                assert!(app.editor.core("layer.rename", json!({ "name": name })));
                 assert!(app.editor.core("layer.set",json!({"alpha_locked":true,"pixel_locked":true,"position_locked":true,"color_label":"green"})));
                 let ids = (0..app.editor.session.doc.layers.len())
                     .map(|i| app.editor.session.doc.layer_id(i))

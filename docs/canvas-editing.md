@@ -1,5 +1,7 @@
 # Canvas geometry
 
+Geometry references to coverage masks in this guide describe current/Reselect pixel selections. First-class layer/group raster masks have a separate editing contract: mask-bearing documents currently reject the guarded geometry and structural paths until their staged mask-aware implementations are complete. See [Raster mask editing](raster-mask-editing.md#current-boundaries).
+
 Use **Edit > Canvas Size…** (**Ctrl+Alt+C**) to expand or contract the document frame. Enter the new width and height in pixels and select one of nine anchor positions. The anchor determines which edge or corner stays fixed. Added space is transparent; pixels beyond the new frame are clipped. Pixel colors and scale are unchanged.
 
 Use **Edit > Crop Canvas…** to enter an exact rectangle: X/Y locate its top-left corner, and Width/Height specify its size. The canvas shows the rectangle with a thirds guide while the dialog is open. Apply commits one edit; Cancel, Escape and the close button leave the document untouched. A dialog whose source document or dimensions changed must be reopened.

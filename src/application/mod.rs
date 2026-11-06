@@ -46,7 +46,11 @@ mod pass_through_tests;
 #[cfg(test)]
 mod pipeline_tests;
 #[cfg(test)]
+mod raster_mask_failure_tests;
+#[cfg(test)]
 mod raster_mask_tests;
+#[cfg(test)]
+mod raster_mask_workflow_tests;
 #[cfg(test)]
 mod replay_tests;
 #[cfg(test)]

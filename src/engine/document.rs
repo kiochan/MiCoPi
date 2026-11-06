@@ -327,6 +327,7 @@ pub struct Document {
     mask_planes: Vec<super::raster_masks::MaskPlane>,
     mask_storage_epoch: u64,
     mask_contact: Option<super::raster_masks::MaskLease>,
+    mask_effects: Vec<mask_effects::CoverageCache>,
     pub(crate) replay_mask_tiles: std::collections::BTreeSet<(u64, usize)>,
     effective_graph: Option<Graph>,
     group_visibility: [bool; MAX_LAYERS],
@@ -452,6 +453,7 @@ impl Document {
             mask_planes: Vec::new(),
             mask_storage_epoch: 0,
             mask_contact: None,
+            mask_effects: Vec::new(),
             replay_mask_tiles: Default::default(),
             effective_graph: None,
             group_visibility: [true; MAX_LAYERS],
@@ -592,12 +594,17 @@ impl Document {
         Ok(())
     }
     pub(crate) fn restore_composition(&mut self, state: Composition) {
+        let mask_metadata_changed = self.raster_masks.items != state.raster_masks.items;
         self.document_info = state.document_info;
         self.last_transform = state.last_transform;
         self.selection = state.selection;
         let next_mask_id = self.raster_masks.next_id.max(state.raster_masks.next_id);
         self.raster_masks = state.raster_masks;
         self.raster_masks.next_id = next_mask_id;
+        if mask_metadata_changed {
+            self.retain_mask_effect_caches();
+            self.invalidate_mask_effects();
+        }
         self.selected_layer_ids = state.selected_layer_ids;
         self.groups = state.groups;
         self.next_group_id = self.next_group_id.max(state.next_group_id).max(1);
@@ -875,7 +882,7 @@ impl Document {
                 None => [x0, y0, x1, y1],
             });
             if self.requires_renderer() {
-                if let Some(renderer) = &self.renderer {
+                if self.renderer.is_some() {
                     let mut layers = [micopi_plugin_api::CompositeLayer {
                         data: std::ptr::null(),
                         len: 0,
@@ -908,7 +915,7 @@ impl Document {
                             &mut pixels,
                         )
                     } else {
-                        renderer.render(
+                        self.renderer.as_ref().unwrap().render(
                             if self.has_groups()
                                 || self.graph.enabled
                                     && (!self.graph.linked || self.graph.has_filters())
@@ -1134,17 +1141,21 @@ impl Document {
         self.last_brush = Some(b);
     }
     fn save_tile(&mut self, tx: usize, ty: usize) {
+        self.save_layer_tile(self.active, tx, ty);
+    }
+    fn save_layer_tile(&mut self, index: usize, tx: usize, ty: usize) {
         let cols = (self.width + TILE - 1) / TILE;
         let id = ty * cols + tx;
-        self.replay_tiles.insert((self.active, id));
+        self.replay_tiles.insert((index, id));
         let edit = self.stroke.as_mut().unwrap();
+        debug_assert_eq!(edit.layer, index);
         if edit.tiles.contains_key(&id) {
             return;
         }
         let mut data = Vec::with_capacity(TILE * TILE);
         for y in ty * TILE..((ty + 1) * TILE).min(self.height) {
             data.extend_from_slice(
-                &self.layers[self.active].pixels[y * self.width + tx * TILE
+                &self.layers[index].pixels[y * self.width + tx * TILE
                     ..y * self.width + ((tx + 1) * TILE).min(self.width)],
             );
         }
@@ -1463,7 +1474,21 @@ impl Document {
         height: usize,
         pixels: &[u32],
     ) -> bool {
-        if self.pixel_locked(self.active)
+        self.replace_layer_region(self.active, x, y, width, height, pixels)
+    }
+    /// Replace an explicit raster without changing the active painting layer or
+    /// multi-selection. Permissions use the target, not the current active row.
+    pub fn replace_layer_region(
+        &mut self,
+        index: usize,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        pixels: &[u32],
+    ) -> bool {
+        if index >= self.layers.len()
+            || self.pixel_locked(index)
             || width == 0
             || height == 0
             || x.checked_add(width).is_none_or(|v| v > self.width)
@@ -1472,10 +1497,10 @@ impl Document {
         {
             return false;
         }
-        if self.alpha_locked(self.active)
+        if self.alpha_locked(index)
             && pixels.iter().enumerate().any(|(i, after)| {
                 let before =
-                    self.layers[self.active].pixels[(y + i / width) * self.width + x + i % width];
+                    self.layers[index].pixels[(y + i / width) * self.width + x + i % width];
                 before >> 24 != *after >> 24 || (before >> 24 == 0 && before != *after)
             })
         {
@@ -1485,20 +1510,31 @@ impl Document {
         self.stroke = Some(Edit {
             group: None,
             layer_change: None,
-            layer: self.active,
+            layer: index,
             tiles: BTreeMap::new(),
             mask_tiles: BTreeMap::new(),
             mask_change: None,
             composition: None,
             metadata_bytes: 0,
         });
-        let changed = self.write_region(x, y, width, height, pixels);
+        let changed = self.write_layer_region(index, x, y, width, height, pixels);
         self.finish();
         changed
     }
     /// Write into a preflighted region under the caller's open history entry.
     fn write_region(
         &mut self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        pixels: &[u32],
+    ) -> bool {
+        self.write_layer_region(self.active, x, y, width, height, pixels)
+    }
+    fn write_layer_region(
+        &mut self,
+        index: usize,
         x: usize,
         y: usize,
         width: usize,
@@ -1513,16 +1549,16 @@ impl Document {
                 let y0 = y.max(ty * TILE);
                 let y1 = (y + height).min((ty + 1) * TILE);
                 let differs = (y0..y1).any(|row| {
-                    self.layers[self.active].pixels[row * self.width + x0..row * self.width + x1]
+                    self.layers[index].pixels[row * self.width + x0..row * self.width + x1]
                         != pixels[(row - y) * width + x0 - x..(row - y) * width + x1 - x]
                 });
                 if !differs {
                     continue;
                 }
-                self.save_tile(tx, ty);
+                self.save_layer_tile(index, tx, ty);
                 changed = true;
                 for row in y0..y1 {
-                    self.layers[self.active].pixels[row * self.width + x0..row * self.width + x1]
+                    self.layers[index].pixels[row * self.width + x0..row * self.width + x1]
                         .copy_from_slice(
                             &pixels[(row - y) * width + x0 - x..(row - y) * width + x1 - x],
                         );
@@ -1766,8 +1802,12 @@ mod layer_editing;
 mod layer_merge;
 #[path = "layer_selection.rs"]
 mod layer_selection;
+#[path = "mask_apply.rs"]
+mod mask_apply;
 #[path = "mask_composition.rs"]
 mod mask_composition;
+#[path = "mask_effects.rs"]
+mod mask_effects;
 #[path = "mix.rs"]
 mod mix;
 #[path = "raster_mask_editing.rs"]

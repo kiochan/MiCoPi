@@ -276,6 +276,89 @@ fn raster_mask_verified_restore_reuses_dense_storage_without_rendering_or_interm
 }
 
 #[test]
+fn raster_mask_lease_nonce_idle_checkpoint_cannot_resurrect_an_abandoned_contact() {
+    let mut doc = document(23, 17);
+    let rgba = doc.layers[0].pixels.clone();
+    let id = doc.create_mask(MaskOwner::Layer { id: 1 }, 255).unwrap();
+    let composition = doc.composition();
+    let checkpoint = doc.checkpoint_history();
+    let abandoned = doc.begin_mask_stroke(id).unwrap();
+    let output = doc.mask_region(abandoned, 2, 3, 1, 1).unwrap();
+    unsafe {
+        *output.data = 37;
+    }
+    doc.rollback_plugin_stroke();
+    // Match verified-state + history restoration at a failed Session contact.
+    doc.restore_composition(composition.clone());
+    doc.restore_mask_storage(
+        &composition.raster_masks,
+        |_| Some(255),
+        |_, _| panic!("Uniform fixture"),
+    );
+    doc.restore_history(checkpoint);
+    assert!(doc.mask_contact.is_none());
+    let current = doc.begin_mask_stroke(id).unwrap();
+    assert!(
+        doc.mask_region(abandoned, 1, 1, 1, 1).is_err(),
+        "Idle rollback reused the abandoned contact lease"
+    );
+    assert_ne!(current.storage_epoch, abandoned.storage_epoch);
+    let output = doc.mask_region(current, 4, 5, 1, 1).unwrap();
+    unsafe {
+        *output.data = 91;
+    }
+    doc.finish();
+    assert_eq!(doc.mask_plane(id).unwrap().sample(5 * 23 + 4), 91);
+    doc.undo();
+    assert_eq!(bytes(&doc, id), vec![255; 23 * 17]);
+    assert_eq!(doc.layers[0].pixels, rgba);
+}
+
+#[test]
+fn raster_mask_lease_nonce_active_checkpoint_keeps_original_but_never_reuses_later_contact() {
+    let mut doc = document(11, 9);
+    let id = doc.create_mask(MaskOwner::Layer { id: 1 }, 100).unwrap();
+    let original = doc.begin_mask_stroke(id).unwrap();
+    let output = doc.mask_region(original, 1, 1, 1, 1).unwrap();
+    unsafe {
+        *output.data = 23;
+    }
+    let composition = doc.composition();
+    let raw = bytes(&doc, id);
+    let checkpoint = doc.checkpoint_history();
+    doc.finish();
+    let abandoned = doc.begin_mask_stroke(id).unwrap();
+    let output = doc.mask_region(abandoned, 2, 2, 1, 1).unwrap();
+    unsafe {
+        *output.data = 44;
+    }
+    doc.rollback_plugin_stroke();
+    doc.restore_composition(composition.clone());
+    doc.restore_mask_storage(
+        &composition.raster_masks,
+        |_| None,
+        |_, samples| samples.copy_from_slice(&raw),
+    );
+    doc.restore_history(checkpoint);
+    // An active checkpoint intentionally retains its already cached lease.
+    let output = doc.mask_region(original, 3, 3, 1, 1).unwrap();
+    unsafe {
+        *output.data = 55;
+    }
+    assert!(doc.mask_region(abandoned, 2, 2, 1, 1).is_err());
+    doc.finish();
+    let current = doc.begin_mask_stroke(id).unwrap();
+    assert!(
+        doc.mask_region(abandoned, 2, 2, 1, 1).is_err(),
+        "Active checkpoint rollback reused a later abandoned lease"
+    );
+    assert!(doc.mask_region(original, 1, 1, 1, 1).is_err());
+    assert_ne!(current.storage_epoch, abandoned.storage_epoch);
+    doc.mask_region(current, 4, 4, 1, 1).unwrap();
+    doc.finish();
+}
+
+#[test]
 fn raster_mask_project_roundtrip_has_bounded_binary_planes_and_retained_allocator_opt_in() {
     let file = path("roundtrip");
     let mut doc = document(513, 257);

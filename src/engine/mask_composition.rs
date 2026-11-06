@@ -1,5 +1,5 @@
 //! Generated mask gates and scoped raw descriptors; editable filters stay separate.
-use super::super::raster_masks::{MaskOwner, MaskState, SamplePlane, MAX_MASKS};
+use super::super::raster_masks::{MaskOwner, MaskState, MAX_MASKS};
 use super::group_editing::GroupPlan;
 use super::*;
 use micopi_plugin_api as abi;
@@ -176,15 +176,18 @@ impl Document {
         }
         Ok(())
     }
-    pub(super) fn ensure_raster_mask_properties(masks: &MaskState) -> Result<(), String> {
+    pub(super) fn ensure_raster_mask_properties(&self, masks: &MaskState) -> Result<(), String> {
         if masks
             .items
             .iter()
             .any(|m| m.density != 255 || m.feather_radius_px != 0)
+            && self
+                .renderer
+                .as_ref()
+                .is_none_or(|renderer| !renderer.supports_mask_effects())
         {
             return Err(
-                "Raster mask density and feather require the pending native effects extension"
-                    .into(),
+                "Raster mask density and feather require compositor mask effects support".into(),
             );
         }
         Ok(())
@@ -208,12 +211,12 @@ impl Document {
     }
     /// The cached mask/layer slots avoid ID resolution and allocation on damage.
     pub(super) fn render_masked_composition(
-        &self,
+        &mut self,
         layers: &mut [abi::CompositeLayer],
         output: &mut abi::Pixels,
     ) -> Result<(), String> {
         self.ensure_raster_mask_renderer()?;
-        Self::ensure_raster_mask_properties(self.mask_state())?;
+        self.prepare_mask_effects()?;
         if layers.len() != self.layers.len()
             || self.mask_planes.len() != self.mask_state().items.len()
             || self.mask_planes.len() > MAX_MASKS
@@ -226,30 +229,13 @@ impl Document {
             stride: 0,
             constant: 255,
         }; MAX_MASKS];
-        let area = self.width * self.height;
-        for ((descriptor, plane), metadata) in descriptors
+        for (slot, descriptor) in descriptors
             .iter_mut()
-            .zip(&self.mask_planes)
-            .zip(&self.mask_state().items)
+            .take(self.mask_planes.len())
+            .enumerate()
         {
-            if plane.id != metadata.id {
-                return Err("Raster mask render identity does not match storage".into());
-            }
-            *descriptor = match &plane.samples {
-                SamplePlane::Uniform(value) => abi::CompositeMask {
-                    data: std::ptr::null(),
-                    len: 0,
-                    stride: 0,
-                    constant: *value as u32,
-                },
-                SamplePlane::Dense(samples) if samples.len() == area => abi::CompositeMask {
-                    data: samples.as_ptr(),
-                    len: samples.len(),
-                    stride: self.width as u32,
-                    constant: 0,
-                },
-                _ => return Err("Raster mask render sample count does not match canvas".into()),
-            };
+            *descriptor =
+                super::mask_effects::descriptor(self.effective_mask_view(slot)?, self.width);
         }
         for (i, layer) in layers.iter_mut().enumerate() {
             if self.masked_layers[i] {
