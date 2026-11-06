@@ -177,24 +177,11 @@ try {
     New-Item -ItemType Directory -Path 'dist/plugins/ai-assistant' -Force | Out-Null
     if (!(Test-Path 'dist/plugins/ai-assistant/manifest.json')) { Copy-Item 'plugins/ai-assistant/manifest.json' 'dist/plugins/ai-assistant/manifest.json' }
     Copy-Item -LiteralPath $assistantOutput -Destination 'dist/plugins/ai-assistant/micopi_ai_assistant.dll' -Force
-    New-Item -ItemType Directory -Path 'dist/licenses' -Force | Out-Null
-    Copy-Item -LiteralPath 'assets/material-symbols/LICENSE' -Destination 'dist/licenses/MaterialSymbols-LICENSE.txt' -Force
-    (Get-Content -LiteralPath 'assets/material-symbols/NOTICE.md' -Raw).Replace('](LICENSE)','](MaterialSymbols-LICENSE.txt)') | Set-Content -LiteralPath 'dist/licenses/MaterialSymbols-NOTICE.md' -Encoding utf8
-    Copy-Item -LiteralPath 'LICENSE' -Destination 'dist/licenses/MiCoPi-LICENSE.txt' -Force
-    $metadata = & $cargo metadata --format-version 1 --offline --locked --filter-platform x86_64-pc-windows-gnu | ConvertFrom-Json
+    $licenseMetadata = Join-Path $buildTemp 'license-metadata.json'
+    & $cargo metadata --format-version 1 --offline --locked --filter-platform x86_64-pc-windows-gnu | Set-Content -LiteralPath $licenseMetadata -Encoding utf8
     if ($LASTEXITCODE -ne 0) { throw 'Dependency notice generation failed' }
-    $notices = @('# MiCoPi dependency licenses', '', 'Generated from Cargo.lock. Each subdirectory contains the upstream license files.', '')
-    foreach ($package in $metadata.packages | Where-Object { $_.name -ne 'micopi' }) {
-        $notices += "- $($package.name) $($package.version): $($package.license) - $($package.repository)"
-        $source = Split-Path -Parent $package.manifest_path
-        $licenseFiles = Get-ChildItem -LiteralPath $source -File | Where-Object { $_.Name -match '^(LICENSE|LICENCE|COPYING|NOTICE)' }
-        if ($licenseFiles) {
-            $dest = Join-Path 'dist/licenses' "$($package.name)-$($package.version)"
-            New-Item -ItemType Directory -Path $dest -Force | Out-Null
-            foreach ($file in $licenseFiles) { Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $dest $file.Name) -Force }
-        }
-    }
-    $notices | Set-Content -LiteralPath 'dist/licenses/DEPENDENCIES.md' -Encoding utf8
+    & python (Join-Path $PSScriptRoot 'collect-licenses.py') --root $projectRoot --metadata $licenseMetadata --output (Join-Path $projectRoot 'dist/licenses')
+    if ($LASTEXITCODE -ne 0) { throw 'Dependency license coverage validation failed' }
     Get-Item $versionedOutput | Select-Object FullName,Length
 } finally {
     foreach ($key in $savedEnvironment.Keys) { [Environment]::SetEnvironmentVariable($key, $savedEnvironment[$key]) }

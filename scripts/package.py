@@ -1,5 +1,6 @@
 """Package an existing Windows build with the current default plugins and documentation."""
 import argparse
+import importlib.util
 from pathlib import Path
 import json
 import tomllib
@@ -9,6 +10,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def package(dist: Path, output: Path):
+    spec = importlib.util.spec_from_file_location('micopi_license_collector', ROOT/'scripts/collect-licenses.py')
+    collector = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(collector)
+    collector.verify_staged(dist/'licenses', ROOT/'Cargo.lock')
     version = tomllib.loads((ROOT/'Cargo.toml').read_text(encoding='utf-8'))['package']['version']
     entries = {}
 

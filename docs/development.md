@@ -68,6 +68,8 @@ For documentation-only changes, run the repository checker and `git diff --check
 
 After building, `python scripts/package.py` creates the portable ZIP from versioned binaries, source-controlled default manifests, current documentation and examples. It excludes personal configuration and historical screenshots. Archive entries use stable ordering and timestamps. This packages locally and does not publish a release.
 
+Builds stage dependency notices through [the offline license collector](../scripts/licenses/README.md). The collector checks the exact Cargo registry archives against `Cargo.lock`, retains nested notices and verifies pinned upstream supplements for crates whose archives omit complete license texts. The four embedded font notices are required separately from the egui source terms. Every workspace package carries the project MIT text. A checksummed `licenses/LICENSES.json` records coverage and provenance; the packager rejects a stale lock digest or missing, modified or extra license files before writing a ZIP. Run `python scripts/test-collect-licenses.py` after changing this tooling or its pins. Dependency upgrades need a fresh notice review rather than inheriting an older package's coverage.
+
 ## Source and artifacts
 
 Keep Cargo.lock. Exclude target/, dist/, downloaded toolchains, local settings, session endpoints and personal artwork. Main structure and invariants are in [Architecture](architecture.md). DLL ownership and independent build instructions are in [Native Plugins](native-plugins.md). Language catalog contributions are documented in [Localization](localization.md).

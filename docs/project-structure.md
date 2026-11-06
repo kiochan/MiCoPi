@@ -152,6 +152,8 @@ Capture fixtures exercise asynchronous presentation and file publication indepen
 
 Generated smoke captures, extracted packages, benchmarks and artwork from examples belong under ignored `target/test-output/` or `target/example-output/`. Only reviewed screenshots are promoted to `docs/screenshots/`; portable deliverables stay under ignored `dist/`.
 
+`scripts/collect-licenses.py` owns locked, offline notice staging; `scripts/licenses/` contains reviewed upstream legal-text supplements and their provenance pins. `scripts/test-collect-licenses.py` covers archive validation, declared coverage, staging rollback and package admission. Generated dependency notices and `LICENSES.json` belong in the ignored portable staging tree, not alongside the source supplements. See [the collection contract](../scripts/licenses/README.md).
+
 ## Documentation and screenshots
 
 English technical guides live directly under `docs/`, with an index in `docs/README.md`. Translated root READMEs summarize the same capabilities and link to the English technical contracts. Current screenshots use stable, descriptive filenames. Older captures are retained under `docs/screenshots/archive/` and are not used to represent the current workbench.
