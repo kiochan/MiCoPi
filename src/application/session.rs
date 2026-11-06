@@ -511,6 +511,7 @@ impl Session {
                                     | Operation::CaptureWorkspace
                                     | Operation::TransformPreview
                                     | Operation::ExportDialog
+                                    | Operation::OpenSelectedMerge
                                     | Operation::ReplayExport
                                     | Operation::ReplayFrames
                                     | Operation::ReplayRecover
@@ -626,6 +627,14 @@ impl Session {
             }
             if op == Operation::LayerBatch {
                 crate::plugins::layer_batch::validate(&action.args)?;
+            }
+            if matches!(
+                op,
+                Operation::MergeSelectedLayers
+                    | Operation::MergeSelectedLayersPlan
+                    | Operation::OpenSelectedMerge
+            ) {
+                crate::plugins::selected_merge::validate(&action.args)?;
             }
             if matches!(
                 op,

@@ -65,7 +65,7 @@ pub(crate) fn resource_schema(id: &str) -> Value {
         "source_path":{"description":"Imported/opened source path or null"},"save_path":{"description":"Project save target or null"},
         "width":{"type":"integer"},"height":{"type":"integer"},"dirty":{"type":"boolean"},
         "active_layer":{"type":"integer"},"selected_layer_ids":{"type":"array","items":{"type":"integer"}},"layers":{"type":"array","items":{"type":"object"}},
-        "groups":{"type":"object","description":"Version 1 hierarchy; group.query and core.groups expose its complete typed state."}
+        "groups":{"type":"object","description":"Versioned hierarchy; group.query and core.groups expose its complete typed state, including isolated and Pass Through policies."}
     },"required":["id","source_path","save_path","width","height","dirty","layers"]});
     match id {
         "document.active" => document.clone(),

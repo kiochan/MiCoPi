@@ -508,7 +508,11 @@ impl Studio {
     pub(super) fn run_actions(&mut self, ctx: &Context) {
         while !self.editor.actions.is_empty() {
             let action = self.editor.actions.remove(0);
-            let group_edit = matches!(action, Action::UiCommand(10200 | 10201))
+            if action == Action::Cancel && self.editor.selected_merge.is_some() {
+                self.editor.selected_merge = None;
+                continue;
+            }
+            let group_edit = matches!(action, Action::UiCommand(10187 | 10200 | 10201))
                 || (matches!(action, Action::UiCommand(10147))
                     && self.editor.session.doc.has_groups());
             if !group_edit {
@@ -599,6 +603,12 @@ impl Studio {
                                 _ => "layer.stamp_visible",
                             };
                             self.editor.core(action, serde_json::json!({}));
+                        }
+                        10187 => {
+                            if self.editor.core("layer.merge", serde_json::json!({})) {
+                                self.editor.focus_group_ui(ctx, None);
+                                self.editor.sync_from_session();
+                            }
                         }
                         10142 | 10143 => {
                             self.editor.finish_stroke();
@@ -924,10 +934,106 @@ mod group_command_tests {
     use super::*;
     use crate::application::{Pointer, PointerPhase, Session, ToolKind};
     use serde_json::json;
+    #[test]
+    fn merge_layers_shortcut_immediately_uses_selection_or_singleton_merge_down() {
+        for multi in [false, true] {
+            let mut app = crate::desktop::tests::studio();
+            app.editor.session = Session::new(
+                crate::plugins::Registry::load(
+                    &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+            app.editor.settings.keys = Keymap::default();
+            assert!(app
+                .editor
+                .core("canvas.new", json!({"width":12,"height":8})));
+            for (i, color) in ["#cc4466", "#66bb88", "#7799ee"].into_iter().enumerate() {
+                if i > 0 {
+                    assert!(app.editor.core("layer.add", json!({})));
+                }
+                assert!(app.editor.core("layer.fill_color", json!({"color":color})));
+            }
+            assert!(app.editor.core(
+                "layer.selection.set",
+                if multi {
+                    json!({"layer_ids":[3,1],"active_layer_id":3})
+                } else {
+                    json!({"layer_ids":[3],"active_layer_id":3})
+                }
+            ));
+            let before = app.editor.session.doc.composition();
+            let raw = app
+                .editor
+                .session
+                .doc
+                .layers
+                .iter()
+                .map(|layer| layer.pixels.clone())
+                .collect::<Vec<_>>();
+            app.editor.session.replay_boundary().unwrap();
+            let events = app
+                .editor
+                .session
+                .replay_journal(false)
+                .unwrap()
+                .entries
+                .len();
+            let revision = app.editor.session.revision;
+            let action = app
+                .editor
+                .settings
+                .keys
+                .resolve('E' as usize, CTRL)
+                .unwrap();
+            assert_eq!(action, Action::UiCommand(10187));
+            app.editor.actions.push(action);
+            app.run_actions(&Context::default());
+            assert_eq!(
+                app.editor.session.revision,
+                revision + 1,
+                "{}",
+                app.editor.status
+            );
+            assert_eq!(app.editor.session.doc.layers.len(), 2);
+            assert!(app.editor.selected_merge.is_none());
+            let preserved = if multi { 2 } else { 1 };
+            assert_eq!(
+                app.editor.session.doc.layers
+                    [app.editor.session.doc.layer_index(preserved).unwrap()]
+                .pixels,
+                raw[preserved as usize - 1]
+            );
+            let journal = app.editor.session.replay_journal(false).unwrap();
+            assert_eq!(journal.entries.len(), events + 1);
+            assert_eq!(
+                journal.events(events, 1).unwrap()["events"][0]["source"]["action"],
+                "layer.merge"
+            );
+            assert!(app.editor.core("history.undo", json!({})));
+            assert_eq!(app.editor.session.doc.composition(), before);
+            assert_eq!(
+                app.editor
+                    .session
+                    .doc
+                    .layers
+                    .iter()
+                    .map(|layer| layer.pixels.clone())
+                    .collect::<Vec<_>>(),
+                raw
+            );
+        }
+    }
 
     #[test]
     fn group_merge_and_grouping_shortcuts_preserve_live_local_contacts_and_recorded_samples() {
-        for (key, modifiers) in [('E', CTRL | SHIFT), ('G', CTRL), ('G', CTRL | SHIFT)] {
+        for (key, modifiers) in [
+            ('E', CTRL),
+            ('E', CTRL | SHIFT),
+            ('G', CTRL),
+            ('G', CTRL | SHIFT),
+        ] {
             for tool in [ToolKind::Brush, ToolKind::Hand] {
                 let mut app = crate::desktop::tests::studio();
                 app.editor.session = Session::new(
@@ -945,6 +1051,14 @@ mod group_command_tests {
                     "group.create",
                     json!({"members":[{"kind":"layer","id":1}],"name":"Ink"})
                 ));
+                let selected_merge = key == 'E' && modifiers == CTRL;
+                if selected_merge {
+                    assert!(app.editor.core("layer.add", json!({})));
+                    assert!(app.editor.core(
+                        "layer.selection.set",
+                        json!({"layer_ids":[1,2],"active_layer_id":2})
+                    ));
+                }
                 app.editor.session.parameters.stabilizer = 0.65;
                 let sample = Pointer {
                     phase: PointerPhase::Down,
@@ -967,7 +1081,14 @@ mod group_command_tests {
                 }
                 let panning = app.editor.panning;
                 let state = app.editor.session.state();
-                let pixels = app.editor.session.doc.layers[0].pixels.clone();
+                let pixels = app
+                    .editor
+                    .session
+                    .doc
+                    .layers
+                    .iter()
+                    .map(|layer| layer.pixels.clone())
+                    .collect::<Vec<_>>();
                 let history = app.editor.session.doc.history_bytes();
                 let action = app
                     .editor
@@ -983,7 +1104,16 @@ mod group_command_tests {
                     app.editor.status
                 );
                 assert_eq!(app.editor.session.state(), state);
-                assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+                assert_eq!(
+                    app.editor
+                        .session
+                        .doc
+                        .layers
+                        .iter()
+                        .map(|layer| layer.pixels.clone())
+                        .collect::<Vec<_>>(),
+                    pixels
+                );
                 assert_eq!(app.editor.session.doc.history_bytes(), history);
                 assert!(app.editor.session.stroke.active());
                 assert!(app.editor.session.pointer_checkpoint.is_some());
@@ -1065,7 +1195,10 @@ mod group_command_tests {
                         .collect::<Vec<_>>(),
                     [0, 20, 40]
                 );
-                assert_eq!(app.editor.session.doc.layers.len(), 1);
+                assert_eq!(
+                    app.editor.session.doc.layers.len(),
+                    if selected_merge { 2 } else { 1 }
+                );
                 assert_eq!(
                     app.editor.session.doc.groups_state()["groups"]
                         .as_array()

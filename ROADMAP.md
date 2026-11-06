@@ -13,6 +13,7 @@ This roadmap starts from the **0.21.0 implementation and subsequent work on main
 - Linked layer composition with per-layer plugin filters, synchronized structural edits and an explicit legacy/free graph mode.
 - Brush spacing and minimum pressure opacity; connected/whole-layer color fill with expansion/contraction and feathering; repeated/reflected gradients.
 - Stable layer IDs, exact layer transforms, transparency locking, color fills, anchored framing/crop, Image Size/Trim, Move/nudge and affine Free Transform with cancellable previews, history and outcome replay.
+- Selected-only merge across noncontiguous/grouped rasters, explicit placement/consumption plans, contextual Ctrl+E and an optional guarded desktop review, with one structural undo/outcome.
 - Unified package metadata, host compatibility checks, lifecycle diagnostics and dependency-aware enable/disable plans shared by Settings and automation.
 - English-only embedding; external Chinese, Japanese and Korean catalogs with profile overrides, owner-scoped plugin catalogs and background hot reload.
 
@@ -64,6 +65,7 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 - [x] Add document-owned transform recipes, exact-matrix repeat and selected/whole-layer copy-repeat with configurable PS bindings, one undo/outcome, public state and shared nodes/MCP/headless execution. Clear recipes on changed canvas geometry and restore them with undo.
 - [x] Add versioned stable-ID isolated groups, nested appearance, typed subtree operations, cached composition/visibility and deterministic undo/replay.
 - [x] Add staged Group Merge and grouped Merge Visible, retaining outer appearance or hidden branches/group skeletons as appropriate, with one structural undo/outcome and shared schema/workflow/MCP/headless execution.
+- [x] Add selected-only merge for explicit stable IDs across noncontiguous layers and parents. Preserve unselected buffers, filters, folders and masks; project intermediate gates over transparency while keeping the common parent/ancestors outside the bake. Share pure plans, contextual Ctrl+E, optional guarded review, one Undo/revision/outcome and failure rollback. Enforce source/projected/final graph budgets and expose deliberate stacking/backdrop changes. See [Selected-only merge](docs/selected-merge.md).
 - [x] Expand shared layer/group/node color blending to 26 modes, with optional native capability discovery, preflight before mutation, bounded family menus and independent alpha/rounding references. Retain original mode IDs, pixels and supported recording hashes. See [Color blend modes](docs/blend-modes.md).
 - [x] Add opt-in versioned Pass Through groups with seeded backdrop composition and once-only integer premultiplied group opacity, a capability-gated image Mix node, shared inspection/eligibility, undo and renderer-independent outcome replay. Keep isolated defaults and hashes unchanged; reject backdrop-dependent subtree baking. See [Pass Through](docs/pass-through.md).
 - [x] Make implemented structural/multi-layer edits undoable with buffer ownership and explicit batch undo groups, separately from atomic failure rollback.
@@ -85,7 +87,7 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 - [x] Add Image Size physical-unit input, all-layer/mask plans, exact-density conversion and revision-guarded desktop controls.
 - [ ] Improve dirty-state and save/recovery feedback.
 
-**Acceptance:** an artist can create, select, transform and organize a small illustration, save/reopen it, undo/redo its structural edits and replay the same visible results. GUI, MCP and headless actions produce matching pixels for shared fixtures. Graph references remain valid after layer changes.
+**Acceptance:** an artist can create, select, transform and organize a small illustration, save/reopen it, undo/redo its structural edits and replay the same visible results. GUI, MCP and headless actions produce matching pixels for shared fixtures. Graph references remain valid after layer changes. Selected-only merge preserves unselected storage and surviving filter identities, reports its explicit destination/hidden consumption, rejects unsupported topology before allocation and restores all consumed content on Undo; the selected-only result need not preserve outside-backdrop or interleaved-stack appearance.
 
 ## M3 — Plugin, node and AI authoring
 

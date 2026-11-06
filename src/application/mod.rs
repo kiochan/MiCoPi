@@ -46,6 +46,8 @@ mod pipeline_tests;
 #[cfg(test)]
 mod replay_tests;
 #[cfg(test)]
+mod selected_merge_tests;
+#[cfg(test)]
 mod selection_tests;
 #[cfg(test)]
 mod tool_tests;

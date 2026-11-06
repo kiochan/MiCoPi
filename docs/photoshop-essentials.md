@@ -15,7 +15,7 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 | Area | Available foundation | Main gap |
 | --- | --- | --- |
 | Drawing | Native DLL tools, pressure, stabilization, spacing, pressure curve, size/shape cursor | Rich tips/dynamics and additional painting tools |
-| Layers | Stable IDs, multi-selection/batches, isolated/Pass Through groups and baking, locks/labels, merge/flatten/stamp | Masks, clipping, selected-layer merge and multi-layer transforms |
+| Layers | Stable IDs, multi-selection/batches, isolated/Pass Through groups and baking, locks/labels, selected-only merge/flatten/stamp | Masks, clipping and multi-layer transforms |
 | Selection/editing | Document masks, gestures, color matching, edge processing, selected painting and internal transfers | System clipboard and selection transforms |
 | Geometry | Anchored framing/crop, orthogonal geometry, Image Size/Trim, Move and affine Free Transform/repeat/skew | Off-canvas storage and richer project metadata |
 | Composition | Linked layer/filter/blend graphs and explicit free graphs | More adjustments, filters and mask-aware composition |
@@ -83,7 +83,7 @@ Acceptance: coordinate units, pivots, bounds, resampling and clipping are specif
 - [x] Add stable-ID multi-layer selection and explicit property, duplicate, delete, block-order and exact pixel batch targeting, with shared actions/state/nodes, one Undo/Redo group/revision/outcome and rollback. Painting and Free Transform remain active-layer operations.
 - [x] Add versioned stable-ID isolated groups with nested visibility/opacity/blending, typed subtree operations, cached actual composition, deterministic history/replay and shared nodes/MCP/headless contracts.
 - [x] Add explicit Group Merge and group-aware Merge Visible with documented backdrop/hidden-content/filter behavior, one structural undo/outcome, shared typed nodes/MCP/headless execution and failure rollback. Retain the group's outer properties or the complete visible root result as appropriate; keep hidden branches/skeletons for Merge Visible.
-- [ ] Add selected-layer merge with explicit relative stacking, backdrop and parent semantics.
+- [x] Add selected-only merge for 2–16 explicit stable raster IDs, including noncontiguous/cross-parent targets. Project selected leaves and intermediate filter/group gates over transparency, retain the common parent/ancestor gates and place the result above the highest original targeted branch. Preserve unselected buffers/filter identities, every folder and selection masks; retain the top target ID/name/label/position flag and select the result alone. Share read-only plans, contextual Ctrl+E, optional revision-guarded review, one Undo/revision/outcome and atomic/render/journal rollback. Enforce the existing 64-instruction projection/final limits and keep group v1/v2 public schemas compatible. See [Selected-only merge](selected-merge.md).
 - [x] Add opt-in Pass Through groups with explicit incoming-backdrop semantics, once-only integer premultiplied opacity, nested isolation, optional native capability checks and independent alpha/opacity references. Retain isolated defaults/bytes and verified outcomes; reject standalone baking of a Pass Through target. See [Pass Through](pass-through.md).
 - [x] Expand shared layer/group/node color blending to 26 modes, including Soft/Hard Light, Color Dodge/Burn, Linear Burn and Hue/Saturation/Color/Luminosity. Preserve the original eight mode IDs/pixels, advertise optional native mode capabilities, reject unavailable modes before mutation and retain alpha/history/replay references. See [Color blend modes](blend-modes.md).
 - [ ] Add deterministic Dissolve coverage with an explicit document-coordinate/seed contract, dirty-region equivalence, alpha/opacity references and verified replay. It is a spatial coverage operation rather than a color-channel equation.
@@ -92,7 +92,7 @@ Acceptance: coordinate units, pivots, bounds, resampling and clipping are specif
 - [ ] Add multi-layer align/distribute/link.
 - [ ] Add solid/gradient fill layers; evaluate pattern fills alongside the pattern library.
 
-Acceptance: mask/group changes have explicit schema and persistence versions; old projects still load; partial invalid graphs fail safely; hidden/locked source content is retained; mask painting shares pressure/stabilization and the typed native path.
+Acceptance: group/mask changes have explicit schema and persistence versions; old projects still load; partial invalid graphs fail safely. Implemented selected-only merge reports placement and globally hidden targets, preserves unselected storage and surviving filters, rejects protected targets before rendering and restores consumed hidden content on Undo. Its projected forest may change outside-backdrop/interleaved-stack appearance; the plan does not promise equality to the original full composite. Raster/clipping masks remain planned: mask painting must share pressure/stabilization and the typed native path, with enable/invert/density/feather, selection conversion, bounded storage, undo and verified outcomes.
 
 ### P5 — Common adjustments and filters
 

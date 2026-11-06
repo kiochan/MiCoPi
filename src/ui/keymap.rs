@@ -727,12 +727,21 @@ pub static COMMANDS: &[Command] = &[
         43
     ),
     c!(
+        "layer.merge",
+        "Merge Layers",
+        "Layers",
+        "merge selected down combine layers he bing",
+        UiCommand(10187),
+        "Ctrl+E",
+        10187
+    ),
+    c!(
         "layer.merge_down",
         "Merge Down",
         "Layers",
         "merge down combine layer he bing tuceng",
         UiCommand(10146),
-        "Ctrl+E",
+        "",
         10146
     ),
     c!(
@@ -1788,6 +1797,7 @@ impl Keymap {
                 || matches!(
                     command.id,
                     "layer.via_copy"
+                        | "layer.merge"
                         | "layer.via_cut"
                         | "canvas.image_size"
                         | "canvas.transform.open"
@@ -1853,6 +1863,43 @@ impl Keymap {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn merge_layers_default_keeps_explicit_legacy_merge_down_bindings() {
+        assert_eq!(
+            super::Keymap::default().resolve('E' as usize, super::CTRL),
+            Some(super::Action::UiCommand(10187))
+        );
+        let index = super::COMMANDS
+            .iter()
+            .position(|command| command.id == "layer.merge")
+            .unwrap();
+        let legacy =
+            super::Keymap::decode(r#"{"keybindings":{"layer.merge_down":"Ctrl+E"}}"#).unwrap();
+        assert!(legacy.bindings[index].is_empty());
+        assert_eq!(
+            legacy.resolve('E' as usize, super::CTRL),
+            Some(super::Action::UiCommand(10146))
+        );
+        let explicit = super::Keymap::decode(
+            r#"{"keybindings":{"layer.merge":"Ctrl+Alt+E","layer.merge_down":"Ctrl+E"}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            explicit.resolve('E' as usize, super::CTRL | super::ALT),
+            Some(super::Action::UiCommand(10187))
+        );
+        assert_eq!(
+            explicit.resolve('E' as usize, super::CTRL),
+            Some(super::Action::UiCommand(10146))
+        );
+        let unloaded =
+            super::Keymap::decode(r#"{"keybindings":{"plugin.custom.merge":"Ctrl+E"}}"#).unwrap();
+        assert!(unloaded.bindings[index].is_empty());
+        assert_eq!(
+            super::Keymap::decode(&explicit.encode()).unwrap().bindings,
+            explicit.bindings
+        );
+    }
     #[test]
     fn group_shortcuts_keep_ps_defaults_and_yield_to_explicit_older_bindings() {
         let create = super::COMMANDS

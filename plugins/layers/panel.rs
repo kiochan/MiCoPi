@@ -6,6 +6,9 @@ use std::{hash::Hasher, sync::Arc};
 
 #[path = "groups.rs"]
 mod groups;
+#[path = "merge_selected.rs"]
+mod merge_selected;
+pub(in crate::desktop) use merge_selected::SelectedMergeDraft;
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 enum LockFilter {
     #[default]
@@ -347,6 +350,10 @@ impl Editor {
                         )
                 });
             let requires_idle = action.action.starts_with("group.")
+                || matches!(
+                    action.action.as_str(),
+                    "layer.merge" | "layer.merge_selected" | "layer.merge_selected.open"
+                )
                 || action.action == "layer.merge_visible" && self.session.doc.has_groups()
                 || unsupported_blend;
             if !requires_idle && (self.input_owned || self.drawing || self.panning.is_some()) {
@@ -357,6 +364,10 @@ impl Editor {
             if action.action == "layer.batch" && action.expected_revision.is_none() {
                 action.expected_revision = Some(self.session.revision);
             }
+            let merged = matches!(
+                action.action.as_str(),
+                "layer.merge" | "layer.merge_selected"
+            );
             let success = if action.action.starts_with("group.") {
                 if let Some(ctx) = ctx {
                     self.dispatch_group_ui(ctx, action)
@@ -368,6 +379,12 @@ impl Editor {
             };
             if !success {
                 break;
+            }
+            if merged {
+                if let Some(ctx) = ctx {
+                    self.focus_group_ui(ctx, None);
+                }
+                self.sync_from_session();
             }
         }
     }
@@ -705,10 +722,22 @@ impl Editor {
         ui.separator();
         for (command, title, args, enabled) in [
             (
-                "layer.merge_down",
-                "Merge Down",
-                serde_json::json!({"layer_id":id}),
-                !multi && index > 0 && !protected(index) && !protected(index - 1),
+                if multi {
+                    "layer.merge_selected"
+                } else {
+                    "layer.merge_down"
+                },
+                if multi {
+                    "Merge Selected Layers"
+                } else {
+                    "Merge Down"
+                },
+                if multi {
+                    serde_json::json!({"layer_ids":targets})
+                } else {
+                    serde_json::json!({"layer_id":id})
+                },
+                multi || index > 0 && !protected(index) && !protected(index - 1),
             ),
             (
                 "layer.merge_visible",
@@ -739,6 +768,20 @@ impl Editor {
                 action = Some(Action::new(command, args));
                 ui.close();
             }
+        }
+        if multi
+            && self
+                .session
+                .registry
+                .actions
+                .contains_key("layer.merge_selected.open")
+            && ui.button(tr("Review Selected Merge…")).clicked()
+        {
+            action = Some(Action::new(
+                "layer.merge_selected.open",
+                json!({"layer_ids":targets}),
+            ));
+            ui.close();
         }
         ui.separator();
         for (title, color) in [
@@ -2252,6 +2295,8 @@ mod tests {
                 ("group.set", true),
                 ("group.move", false),
                 ("layer.merge_visible", false),
+                ("layer.merge_selected", false),
+                ("layer.merge", false),
             ] {
                 let (mut app, ids) = native_multi();
                 let group = app.editor.session.apply(crate::application::Action::new(
@@ -2296,6 +2341,8 @@ mod tests {
                         json!({"items":[{"kind":"group","id":group}],"parent_id":0,"index":0}),
                     ),
                     "layer.merge_visible" => menu_click(&mut app, "Merge Visible"),
+                    "layer.merge_selected" => menu_click(&mut app, "Merge Selected Layers"),
+                    "layer.merge" => crate::application::Action::new(command, json!({})),
                     _ => crate::application::Action::new(command, json!({"group_id":group})),
                 };
                 let state = app.editor.session.state();
@@ -2425,6 +2472,55 @@ mod tests {
                 assert_eq!(completed[2]["pressure"], serde_json::json!(0.4f32));
             }
         }
+    }
+    #[test]
+    fn layers_selected_merge_menu_uses_explicit_noncontiguous_ids_and_optional_review() {
+        let (mut app, ids) = native_multi();
+        app.editor.session.runtime = "desktop";
+        assert!(app.editor.core(
+            "layer.selection.set",
+            json!({"layer_ids":[ids[2],ids[0]],"active_layer_id":ids[2]})
+        ));
+        let before = app.editor.session.doc.composition();
+        let review = menu_click(&mut app, "Review Selected Merge…");
+        assert_eq!(review.action, "layer.merge_selected.open");
+        assert_eq!(review.args, json!({"layer_ids":[ids[0],ids[2]]}));
+        app.editor
+            .dispatch_layer_pending_ui(vec![review], Some(&Context::default()));
+        assert_eq!(app.editor.session.doc.composition(), before);
+        assert_eq!(
+            app.editor.session.ui_effects.back().unwrap()["value"]["layer_ids"],
+            json!([ids[0], ids[2]])
+        );
+        let action = menu_click(&mut app, "Merge Selected Layers");
+        assert_eq!(action.action, "layer.merge_selected");
+        assert_eq!(action.args, json!({"layer_ids":[ids[0],ids[2]]}));
+        let preserved = app.editor.session.doc.layers
+            [app.editor.session.doc.layer_index(ids[1]).unwrap()]
+        .pixels
+        .clone();
+        let revision = app.editor.session.revision;
+        app.editor
+            .dispatch_layer_pending_ui(vec![action], Some(&Context::default()));
+        assert_eq!(
+            app.editor.session.revision,
+            revision + 1,
+            "{}",
+            app.editor.status
+        );
+        assert_eq!(app.editor.session.doc.layers.len(), 3);
+        assert_eq!(
+            app.editor
+                .session
+                .doc
+                .layer_id(app.editor.session.doc.active),
+            ids[2]
+        );
+        assert_eq!(
+            app.editor.session.doc.layers[app.editor.session.doc.layer_index(ids[1]).unwrap()]
+                .pixels,
+            preserved
+        );
     }
     #[test]
     fn layers_merge_visible_menu_accepts_grouped_singletons_and_ignores_ancestor_hidden_locks() {

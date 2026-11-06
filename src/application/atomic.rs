@@ -127,6 +127,8 @@ impl Operation {
                 | Self::MoveLayer
                 | Self::DeleteLayer
                 | Self::MergeDown
+                | Self::MergeLayers
+                | Self::MergeSelectedLayers
                 | Self::MergeVisible
                 | Self::FlattenImage
                 | Self::StampVisible

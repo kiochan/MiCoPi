@@ -43,6 +43,30 @@
       },
       "read_only": false,
       "document_atomic": false
+    },
+    {
+      "id": "layer.merge_selected.open",
+      "title": "Review Selected Merge",
+      "operation": "open_selected_merge",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          },
+          "applied": {
+            "type": "boolean"
+          },
+          "runtime": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "queued",
+          "applied",
+          "runtime"
+        ]
+      }
     }
   ]
 }

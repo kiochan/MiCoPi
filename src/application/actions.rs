@@ -141,6 +141,10 @@ pub enum Operation {
     MoveLayer,
     DeleteLayer,
     MergeDown,
+    MergeLayers,
+    MergeSelectedLayers,
+    MergeSelectedLayersPlan,
+    OpenSelectedMerge,
     MergeVisible,
     FlattenImage,
     StampVisible,
@@ -203,6 +207,15 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if matches!(
+            self,
+            Self::MergeLayers
+                | Self::MergeSelectedLayers
+                | Self::MergeSelectedLayersPlan
+                | Self::OpenSelectedMerge
+        ) {
+            return crate::plugins::selected_merge::schema(self);
+        }
         if self == Self::MergeVisible {
             return json!({"type":"object","properties":{},"additionalProperties":false,
                 "description":"Bake visible artwork. In grouped documents, consume effectively visible rasters and retain the top visible raster identity as a Normal/full-opacity root result, preserving all hidden rasters, filter branches and group records. Later unhiding can interact differently with the baked root. Requires idle input for grouped documents."});
@@ -452,6 +465,7 @@ impl Operation {
                 | Self::State
                 | Self::LayerQuery
                 | Self::GroupQuery
+                | Self::MergeSelectedLayersPlan
                 | Self::NewPlan
                 | Self::ImageSizePlan
                 | Self::DocumentInfo

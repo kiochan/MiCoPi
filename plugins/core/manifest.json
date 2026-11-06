@@ -401,7 +401,8 @@
               "version": {
                 "type": "integer",
                 "enum": [
-                  1
+                  1,
+                  2
                 ]
               },
               "roots": {
@@ -520,6 +521,19 @@
                     },
                     "context": {
                       "type": "boolean"
+                    },
+                    "compositing": {
+                      "type": "string",
+                      "enum": [
+                        "isolated",
+                        "pass_through"
+                      ]
+                    },
+                    "mergeable": {
+                      "type": "boolean"
+                    },
+                    "merge_error": {
+                      "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
                     }
                   },
                   "required": [
@@ -529,7 +543,10 @@
                     "parent_id",
                     "depth",
                     "visible",
-                    "effective_visible"
+                    "effective_visible",
+                    "compositing",
+                    "mergeable",
+                    "merge_error"
                   ]
                 }
               },
@@ -623,6 +640,19 @@
                     },
                     "context": {
                       "type": "boolean"
+                    },
+                    "compositing": {
+                      "type": "string",
+                      "enum": [
+                        "isolated",
+                        "pass_through"
+                      ]
+                    },
+                    "mergeable": {
+                      "type": "boolean"
+                    },
+                    "merge_error": {
+                      "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
                     }
                   },
                   "required": [
@@ -635,13 +665,17 @@
                     "effective_visible"
                   ]
                 }
+              },
+              "pass_through_available": {
+                "type": "boolean"
               }
             },
             "required": [
               "version",
               "roots",
               "groups",
-              "rows"
+              "rows",
+              "pass_through_available"
             ]
           }
         },
@@ -4059,7 +4093,8 @@
           "version": {
             "type": "integer",
             "enum": [
-              1
+              1,
+              2
             ]
           },
           "roots": {
@@ -4178,6 +4213,19 @@
                 },
                 "context": {
                   "type": "boolean"
+                },
+                "compositing": {
+                  "type": "string",
+                  "enum": [
+                    "isolated",
+                    "pass_through"
+                  ]
+                },
+                "mergeable": {
+                  "type": "boolean"
+                },
+                "merge_error": {
+                  "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
                 }
               },
               "required": [
@@ -4187,7 +4235,10 @@
                 "parent_id",
                 "depth",
                 "visible",
-                "effective_visible"
+                "effective_visible",
+                "compositing",
+                "mergeable",
+                "merge_error"
               ]
             }
           },
@@ -4281,6 +4332,19 @@
                 },
                 "context": {
                   "type": "boolean"
+                },
+                "compositing": {
+                  "type": "string",
+                  "enum": [
+                    "isolated",
+                    "pass_through"
+                  ]
+                },
+                "mergeable": {
+                  "type": "boolean"
+                },
+                "merge_error": {
+                  "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
                 }
               },
               "required": [
@@ -4347,6 +4411,9 @@
           },
           "renderer_transparent": {
             "type": "boolean"
+          },
+          "pass_through_available": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -4363,7 +4430,8 @@
           "drawing",
           "selected_layer_ids",
           "active_layer_id",
-          "renderer_transparent"
+          "renderer_transparent",
+          "pass_through_available"
         ]
       }
     },
@@ -4381,7 +4449,7 @@
           },
           "groups": {
             "type": "object",
-            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+            "description": "Versioned group hierarchy. group.query and core.groups expose its complete typed rows and child references."
           },
           "selected_layer_ids": {
             "type": "array",
@@ -4539,7 +4607,7 @@
           },
           "groups": {
             "type": "object",
-            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+            "description": "Versioned group hierarchy. group.query and core.groups expose its complete typed rows and child references."
           },
           "selected_layer_ids": {
             "type": "array",
@@ -4697,7 +4765,7 @@
           },
           "groups": {
             "type": "object",
-            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+            "description": "Versioned group hierarchy. group.query and core.groups expose its complete typed rows and child references."
           },
           "selected_layer_ids": {
             "type": "array",
@@ -4855,7 +4923,7 @@
           },
           "groups": {
             "type": "object",
-            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+            "description": "Versioned group hierarchy. group.query and core.groups expose its complete typed rows and child references."
           },
           "selected_layer_ids": {
             "type": "array",
@@ -5013,7 +5081,7 @@
           },
           "groups": {
             "type": "object",
-            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+            "description": "Versioned group hierarchy. group.query and core.groups expose its complete typed rows and child references."
           },
           "selected_layer_ids": {
             "type": "array",
@@ -5171,7 +5239,7 @@
           },
           "groups": {
             "type": "object",
-            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+            "description": "Versioned group hierarchy. group.query and core.groups expose its complete typed rows and child references."
           },
           "selected_layer_ids": {
             "type": "array",
@@ -5329,7 +5397,7 @@
           },
           "groups": {
             "type": "object",
-            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+            "description": "Versioned group hierarchy. group.query and core.groups expose its complete typed rows and child references."
           },
           "selected_layer_ids": {
             "type": "array",
@@ -5487,7 +5555,7 @@
           },
           "groups": {
             "type": "object",
-            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+            "description": "Versioned group hierarchy. group.query and core.groups expose its complete typed rows and child references."
           },
           "selected_layer_ids": {
             "type": "array",
@@ -5646,7 +5714,7 @@
           },
           "groups": {
             "type": "object",
-            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+            "description": "Versioned group hierarchy. group.query and core.groups expose its complete typed rows and child references."
           },
           "selected_layer_ids": {
             "type": "array",
@@ -5811,7 +5879,7 @@
           },
           "groups": {
             "type": "object",
-            "description": "Version 1 group hierarchy. group.query and core.groups expose its complete typed rows and child references."
+            "description": "Versioned group hierarchy. group.query and core.groups expose its complete typed rows and child references."
           },
           "selected_layer_ids": {
             "type": "array",
@@ -9917,6 +9985,177 @@
           "available"
         ]
       }
+    },
+    {
+      "id": "layer.merge",
+      "title": "Merge Layers",
+      "operation": "merge_layers",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "layer_id"
+        ]
+      }
+    },
+    {
+      "id": "layer.merge_selected",
+      "title": "Merge Selected Layers",
+      "operation": "merge_selected_layers",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "layer_id"
+        ]
+      }
+    },
+    {
+      "id": "layer.merge_selected.plan",
+      "title": "Plan Selected Layer Merge",
+      "operation": "merge_selected_layers_plan",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "layer_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
+            "maxItems": 16,
+            "minItems": 2
+          },
+          "common_parent_id": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "parent_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 32
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "consumed_hidden_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
+            "maxItems": 16
+          },
+          "interleaved_unselected_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
+            "maxItems": 16
+          },
+          "projected_group_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
+            "maxItems": 16
+          },
+          "lifted_layer_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
+            "maxItems": 16
+          },
+          "changes_stacking": {
+            "type": "boolean"
+          },
+          "output_buffer_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 67108864
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "projected_nodes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "final_nodes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 64
+          },
+          "backdrop_policy": {
+            "type": "string",
+            "enum": [
+              "selected_only_transparent"
+            ]
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "drawing": {
+            "type": "boolean"
+          },
+          "contact_active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "layer_ids",
+          "common_parent_id",
+          "parent_index",
+          "layer_id",
+          "consumed_hidden_ids",
+          "interleaved_unselected_ids",
+          "projected_group_ids",
+          "lifted_layer_ids",
+          "changes_stacking",
+          "output_buffer_bytes",
+          "width",
+          "height",
+          "projected_nodes",
+          "final_nodes",
+          "backdrop_policy",
+          "revision",
+          "drawing",
+          "contact_active"
+        ]
+      }
     }
   ],
   "states": [
@@ -10474,7 +10713,8 @@
           "version": {
             "type": "integer",
             "enum": [
-              1
+              1,
+              2
             ]
           },
           "roots": {
@@ -10593,6 +10833,19 @@
                 },
                 "context": {
                   "type": "boolean"
+                },
+                "compositing": {
+                  "type": "string",
+                  "enum": [
+                    "isolated",
+                    "pass_through"
+                  ]
+                },
+                "mergeable": {
+                  "type": "boolean"
+                },
+                "merge_error": {
+                  "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
                 }
               },
               "required": [
@@ -10602,7 +10855,10 @@
                 "parent_id",
                 "depth",
                 "visible",
-                "effective_visible"
+                "effective_visible",
+                "compositing",
+                "mergeable",
+                "merge_error"
               ]
             }
           },
@@ -10696,6 +10952,19 @@
                 },
                 "context": {
                   "type": "boolean"
+                },
+                "compositing": {
+                  "type": "string",
+                  "enum": [
+                    "isolated",
+                    "pass_through"
+                  ]
+                },
+                "mergeable": {
+                  "type": "boolean"
+                },
+                "merge_error": {
+                  "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
                 }
               },
               "required": [
@@ -10762,6 +11031,9 @@
           },
           "renderer_transparent": {
             "type": "boolean"
+          },
+          "pass_through_available": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -10778,7 +11050,8 @@
           "drawing",
           "selected_layer_ids",
           "active_layer_id",
-          "renderer_transparent"
+          "renderer_transparent",
+          "pass_through_available"
         ]
       }
     }

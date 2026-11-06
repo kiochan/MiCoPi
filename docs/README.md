@@ -14,6 +14,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Document Setup](document-setup.md) | New-canvas presets, editable background initialization, physical resolution and shared actions |
 | [Canvas Editing](canvas-editing.md) | Framing/crop, rotation/flips, resampling/trim, Move/nudge, Free Transform, history and public actions |
 | [Layer Editing](layer-editing.md) | Stable identities, structural edits, exact transforms and reference behavior |
+| [Selected-only Merge](selected-merge.md) | Explicit raster targets, common-parent projection, placement/visibility plans, optional review and atomic baking |
 | [Layer Groups](layer-groups.md) | Nested compositing policies, typed entries, hierarchy commands, node views and native capability compatibility |
 | [Pass Through](pass-through.md) | Parent-backdrop composition, once-only group opacity, Mix nodes, baking boundaries and versioned compatibility |
 | [Color Blend Modes](blend-modes.md) | The 26-mode catalog, RGB/alpha semantics, family menus, availability and legacy DLL compatibility |

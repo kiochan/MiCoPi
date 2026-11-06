@@ -48,7 +48,7 @@ impl Document {
 
     /// The only image allocation is the raster that will replace the sources.
     /// Global source indices let subtree rendering borrow every raw buffer.
-    fn render_group_bake(&self, graph: &Graph) -> Result<Vec<u32>, String> {
+    pub(super) fn render_group_bake(&self, graph: &Graph) -> Result<Vec<u32>, String> {
         self.ensure_group_renderer()?;
         let plan = graph.compile(self.layers.len())?;
         let mut layers = [micopi_plugin_api::CompositeLayer {
@@ -87,7 +87,7 @@ impl Document {
         Ok(pixels)
     }
 
-    fn publish_group_bake(
+    pub(super) fn publish_group_bake(
         &mut self,
         metadata: Vec<LayerMetadata>,
         groups: Option<GroupTree>,

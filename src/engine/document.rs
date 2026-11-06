@@ -1611,7 +1611,10 @@ mod layer_merge;
 mod layer_selection;
 #[path = "mix.rs"]
 mod mix;
+#[path = "selected_merge.rs"]
+mod selected_merge;
 pub use layer_merge::MergeLayers;
+pub use selected_merge::SelectedMergePlan;
 #[cfg(test)]
 #[path = "document_tests.rs"]
 mod tests;

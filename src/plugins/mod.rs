@@ -26,6 +26,7 @@ mod layers;
 pub(crate) mod movement;
 mod painting;
 pub(crate) mod resample;
+pub(crate) mod selected_merge;
 mod selection;
 mod system;
 mod system_clipboard;
@@ -39,6 +40,9 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        MergeLayers | MergeSelectedLayers | MergeSelectedLayersPlan | OpenSelectedMerge => {
+            selected_merge::execute(session, op, args)
+        }
         GroupQuery | GroupCreate | GroupCreateSelected | GroupProperties | GroupMove
         | GroupUngroup | GroupUngroupParent | GroupDelete | GroupDuplicate | GroupMerge
         | GroupSelectLayers => groups::execute(session, op, args),

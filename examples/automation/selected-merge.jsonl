@@ -1,0 +1,31 @@
+{"action":"canvas.new","args":{"width":160,"height":112,"background":"#F5E8DC"}}
+{"action":"layer.rename","args":{"name":"Selected base cel"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Unselected ink"}}
+{"action":"brush.set","args":{"radius":7,"color":"#4C4D70","hardness":0.9,"stabilizer":0.35,"pressure_size":true,"pressure_opacity":true}}
+{"action":"canvas.stroke","args":{"points":[{"x":16,"y":88,"pressure":0.2,"pen":true,"time":0},{"x":80,"y":20,"pressure":1,"pen":true,"time":60},{"x":144,"y":88,"pressure":0.4,"pen":true,"time":120}]}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Selected color"}}
+{"action":"layer.fill_color","args":{"color":"#7C96D5"}}
+{"action":"layer.set","args":{"opacity":0.55,"blend_mode":"multiply","color_label":"violet"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Unselected highlight"}}
+{"action":"brush.set","args":{"radius":12,"color":"#FFE5C0","hardness":0.65}}
+{"action":"canvas.stroke","args":{"points":[{"x":32,"y":42,"pressure":0.2,"pen":true,"time":0},{"x":80,"y":32,"pressure":1,"pen":true,"time":50},{"x":128,"y":42,"pressure":0.3,"pen":true,"time":100}]}}
+{"action":"group.create","args":{"members":[{"kind":"layer","id":1},{"kind":"layer","id":2}],"name":"Lower Pass Through"}}
+{"action":"group.set","args":{"group_id":1,"compositing":"pass_through","opacity":0.75}}
+{"action":"group.create","args":{"members":[{"kind":"layer","id":3},{"kind":"layer","id":4}],"name":"Upper isolated"}}
+{"action":"group.set","args":{"group_id":2,"blend_mode":"screen","opacity":0.65}}
+{"action":"layer.selection.set","args":{"layer_ids":[1,3],"active_layer_id":1}}
+{"action":"layer.merge_selected.plan","args":{"layer_ids":[3,1]}}
+{"action":"canvas.export","args":{"path":"target/example-output/selected-merge-before.png"}}
+{"action":"layer.merge_selected","args":{"layer_ids":[3,1]}}
+{"action":"group.query","args":{}}
+{"action":"layer.query","args":{}}
+{"action":"canvas.export","args":{"path":"target/example-output/selected-merge-projection.png"}}
+{"action":"history.undo","args":{}}
+{"action":"canvas.export","args":{"path":"target/example-output/selected-merge-undo.png"}}
+{"action":"layer.merge","args":{}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}
+{"action":"replay.verify","args":{}}

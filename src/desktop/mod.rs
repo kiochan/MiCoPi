@@ -135,6 +135,7 @@ pub(super) struct Editor {
     area_mode: u8,
     movement_gesture: Option<canvas_movement::Gesture>,
     transform: Option<canvas_transform::Draft>,
+    selected_merge: Option<layers::SelectedMergeDraft>,
     selection_gesture: Option<selection_gesture::Gesture>,
     selection_combine: &'static str,
     area_tolerance: u32,
@@ -293,6 +294,7 @@ impl Editor {
             area_mode: 0,
             movement_gesture: None,
             transform: None,
+            selected_merge: None,
             selection_gesture: None,
             selection_combine: "replace",
             area_tolerance: 0,
@@ -825,6 +827,20 @@ impl Studio {
                         }
                     }
                 }
+                Some("layer.merge_selected.open") => {
+                    if let (Some(identity), Some(revision)) = (
+                        effect["document_identity"].as_u64(),
+                        effect["revision"].as_u64(),
+                    ) {
+                        if identity == self.editor.session.doc.identity {
+                            self.editor.open_selected_merge(
+                                effect["value"].clone(),
+                                identity,
+                                revision,
+                            );
+                        }
+                    }
+                }
                 Some("replay.open") => {
                     self.editor.finish_stroke();
                     self.replay.open = true;
@@ -1188,6 +1204,7 @@ impl Studio {
         self.editor.canvas_geometry_window(ctx);
         self.editor.export_window(ctx);
         self.editor.transform_window(ctx);
+        self.editor.selected_merge_window(ctx);
         self.run_actions(ctx);
         if !ctx.input(|i| i.focused)
             && self.editor.input_owned

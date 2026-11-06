@@ -66,6 +66,9 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/canvas_editing.rs` | Staged geometry, shared transform validation/publication and borrowed-source preview composition |
 | `src/engine/layer_merge.rs` | Compositor-backed layer consolidation and structural buffer ownership |
 | `src/engine/group_merge.rs`, `src/application/group_merge_tests.rs`, `scripts/smoke-group-merge.py` | Staged subtree/visible-group baking, retained hidden branches and shared action/history/replay verification |
+| `src/engine/selected_merge.rs`, `src/plugins/selected_merge.rs` | Pure explicit-target/LCA projection plans, staged selected-only baking, shared merge dispatch and bounded presentation requests |
+| `plugins/layers/merge_selected.rs` | Compiled nonmodal selected-merge review, captured-target/revision guards and shared plan/execute controls |
+| `src/application/selected_merge_tests.rs`, `scripts/smoke-selected-merge.py` | Selected-only pixels, retained buffer/filter identities, graph budgets, contacts, history/rollback and cross-client replay verification |
 | `plugins/compositing/src/blends.rs`, `plugins/compositing/src/blend_tests.rs` | Independent extended color equations, exact rounding and native/reference compatibility checks |
 | `src/engine/blend_modes.rs`, `src/desktop/blend_modes.rs`, `src/application/blend_mode_tests.rs`, `scripts/smoke-blend-modes.py` | Shared renderer-capability preflight, bounded family menus and cross-client blend/history/replay checks |
 | `src/engine/mix.rs`, `plugins/compositing/src/mix_tests.rs`, `src/application/pass_through_tests.rs`, `scripts/smoke-pass-through.py` | Backdrop-mix capability preflight, native interpolation references and Pass Through policy/history/transport verification |

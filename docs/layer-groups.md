@@ -66,6 +66,8 @@ Flat raster storage remains the depth-first leaf order of the tree. Reordering m
 
 Ungroup removes the group's visibility, opacity and compositing boundary; it is not an appearance-preserving bake. Group deletion follows existing structural deletion policy and may remove locked descendants, with undo. Pixel baking keeps its separate lock guards. Merge Down requires adjacent raster siblings and retains their parent. Stamp Visible adds a root raster from the real composite; Flatten bakes the real composite and removes the hierarchy. Multi-layer transforms and raster/clipping masks remain planned.
 
+[Selected-only merge](selected-merge.md) accepts explicit noncontiguous or cross-parent raster IDs. It bakes selected leaves plus intermediate group gates over transparency, excluding the lowest common parent's gate and all ancestors. The replacement is a direct child of that common parent above the highest original target branch. Every folder and unselected raw buffer remains, including empty groups. This can change interactions with unselected artwork; its plan and optional review expose placement and consumption without promising whole-composite equality.
+
 ### Bake groups and visible artwork
 
 ![Schema-derived Merge Group command for a current nonempty target](screenshots/group-merge.png)
@@ -87,6 +89,8 @@ The stored image graph remains the stable raster/filter branch model. A cached e
 ## Persistence, undo and native compatibility
 
 Composition metadata stores an optional group tree and separate group allocator. Version 1 remains isolated with default `compositing` omitted. First opting into Pass Through promotes the tree to version 2; explicitly returning to Isolated retains version 2, while Undo restores the historical policy and version. Legacy documents omit group defaults, preserving old recording hashes. Stored trees validate versions, policies, unique membership, parent relationships, exact raster leaf order and allocator bounds before restoration. Group IDs are monotonic across committed Undo/Redo; failed transactions restore the allocator.
+
+Shared canvas/group state schemas admit both supported tree versions. Selected-only merging retains existing folder policies and version; it introduces no additional persistence version. Version-1 defaults and version-2 Pass Through state remain distinguishable to schema-driven clients.
 
 A changed structural or property group edit has one structural/composition undo and one verified outcome. Atomic workflows restore pixels, structure, active raster, selected IDs, both allocators and history after failure. Partial journal writes retain the last verified prefix. Replay restores recorded outcomes and composite pixels without calling the compositor or recreating commands. The newest undo entry follows the existing retention policy and may exceed the 64 MiB target while older entries are pruned.
 

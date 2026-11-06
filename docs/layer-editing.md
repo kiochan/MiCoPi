@@ -10,6 +10,8 @@ Flips, 180° rotation and offsets operate on the selected visible layer's full c
 
 [Layer Groups](layer-groups.md) adds isolated or [Pass Through](pass-through.md) nesting, typed hierarchy commands and an actual-composition node view. Existing leaf commands preserve membership; explicit hierarchy moves handle reparenting. Merge Group bakes an explicitly targeted isolated subtree, including its nested Pass Through children; a Pass Through target requires an external backdrop and rejects standalone baking. Grouped Merge Visible retains hidden content and group skeletons; see [Group baking](layer-groups.md#bake-groups-and-visible-artwork).
 
+**Ctrl+E** now runs **Merge Layers**: multiple selected rasters use [selected-only merging](selected-merge.md), while a singleton keeps Merge Down. Noncontiguous and cross-parent targets are supported without consuming unselected rasters. The optional **Review Selected Merge…** window shows captured targets and placement before an explicit commit; the default shortcut remains immediate. Selected-only baking can change visible stacking/backdrop interactions, so use the plan or review when inspecting that boundary.
+
 ## Public actions
 
 `canvas.state.layers` exposes `id`, `name`, `active`, lock flags, `color_label` and existing appearance properties. Layer IDs are scoped to one document and remain stable across reorder and save/reopen. A new document starts its own identity space. IDs are never a global document selector.
@@ -26,10 +28,13 @@ Flips, 180° rotation and offsets operate on the selected visible layer's full c
 | `layer.query` | optional name `query`, `color_label`, `visible`, `locked`, `alpha_locked`, `pixel_locked`, `position_locked`, `selected`; read-only AND filters |
 | `layer.selection.set` | required unique `layer_ids`, optional selected `active_layer_id`; sets the layer selection |
 | `layer.batch` | required `action`, unique `layer_ids`, optional action-specific `args`; one atomic batch undo/outcome |
+| `layer.merge` | no arguments; current multi-selection, or Merge Down for a singleton |
+| `layer.merge_selected`, `layer.merge_selected.plan` | required 2–16 unique stable raster `layer_ids`; execute, or read-only selected-only plan |
+| `layer.merge_selected.open` | the same explicit IDs; optional desktop review with headless unavailability |
 | `layer.flip_horizontal`, `layer.flip_vertical`, `layer.rotate_180` | no arguments; current layer |
 | `layer.translate` | required integers `dx`, `dy`, each from -4096 to 4096; current layer |
 
-Omitting both selectors targets the active layer. If both are supplied they must identify the same layer. Existing index-based clients remain supported; automation that retains a target across structural edits should use `layer_id`. To target a transform by identity, use an atomic `pipeline.run` with `layer.select` followed by the transform. All listed mutations support undo, outcome replay and atomic document pipelines, and are discoverable by the same schemas in CLI, MCP and workflow nodes.
+Omitting both ordinary layer selectors targets the active layer. If both are supplied they must identify the same layer. Existing index-based clients remain supported; automation that retains a target across structural edits should use stable IDs. Selected-only merge uses its explicit `layer_ids` set. To target a transform by identity, use an atomic `pipeline.run` with `layer.select` followed by the transform. Document edits share undo, outcome replay and atomic pipelines; targeting changes and read-only plans keep their separate history behavior. Presentation-only review requires the desktop and is excluded from document-atomic execution. Shared schemas expose these contracts to CLI, MCP and workflow nodes.
 
 Example JSONL (IDs here belong to a freshly created document):
 
@@ -116,14 +121,18 @@ The Layers menu, each layer's context menu and Edit menu expose these shared act
 
 | Action | Default shortcut | Result |
 | --- | --- | --- |
-| `layer.merge_down` | Ctrl+E | Bake the selected layer and its immediate lower neighbor into one normal raster layer, retaining the lower layer's ID/name |
+| `layer.merge` | Ctrl+E | Merge the current explicit multi-selection, or Merge Down for a singleton |
+| `layer.merge_selected` | Unbound | Bake 2–16 explicit raster IDs over transparency at their lowest common parent; retain the top target's ID/name |
+| `layer.merge_down` | Unbound | Bake the active/targeted layer and its immediate lower neighbor into one normal raster layer, retaining the lower layer's ID/name |
 | `layer.merge_visible` | Ctrl+Shift+E | Bake the visible stack, retaining the top visible layer's ID/name and leaving hidden layers intact |
 | `layer.flatten` | Unbound | Bake the rendered image into one visible normal layer, removing all other layers and replacing its image graph with a linked raster stack |
 | `layer.stamp_visible` | Ctrl+Alt+Shift+E | Copy the current composite into a new top layer with a fresh ID, retaining all source layers |
 
-Merge Down accepts the usual optional `index` or `layer_id`; other actions operate on the document's visible/rendered stack and take no arguments. All accept the action envelope's expected revision. Their schemas are discoverable through `app.describe`, automatically become workflow nodes, and run through JSONL, MCP and GUI attachment. See [the runnable merge example](../examples/automation/layer-merge.jsonl).
+Merge Down accepts the usual optional `index` or `layer_id`; selected-only merge requires unique `layer_ids`; Merge Layers and the visible/rendered-stack actions take no arguments. All accept the action envelope's expected revision. Their schemas are discoverable through `app.describe`, automatically become workflow nodes, and run through JSONL, MCP and GUI attachment. An older profile explicitly binding `layer.merge_down` to Ctrl+E retains that binding. See [selected-only merge](selected-merge.md) and [the existing merge example](../examples/automation/layer-merge.jsonl).
 
 Pixel baking uses the existing native compositor; it must be loaded. Rendering and graph validation finish before source layers are replaced. Filters on baked branches are removed once, while hidden/surviving branches retain their filter and node identities. Each operation creates one structural undo entry. History owns the removed buffers; untouched hidden layers retain their allocations. Atomic batches restore pixels, graph, active layer, allocator and history after a later failure. Verified replay restores recorded results without rerunning the compositor.
+
+Selected-only merge projects selected leaves and intermediate group gates, excludes the common parent/ancestors and retains every folder. Local/intermediate hidden flags contribute zero; common-parent/ancestor visibility stays outside the bake. Explicit hidden targets are consumed and must pass pixel/alpha-lock checks. The plan reports globally hidden targets, intervening unselected rasters, lifted targets and destination, with `changes_stacking` describing structure rather than guaranteeing appearance. The result is Normal/255/visible, retains the top target's stored name/color/position flag and becomes the sole selected raster. One required output buffer and the projected/final 64-instruction budgets are checked before publication. See [Merge selected layers](selected-merge.md).
 
 The supported contracts are explicit:
 
