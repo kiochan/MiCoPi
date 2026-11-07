@@ -1,4 +1,6 @@
 //! Versioned native-code plugin loader and synchronous host capabilities.
+#[path = "native_levels.rs"]
+mod levels;
 use super::PixelAccess;
 use crate::application::{Action, ActionError, ActionResult, Session};
 use micopi_plugin_api as abi;
@@ -604,6 +606,7 @@ pub struct NativePlugin {
     compositor_blend_modes: u64,
     compositor_masked: Option<abi::CompositeRenderMaskedFn>,
     compositor_effects: Option<MaskEffectsTable>,
+    levels_prepare: Option<abi::LevelsPrepareFn>,
     mask_effect_instance: std::sync::Mutex<Option<MaskEffectInstance>>,
     _module: Module,
 }
@@ -850,6 +853,7 @@ impl NativePlugin {
             None => (None, None),
         };
         let tools = unsafe { module.tool_api()? };
+        let levels_prepare = unsafe { module.levels_api()? };
         let tool_options = unsafe { module.tool_options_api()? };
         let (selection_mix, selection_color, selection_edges, selection_transfer) =
             match unsafe { module.selection_api()? } {
@@ -911,6 +915,7 @@ impl NativePlugin {
                 compositor_blend_modes,
                 compositor_masked,
                 compositor_effects,
+                levels_prepare,
                 mask_effect_instance: Default::default(),
                 _module: module,
             }),

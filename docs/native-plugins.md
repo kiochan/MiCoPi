@@ -5,6 +5,10 @@
 The bundled compositor exports optional `micopi_levels_v1`, a separate 16-byte
 `LevelsApi` with ABI version 1 and a synchronous `prepare` callback. This is a
 native prerequisite; the host does not yet register a Levels document effect.
+The loader caches the optional callback and rejects malformed advertised tables.
+Native inventory reports `filters.levels_prepare` separately from rendering
+capabilities. The host adapter validates endpoints/gamma and keeps unsuccessful
+callback output private. Discovery performs no per-contact or per-MOVE lookup.
 Existing compositor tables and instruction IDs remain unchanged.
 
 `LevelsParameters` is 32 bytes: version/size at offsets 0/4, unsigned input black,
@@ -15,8 +19,8 @@ output endpoints and rounds half-up. Reversed output endpoints are supported.
 The caller supplies at least 256 writable bytes. Success writes exactly the
 first 256 bytes; invalid arguments or overlapping parameter/output spans reject
 before writes. No buffers or pointers are retained. Prepared tables require no
-per-pixel power calculation. Rendering integration, cached host discovery and
-public nodes/adjustments remain planned; ABI and native runtime checks await CI.
+per-pixel power calculation. Rendering integration and public nodes/adjustments
+remain planned; ABI and native runtime checks await CI.
 
 ## Loading and compatibility
 

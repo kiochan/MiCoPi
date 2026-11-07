@@ -1,5 +1,9 @@
 # Project Structure and Ownership
 
+`src/plugins/native_levels.rs` negotiates and caches optional native Levels
+preparation, validates host arguments and publishes successful byte tables.
+Rendering and document effects remain separate integration work.
+
 The repository separates executable source, plugin packages, examples, documentation and local output. Paths that participate in the runtime contract remain stable; documentation and examples are grouped for navigation.
 
 ```text
