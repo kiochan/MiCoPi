@@ -9,7 +9,9 @@ through the shared Renderer contract. Derived LUTs are borrowed render inputs,
 not serialized intent. `group_editing.rs` installs derived caches with document plans.
 `PreparedLevelsPlan` provides a bounded reusable cache with transactional rebuilds
 and retained renderer lifetime. `compositing.levels` registers the source-node
-schema in its feature manifest; adjustment-layer integration remains pending.
+schema in its feature manifest. `src/plugins/adjustments.rs` validates provider
+contracts and merges nested patches; mixed-stack metadata carries optional Levels
+intent and generates native Levels plus Normal Mix/MaskedMix nodes.
 `plugins/compositing/levels_ui.rs` owns the shared local-draft Levels controls,
 owner-aware labels, grayscale ramps and appearance-derived node height budget.
 

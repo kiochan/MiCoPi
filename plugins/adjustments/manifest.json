@@ -106,13 +106,54 @@
                       "type": "number",
                       "minimum": -1,
                       "maximum": 1
+                    },
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "input_black": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255,
+                          "title": "Input Black"
+                        },
+                        "input_white": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255,
+                          "title": "Input White"
+                        },
+                        "gamma": {
+                          "type": "number",
+                          "minimum": 0.1,
+                          "maximum": 10,
+                          "title": "Midtone Gamma"
+                        },
+                        "output_black": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255,
+                          "title": "Output Black"
+                        },
+                        "output_white": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255,
+                          "title": "Output White"
+                        }
+                      },
+                      "required": [
+                        "input_black",
+                        "input_white",
+                        "gamma",
+                        "output_black",
+                        "output_white"
+                      ],
+                      "additionalProperties": false
                     }
                   },
-                  "required": [
-                    "filter",
-                    "amount"
-                  ],
-                  "additionalProperties": false
+                  "required": [],
+                  "additionalProperties": false,
+                  "description": "Registered node_type selects either complete scalar filter/amount or a complete Levels parameters object; consult adjustment.catalog for its exact schema."
                 },
                 "parent_id": {
                   "type": "integer",
@@ -221,13 +262,54 @@
                 "type": "number",
                 "minimum": -1,
                 "maximum": 1
+              },
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "input_black": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255,
+                    "title": "Input Black"
+                  },
+                  "input_white": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255,
+                    "title": "Input White"
+                  },
+                  "gamma": {
+                    "type": "number",
+                    "minimum": 0.1,
+                    "maximum": 10,
+                    "title": "Midtone Gamma"
+                  },
+                  "output_black": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255,
+                    "title": "Output Black"
+                  },
+                  "output_white": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255,
+                    "title": "Output White"
+                  }
+                },
+                "required": [
+                  "input_black",
+                  "input_white",
+                  "gamma",
+                  "output_black",
+                  "output_white"
+                ],
+                "additionalProperties": false
               }
             },
-            "required": [
-              "filter",
-              "amount"
-            ],
-            "additionalProperties": false
+            "required": [],
+            "additionalProperties": false,
+            "description": "Registered node_type selects either complete scalar filter/amount or a complete Levels parameters object; consult adjustment.catalog for its exact schema."
           },
           "parent_id": {
             "type": "integer",
@@ -493,13 +575,54 @@
                       "type": "number",
                       "minimum": -1,
                       "maximum": 1
+                    },
+                    "parameters": {
+                      "type": "object",
+                      "properties": {
+                        "input_black": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255,
+                          "title": "Input Black"
+                        },
+                        "input_white": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255,
+                          "title": "Input White"
+                        },
+                        "gamma": {
+                          "type": "number",
+                          "minimum": 0.1,
+                          "maximum": 10,
+                          "title": "Midtone Gamma"
+                        },
+                        "output_black": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255,
+                          "title": "Output Black"
+                        },
+                        "output_white": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255,
+                          "title": "Output White"
+                        }
+                      },
+                      "required": [
+                        "input_black",
+                        "input_white",
+                        "gamma",
+                        "output_black",
+                        "output_white"
+                      ],
+                      "additionalProperties": false
                     }
                   },
-                  "required": [
-                    "filter",
-                    "amount"
-                  ],
-                  "additionalProperties": false
+                  "required": [],
+                  "additionalProperties": false,
+                  "description": "Registered node_type selects either complete scalar filter/amount or a complete Levels parameters object; consult adjustment.catalog for its exact schema."
                 },
                 "parent_id": {
                   "type": "integer",

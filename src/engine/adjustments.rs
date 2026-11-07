@@ -1,5 +1,6 @@
 //! Strict non-raster affect-below stack metadata. Pixel kernels remain native.
 use super::graph::Filter;
+use super::levels::Levels;
 use serde::{Deserialize, Serialize};
 
 pub const MAX_ADJUSTMENTS: usize = 16;
@@ -13,9 +14,17 @@ pub struct AdjustmentSpec {
     pub node_type: String,
     pub filter: Filter,
     pub amount: f32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub levels: Option<Levels>,
 }
 impl AdjustmentSpec {
     pub fn validate(&self) -> Result<(), String> {
+        if let Some(levels) = self.levels {
+            levels.validate()?;
+            if self.filter != Filter::Invert || self.amount != 0. {
+                return Err("Levels adjustments require neutral legacy filter fields".into());
+            }
+        }
         if self.name.trim().is_empty()
             || self.name.len() > 512
             || self.name.chars().any(char::is_control)
@@ -44,6 +53,8 @@ pub struct Adjustment {
     pub node_type: String,
     pub filter: Filter,
     pub amount: f32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub levels: Option<Levels>,
 }
 impl Adjustment {
     pub fn new(id: u64, spec: AdjustmentSpec) -> Self {
@@ -55,6 +66,7 @@ impl Adjustment {
             node_type: spec.node_type,
             filter: spec.filter,
             amount: spec.amount,
+            levels: spec.levels,
         }
     }
     pub fn spec(&self) -> AdjustmentSpec {
@@ -65,6 +77,7 @@ impl Adjustment {
             node_type: self.node_type.clone(),
             filter: self.filter,
             amount: self.amount,
+            levels: self.levels,
         }
     }
     pub fn validate(&self) -> Result<(), String> {

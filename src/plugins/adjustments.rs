@@ -7,6 +7,7 @@ use crate::application::{ActionError, ActionResult, Operation, Session};
 use crate::engine::{
     adjustments::{Adjustment, AdjustmentSpec, MAX_ADJUSTMENTS},
     graph::Filter,
+    levels::Levels,
     raster_masks::{MaskOwner, SamplePlane},
     Document,
 };
@@ -37,6 +38,9 @@ pub(crate) fn schema(op: Operation) -> Value {
         properties["parameters"] = json!({"type":"object","properties":{
             "filter":{"type":"string","enum":Filter::ALL},
             "amount":{"type":"number","minimum":-1,"maximum":1}},"additionalProperties":false});
+        let mut levels = Levels::schema();
+        levels.as_object_mut().unwrap().remove("required");
+        properties["parameters"]["properties"]["parameters"] = levels;
     }
     if matches!(op, AdjustmentCreate | AdjustmentMove) {
         properties["parent_id"] = json!({"type":"integer","minimum":0,"maximum":4294967295u64});
@@ -58,6 +62,31 @@ struct FilterParameters {
     filter: Filter,
     amount: f32,
 }
+struct ResolvedParameters {
+    filter: Filter,
+    amount: f32,
+    levels: Option<Levels>,
+}
+impl ResolvedParameters {
+    fn value(&self) -> Value {
+        self.levels
+            .map_or_else(|| parameters(self.filter, self.amount), level_parameters)
+    }
+    fn title(&self) -> &'static str {
+        if self.levels.is_some() {
+            "Levels"
+        } else {
+            self.filter.title()
+        }
+    }
+}
+pub(crate) fn level_parameters(parameters: Levels) -> Value {
+    json!({"parameters":parameters})
+}
+pub(crate) fn item_parameters(item: &Adjustment) -> Value {
+    item.levels
+        .map_or_else(|| parameters(item.filter, item.amount), level_parameters)
+}
 
 /// Round-trip the typed serializer's shortest f32 decimal. Widening an f32 into
 /// Value directly would reject valid provider bounds such as amount <= 0.1.
@@ -71,9 +100,10 @@ fn definition(registry: &Registry, id: &str) -> Result<Resolved, ActionError> {
         .nodes
         .get(id)
         .ok_or_else(|| error(format!("Registered adjustment filter is unavailable: {id}")))?;
-    if !matches!(&node.binding, Binding::Image {operation,..} if operation == "filter") {
+    if !matches!(&node.binding, Binding::Image {operation,..} if operation == "filter" || operation == "levels")
+    {
         return Err(error(
-            "Adjustment nodes must bind the native image Filter kernel",
+            "Adjustment nodes must bind a native scalar Filter or Levels kernel",
         ));
     }
     node.resolve(registry, owner).map_err(error)
@@ -84,27 +114,45 @@ fn resolve_parameters(
     id: &str,
     base: Option<&Adjustment>,
     patch: &Value,
-) -> Result<FilterParameters, ActionError> {
+) -> Result<ResolvedParameters, ActionError> {
     let def = definition(registry, id)?;
     let mut value = base
         .filter(|old| old.node_type == id)
-        .map_or(def.defaults, |old| parameters(old.filter, old.amount));
+        .map_or(def.defaults.clone(), item_parameters);
     if let Some(fields) = patch.as_object() {
         for (key, value_patch) in fields {
-            value[key] = value_patch.clone();
+            if key == "parameters" && value_patch.is_object() && value[key].is_object() {
+                for (field, v) in value_patch.as_object().unwrap() {
+                    value[key][field] = v.clone();
+                }
+            } else {
+                value[key] = value_patch.clone();
+            }
         }
     }
     // Validate the raw caller domain before rounding to the native f32 kernel.
     super::validate(&def.parameters_schema, &value)?;
-    let typed: FilterParameters = serde_json::from_value(value)?;
+    let typed = if matches!(&def.binding,Binding::Image {operation,..} if operation=="levels") {
+        let levels: Levels = serde_json::from_value(value["parameters"].clone())?;
+        levels.validate().map_err(error)?;
+        ResolvedParameters {
+            filter: Filter::Invert,
+            amount: 0.,
+            levels: Some(levels),
+        }
+    } else {
+        let scalar: FilterParameters = serde_json::from_value(value)?;
+        ResolvedParameters {
+            filter: scalar.filter,
+            amount: scalar.amount,
+            levels: None,
+        }
+    };
     if !typed.amount.is_finite() || !(typed.filter.minimum()..=1.).contains(&typed.amount) {
         return Err(error("Filter amount is outside its native kernel range"));
     }
     // The persisted typed value must also remain valid under the provider.
-    super::validate(
-        &def.parameters_schema,
-        &parameters(typed.filter, typed.amount),
-    )?;
+    super::validate(&def.parameters_schema, &typed.value())?;
     Ok(typed)
 }
 
@@ -134,6 +182,11 @@ pub(crate) fn validate_literal(
             let def = definition(registry, id)?;
             let mut partial = def.parameters_schema.clone();
             partial.as_object_mut().unwrap().remove("required");
+            if matches!(&def.binding,Binding::Image {operation,..} if operation=="levels") {
+                if let Some(inner) = partial["properties"]["parameters"].as_object_mut() {
+                    inner.remove("required");
+                }
+            }
             if args["parameters"].is_object() {
                 super::validate(&partial, &args["parameters"])?;
             }
@@ -147,10 +200,7 @@ pub(crate) fn validate_document(registry: &Registry, doc: &Document) -> Result<(
     for item in doc.adjustments() {
         item.validate().map_err(error)?;
         let def = definition(registry, &item.node_type)?;
-        super::validate(
-            &def.parameters_schema,
-            &parameters(item.filter, item.amount),
-        )?;
+        super::validate(&def.parameters_schema, &item_parameters(item))?;
     }
     Ok(())
 }
@@ -182,7 +232,7 @@ fn item_state(s: &Session, item: &Adjustment) -> Value {
         })
         .unwrap_or(0);
     json!({"id":item.id,"name":item.name,"visible":item.visible,"opacity":item.opacity as f64/255.,
-        "node_type":item.node_type,"parameters":parameters(item.filter,item.amount),"parent_id":parent,"index":index,
+        "node_type":item.node_type,"parameters":item_parameters(item),"parent_id":parent,"index":index,
         "mask_ids":mask_ids(&s.doc,item.id),"provider_available":definition(&s.registry,&item.node_type).is_ok()})
 }
 fn idle(s: &Session) -> Result<(), ActionError> {
@@ -238,13 +288,14 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             let spec = AdjustmentSpec {
                 name: args["name"]
                     .as_str()
-                    .unwrap_or(parameters.filter.title())
+                    .unwrap_or(parameters.title())
                     .to_owned(),
                 visible: args["visible"].as_bool().unwrap_or(true),
                 opacity: opacity(&args, 255),
                 node_type: node.to_owned(),
                 filter: parameters.filter,
                 amount: parameters.amount,
+                levels: parameters.levels,
             };
             let (parent, index) = placement(s, &args)?;
             let with_mask = args["mask_source"] == "selection";
@@ -283,6 +334,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 node_type: node.to_owned(),
                 filter: parameters.filter,
                 amount: parameters.amount,
+                levels: parameters.levels,
             };
             let changed = s.doc.set_adjustment(id, spec).map_err(error)?;
             Ok(

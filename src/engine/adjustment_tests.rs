@@ -22,6 +22,7 @@ fn invert(opacity: u8) -> AdjustmentSpec {
         node_type: "compositing.filter".into(),
         filter: Filter::Invert,
         amount: 1.,
+        levels: None,
     }
 }
 fn raw(doc: &Document, id: u64) -> Vec<u8> {

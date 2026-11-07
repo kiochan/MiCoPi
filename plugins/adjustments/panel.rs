@@ -15,10 +15,13 @@ fn draft_key(document: u64, id: u64) -> Id {
     Id::new(("adjustment-draft", document, id))
 }
 fn parameters(value: &Adjustment) -> Value {
-    crate::plugins::adjustments::parameters(value.filter, value.amount)
+    crate::plugins::adjustments::item_parameters(value)
 }
 fn filter_definition(def: &Resolved) -> bool {
-    matches!(&def.binding,Binding::Image{operation,..} if operation=="filter")
+    matches!(&def.binding,Binding::Image{operation,..} if operation=="filter" || operation=="levels")
+}
+fn levels_definition(def: &Resolved) -> bool {
+    matches!(&def.binding,Binding::Image {operation,..} if operation=="levels")
 }
 fn allowed(def: &Resolved, filter: Filter) -> Option<f32> {
     let (minimum, maximum) = amount_range(def, filter)?;
@@ -138,6 +141,16 @@ impl Editor {
                 let definitions=self.plugin_nodes.values().filter(|def|filter_definition(def)).cloned().collect::<Vec<_>>();
                 for definition in definitions {
                     let title=crate::i18n::translated_for(Some(&definition.owner),&definition.title).into_owned();
+                    if levels_definition(&definition) {
+                        let supported=self.session.doc.renderer.as_ref().is_some_and(|r|r.supports_levels());
+                        if ui.add_enabled(supported,Button::new(title)).clicked() {
+                            let (parent,index)=self.adjustment_placement_ui(ui.ctx());
+                            let mut args=json!({"node_type":definition.id,"parameters":definition.defaults,"parent_id":parent,"index":index});
+                            if selection {args["mask_source"]=json!("selection");}
+                            pending.push(crate::application::Action::new("adjustment.create",args));ui.close();
+                        }
+                        continue;
+                    }
                     let mut show=|ui:&mut Ui|{
                         for filter in Filter::ALL {
                             let Some(amount)=allowed(&definition,filter) else{continue;};
@@ -212,14 +225,31 @@ impl Editor {
                                 for definition in self.plugin_nodes.values().filter(|definition|filter_definition(definition)) {
                                     let title=crate::i18n::translated_for(Some(&definition.owner),&definition.title);
                                     if ui.selectable_label(draft.value.node_type==definition.id,title).clicked()&&draft.value.node_type!=definition.id {
+                                        if levels_definition(definition) {
+                                            if let Ok(levels)=serde_json::from_value::<crate::engine::levels::Levels>(definition.defaults["parameters"].clone()) {
+                                                draft.value.node_type=definition.id.clone();draft.value.filter=Filter::Invert;draft.value.amount=0.;draft.value.levels=Some(levels);
+                                            }
+                                        }else{
                                         if let Some((filter,amount))=Filter::ALL.into_iter().find_map(|filter|allowed(definition,filter).map(|amount|(filter,amount))) {
-                                            draft.value.node_type=definition.id.clone();draft.value.filter=filter;draft.value.amount=amount;
+                                            draft.value.node_type=definition.id.clone();draft.value.filter=filter;draft.value.amount=amount;draft.value.levels=None;
+                                        }
                                         }
                                     }
                                 }
                             });
                     });
                     if let Some(definition)=self.plugin_nodes.get(&draft.value.node_type).filter(|definition|filter_definition(definition)) {
+                        if levels_definition(definition) {
+                            if let Some(levels)=&mut draft.value.levels {
+                                if definition.id=="compositing.levels" {
+                                    super::nodes::levels_ui::edit(ui,Id::new(("adjustment-levels",id)),levels);
+                                }else{
+                                    let mut value=crate::plugins::adjustments::level_parameters(*levels);
+                                    super::schema::edit(ui,("adjustment-levels",id),&definition.parameters_schema,&mut value);
+                                    if let Ok(next)=serde_json::from_value(value["parameters"].clone()) {*levels=next;}
+                                }
+                            }
+                        }else{
                         ComboBox::from_id_salt(("adjustment-filter",id)).width(ui.available_width()).truncate().selected_text(tr(draft.value.filter.title())).show_ui(ui,|ui|{
                             for filter in Filter::ALL {if let Some(amount)=allowed(definition,filter) {
                                 if ui.selectable_label(draft.value.filter==filter,tr(filter.title())).clicked() {
@@ -230,7 +260,9 @@ impl Editor {
                         if let Some((minimum,maximum))=amount_range(definition,draft.value.filter) {
                             panels::parameter(ui,"Amount",&mut draft.value.amount,minimum..=maximum,"%",true,false);
                         }
+                        }
                         valid=crate::plugins::validate(&definition.parameters_schema,&parameters(&draft.value)).map_err(|error|error.message);
+                        if valid.is_ok() {valid=draft.value.spec().validate();}
                     }else {valid=Err("The registered adjustment filter is unavailable".into());}
                     let mut opacity=draft.value.opacity as f32/255.;
                     panels::parameter(ui,"Opacity",&mut opacity,0. ..=1.,"%",true,false);

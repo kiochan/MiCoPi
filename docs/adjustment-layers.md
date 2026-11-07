@@ -3,13 +3,13 @@
 Adjustment layers are real non-raster stack items: they filter the accumulated
 image below their position without changing source pixels or occupying a raster
 slot. This source increment supports the five registered scalar filters
-**Invert, Grayscale, Brightness, Contrast and Saturation**, Normal effect mixing,
+**Invert, Grayscale, Brightness, Contrast and Saturation** plus typed **Levels**, Normal effect mixing,
 byte opacity, visibility, groups and optional owned A8 masks. Runtime validation
 is pending CI; no new reviewed screenshots or measured performance results are
 claimed here.
 
 This is distinct from a source Layer Filter, which processes one raster before
-stack composition. Levels, Curves, multi-parameter color adjustments, clipping
+stack composition. Curves, additional multi-parameter color adjustments, clipping
 relationships and other adjustment blend modes remain planned. Registering a
 schema does not provide an algorithm that the compositor does not implement.
 
@@ -98,12 +98,36 @@ Document actions/state serve desktop, nodes, JSONL, MCP and headless through the
 same Session. Workflow editing remains inert until Run.
 
 The `adjustments` package depends on `layers` and `compositing`. Effects reference
-registered image Filter aliases through `node_type`, with typed `filter` and
-`amount`. Registry schema validation checks alias ownership/binding and its
+registered image Filter or Levels aliases through `node_type`. Scalar filters use
+typed `filter` and `amount`; Levels uses the registered nested `parameters` object.
+Registry schema validation checks alias ownership/binding and its
 allowed parameters, including hidden/bypassed definitions on project publication.
 Engine validation independently bounds finite amounts: Invert/Grayscale use
 0–1, the other three filters use −1–1. Projects store validated definitions,
 not callbacks, executable schemas or per-pixel JSON actions.
+
+Levels accepts the same five parameters as a [Levels source node](levels.md),
+but operates on the accumulated image below the adjustment. Partial nested
+parameter patches merge with the selected provider's defaults/current values;
+changing providers resets to that provider's complete defaults. Its dedicated
+Input/Output controls remain local until Apply, with the same stale/contact guards.
+
+```json
+{"action":"adjustment.create","args":{"node_type":"compositing.levels","parameters":{"parameters":{"gamma":2}}}}
+{"action":"adjustment.set","args":{"adjustment_id":1,"parameters":{"parameters":{"input_black":16,"input_white":240}}}}
+```
+
+Levels preserves input alpha and uses the existing Normal Mix/MaskedMix strength
+once, including Isolated/Pass Through scopes and owned A8 masks. Hidden or globally
+bypassed declarations still require the renderer capability before publication.
+Derived tables remain in prepared plans; typed pointer MOVE does not prepare them.
+
+The version-3 adjustment record has an optional `levels` intent tail. It is omitted
+for scalar effects, retaining their old bytes. Levels records require neutral
+legacy `filter=invert, amount=0` fields alongside that explicit tail; those fields
+are compatibility anchors, not another effect. Mixed/non-neutral records reject.
+Old strict readers reject the unknown tail rather than treating Levels as identity.
+Public action/state parameters expose only the selected provider's real contract.
 
 ## History, storage and compatibility
 

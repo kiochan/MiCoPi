@@ -3,7 +3,7 @@
 The registered `compositing.levels` image node applies a master encoded-RGB
 curve independently to R, G and B while preserving alpha. It works in linked
 Layer Filters and free image graphs. This source increment awaits CI validation;
-true Levels adjustment layers remain planned.
+true affect-below Levels adjustment layers use the same typed intent and controls.
 
 Right-click a layer or source effect in Layer Filters, choose **Insert Filter →
 Levels**, and edit its Input Levels and Output Levels controls. The numeric
@@ -77,6 +77,8 @@ structural edits, geometry and byte-identical PNGs. Local lightweight checks are
 separate from pending CI execution. Physical-tablet and reviewed screenshot
 validation remain separate.
 
-Per-channel controls, histograms, Curves and Levels adjustment-layer ownership
-are still planned. See [Native contracts](native-plugins.md),
+The shared `adjustment.create/set/get` path also supports `compositing.levels`,
+owned masks, Normal effect strength, groups, Undo and verified outcomes. See
+[Adjustment layers](adjustment-layers.md) for placement and partial parameter patches.
+Per-channel controls, histograms and Curves remain planned. See [Native contracts](native-plugins.md),
 [Node editor](node-editor.md) and [Roadmap](../ROADMAP.md).

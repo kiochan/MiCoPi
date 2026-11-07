@@ -6,7 +6,7 @@ The bundled compositor exports optional `micopi_levels_v1`, with a 16-byte
 `LevelsApi` prefix and a complete 24-byte `LevelsApiRender` tail. ABI version 1
 provides synchronous `prepare` and optional `render` callbacks. This is a
 native interface used by the registered Levels source node. True Levels
-adjustment-layer ownership remains planned.
+adjustment layers use the same typed intent and prepared native tables.
 The loader caches the optional callback and rejects malformed advertised tables.
 Native inventory reports `filters.levels_prepare` and `filters.levels_render`
 separately. The host adapter validates endpoints/gamma and keeps unsuccessful
@@ -32,8 +32,8 @@ RGB channels. All instructions, including unused ones, are checked before writes
 output must not overlap LUT storage, and output row padding remains intact.
 Legacy render callbacks reject kind 9. Preparation-only 16-byte tables remain
 supported; partial rendering tails and missing advertised callbacks reject.
-Document plans cache these tables for registered Levels source nodes. True Levels
-adjustments remain planned; runtime checks await CI. See [Levels](levels.md).
+Document plans cache these tables for registered Levels source nodes and
+affect-below adjustments; runtime checks await CI. See [Levels](levels.md).
 
 The shared engine `Renderer` contract exposes `supports_levels`, `prepare_levels`
 and `render_prepared`. Its legacy defaults reject LUT plans explicitly. The native

@@ -1,6 +1,6 @@
 """Check true affect-below adjustments with independent tiny transport references.
 
-Five 5x3 cases verify alpha-preserving Mix, stack/group scope, real selection A8,
+Six 5x3 cases verify alpha-preserving Mix, Levels, stack/group scope, real selection A8,
 metadata-only source preservation, Undo, project persistence and DLL-free replay.
 No GUI, benchmark workload or physical tablet claim is involved.
 """
@@ -9,6 +9,7 @@ import base64
 import copy
 import importlib.util
 import json
+import math
 from pathlib import Path
 import shutil
 import struct
@@ -23,6 +24,8 @@ spec.loader.exec_module(geometry)
 editing, foundation, Plan = geometry.editing, geometry.foundation, geometry.Plan
 WIDTH, HEIGHT, AREA = 5, 3, 15
 FILTER = dict(node_type='compositing.filter', parameters=dict(filter='invert', amount=1))
+LEVELS = dict(node_type='compositing.levels', parameters=dict(parameters=dict(
+    input_black=0, input_white=255, gamma=2, output_black=0, output_white=255)))
 
 
 def invert(value):
@@ -60,7 +63,7 @@ def write_fixture(path, model):
 
 def scenarios(seed, output):
     result = []
-    for name in ['middle-root', 'top-aggregate', 'isolated', 'pass-through', 'selection-snapshot']:
+    for name in ['middle-root', 'top-aggregate', 'isolated', 'pass-through', 'selection-snapshot', 'levels-master']:
         model = dict(active=0, composition=copy.deepcopy(seed['composition']), rasters=[
             [(a << 24) | 0x402010 for _ in range(HEIGHT) for a in [0, 1, 73, 128, 255]],
             [0xff1122ee if i % 2 == 0 else 0x001122ee for i in range(AREA)]])
@@ -88,6 +91,15 @@ def reference(case, final=False):
         return [editing.over(mixed(a, invert(a), 128), b) for a, b in zip(lower, upper)]
     if name == 'top-aggregate':
         return [invert(editing.over(a, b)) for a, b in zip(lower, upper)]
+    if name == 'levels-master':
+        def curve(pixel):
+            if not pixel >> 24:
+                return pixel
+            result = pixel & 0xff000000
+            for shift in [0, 8, 16]:
+                result |= math.floor(math.sqrt(((pixel >> shift) & 255)*255)+0.5) << shift
+            return result
+        return [curve(editing.over(a, b)) for a, b in zip(lower, upper)]
     if name == 'isolated':
         return lower
     if name == 'pass-through':
@@ -112,12 +124,12 @@ def commands(output, prefix, cases):
                 compositing='pass_through' if key == 'pass-through' else 'isolated', opacity=137/255)
         add(key+'-before', 'canvas.state')
         add(key+'-before-png', 'canvas.snapshot')
-        properties = copy.deepcopy(FILTER)
+        properties = copy.deepcopy(LEVELS if key == 'levels-master' else FILTER)
         properties.update(name='Ink tone')
         if key in ['isolated', 'pass-through']:
             properties.update(parent_id=1, index=1)
         else:
-            properties['index'] = 2 if key == 'top-aggregate' else 1
+            properties['index'] = 2 if key in ['top-aggregate', 'levels-master'] else 1
         if key in ['middle-root', 'selection-snapshot']:
             properties['opacity'] = 128/255
         if key == 'selection-snapshot':
@@ -167,7 +179,8 @@ def validate(values, plan, output, prefix, cases):
         assert len(after['layers']) == 2 and after['selected_layer_ids'] == before['selected_layer_ids']
         assert after['active_layer'] == before['active_layer'] and after['selection'] == before['selection']
         item = at(key+'-get')
-        assert item['id'] == 1 and item['node_type'] == 'compositing.filter' and item['parameters'] == FILTER['parameters']
+        definition = LEVELS if key == 'levels-master' else FILTER
+        assert item['id'] == 1 and item['node_type'] == definition['node_type'] and item['parameters'] == definition['parameters']
         assert item['provider_available'] and at(key+'-query')['items'][0]['id'] == 1
         expected = reference(case)
         assert pixels(base64.b64decode(at(key+'-created-png')['data'])) == (WIDTH, HEIGHT, rgba(expected)), key
@@ -179,7 +192,7 @@ def validate(values, plan, output, prefix, cases):
         png = base64.b64decode(at(key+'-png')['data'])
         assert pixels(png) == (WIDTH, HEIGHT, rgba(final)), key
         assert pixels(base64.b64decode(at(key+'-reopened-png')['data'])) == pixels(png), key
-        assert at(key+'-reopened')['parameters'] == FILTER['parameters'] and at(key+'-verify')['valid']
+        assert at(key+'-reopened')['parameters'] == definition['parameters'] and at(key+'-verify')['valid']
         saved = foundation.read_project(output/f'{prefix}-{key}.mcp')
         assert (saved['width'], saved['height'], saved['active']) == (WIDTH, HEIGHT, 0)
         assert len(saved['rasters']) == 2
@@ -188,7 +201,13 @@ def validate(values, plan, output, prefix, cases):
         tree = saved['composition']['groups']
         assert tree['version'] == 3 and len(tree['adjustments']) == 1
         adjustment = tree['adjustments'][0]
-        assert adjustment['node_type'] == 'compositing.filter' and adjustment['filter'] == 'invert' and adjustment['amount'] == 1
+        assert adjustment['node_type'] == definition['node_type']
+        if key == 'levels-master':
+            assert adjustment['levels'] == LEVELS['parameters']['parameters']
+            assert adjustment['filter'] == 'invert' and adjustment['amount'] == 0
+        else:
+            assert adjustment['filter'] == 'invert' and adjustment['amount'] == 1
+            assert 'levels' not in adjustment
         assert saved['composition']['layer_metadata'] == case['model']['composition']['layer_metadata']
         if key == 'selection-snapshot':
             assert saved['planes'][1] == bytes(case['selection'])

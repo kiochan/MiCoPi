@@ -82,11 +82,27 @@ impl PreparedLevelsPlan {
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Levels {
+    #[serde(deserialize_with = "byte")]
     pub input_black: u8,
+    #[serde(deserialize_with = "byte")]
     pub input_white: u8,
     pub gamma: f64,
+    #[serde(deserialize_with = "byte")]
     pub output_black: u8,
+    #[serde(deserialize_with = "byte")]
     pub output_white: u8,
+}
+fn byte<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<u8, D::Error> {
+    let value = serde_json::Value::deserialize(deserializer)?;
+    let number = value
+        .as_f64()
+        .filter(|n| n.is_finite() && (0. ..=255.).contains(n) && n.fract() == 0.)
+        .ok_or_else(|| {
+            <D::Error as serde::de::Error>::custom(
+                "Levels endpoints require integral bytes from 0 to 255",
+            )
+        })?;
+    Ok(number as u8)
 }
 impl Default for Levels {
     fn default() -> Self {

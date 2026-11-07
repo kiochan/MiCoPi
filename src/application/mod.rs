@@ -18,6 +18,8 @@ pub(crate) mod creation;
 #[cfg(test)]
 mod layer_arrangement_tests;
 #[cfg(test)]
+mod levels_adjustment_tests;
+#[cfg(test)]
 mod levels_tests;
 mod mask_boundary;
 pub mod pipeline;

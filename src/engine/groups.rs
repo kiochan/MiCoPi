@@ -525,11 +525,18 @@ impl GroupTree {
                     }
                     let mut filter = fresh(
                         next,
-                        NodeKind::Filter {
-                            filter: adjustment.filter,
-                            amount: adjustment.amount,
+                        adjustment.levels.map_or(
+                            NodeKind::Filter {
+                                filter: adjustment.filter,
+                                amount: adjustment.amount,
+                            },
+                            |parameters| NodeKind::Levels { parameters },
+                        ),
+                        if adjustment.levels.is_some() {
+                            "levels"
+                        } else {
+                            "filter"
                         },
-                        "filter",
                     )?;
                     filter.node_type = Some(adjustment.node_type.clone());
                     graph.edges.push(Edge {

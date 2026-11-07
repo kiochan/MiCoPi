@@ -209,6 +209,12 @@ impl Document {
         require: bool,
     ) -> Result<GroupPlan, String> {
         validate_layer_links(metadata)?;
+        if require
+            && groups.is_some_and(|tree| tree.adjustments.iter().any(|a| a.levels.is_some()))
+            && self.renderer.as_ref().is_none_or(|r| !r.supports_levels())
+        {
+            return Err("The compositor does not support Levels adjustments".into());
+        }
         self.ensure_levels_capability(graph, require)?;
         if require {
             self.ensure_blend_modes(graph, groups, modes)?;
