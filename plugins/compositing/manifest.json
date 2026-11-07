@@ -135,6 +135,155 @@
         "type": "object",
         "additionalProperties": false
       }
+    },
+    {
+      "id": "histogram.query",
+      "title": "Read Color Histogram",
+      "operation": "histogram_query",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "composite",
+              "layer"
+            ]
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "total_pixels": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16777216
+          },
+          "max_samples": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65536
+          },
+          "sampling": {
+            "type": "string",
+            "enum": [
+              "grid_centers"
+            ]
+          },
+          "grid_width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "grid_height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "sampled_pixels": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65536
+          },
+          "nontransparent_pixels": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65536
+          },
+          "ignored_transparent_pixels": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 65536
+          },
+          "exact": {
+            "type": "boolean"
+          },
+          "red": {
+            "type": "array",
+            "title": "Red",
+            "minItems": 256,
+            "maxItems": 256,
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65536
+            }
+          },
+          "green": {
+            "type": "array",
+            "title": "Green",
+            "minItems": 256,
+            "maxItems": 256,
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65536
+            }
+          },
+          "blue": {
+            "type": "array",
+            "title": "Blue",
+            "minItems": 256,
+            "maxItems": 256,
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65536
+            }
+          },
+          "rgb": {
+            "type": "array",
+            "title": "Master RGB",
+            "minItems": 256,
+            "maxItems": 256,
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 196608
+            }
+          }
+        },
+        "required": [
+          "document_identity",
+          "revision",
+          "source",
+          "width",
+          "height",
+          "total_pixels",
+          "max_samples",
+          "sampling",
+          "grid_width",
+          "grid_height",
+          "sampled_pixels",
+          "nontransparent_pixels",
+          "ignored_transparent_pixels",
+          "exact",
+          "red",
+          "green",
+          "blue",
+          "rgb"
+        ],
+        "additionalProperties": false
+      }
     }
   ],
   "panels": [

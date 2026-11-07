@@ -1,5 +1,12 @@
 # Project Structure and Ownership
 
+`plugins/compositing/src/histogram.rs` owns bounded immutable pixel statistics.
+`src/plugins/native_histogram.rs` negotiates/caches its optional ABI and validates
+complete results. `src/plugins/histogram.rs` owns the shared read-only action,
+source/argument validation and published snapshot schema; document ownership and
+recording remain in Session. The manifest registers its generated workflow node.
+UI overlays and per-node/input histogram scope remain planned.
+
 `plugins/compositing/src/curves.rs` owns bounded cold channel-curve interpolation
 and the independent optional Curves export. `src/plugins/native_curves.rs`
 negotiates/caches that export, validates host arguments and publishes only

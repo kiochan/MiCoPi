@@ -36,6 +36,7 @@ mod document;
 pub(crate) mod export;
 mod geometry;
 pub(crate) mod groups;
+pub(crate) mod histogram;
 pub(crate) mod layer_arrangement;
 pub(crate) mod layer_batch;
 pub(crate) mod layer_links;
@@ -149,6 +150,7 @@ pub(crate) fn execute(
         NodeCatalog | WorkflowRead | WorkflowSet | WorkflowPatch | WorkflowValidate
         | WorkflowRun | WorkflowState => crate::application::workflow::execute(session, op, args),
         GraphRead | GraphSet | GraphCatalog => compositing::execute(session, op, args),
+        HistogramQuery => histogram::execute(session, args),
         New | NewPlan | DocumentInfo | DocumentResolution | CanvasSize | Crop | Open | Save
         | Undo | Redo => document::execute(session, op, args),
         AddLayer | RenameLayer | DuplicateLayer | MoveLayer | DeleteLayer | SelectLayer

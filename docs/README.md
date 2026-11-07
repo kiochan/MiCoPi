@@ -1,5 +1,8 @@
 # Documentation
 
+See [Histograms](histograms.md) for bounded native color queries through Session,
+nodes and MCP; plot overlays and per-node/input scopes remain planned.
+
 See [Levels](levels.md) for typed source effects, affect-below adjustments and
 cached native rendering.
 

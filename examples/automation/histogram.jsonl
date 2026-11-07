@@ -1,0 +1,4 @@
+{"action":"canvas.new","args":{"width":64,"height":64}}
+{"action":"layer.fill_color","args":{"color":"#204060"}}
+{"action":"histogram.query","args":{"source":"composite","max_samples":65536}}
+{"action":"histogram.query","args":{"source":"layer","layer_id":1,"max_samples":256}}

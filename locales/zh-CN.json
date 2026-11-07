@@ -1543,5 +1543,8 @@
   "Invalid Control Points": "控制点无效",
   "Curve preview pauses while drawing.": "绘画时暂停曲线预览计算。",
   "Curve Preview Unavailable": "曲线预览不可用",
-  "Click to add a point. Drag to move. Right-click to remove.": "点击添加控制点，拖动调整，右键删除。"
+  "Click to add a point. Drag to move. Right-click to remove.": "点击添加控制点，拖动调整，右键删除。",
+  "Read Color Histogram": "读取颜色直方图",
+  "Histogram Source": "直方图来源",
+  "Maximum Samples": "最大采样数"
 }

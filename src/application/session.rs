@@ -746,6 +746,9 @@ impl Session {
             if op == Operation::CanvasGeometryPlan {
                 super::canvas_geometry::validate(&action.args)?;
             }
+            if op == Operation::HistogramQuery {
+                crate::plugins::histogram::validate_literal(&action.args)?;
+            }
             if op == Operation::LayerQuery {
                 super::layer_query::validate(&action.args)?;
             }

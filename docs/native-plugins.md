@@ -1,5 +1,27 @@
 # Native DLL Plugins and ABI v1
 
+## Histogram analysis
+
+Optional `micopi_histogram_v1` returns a complete 16-byte `HistogramApi` with
+version/size and the mandatory synchronous `sample` callback at offset 8. Missing
+symbols are compatible; malformed advertised tables reject. The host caches the
+callback and reports preparation-independent `analysis.histogram` inventory.
+
+`HistogramRequest` is 24 bytes: version/size at 0/4, width/height/stride at
+8/12/16 and sample budget at 20. Dimensions are 1–4096, stride is in pixels and
+at least width, and the budget is 1–65,536. The source is immutable aligned ARGB
+words, with an explicit element count. `HistogramResult` is 8,224 bytes: header
+at 0/4, grid dimensions at 8/12, visited/nontransparent 64-bit counts at 16/24
+and four 256-element 64-bit bin arrays at 32. Both caller headers must be valid.
+Read short headers before complete records; larger compatible records retain
+known-prefix behavior and untouched tail bytes. Validate capacities and disjoint
+source/request/output spans before writes. Publish the complete result only on
+success; no allocation, image writes or retained pointers are involved.
+
+See [Histograms](histograms.md) for exact sampling/transparency semantics,
+host output validation and shared action contracts. C11/C++17/Rust layouts and
+independent references are authored; runtime validation is pending CI.
+
 ## Curves preparation prerequisite
 
 The bundled compositor exports optional `micopi_curves_v1`. The loader resolves

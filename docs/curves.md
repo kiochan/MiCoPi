@@ -3,8 +3,11 @@
 `compositing.curves` is a registered source effect for linked Layer Filters and
 free image graphs. It preserves source pixels and alpha while mapping encoded
 RGB. The same intent supports real affect-below Curves adjustment layers. Runtime
-validation awaits CI. Shared curve controls are implemented; histograms and
-reviewed screenshots remain planned.
+validation awaits CI. Shared curve controls and histogram queries are implemented;
+plot overlays and reviewed screenshots remain planned.
+
+Bounded [histogram queries](histograms.md) are available through shared commands;
+plot overlays and per-node/input scope remain a subsequent UI/renderer increment.
 
 Insert **Curves** through a source node's **Insert Filter** menu or a free graph's
 node menu. Built-in nodes and adjustment properties share the curve editor;

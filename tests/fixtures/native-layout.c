@@ -9,6 +9,13 @@ extern "C" {
 #endif
 
 ABI_ASSERT(sizeof(void *) == 8, "The supported native SDK target is x64");
+ABI_ASSERT(sizeof(MicopiHistogramRequest) == 24, "Histogram request");
+ABI_ASSERT(offsetof(MicopiHistogramRequest, max_samples) == 20, "Histogram budget offset");
+ABI_ASSERT(sizeof(MicopiHistogramResult) == 8224, "Histogram result");
+ABI_ASSERT(offsetof(MicopiHistogramResult, sampled_pixels) == 16, "Histogram count offset");
+ABI_ASSERT(offsetof(MicopiHistogramResult, bins) == 32, "Histogram bins offset");
+ABI_ASSERT(sizeof(MicopiHistogramApi) == 16, "Independent histogram API");
+ABI_ASSERT(offsetof(MicopiHistogramApi, sample) == 8, "Histogram callback offset");
 ABI_ASSERT(sizeof(MicopiCurvePoint) == 8, "Curves point pair");
 ABI_ASSERT(sizeof(MicopiCurvesParameters) == 272, "Bounded Curves parameters");
 ABI_ASSERT(offsetof(MicopiCurvesParameters, count) == 8, "Curves count offset");

@@ -4,6 +4,7 @@ use micopi_plugin_api as abi;
 mod blend_tests;
 mod blends;
 mod curves;
+mod histogram;
 mod levels;
 mod mask_effects;
 #[cfg(test)]

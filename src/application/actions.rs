@@ -93,6 +93,7 @@ pub enum Operation {
     WorkflowRun,
     WorkflowState,
     GraphRead,
+    HistogramQuery,
     GraphSet,
     GraphCatalog,
     Describe,
@@ -368,6 +369,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::HistogramQuery {
+            return crate::plugins::histogram::schema();
+        }
         if self == Self::BrushAngleAdjust {
             return crate::plugins::brush_tip::schema();
         }
@@ -659,6 +663,7 @@ impl Operation {
                 | Self::WorkflowValidate
                 | Self::WorkflowState
                 | Self::GraphRead
+                | Self::HistogramQuery
                 | Self::GraphCatalog
                 | Self::Describe
                 | Self::ContextRead

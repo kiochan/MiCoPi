@@ -317,6 +317,21 @@ typedef struct {
     MicopiMaskEffectsReserveFn reserve_mask_effects;
 } MicopiCompositorApiMaskEffects;
 const MicopiCompositorApi *micopi_compositor_v1(void);
+/* Independent histogram: bounded centered grid, unweighted nonzero-alpha ARGB.
+   Width/height 1..4096; max_samples 1..65536; stride >= width. Result bins are
+   R/G/B and their aggregate. Both headers/capacities and disjoint spans validate
+   before writes. No allocation, pointer retention, image writes or callbacks. */
+#define MICOPI_HISTOGRAM_MAX_SAMPLES 65536
+typedef struct { uint32_t abi_version, struct_size, width, height, stride, max_samples; } MicopiHistogramRequest;
+typedef struct {
+    uint32_t abi_version, struct_size, grid_width, grid_height;
+    uint64_t sampled_pixels, nontransparent_pixels;
+    uint64_t bins[4][256];
+} MicopiHistogramResult;
+typedef int32_t (*MicopiHistogramFn)(const MicopiHistogramRequest *, const uint32_t *, size_t, MicopiHistogramResult *);
+typedef struct { uint32_t abi_version, struct_size; MicopiHistogramFn sample; } MicopiHistogramApi;
+const MicopiHistogramApi *micopi_histogram_v1(void);
+
 /* Independent cold Curves preparation. count=2..32 strictly input-ordered byte
    points; unused slots ignored. interpolation=0 linear, 1 shape-preserving
    Hermite with endpoint secants. Constant outside endpoint inputs. Exactly 256

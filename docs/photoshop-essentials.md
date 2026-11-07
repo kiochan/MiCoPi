@@ -126,6 +126,7 @@ Acceptance: group/mask changes have explicit schema and persistence versions; ol
 ### P5 — Common adjustments and filters
 
 - [ ] Add Levels and Curves with composite/channel controls and histogram feedback.
+  - Source/affect-below Curves and shared point controls are implemented in source, with runtime validation tracked separately. [Histogram queries](histograms.md) provide bounded composite/raw-layer samples; artist-facing overlays, per-node/input scope and per-channel Levels remain open.
 - [ ] Add Hue/Saturation, brightness/contrast, exposure/gamma, vibrance and color balance.
 - [ ] Add grayscale/black-and-white, threshold/posterize and gradient map.
 - [ ] Add Gaussian blur, sharpen/unsharp mask, noise and a small practical pixelate set.

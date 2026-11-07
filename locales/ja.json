@@ -1543,5 +1543,8 @@
   "Invalid Control Points": "制御点が無効です",
   "Curve preview pauses while drawing.": "描画中はカーブのプレビュー計算を停止します。",
   "Curve Preview Unavailable": "カーブのプレビューを利用できません",
-  "Click to add a point. Drag to move. Right-click to remove.": "クリックで制御点を追加、ドラッグで移動、右クリックで削除します。"
+  "Click to add a point. Drag to move. Right-click to remove.": "クリックで制御点を追加、ドラッグで移動、右クリックで削除します。",
+  "Read Color Histogram": "色ヒストグラムを取得",
+  "Histogram Source": "ヒストグラムの対象",
+  "Maximum Samples": "最大サンプル数"
 }

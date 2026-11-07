@@ -653,6 +653,70 @@ pub struct CompositorApiMaskEffects {
 }
 pub type CompositorEntry = unsafe extern "C" fn() -> *const CompositorApi;
 
+/// Independent bounded read-only encoded-RGB histogram sampling.
+pub const HISTOGRAM_SYMBOL: &[u8] = b"micopi_histogram_v1\0";
+pub const HISTOGRAM_MAX_SAMPLES: u32 = 65_536;
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HistogramRequest {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub width: u32,
+    pub height: u32,
+    pub stride: u32,
+    pub max_samples: u32,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct HistogramResult {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub grid_width: u32,
+    pub grid_height: u32,
+    pub sampled_pixels: u64,
+    pub nontransparent_pixels: u64,
+    /// R, G, B and aggregate R+G+B counts, 256 byte bins each. Alpha zero skips.
+    pub bins: [[u64; 256]; 4],
+}
+impl Default for HistogramResult {
+    fn default() -> Self {
+        Self {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<Self>() as u32,
+            grid_width: 0,
+            grid_height: 0,
+            sampled_pixels: 0,
+            nontransparent_pixels: 0,
+            bins: [[0; 256]; 4],
+        }
+    }
+}
+/// Borrow immutable ARGB pixels; sample centered grid cells without allocation.
+/// Validate both headers, dimensions, capacity and aliasing before result writes.
+pub type HistogramFn =
+    unsafe extern "C" fn(*const HistogramRequest, *const u32, usize, *mut HistogramResult) -> i32;
+#[repr(C)]
+pub struct HistogramApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub sample: Option<HistogramFn>,
+}
+pub type HistogramEntry = unsafe extern "C" fn() -> *const HistogramApi;
+#[cfg(test)]
+mod histogram_layout_tests {
+    use super::*;
+    #[test]
+    fn histogram_has_stable_independent_x64_layout() {
+        assert_eq!(std::mem::size_of::<HistogramRequest>(), 24);
+        assert_eq!(std::mem::offset_of!(HistogramRequest, max_samples), 20);
+        assert_eq!(std::mem::size_of::<HistogramResult>(), 8224);
+        assert_eq!(std::mem::offset_of!(HistogramResult, sampled_pixels), 16);
+        assert_eq!(std::mem::offset_of!(HistogramResult, bins), 32);
+        assert_eq!(std::mem::size_of::<HistogramApi>(), 16);
+        assert_eq!(std::mem::offset_of!(HistogramApi, sample), 8);
+    }
+}
+
 /// Independent bounded Curves preparation. Existing compositor/Levels tables
 /// and symbol contracts are unchanged; this prepares one channel at a time.
 pub const CURVES_SYMBOL: &[u8] = b"micopi_curves_v1\0";

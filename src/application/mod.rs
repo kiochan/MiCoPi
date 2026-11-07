@@ -20,6 +20,8 @@ mod curves_adjustment_tests;
 #[cfg(test)]
 mod curves_tests;
 #[cfg(test)]
+mod histogram_tests;
+#[cfg(test)]
 mod layer_arrangement_tests;
 #[cfg(test)]
 mod levels_adjustment_tests;

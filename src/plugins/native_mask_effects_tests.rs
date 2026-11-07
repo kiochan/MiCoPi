@@ -270,6 +270,7 @@ fn cached_effect_instance_is_created_once_even_after_errors_and_destroyed_with_i
         levels_render: None,
         curves_prepare: None,
         curves_render: None,
+        histogram: None,
         mask_effect_instance: Default::default(),
         _module: Module { handle: 0 },
     });

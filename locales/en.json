@@ -1543,5 +1543,8 @@
   "Invalid Control Points": "Invalid Control Points",
   "Curve preview pauses while drawing.": "Curve preview pauses while drawing.",
   "Curve Preview Unavailable": "Curve Preview Unavailable",
-  "Click to add a point. Drag to move. Right-click to remove.": "Click to add a point. Drag to move. Right-click to remove."
+  "Click to add a point. Drag to move. Right-click to remove.": "Click to add a point. Drag to move. Right-click to remove.",
+  "Read Color Histogram": "Read Color Histogram",
+  "Histogram Source": "Histogram Source",
+  "Maximum Samples": "Maximum Samples"
 }
