@@ -15,7 +15,9 @@ unsafe fn decode(pointer: *const abi::CurvesApi) -> Result<abi::CurvesPrepareFn,
         .ok_or_else(|| "Missing Curves preparation callback".into())
 }
 impl Module {
-    pub(super) unsafe fn curves_api(&self) -> Result<Option<abi::CurvesPrepareFn>, String> {
+    pub(super) unsafe fn curves_api(
+        &self,
+    ) -> Result<Option<(abi::CurvesPrepareFn, Option<abi::LevelsRenderFn>)>, String> {
         #[cfg(windows)]
         {
             let address = GetProcAddress(self.handle as *mut c_void, abi::CURVES_SYMBOL.as_ptr());
@@ -23,13 +25,30 @@ impl Module {
                 return Ok(None);
             }
             let entry = std::mem::transmute::<*mut c_void, abi::CurvesEntry>(address);
-            decode(entry()).map(Some)
+            let pointer = entry();
+            Ok(Some((decode(pointer)?, decode_render(pointer)?)))
         }
         #[cfg(not(windows))]
         {
             Ok(None)
         }
     }
+}
+unsafe fn decode_render(
+    pointer: *const abi::CurvesApi,
+) -> Result<Option<abi::LevelsRenderFn>, String> {
+    decode(pointer)?;
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.struct_size == std::mem::size_of::<abi::CurvesApi>() as u32 {
+        return Ok(None);
+    }
+    if header.struct_size < std::mem::size_of::<abi::CurvesApiRender>() as u32 {
+        return Err("Incomplete Curves rendering tail".into());
+    }
+    std::ptr::read_unaligned(pointer.cast::<abi::CurvesApiRender>())
+        .render
+        .map(Some)
+        .ok_or_else(|| "Missing Curves rendering callback".into())
 }
 fn prepare(
     callback: Option<abi::CurvesPrepareFn>,
@@ -71,10 +90,12 @@ fn prepare(
     Ok(output)
 }
 impl NativePlugin {
+    pub(crate) fn supports_curves_rendering(&self) -> bool {
+        self.curves_render.is_some()
+    }
     pub(crate) fn supports_curves_preparation(&self) -> bool {
         self.curves_prepare.is_some()
     }
-    #[allow(dead_code)] // The next source-node increment consumes this cold adapter.
     pub(crate) fn prepare_curves(
         &self,
         parameters: abi::CurvesParameters,
@@ -148,6 +169,31 @@ mod tests {
         }
     }
     #[test]
+    fn render_decoder_preserves_preparation_only_and_rejects_incomplete_tails() {
+        unsafe {
+            let old = abi::CurvesApi {
+                abi_version: 1,
+                struct_size: 16,
+                prepare: Some(identity),
+            };
+            assert!(decode_render(&old).unwrap().is_none());
+            let partial = abi::CurvesApi {
+                struct_size: 17,
+                ..old
+            };
+            assert!(decode_render(&partial).is_err());
+            let missing = abi::CurvesApiRender {
+                base: abi::CurvesApi {
+                    abi_version: 1,
+                    struct_size: 24,
+                    prepare: Some(identity),
+                },
+                render: None,
+            };
+            assert!(decode_render(&missing.base).is_err());
+        }
+    }
+    #[test]
     fn adapter_validates_before_callback_and_keeps_failed_output_private() {
         assert_eq!(
             prepare(None, parameters()).unwrap_err().code,
@@ -178,7 +224,7 @@ mod tests {
         );
     }
     #[test]
-    fn bundled_curves_are_cached_and_inventory_does_not_claim_document_support() {
+    fn bundled_curves_preparation_and_rendering_are_cached_and_discovered() {
         let registry = crate::plugins::Registry::load(
             &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
         )
@@ -198,6 +244,6 @@ mod tests {
             .find(|p| p["id"] == "compositing")
             .unwrap();
         assert_eq!(item["filters"]["curves_prepare"], true);
-        assert!(!registry.nodes.contains_key("compositing.curves"));
+        assert_eq!(item["filters"]["curves_render"], true);
     }
 }

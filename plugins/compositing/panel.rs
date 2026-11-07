@@ -952,11 +952,14 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
         if self.linked {
             if matches!(
                 snarl[id].data,
-                NodeKind::Layer { .. } | NodeKind::Filter { .. } | NodeKind::Levels { .. }
+                NodeKind::Layer { .. }
+                    | NodeKind::Filter { .. }
+                    | NodeKind::Levels { .. }
+                    | NodeKind::Curves { .. }
             ) {
                 ui.menu_button(tr("Insert Filter"), |ui| {
                     if let Some(defs) = self.definitions {
-                        for def in defs.values().filter(|d| matches!(&d.binding, crate::plugins::nodes::Binding::Image { operation, .. } if operation == "filter" || operation == "levels")) {
+                        for def in defs.values().filter(|d| matches!(&d.binding, crate::plugins::nodes::Binding::Image { operation, .. } if operation == "filter" || operation == "levels" || operation == "curves")) {
                             if ui.button(tr(&def.title)).clicked() {
                                 if let crate::plugins::nodes::Binding::Image { defaults, operation } = &def.binding {
                                     let mut data = defaults.clone();
@@ -974,7 +977,7 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
             }
             if matches!(
                 snarl[id].data,
-                NodeKind::Filter { .. } | NodeKind::Levels { .. }
+                NodeKind::Filter { .. } | NodeKind::Levels { .. } | NodeKind::Curves { .. }
             ) && ui.button(tr("Delete Node")).clicked()
             {
                 remove_filter(snarl, id);
@@ -1145,11 +1148,13 @@ impl Editor {
         }
         let protected_contact = (self.session.stroke.active()
             || self.session.pointer_checkpoint.is_some())
-            && (self.session.doc.graph.has_levels()
-                || state
-                    .snarl
-                    .nodes_ids_data()
-                    .any(|(_, n)| matches!(n.value.data, NodeKind::Levels { .. })));
+            && (self.session.doc.graph.has_prepared_color()
+                || state.snarl.nodes_ids_data().any(|(_, n)| {
+                    matches!(
+                        n.value.data,
+                        NodeKind::Levels { .. } | NodeKind::Curves { .. }
+                    )
+                }));
         if state.preview
             && !protected_contact
             && !conflict

@@ -3,9 +3,13 @@
 `plugins/compositing/src/curves.rs` owns bounded cold channel-curve interpolation
 and the independent optional Curves export. `src/plugins/native_curves.rs`
 negotiates/caches that export, validates host arguments and publishes only
-successful byte tables. SDK Rust/C layouts live in `crates/plugin-api/` with
-compile-only C/C++ fixtures under `tests/fixtures/`. This prerequisite does not
-register Curves nodes or adjustment effects; those integrations remain planned.
+successful byte tables and prepared-channel rendering. SDK Rust/C layouts live
+in `crates/plugin-api/` with compile-only C/C++ fixtures under `tests/fixtures/`.
+`src/engine/curves.rs` owns typed master/channel intent, schema and preparation.
+The existing `PreparedLevelsPlan` caches mixed one-table Levels and three-table
+Curves intents without changing history ownership. `compositing.curves` registers
+source-node defaults/schema; its UI uses the existing schema editor. Affect-below
+Curves adjustments and dedicated controls remain planned.
 
 `src/plugins/native_levels.rs` negotiates and caches optional native Levels
 preparation, validates host arguments and publishes successful byte tables.

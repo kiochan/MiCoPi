@@ -1,5 +1,7 @@
 # MiCoPi
 
+[Curves source nodes](docs/curves.md) add master/R/G/B control points and cached native rendering to linked/free graphs, Undo, projects and verified outcomes. CI is pending; dedicated curve/histogram controls and Curves adjustment layers remain planned.
+
 [Levels source nodes](docs/levels.md) now share linked/free graphs, cached native
 rendering, Undo, projects and verified outcomes. CI validation is pending;
 Source nodes and affect-below adjustment layers share dedicated input/output controls and owned-mask support.
@@ -78,7 +80,7 @@ Layers support renaming, reordering, deletion and selection-aware **Layer via Co
 
 Current limits: one document per session; no Wintab, off-canvas layer storage, clipping masks or watercolor engine. Native plugin DLLs execute inside the host process.
 
-[Adjustment layers](docs/adjustment-layers.md) are real non-raster affect-below items with five registered filters, Normal alpha-preserving mixing, opacity and owned A8 masks. Root, Isolated and Pass Through scopes share actions, Undo and verified outcomes; inspecting properties keeps the raster painting target separate. Group copy/delete carries adjustment owners. Levels/Curves and broader blending remain planned. This source increment is awaiting CI validation.
+[Adjustment layers](docs/adjustment-layers.md) are real non-raster affect-below items with five registered filters, Normal alpha-preserving mixing, opacity and owned A8 masks. Root, Isolated and Pass Through scopes share actions, Undo and verified outcomes; inspecting properties keeps the raster painting target separate. Group copy/delete carries adjustment owners. Levels is supported; Curves adjustments and broader blending remain planned. This source increment is awaiting CI validation.
 
 [Layer alignment and distribution](docs/layer-arrangement.md) uses exact captured raster IDs for edge/center alignment and center distribution, with optional canvas alignment. Raw ink bounds determine placement; linked masks follow under one Undo/outcome. Read-only plans preserve contacts, and the same commands serve nodes, MCP and headless. Runtime verification is pending CI.
 

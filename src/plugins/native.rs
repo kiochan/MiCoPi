@@ -611,6 +611,7 @@ pub struct NativePlugin {
     levels_prepare: Option<abi::LevelsPrepareFn>,
     levels_render: Option<abi::LevelsRenderFn>,
     curves_prepare: Option<abi::CurvesPrepareFn>,
+    curves_render: Option<abi::LevelsRenderFn>,
     mask_effect_instance: std::sync::Mutex<Option<MaskEffectInstance>>,
     _module: Module,
 }
@@ -857,7 +858,10 @@ impl NativePlugin {
             None => (None, None),
         };
         let tools = unsafe { module.tool_api()? };
-        let curves_prepare = unsafe { module.curves_api()? };
+        let (curves_prepare, curves_render) = match unsafe { module.curves_api()? } {
+            Some((prepare, render)) => (Some(prepare), render),
+            None => (None, None),
+        };
         let (levels_prepare, levels_render) = match unsafe { module.levels_api()? } {
             Some((prepare, render)) => (Some(prepare), render),
             None => (None, None),
@@ -926,6 +930,7 @@ impl NativePlugin {
                 levels_prepare,
                 levels_render,
                 curves_prepare,
+                curves_render,
                 mask_effect_instance: Default::default(),
                 _module: module,
             }),
@@ -934,6 +939,17 @@ impl NativePlugin {
     }
 }
 impl crate::engine::graph::Renderer for NativePlugin {
+    fn supports_curves(&self) -> bool {
+        self.supports_curves_preparation() && self.supports_curves_rendering()
+    }
+    fn prepare_curves(
+        &self,
+        parameters: &abi::CurvesParameters,
+    ) -> Result<abi::CompositeLut, String> {
+        NativePlugin::prepare_curves(self, *parameters)
+            .map(|values| abi::CompositeLut { values })
+            .map_err(|e| e.to_string())
+    }
     fn supports_levels(&self) -> bool {
         self.supports_levels_preparation() && self.supports_levels_rendering()
     }

@@ -16,6 +16,8 @@ ABI_ASSERT(offsetof(MicopiCurvesParameters, interpolation) == 12, "Curves mode o
 ABI_ASSERT(offsetof(MicopiCurvesParameters, points) == 16, "Curves points offset");
 ABI_ASSERT(sizeof(MicopiCurvesApi) == 16, "Independent Curves API");
 ABI_ASSERT(offsetof(MicopiCurvesApi, prepare) == 8, "Curves preparation callback");
+ABI_ASSERT(sizeof(MicopiCurvesApiRender) == 24, "Complete Curves render tail");
+ABI_ASSERT(offsetof(MicopiCurvesApiRender, render) == 16, "Curves render offset");
 ABI_ASSERT(sizeof(MicopiLevelsParameters) == 32, "Levels preparation parameters");
 ABI_ASSERT(offsetof(MicopiLevelsParameters, gamma) == 24, "Levels gamma offset");
 ABI_ASSERT(sizeof(MicopiLevelsApi) == 16, "Independent Levels API");

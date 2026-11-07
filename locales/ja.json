@@ -1528,5 +1528,9 @@
   "Input Levels": "入力レベル",
   "Output Levels": "出力レベル",
   "Reset Levels": "レベル補正をリセット",
-  "Input white must exceed input black.": "入力の白点は黒点より大きくしてください。"
+  "Input white must exceed input black.": "入力の白点は黒点より大きくしてください。",
+  "Curves": "トーンカーブ",
+  "Master RGB": "RGB マスター",
+  "Control Points": "制御点",
+  "Interpolation": "補間"
 }

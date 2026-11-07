@@ -22,6 +22,9 @@ def main():
     shutil.copytree(ROOT / 'plugins', plugins)
     profile.mkdir()
     flags = ['--plugins', str(plugins), '--config-dir', str(profile)]
+    identity_curve = dict(interpolation="linear", points=[dict(input=0, output=0), dict(input=255, output=255)])
+    curves = dict(master=dict(interpolation="smooth", points=[dict(input=0, output=0), dict(input=96, output=120), dict(input=255, output=255)]),
+                  red=identity_curve, green=identity_curve, blue=dict(interpolation="linear", points=[dict(input=0, output=12), dict(input=255, output=240)]))
     graph = dict(enabled=True, linked=True, nodes=[
         dict(id=0, kind='layer', index=0, position=[0, 0]),
         dict(id=1, kind='filter', filter='invert', amount=1, position=[260, 0]),
@@ -31,8 +34,9 @@ def main():
         dict(id=5, kind='levels', node_type='compositing.levels', position=[400, 0],
              parameters=dict(input_black=16, input_white=240, gamma=1.5,
                              output_black=8, output_white=248)),
+        dict(id=6, kind="curves", node_type="compositing.curves", curves=curves, position=[500, 0]),
     ], edges=[dict(**{'from': 0}, to=1, input=0), dict(**{'from': 1}, to=5, input=0),
-              dict(**{'from': 5}, to=3, input=0),
+              dict(**{'from': 5}, to=6, input=0), dict(**{'from': 6}, to=3, input=0),
               dict(**{'from': 2}, to=3, input=1), dict(**{'from': 3}, to=4, input=0)])
     commands = [
         dict(action='canvas.new', args=dict(width=256, height=192)),
@@ -67,6 +71,7 @@ def main():
     assert all(r['ok'] for r in records), records
     assert records[-3]['data']['result']['mode'] == 'linked'
     assert any(n['kind'] == 'levels' for n in records[-3]['data']['result']['graph']['nodes'])
+    assert any(n['kind'] == 'curves' for n in records[-3]['data']['result']['graph']['nodes'])
     assert records[-2]['data']['result']['valid']
     expected = (output/'batch.png').read_bytes()
     requests = [dict(jsonrpc='2.0', id=1, method='initialize', params=dict(protocolVersion='2025-11-25')),

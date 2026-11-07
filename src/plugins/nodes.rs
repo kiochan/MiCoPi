@@ -117,6 +117,7 @@ impl Definition {
                     "layer" => &["index"],
                     "filter" => &["filter", "amount"],
                     "levels" => &["parameters"],
+                    "curves" => &["curves"],
                     "blend" => &["mode", "opacity"],
                     "mix" => &["opacity"],
                     "output" | "transparent" => &[],
@@ -139,6 +140,7 @@ impl Definition {
                 let kind: NodeKind = serde_json::from_value(value).map_err(|e| e.to_string())?;
                 match kind {
                     NodeKind::Levels { parameters } => parameters.validate()?,
+                    NodeKind::Curves { curves } => curves.validate()?,
                     NodeKind::Layer { index } if index >= 16 => {
                         return Err("Default layer index is out of range".into())
                     }

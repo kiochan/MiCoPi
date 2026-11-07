@@ -1,6 +1,7 @@
 //! Platform-independent pixel document, color math and input filtering.
 pub mod adjustments;
 pub mod color;
+pub mod curves;
 pub mod document;
 pub mod document_info;
 pub mod graph;

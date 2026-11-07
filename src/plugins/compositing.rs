@@ -6,10 +6,10 @@ use serde_json::{json, Value};
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     match op {
         Operation::GraphRead => Ok(
-            json!({"graph":s.doc.graph,"effective_graph":s.doc.effective_graph().map_err(|e|ActionError::new("invalid_graph",e))?,"groups":s.doc.groups_state(),"mode":if (s.doc.has_groups() || s.doc.has_adjustments()) {"grouped"} else if s.doc.graph.linked {"linked"} else {"free"},"layers":s.state()["layers"],"default_graph":Graph::linked_from_layers(&s.doc.layers),"renderer_available":s.doc.renderer.is_some(),"available_blend_modes":s.doc.available_blend_modes(),"renderer_transparent":s.doc.renderer.as_ref().is_some_and(|r|r.supports_transparent()),"renderer_mix":s.doc.renderer.as_ref().is_some_and(|r|r.supports_mix()),"renderer_levels":s.doc.renderer.as_ref().is_some_and(|r|r.supports_levels()),"render_error":s.doc.render_error}),
+            json!({"graph":s.doc.graph,"effective_graph":s.doc.effective_graph().map_err(|e|ActionError::new("invalid_graph",e))?,"groups":s.doc.groups_state(),"mode":if (s.doc.has_groups() || s.doc.has_adjustments()) {"grouped"} else if s.doc.graph.linked {"linked"} else {"free"},"layers":s.state()["layers"],"default_graph":Graph::linked_from_layers(&s.doc.layers),"renderer_available":s.doc.renderer.is_some(),"available_blend_modes":s.doc.available_blend_modes(),"renderer_transparent":s.doc.renderer.as_ref().is_some_and(|r|r.supports_transparent()),"renderer_mix":s.doc.renderer.as_ref().is_some_and(|r|r.supports_mix()),"renderer_levels":s.doc.renderer.as_ref().is_some_and(|r|r.supports_levels()),"renderer_curves":s.doc.renderer.as_ref().is_some_and(|r|r.supports_curves()),"render_error":s.doc.render_error}),
         ),
         Operation::GraphCatalog => Ok(
-            json!({"version":1,"max_nodes":64,"definitions":s.registry.node_catalog().values().collect::<Vec<_>>(),"workflow_schema":crate::engine::workflow::schema(),"filters":Filter::ALL,"blend_modes":BlendMode::ALL,"available_blend_modes":s.doc.available_blend_modes(),"renderer_mix":s.doc.renderer.as_ref().is_some_and(|r|r.supports_mix()),"renderer_levels":s.doc.renderer.as_ref().is_some_and(|r|r.supports_levels()),"node_kinds":["transparent","layer","filter","levels","blend","mix","output"],"graph_schema":crate::engine::graph::schema(),"image_type":"straight_alpha_argb","destructive":false}),
+            json!({"version":1,"max_nodes":64,"definitions":s.registry.node_catalog().values().collect::<Vec<_>>(),"workflow_schema":crate::engine::workflow::schema(),"filters":Filter::ALL,"blend_modes":BlendMode::ALL,"available_blend_modes":s.doc.available_blend_modes(),"renderer_mix":s.doc.renderer.as_ref().is_some_and(|r|r.supports_mix()),"renderer_levels":s.doc.renderer.as_ref().is_some_and(|r|r.supports_levels()),"renderer_curves":s.doc.renderer.as_ref().is_some_and(|r|r.supports_curves()),"node_kinds":["transparent","layer","filter","levels","curves","blend","mix","output"],"graph_schema":crate::engine::graph::schema(),"image_type":"straight_alpha_argb","destructive":false}),
         ),
         Operation::GraphSet => {
             if (s.doc.has_groups() || s.doc.has_adjustments())
@@ -21,12 +21,12 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 ));
             }
             let graph: Graph = serde_json::from_value(args["graph"].clone())?;
-            if (graph.has_levels() || s.doc.graph.has_levels())
+            if (graph.has_prepared_color() || s.doc.graph.has_prepared_color())
                 && (s.stroke.active() || s.pointer_checkpoint.is_some())
             {
                 return Err(ActionError::new(
                     "stroke_active",
-                    "Finish the current contact before editing Levels",
+                    "Finish the current contact before editing prepared color effects",
                 ));
             }
             graph
@@ -60,9 +60,16 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             s.doc
                 .ensure_mix_capability(&graph, None)
                 .map_err(|e| ActionError::new("mix_unavailable", e))?;
-            s.doc
-                .ensure_levels_capability(&graph, true)
-                .map_err(|e| ActionError::new("levels_unavailable", e))?;
+            s.doc.ensure_levels_capability(&graph, true).map_err(|e| {
+                ActionError::new(
+                    if graph.has_curves() {
+                        "curves_unavailable"
+                    } else {
+                        "levels_unavailable"
+                    },
+                    e,
+                )
+            })?;
             s.finish_stroke();
             s.doc
                 .set_graph(graph)

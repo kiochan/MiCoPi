@@ -38,9 +38,12 @@ impl Graph {
         Ok(())
     }
     pub fn has_filters(&self) -> bool {
-        self.nodes
-            .iter()
-            .any(|n| matches!(n.data, NodeKind::Filter { .. } | NodeKind::Levels { .. }))
+        self.nodes.iter().any(|n| {
+            matches!(
+                n.data,
+                NodeKind::Filter { .. } | NodeKind::Levels { .. } | NodeKind::Curves { .. }
+            )
+        })
     }
     /// Called after ordinary DAG validation, including missing ports and cycles.
     pub(crate) fn stack_branches(&self, count: usize) -> Result<Vec<Branch>, String> {
@@ -83,7 +86,7 @@ impl Graph {
                 }
                 match n.data {
                     NodeKind::Layer { .. } => break (*n).clone(),
-                    NodeKind::Filter { .. } | NodeKind::Levels { .. } => {
+                    NodeKind::Filter { .. } | NodeKind::Levels { .. } | NodeKind::Curves { .. } => {
                         filters.push((*n).clone());
                         head = *inputs.get(&(head, 0)).ok_or(error)?;
                     }

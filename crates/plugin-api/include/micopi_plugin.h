@@ -359,6 +359,10 @@ typedef int32_t (*MicopiLevelsRenderFn)(
     const MicopiCompositeMask *, size_t, const MicopiCompositeLut *, size_t,
     uint32_t, uint32_t, MicopiPixels *);
 typedef struct { MicopiLevelsApi base; MicopiLevelsRenderFn render; } MicopiLevelsApiRender;
+/* Complete optional Curves rendering tail. Kind 10: prior image a, b=0,
+   amount=1; mode starts three consecutive R/G/B LUTs. Kind 9 remains supported.
+   At most 64 total LUTs; legacy and Levels-only callbacks reject kind 10. */
+typedef struct { MicopiCurvesApi base; MicopiLevelsRenderFn render; } MicopiCurvesApiRender;
 /* Independent optional exact geometry table, with immutable source and disjoint
    output. Local origins are zero; dimensions/stride are bounded to 4096.
    Kinds: 0 CW, 1 CCW, 2 half turn, 3 flip horizontal, 4 flip vertical.

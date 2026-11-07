@@ -1,5 +1,5 @@
 //! Typed Levels intent. Derived lookup tables are not document metadata.
-use super::graph::Renderer;
+use super::{curves::ColorIntent, graph::Renderer};
 use micopi_plugin_api as abi;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -9,53 +9,92 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct PreparedLevelsPlan {
     provider: Arc<dyn Renderer>,
-    intents: Vec<Levels>,
+    intents: Vec<ColorIntent>,
     tables: Vec<abi::CompositeLut>,
 }
 impl PreparedLevelsPlan {
     pub fn matches(&self, provider: &Arc<dyn Renderer>, intents: &[Levels]) -> bool {
-        Arc::ptr_eq(&self.provider, provider) && self.intents == intents
+        Arc::ptr_eq(&self.provider, provider)
+            && self.intents.len() == intents.len()
+            && self
+                .intents
+                .iter()
+                .zip(intents)
+                .all(|(a, b)| matches!(a,ColorIntent::Levels(p) if p==b))
     }
     pub fn new(provider: Arc<dyn Renderer>, intents: &[Levels]) -> Result<Self, String> {
-        Self::validate(intents)?;
-        let tables = intents
-            .iter()
-            .map(|intent| intent.prepare(provider.as_ref()))
-            .collect::<Result<Vec<_>, _>>()?;
+        Self::new_color(
+            provider,
+            &intents
+                .iter()
+                .copied()
+                .map(ColorIntent::Levels)
+                .collect::<Vec<_>>(),
+        )
+    }
+    pub fn rebuild(
+        &mut self,
+        provider: Arc<dyn Renderer>,
+        intents: &[Levels],
+    ) -> Result<(), String> {
+        if self.matches(&provider, intents) {
+            return Ok(());
+        }
+        self.rebuild_color(
+            provider,
+            &intents
+                .iter()
+                .copied()
+                .map(ColorIntent::Levels)
+                .collect::<Vec<_>>(),
+        )
+    }
+    pub fn matches_color(&self, provider: &Arc<dyn Renderer>, intents: &[ColorIntent]) -> bool {
+        Arc::ptr_eq(&self.provider, provider) && self.intents == intents
+    }
+    fn validate_color(intents: &[ColorIntent]) -> Result<usize, String> {
+        let count = intents.iter().map(ColorIntent::table_count).sum::<usize>();
+        if count > 64 {
+            return Err("Color table limit exceeded".into());
+        }
+        for intent in intents {
+            intent.validate()?;
+        }
+        Ok(count)
+    }
+    pub fn new_color(provider: Arc<dyn Renderer>, intents: &[ColorIntent]) -> Result<Self, String> {
+        let count = Self::validate_color(intents)?;
+        let mut tables = Vec::with_capacity(count);
+        for intent in intents {
+            intent.prepare(provider.as_ref(), &mut tables)?;
+        }
         Ok(Self {
             provider,
             intents: intents.to_vec(),
             tables,
         })
     }
-    fn validate(intents: &[Levels]) -> Result<(), String> {
-        if intents.len() > 64 {
-            return Err("Levels table limit exceeded".into());
-        }
-        for intent in intents {
-            intent.validate()?;
-        }
-        Ok(())
-    }
-    /// Same provider and ordered intent list: no allocation or native calls.
-    /// Changed slots prepare into private storage before publishing the cache.
-    pub fn rebuild(
+    /// Stable ordered intents reuse all storage; changed plans publish only
+    /// after every preparation succeeds. Each unchanged slot keeps its tables.
+    pub fn rebuild_color(
         &mut self,
         provider: Arc<dyn Renderer>,
-        intents: &[Levels],
+        intents: &[ColorIntent],
     ) -> Result<(), String> {
-        Self::validate(intents)?;
-        let same_provider = Arc::ptr_eq(&self.provider, &provider);
-        if same_provider && self.intents == intents {
+        let count = Self::validate_color(intents)?;
+        if self.matches_color(&provider, intents) {
             return Ok(());
         }
-        let mut tables = Vec::with_capacity(intents.len());
+        let same_provider = Arc::ptr_eq(&self.provider, &provider);
+        let mut tables = Vec::with_capacity(count);
+        let mut old_start = 0;
         for (slot, intent) in intents.iter().enumerate() {
-            tables.push(if same_provider && self.intents.get(slot) == Some(intent) {
-                self.tables[slot]
+            if same_provider && self.intents.get(slot) == Some(intent) {
+                tables.extend_from_slice(&self.tables[old_start..old_start + intent.table_count()]);
             } else {
-                intent.prepare(provider.as_ref())?
-            });
+                intent.prepare(provider.as_ref(), &mut tables)?;
+            }
+            old_start += self.intents.get(slot).map_or(0, ColorIntent::table_count);
         }
         self.provider = provider;
         self.intents = intents.to_vec();
@@ -92,7 +131,7 @@ pub struct Levels {
     #[serde(deserialize_with = "byte")]
     pub output_white: u8,
 }
-fn byte<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<u8, D::Error> {
+pub(super) fn byte<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<u8, D::Error> {
     let value = serde_json::Value::deserialize(deserializer)?;
     let number = value
         .as_f64()
@@ -167,6 +206,12 @@ mod tests {
         fail_at: Cell<Option<usize>>,
     }
     impl Renderer for Provider {
+        fn supports_curves(&self) -> bool {
+            true
+        }
+        fn prepare_curves(&self, _: &abi::CurvesParameters) -> Result<abi::CompositeLut, String> {
+            self.prepare_levels(&Levels::default().parameters())
+        }
         fn supports_levels(&self) -> bool {
             true
         }
@@ -190,6 +235,62 @@ mod tests {
         ) -> Result<(), String> {
             Err("unexpected legacy render".into())
         }
+    }
+    #[test]
+    fn mixed_color_cache_reuses_variable_width_slots_and_rolls_back_failed_rebuilds() {
+        use crate::engine::curves::Curves;
+        let provider = Arc::new(Provider::default());
+        let mut intents = vec![
+            ColorIntent::Curves(Curves::default()),
+            ColorIntent::Levels(Levels::default()),
+        ];
+        let mut plan = PreparedLevelsPlan::new_color(provider.clone(), &intents).unwrap();
+        assert_eq!(provider.calls.get(), 5);
+        assert_eq!(plan.tables().len(), 4);
+        let pointer = plan.tables().as_ptr();
+        for _ in 0..8 {
+            plan.rebuild_color(provider.clone(), &intents).unwrap();
+        }
+        assert_eq!(provider.calls.get(), 5);
+        assert_eq!(plan.tables().as_ptr(), pointer);
+        intents[1] = ColorIntent::Levels(Levels {
+            gamma: 2.,
+            ..Default::default()
+        });
+        plan.rebuild_color(provider.clone(), &intents).unwrap();
+        assert_eq!(provider.calls.get(), 6);
+        assert_eq!(plan.tables()[3].values, [6; 256]);
+        let pointer = plan.tables().as_ptr();
+        if let ColorIntent::Curves(p) = &mut intents[0] {
+            p.red.points[1].output = 99;
+        }
+        provider.fail_at.set(Some(8));
+        assert!(plan.rebuild_color(provider.clone(), &intents).is_err());
+        assert_eq!(plan.tables().as_ptr(), pointer);
+        assert_eq!(plan.tables()[3].values, [6; 256]);
+        let calls = provider.calls.get();
+        assert!(PreparedLevelsPlan::new_color(
+            provider.clone(),
+            &vec![ColorIntent::Curves(Curves::default()); 22]
+        )
+        .is_err());
+        assert_eq!(provider.calls.get(), calls);
+        // Changing a three-table slot into one must copy the following slot
+        // from its old offset, rather than its new output-table offset.
+        let mut changed = vec![
+            ColorIntent::Levels(Levels::default()),
+            ColorIntent::Levels(Levels {
+                gamma: 2.,
+                ..Default::default()
+            }),
+        ];
+        provider.fail_at.set(None);
+        plan.rebuild_color(provider.clone(), &changed).unwrap();
+        assert_eq!(plan.tables().len(), 2);
+        assert_eq!(plan.tables()[1].values, [6; 256]);
+        changed.clear();
+        plan.rebuild_color(provider, &changed).unwrap();
+        assert!(plan.tables().is_empty());
     }
     #[test]
     fn cache_reuses_unchanged_slots_and_publishes_only_complete_rebuilds() {

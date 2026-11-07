@@ -33,14 +33,73 @@ unsafe extern "C" fn prepare(
     abi::OK
 }
 
-static API: abi::CurvesApi = abi::CurvesApi {
-    abi_version: 1,
-    struct_size: std::mem::size_of::<abi::CurvesApi>() as u32,
-    prepare: Some(prepare),
+unsafe extern "C" fn render(
+    nodes: *const abi::CompositeNode,
+    count: usize,
+    layers: *const abi::CompositeLayer,
+    layer_count: usize,
+    masks: *const abi::CompositeMask,
+    mask_count: usize,
+    luts: *const abi::CompositeLut,
+    lut_count: usize,
+    width: u32,
+    height: u32,
+    output: *mut abi::Pixels,
+) -> i32 {
+    if output.is_null() || lut_count > 64 || (lut_count != 0 && luts.is_null()) {
+        return abi::ERROR;
+    }
+    let out = std::ptr::read_unaligned(output);
+    if lut_count != 0 {
+        let Some(source) = super::span(luts, lut_count) else {
+            return abi::ERROR;
+        };
+        let Some(destination) = super::span(out.data, out.len) else {
+            return abi::ERROR;
+        };
+        if super::overlaps(source, destination) {
+            return abi::ERROR;
+        }
+    }
+    let luts = if lut_count == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(luts, lut_count)
+    };
+    super::masks::render_plan(
+        nodes,
+        count,
+        layers,
+        layer_count,
+        masks,
+        mask_count,
+        width,
+        height,
+        output,
+        luts,
+        true,
+    )
+}
+pub(super) fn apply_channels(tables: &[abi::CompositeLut], pixel: u32) -> u32 {
+    if pixel >> 24 == 0 {
+        return pixel;
+    }
+    (pixel & 0xff00_0000)
+        | (u32::from(tables[0].values[((pixel >> 16) & 255) as usize]) << 16)
+        | (u32::from(tables[1].values[((pixel >> 8) & 255) as usize]) << 8)
+        | u32::from(tables[2].values[(pixel & 255) as usize])
+}
+static API: abi::CurvesApiRender = abi::CurvesApiRender {
+    base: abi::CurvesApi {
+        abi_version: 1,
+        struct_size: std::mem::size_of::<abi::CurvesApiRender>() as u32,
+        prepare: Some(prepare),
+    },
+    render: Some(render),
 };
 #[no_mangle]
 pub extern "C" fn micopi_curves_v1() -> *const abi::CurvesApi {
-    &API
+    &API.base
 }
 
 fn compile(parameters: &abi::CurvesParameters) -> Option<[u8; 256]> {
@@ -139,7 +198,7 @@ mod tests {
         assert_eq!(api.abi_version, 1);
         assert_eq!(
             api.struct_size as usize,
-            std::mem::size_of::<abi::CurvesApi>()
+            std::mem::size_of::<abi::CurvesApiRender>()
         );
         assert_eq!(
             unsafe { api.prepare.unwrap()(p, output.as_mut_ptr(), output.len()) },
@@ -147,6 +206,152 @@ mod tests {
         );
         assert_eq!(&output[256..], &[42; 8]);
         output[..256].try_into().unwrap()
+    }
+    #[test]
+    fn channel_tables_preserve_alpha_and_transparent_words() {
+        let identity = abi::CompositeLut {
+            values: std::array::from_fn(|i| i as u8),
+        };
+        let inverse = abi::CompositeLut {
+            values: std::array::from_fn(|i| 255 - i as u8),
+        };
+        let constant = abi::CompositeLut { values: [42; 256] };
+        assert_eq!(
+            apply_channels(&[inverse, identity, constant], 0x80406080),
+            0x80bf602a
+        );
+        assert_eq!(
+            apply_channels(&[inverse, identity, constant], 0x00406080),
+            0x00406080
+        );
+    }
+    #[test]
+    fn channel_renderer_admits_mixed_luts_masks_and_rejects_invalid_unused_nodes() {
+        let luts = [
+            abi::CompositeLut {
+                values: std::array::from_fn(|i| i as u8),
+            },
+            abi::CompositeLut {
+                values: std::array::from_fn(|i| 255 - i as u8),
+            },
+            abi::CompositeLut {
+                values: std::array::from_fn(|i| i as u8),
+            },
+            abi::CompositeLut { values: [42; 256] },
+        ];
+        let n = |kind, a, b, mode, amount| abi::CompositeNode {
+            kind,
+            a,
+            b,
+            mode,
+            amount,
+        };
+        let mut nodes = vec![
+            n(0, 0, 0, 0, 1.),
+            n(9, 0, 0, 0, 1.),
+            n(10, 1, 0, 1, 1.),
+            n(6, 0, 0, 0, 0.),
+            n(7, 2, 3, 0, 1.),
+        ];
+        let data = [0x80406080];
+        let layers = [abi::CompositeLayer {
+            data: data.as_ptr(),
+            len: 1,
+            opacity: 255,
+            visible: 1,
+            mode: 0,
+        }];
+        let masks = [abi::CompositeMask {
+            data: std::ptr::null(),
+            len: 0,
+            stride: 0,
+            constant: 128,
+        }];
+        let mut output = [17, 19];
+        let mut target = abi::Pixels {
+            data: output.as_mut_ptr(),
+            len: 2,
+            width: 1,
+            height: 1,
+            stride: 2,
+            origin_x: 0,
+            origin_y: 0,
+        };
+        let call = |nodes: &[abi::CompositeNode], target: &mut abi::Pixels| unsafe {
+            render(
+                nodes.as_ptr(),
+                nodes.len(),
+                layers.as_ptr(),
+                1,
+                masks.as_ptr(),
+                1,
+                luts.as_ptr(),
+                luts.len(),
+                1,
+                1,
+                target,
+            )
+        };
+        assert_eq!(call(&nodes, &mut target), abi::OK);
+        assert_eq!(output, [0x40bf602a, 19]);
+        for bad in [
+            n(10, 0, 0, 2, 1.),
+            n(10, 0, 0, u32::MAX, 1.),
+            n(10, 3, 0, 1, 1.),
+            n(10, 0, 1, 1, 1.),
+            n(10, 0, 0, 1, 0.5),
+        ] {
+            output = [17, 19];
+            nodes.push(bad); // validate even if a later output ignores it
+            nodes.push(n(3, 4, 0, 0, 1.));
+            assert_eq!(call(&nodes, &mut target), abi::ERROR);
+            assert_eq!(output, [17, 19]);
+            nodes.truncate(5);
+        }
+        output = [17, 19];
+        unsafe {
+            let legacy = &*super::super::levels::micopi_levels_v1().cast::<abi::LevelsApiRender>();
+            assert_eq!(
+                legacy.render.unwrap()(
+                    nodes.as_ptr(),
+                    nodes.len(),
+                    layers.as_ptr(),
+                    1,
+                    masks.as_ptr(),
+                    1,
+                    luts.as_ptr(),
+                    luts.len(),
+                    1,
+                    1,
+                    &mut target
+                ),
+                abi::ERROR
+            );
+        }
+        assert_eq!(output, [17, 19]);
+        // A LUT borrowed as output is rejected before writing its first word.
+        let mut aliased = luts;
+        target.data = aliased.as_mut_ptr().cast();
+        target.len = 1;
+        unsafe {
+            assert_eq!(
+                render(
+                    nodes.as_ptr(),
+                    nodes.len(),
+                    layers.as_ptr(),
+                    1,
+                    masks.as_ptr(),
+                    1,
+                    aliased.as_ptr(),
+                    4,
+                    1,
+                    1,
+                    &mut target
+                ),
+                abi::ERROR
+            );
+        }
+        assert_eq!(aliased[1].values[0], 255);
     }
     #[test]
     fn identity_inverse_and_constant_are_exact_for_both_modes() {

@@ -1528,5 +1528,9 @@
   "Input Levels": "输入色阶",
   "Output Levels": "输出色阶",
   "Reset Levels": "重置色阶",
-  "Input white must exceed input black.": "输入白场必须大于输入黑场。"
+  "Input white must exceed input black.": "输入白场必须大于输入黑场。",
+  "Curves": "曲线",
+  "Master RGB": "RGB 主曲线",
+  "Control Points": "控制点",
+  "Interpolation": "插值"
 }

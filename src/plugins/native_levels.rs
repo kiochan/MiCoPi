@@ -95,15 +95,19 @@ impl NativePlugin {
         output: &mut abi::Pixels,
     ) -> Result<(), String> {
         use crate::engine::graph::Renderer;
-        if luts.is_empty() && nodes.iter().all(|n| n.kind != 9) {
+        if luts.is_empty() && nodes.iter().all(|n| n.kind != 9 && n.kind != 10) {
             return self.render_masked(nodes, layers, masks, width, height, output);
         }
         if luts.len() > 64 {
             return Err("Levels table limit exceeded".into());
         }
-        let render = self
-            .levels_render
-            .ok_or("The compositor does not support Levels rendering")?;
+        let render = if nodes.iter().any(|n| n.kind == 10) {
+            self.curves_render
+                .ok_or("The compositor does not support Curves rendering")?
+        } else {
+            self.levels_render
+                .ok_or("The compositor does not support Levels rendering")?
+        };
         if nodes.iter().any(|n| n.kind == 4) && !self.supports_transparent()
             || nodes.iter().any(|n| n.kind == 5) && !self.supports_mix()
             || (!masks.is_empty() || nodes.iter().any(|n| (6..=8).contains(&n.kind)))

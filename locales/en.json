@@ -1528,5 +1528,9 @@
   "Input Levels": "Input Levels",
   "Output Levels": "Output Levels",
   "Reset Levels": "Reset Levels",
-  "Input white must exceed input black.": "Input white must exceed input black."
+  "Input white must exceed input black.": "Input white must exceed input black.",
+  "Curves": "Curves",
+  "Master RGB": "Master RGB",
+  "Control Points": "Control Points",
+  "Interpolation": "Interpolation"
 }

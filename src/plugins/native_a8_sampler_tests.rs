@@ -90,6 +90,7 @@ fn stub(api: Option<abi::A8SamplerApi>) -> NativePlugin {
         levels_prepare: None,
         levels_render: None,
         curves_prepare: None,
+        curves_render: None,
         mask_effect_instance: Default::default(),
         _module: Module { handle: 0 },
     }

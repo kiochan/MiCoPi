@@ -13,8 +13,9 @@ pub fn schema() -> serde_json::Value {
         "enabled":{"type":"boolean"},"linked":{"type":"boolean","default":false,"description":"A validated layer-stack chain; structural layer edits keep its branches synchronized"},
         "nodes":{"type":"array","maxItems":64,"items":{"type":"object","required":["id","position","kind"],"additionalProperties":false,"properties":{
             "node_type":{"type":"string"},"id":id,"position":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-1000000,"maximum":1000000}},
-            "kind":{"type":"string","enum":["layer","filter","levels","blend","mix","output","transparent","mask_source","apply_mask","masked_mix"]},"index":{"type":"integer","minimum":0,"maximum":15},
+            "kind":{"type":"string","enum":["layer","filter","levels","curves","blend","mix","output","transparent","mask_source","apply_mask","masked_mix"]},"index":{"type":"integer","minimum":0,"maximum":15},
             "parameters":super::levels::Levels::schema(),
+            "curves":super::curves::Curves::schema(),
             "mask_id":{"type":"integer","minimum":1,"maximum":4294967295u64},
             "filter":{"type":"string","enum":Filter::ALL},"amount":{"type":"number","minimum":-1,"maximum":1},
             "mode":{"type":"string","enum":BlendMode::ALL},"opacity":{"type":"number","minimum":0,"maximum":1}
@@ -258,6 +259,7 @@ pub enum NodeKind {
     Layer { index: usize },
     Filter { filter: Filter, amount: f32 },
     Levels { parameters: super::levels::Levels },
+    Curves { curves: super::curves::Curves },
     Blend { mode: BlendMode, opacity: f32 },
     Mix { opacity: f32 },
     MaskSource { mask_id: u64 },
@@ -306,6 +308,7 @@ impl NodeKind {
             Self::Layer { index } => format!("Layer {}", index + 1),
             Self::Filter { filter, .. } => filter.title().into(),
             Self::Levels { .. } => "Levels".into(),
+            Self::Curves { .. } => "Curves".into(),
             Self::Blend { mode, .. } => format!("Blend · {}", mode.title()),
             Self::Mix { .. } => "Backdrop Mix".into(),
             Self::MaskSource { mask_id } => format!("Mask #{mask_id}"),
@@ -344,6 +347,15 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 pub trait Renderer {
+    fn supports_curves(&self) -> bool {
+        false
+    }
+    fn prepare_curves(
+        &self,
+        _parameters: &abi::CurvesParameters,
+    ) -> Result<abi::CompositeLut, String> {
+        Err("The compositor does not support Curves preparation".into())
+    }
     fn supports_levels(&self) -> bool {
         false
     }
@@ -364,7 +376,7 @@ pub trait Renderer {
         height: u32,
         output: &mut abi::Pixels,
     ) -> Result<(), String> {
-        if !luts.is_empty() || nodes.iter().any(|n| n.kind == 9) {
+        if !luts.is_empty() || nodes.iter().any(|n| n.kind == 9 || n.kind == 10) {
             return Err("The compositor does not support Levels rendering".into());
         }
         self.render_masked(nodes, layers, masks, width, height, output)
@@ -427,6 +439,38 @@ pub trait Renderer {
     }
 }
 impl Graph {
+    pub fn color_intents(&self) -> Vec<super::curves::ColorIntent> {
+        self.nodes
+            .iter()
+            .filter_map(|n| match &n.data {
+                NodeKind::Levels { parameters } => {
+                    Some(super::curves::ColorIntent::Levels(*parameters))
+                }
+                NodeKind::Curves { curves } => {
+                    Some(super::curves::ColorIntent::Curves(curves.clone()))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+    pub fn has_curves(&self) -> bool {
+        self.nodes
+            .iter()
+            .any(|n| matches!(n.data, NodeKind::Curves { .. }))
+    }
+    pub fn has_prepared_color(&self) -> bool {
+        self.has_levels() || self.has_curves()
+    }
+    fn table_index(&self, index: usize) -> u32 {
+        self.nodes[..index]
+            .iter()
+            .map(|n| match n.data {
+                NodeKind::Levels { .. } => 1,
+                NodeKind::Curves { .. } => 3,
+                _ => 0,
+            })
+            .sum()
+    }
     pub fn levels_intents(&self) -> Vec<super::levels::Levels> {
         self.nodes
             .iter()
@@ -546,6 +590,19 @@ impl Graph {
                 Ok(vec![])
             };
         }
+        if self
+            .nodes
+            .iter()
+            .map(|n| match n.data {
+                NodeKind::Levels { .. } => 1,
+                NodeKind::Curves { .. } => 3,
+                _ => 0,
+            })
+            .sum::<usize>()
+            > 64
+        {
+            return Err("Color table limit exceeded".into());
+        }
         let mut ids = BTreeMap::new();
         let mut output = None;
         for (i, n) in self.nodes.iter().enumerate() {
@@ -556,6 +613,7 @@ impl Graph {
             }
             match n.data {
                 NodeKind::Levels { parameters } => parameters.validate()?,
+                NodeKind::Curves { ref curves } => curves.validate()?,
                 NodeKind::Layer { index } if index >= layer_count => {
                     return Err("Node references a missing layer".into())
                 }
@@ -694,10 +752,14 @@ impl Graph {
                         kind: 9,
                         a: input(0),
                         b: 0,
-                        mode: self.nodes[..i]
-                            .iter()
-                            .filter(|n| matches!(n.data, NodeKind::Levels { .. }))
-                            .count() as u32,
+                        mode: self.table_index(i),
+                        amount: 1.,
+                    },
+                    NodeKind::Curves { .. } => abi::CompositeNode {
+                        kind: 10,
+                        a: input(0),
+                        b: 0,
+                        mode: self.table_index(i),
                         amount: 1.,
                     },
                     NodeKind::Blend { mode, opacity } => abi::CompositeNode {

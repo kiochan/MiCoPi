@@ -392,6 +392,17 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
                     ui.label(tr(filter.title()));
                     ui.label(format!("{amount:.2}"));
                 }
+                NodeKind::Curves { ref curves } => {
+                    ui.weak(tr("Curves"));
+                    for (title, curve) in [
+                        ("Master RGB", &curves.master),
+                        ("Red", &curves.red),
+                        ("Green", &curves.green),
+                        ("Blue", &curves.blue),
+                    ] {
+                        ui.label(format!("{}: {}", tr(title), curve.points.len()));
+                    }
+                }
                 NodeKind::Levels { parameters } => {
                     ui.label(tr("Levels"));
                     ui.label(format!(

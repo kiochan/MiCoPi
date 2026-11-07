@@ -686,6 +686,14 @@ pub struct CurvesApi {
     pub prepare: Option<CurvesPrepareFn>,
 }
 pub type CurvesEntry = unsafe extern "C" fn() -> *const CurvesApi;
+/// Optional complete render tail. Kind 10 consumes image a, b=0, amount=1,
+/// and three consecutive R/G/B tables starting at mode. Kind 9 stays supported.
+/// The same 64-table/16-KiB limit and borrowed-mask contract apply.
+#[repr(C)]
+pub struct CurvesApiRender {
+    pub base: CurvesApi,
+    pub render: Option<LevelsRenderFn>,
+}
 
 #[cfg(test)]
 mod curves_layout_tests {
@@ -699,6 +707,8 @@ mod curves_layout_tests {
         assert_eq!(std::mem::offset_of!(CurvesParameters, points), 16);
         assert_eq!(std::mem::size_of::<CurvesApi>(), 16);
         assert_eq!(std::mem::offset_of!(CurvesApi, prepare), 8);
+        assert_eq!(std::mem::size_of::<CurvesApiRender>(), 24);
+        assert_eq!(std::mem::offset_of!(CurvesApiRender, render), 16);
         assert_eq!(CURVES_SYMBOL, b"micopi_curves_v1\0");
     }
 }

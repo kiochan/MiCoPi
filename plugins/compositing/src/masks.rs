@@ -42,6 +42,7 @@ pub(super) unsafe extern "C" fn render_masked(
         height,
         output,
         &[],
+        false,
     )
 }
 
@@ -56,6 +57,7 @@ pub(super) unsafe fn render_plan(
     height: u32,
     output: *mut abi::Pixels,
     luts: &[abi::CompositeLut],
+    curves: bool,
 ) -> i32 {
     if output.is_null()
         || !aligned(output)
@@ -169,6 +171,15 @@ pub(super) unsafe fn render_plan(
                 7 => image(n.a) && mask(n.b) && n.mode == 0 && valid_opacity(),
                 8 => image(n.a) && image(n.b) && mask(n.mode) && valid_opacity(),
                 9 => image(n.a) && n.b == 0 && (n.mode as usize) < luts.len() && n.amount == 1.,
+                10 => {
+                    curves
+                        && image(n.a)
+                        && n.b == 0
+                        && n.amount == 1.
+                        && (n.mode as usize)
+                            .checked_add(3)
+                            .is_some_and(|end| end <= luts.len())
+                }
                 _ => false,
             };
         if !valid {
@@ -243,6 +254,10 @@ pub(super) unsafe fn render_plan(
                     ),
                     9 => super::levels::apply_lut(
                         &luts[n.mode as usize].values,
+                        values[n.a as usize],
+                    ),
+                    10 => super::curves::apply_channels(
+                        &luts[n.mode as usize..][..3],
                         values[n.a as usize],
                     ),
                     _ => unreachable!(),

@@ -17,8 +17,14 @@ impl Document {
         self.refresh_group_cache()
     }
     pub fn ensure_levels_capability(&self, graph: &Graph, require: bool) -> Result<(), String> {
-        for intent in graph.levels_intents() {
+        for intent in graph.color_intents() {
             intent.validate()?;
+        }
+        if require
+            && graph.has_curves()
+            && self.renderer.as_ref().is_none_or(|r| !r.supports_curves())
+        {
+            return Err("The compositor does not support Curves rendering".into());
         }
         if require
             && graph.has_levels()
@@ -34,22 +40,25 @@ impl Document {
         require: bool,
     ) -> Result<Option<Arc<crate::engine::levels::PreparedLevelsPlan>>, String> {
         self.ensure_levels_capability(graph, require)?;
-        if !graph.has_levels() {
+        if !graph.has_prepared_color() {
             return Ok(None);
         }
-        let Some(renderer) = self.renderer.as_ref().filter(|r| r.supports_levels()) else {
+        let Some(renderer) = self.renderer.as_ref().filter(|r| {
+            (!graph.has_levels() || r.supports_levels())
+                && (!graph.has_curves() || r.supports_curves())
+        }) else {
             return Ok(None);
         };
-        let intents = graph.levels_intents();
+        let intents = graph.color_intents();
         if let Some(old) = &self.levels_plan {
-            if old.matches(renderer, &intents) {
+            if old.matches_color(renderer, &intents) {
                 return Ok(Some(old.clone()));
             }
             let mut next = old.as_ref().clone();
-            next.rebuild(renderer.clone(), &intents)?;
+            next.rebuild_color(renderer.clone(), &intents)?;
             Ok(Some(Arc::new(next)))
         } else {
-            crate::engine::levels::PreparedLevelsPlan::new(renderer.clone(), &intents)
+            crate::engine::levels::PreparedLevelsPlan::new_color(renderer.clone(), &intents)
                 .map(|p| Some(Arc::new(p)))
         }
     }

@@ -3,8 +3,8 @@
 See [Levels](levels.md) for typed source effects, affect-below adjustments and
 cached native rendering.
 
-The [native Curves prerequisite](native-plugins.md#curves-preparation-prerequisite)
-provides bounded channel-table preparation; Curves document effects are planned.
+[Curves source nodes](curves.md) add typed master/channel intent and bounded native
+rendering; affect-below Curves adjustments and dedicated controls remain planned.
 
 The technical documentation is maintained in English. The project overview is also available in [Chinese](../README.zh.md), [Japanese](../README.ja.md) and [Korean](../README.ko.md).
 

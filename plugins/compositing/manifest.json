@@ -456,6 +456,272 @@
         ],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "compositing.curves",
+      "title": "Curves",
+      "category": "Image",
+      "binding": {
+        "kind": "image",
+        "operation": "curves",
+        "defaults": {
+          "curves": {
+            "master": {
+              "interpolation": "smooth",
+              "points": [
+                {
+                  "input": 0,
+                  "output": 0
+                },
+                {
+                  "input": 255,
+                  "output": 255
+                }
+              ]
+            },
+            "red": {
+              "interpolation": "smooth",
+              "points": [
+                {
+                  "input": 0,
+                  "output": 0
+                },
+                {
+                  "input": 255,
+                  "output": 255
+                }
+              ]
+            },
+            "green": {
+              "interpolation": "smooth",
+              "points": [
+                {
+                  "input": 0,
+                  "output": 0
+                },
+                {
+                  "input": 255,
+                  "output": 255
+                }
+              ]
+            },
+            "blue": {
+              "interpolation": "smooth",
+              "points": [
+                {
+                  "input": 0,
+                  "output": 0
+                },
+                {
+                  "input": 255,
+                  "output": 255
+                }
+              ]
+            }
+          }
+        }
+      },
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "curves": {
+            "type": "object",
+            "properties": {
+              "master": {
+                "type": "object",
+                "properties": {
+                  "interpolation": {
+                    "type": "string",
+                    "enum": [
+                      "linear",
+                      "smooth"
+                    ],
+                    "title": "Interpolation"
+                  },
+                  "points": {
+                    "type": "array",
+                    "title": "Control Points",
+                    "minItems": 2,
+                    "maxItems": 32,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "input": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "output": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        }
+                      },
+                      "required": [
+                        "input",
+                        "output"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "interpolation",
+                  "points"
+                ],
+                "additionalProperties": false,
+                "title": "Master RGB"
+              },
+              "red": {
+                "type": "object",
+                "properties": {
+                  "interpolation": {
+                    "type": "string",
+                    "enum": [
+                      "linear",
+                      "smooth"
+                    ],
+                    "title": "Interpolation"
+                  },
+                  "points": {
+                    "type": "array",
+                    "title": "Control Points",
+                    "minItems": 2,
+                    "maxItems": 32,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "input": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "output": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        }
+                      },
+                      "required": [
+                        "input",
+                        "output"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "interpolation",
+                  "points"
+                ],
+                "additionalProperties": false,
+                "title": "Red"
+              },
+              "green": {
+                "type": "object",
+                "properties": {
+                  "interpolation": {
+                    "type": "string",
+                    "enum": [
+                      "linear",
+                      "smooth"
+                    ],
+                    "title": "Interpolation"
+                  },
+                  "points": {
+                    "type": "array",
+                    "title": "Control Points",
+                    "minItems": 2,
+                    "maxItems": 32,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "input": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "output": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        }
+                      },
+                      "required": [
+                        "input",
+                        "output"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "interpolation",
+                  "points"
+                ],
+                "additionalProperties": false,
+                "title": "Green"
+              },
+              "blue": {
+                "type": "object",
+                "properties": {
+                  "interpolation": {
+                    "type": "string",
+                    "enum": [
+                      "linear",
+                      "smooth"
+                    ],
+                    "title": "Interpolation"
+                  },
+                  "points": {
+                    "type": "array",
+                    "title": "Control Points",
+                    "minItems": 2,
+                    "maxItems": 32,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "input": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "output": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        }
+                      },
+                      "required": [
+                        "input",
+                        "output"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "interpolation",
+                  "points"
+                ],
+                "additionalProperties": false,
+                "title": "Blue"
+              }
+            },
+            "required": [
+              "master",
+              "red",
+              "green",
+              "blue"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "curves"
+        ],
+        "additionalProperties": false
+      }
     }
   ]
 }

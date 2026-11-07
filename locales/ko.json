@@ -1528,5 +1528,9 @@
   "Input Levels": "입력 레벨",
   "Output Levels": "출력 레벨",
   "Reset Levels": "레벨 초기화",
-  "Input white must exceed input black.": "입력 흰점은 검정점보다 커야 합니다."
+  "Input white must exceed input black.": "입력 흰점은 검정점보다 커야 합니다.",
+  "Curves": "곡선",
+  "Master RGB": "RGB 마스터",
+  "Control Points": "제어점",
+  "Interpolation": "보간"
 }

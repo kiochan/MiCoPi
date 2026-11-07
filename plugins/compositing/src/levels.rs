@@ -89,6 +89,7 @@ unsafe extern "C" fn render(
         height,
         output,
         luts,
+        false,
     )
 }
 static API: abi::LevelsApiRender = abi::LevelsApiRender {

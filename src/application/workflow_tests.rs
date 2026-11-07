@@ -49,6 +49,7 @@ fn all_plugin_actions_states_and_image_definitions_are_discovered_without_invoca
             "compositing.layer",
             "compositing.filter",
             "compositing.levels",
+            "compositing.curves",
             "compositing.blend",
             "compositing.mix",
             "compositing.output",

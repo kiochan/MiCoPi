@@ -5,10 +5,11 @@
 The bundled compositor exports optional `micopi_curves_v1`. The loader resolves
 it once, validates the 16-byte `CurvesApi` header/callback and caches preparation.
 Missing symbols are compatible; malformed advertised tables reject loading.
-Native inventory reports only `filters.curves_prepare`. This is an algorithm
-prerequisite, **not a registered document effect**: Curves nodes, adjustment
-layers, public parameter schemas, channel controls and histograms remain planned.
-No document or recording format changes in this increment.
+Native inventory reports `filters.curves_prepare` and `filters.curves_render`
+separately. [Curves source nodes](curves.md) use preparation and a complete optional
+24-byte `CurvesApiRender` tail. Preparation-only 16-byte tables stay valid; partial
+tails and missing advertised render callbacks reject. Affect-below Curves and
+dedicated curve/histogram controls remain planned.
 
 The fixed 272-byte `CurvesParameters` contains ABI version/size at 0/4,
 point count/interpolation at 8/12 and 32 inline `CurvePoint` pairs at 16. A point
@@ -32,8 +33,15 @@ record. Larger compatible records/tables retain prefix behavior. The host valida
 the domain before invoking native code and keeps failed callback output private.
 All scratch arrays are fixed-size stack storage; the compiler scans each knot and
 byte once. No pixels, heap allocation, registry lookup or retained pointers are
-involved. Channel LUT application and document integration are separate steps;
-the drawing hot path does not invoke this compiler.
+involved. The drawing hot path does not invoke this compiler.
+
+The render tail borrows the same tables/masks as Levels, supporting old kind 9
+and new kind 10. Kind 10 reads prior image `a`, requires `b=0, amount=1`, and
+reads consecutive R/G/B LUTs at `mode`, `mode+1`, `mode+2`. All instructions,
+including unused ones, and output/LUT aliases are validated before writes.
+Alpha and padding remain unchanged. Legacy and Levels-only callbacks reject
+kind 10. The total budget stays 64 LUTs / 16 KiB. Cold engine preparation combines
+master/channel intent into three tables; mixed plans share transactional caching.
 
 Rust/C11/C++17 layout fixtures, native exact/independent curve witnesses,
 uneven spacing, dense turning/flat curves, rejection/no-write tests and host
