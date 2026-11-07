@@ -749,7 +749,9 @@ fn stroke_options_require_complete_tail_validate_flow_and_reset_legacy_configura
     assert_eq!(unsafe { configure(state_ptr, &op.base.base.base) }, abi::OK);
     assert_eq!(state.flow, 0.25);
     assert!(state.stroke_opacity);
-    for size in [16, 20, 56, 57, 60, 63] {
+    // A 16-byte legacy prefix cannot advertise the stroke flag; the explicit
+    // legacy reset below must remain accepted without reading beyond its size.
+    for size in [20, 56, 57, 60, 63] {
         op.base.base.base.struct_size = size;
         assert_eq!(
             unsafe { configure(state_ptr, &op.base.base.base) },
