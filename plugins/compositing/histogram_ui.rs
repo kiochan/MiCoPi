@@ -591,7 +591,8 @@ mod tests {
         }
     }
     fn rect(ctx: &Context, s: &Session, kind: &str) -> Rect {
-        ctx.data_mut(|d| d.get_temp::<Rect>(Id::new((kind, s.doc.identity))).unwrap())
+        ctx.data_mut(|d| d.get_temp::<Rect>(Id::new((kind, s.doc.identity))))
+            .unwrap_or_else(|| panic!("Histogram control was not laid out: {kind}"))
     }
     fn open(ctx: &Context, s: &mut Session) {
         frame(ctx, s, vec![], 0.);
@@ -657,12 +658,16 @@ mod tests {
         open(&ctx, &mut s);
         let position = rect(&ctx, &s, "histogram-source").center();
         click(&ctx, &mut s, position, 3.);
+        // A new popup needs an idle frame to finish its sizing/placement pass
+        // before reading option hit boxes and sending the next real click.
+        frame(&ctx, &mut s, vec![], 3.5);
         let position = rect(&ctx, &s, "histogram-source-node").center();
         click(&ctx, &mut s, position, 4.);
         frame(&ctx, &mut s, vec![], 5.);
         assert!(cached(&ctx, &s).is_none());
         let position = rect(&ctx, &s, "histogram-node").center();
         click(&ctx, &mut s, position, 6.);
+        frame(&ctx, &mut s, vec![], 6.5);
         let position = ctx
             .data_mut(|d| {
                 d.get_temp::<Rect>(Id::new(("histogram-node-option", s.doc.identity, 22u32)))
@@ -683,6 +688,7 @@ mod tests {
         assert!(Arc::ptr_eq(&input, &cached(&ctx, &s).unwrap()));
         let position = rect(&ctx, &s, "histogram-port").center();
         click(&ctx, &mut s, position, 12.);
+        frame(&ctx, &mut s, vec![], 12.5);
         let position = rect(&ctx, &s, "histogram-port-output").center();
         click(&ctx, &mut s, position, 13.);
         assert!(cached(&ctx, &s).is_none());
