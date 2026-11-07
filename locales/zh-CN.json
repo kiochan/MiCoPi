@@ -1413,5 +1413,17 @@
   "Link or Unlink Layers": "链接或取消链接图层",
   "Persistent raster layer links": "图层链接状态",
   "Link": "链接",
-  "Unlink": "取消链接"
+  "Unlink": "取消链接",
+  "Flow": "流量",
+  "Brush Flow": "笔刷流量",
+  "Opacity Mode": "不透明度模式",
+  "Build Up": "叠加",
+  "Per Stroke": "单笔",
+  "Limit opacity per stroke": "限制单笔不透明度",
+  "How quickly paint builds up as you draw.": "控制绘画时颜料叠加的速度。",
+  "Keep each stroke within Opacity; lift the pen to build another coat.": "每一笔受不透明度限制，抬笔后可继续叠色。",
+  "Paint builds up as you pass over the same area.": "在同一区域反复运笔会持续叠色。",
+  "Choose build-up painting or limit opacity within each stroke.": "选择持续叠色，或限制每一笔的不透明度。",
+  "Glazing Marker": "叠色马克笔",
+  "Flow and stroke opacity apply to Brush and Eraser.": "流量和单笔不透明度仅用于笔刷与橡皮。"
 }

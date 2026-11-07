@@ -34,6 +34,7 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 | [atomic.jsonl](automation/atomic.jsonl) | One atomic cross-plugin drawing group, project persistence and sealed replay export |
 | [replay.jsonl](automation/replay.jsonl) | Verified history, sealed archives, project persistence and PNG time-lapse frames; use a fresh frames directory |
 | [draw.jsonl](automation/draw.jsonl) | Pressure-sensitive, stabilized drawing and project/PNG export |
+| [stroke-opacity.jsonl](automation/stroke-opacity.jsonl) | Flow with capped pressure strokes, lifted contacts, Undo/Redo and explicit return to Dab mode; inspect state and verified replay |
 | [raster-masks.jsonl](automation/raster-masks.jsonl) | Dynamic mask IDs, layer/group coverage, pressure/stabilized A8 painting, density/feather, raw inspection, selection conversion, projects and verified replay |
 | [mask-geometry.jsonl](automation/mask-geometry.jsonl) | Pressure-painted layer/group masks, read-only frame costs, atomic plan bindings, document rotations, image sampling, crop and verified project/PNG/replay output |
 | [mask-owner-movement.jsonl](automation/mask-owner-movement.jsonl) | Linked layer/mask movement, independent stable-ID raw-mask Move/nudge and selection outlines, with compound Undo and verified project/PNG/replay output |

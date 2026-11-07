@@ -31,6 +31,11 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Check repository links and example data
         run: python scripts/check-repository.py
+      - name: Check C11 and C++17 native SDK layouts
+        shell: pwsh
+        run: |
+          $nativeCompiler = (Get-Command clang -ErrorAction Stop).Source
+          python scripts/check-native-abi.py --cc $nativeCompiler
       - name: Build native DLL and test ABI boundary
         shell: pwsh
         run: |
@@ -46,6 +51,8 @@ jobs:
         run: cargo test --locked
       - name: Test native SDK and pixel kernels
         run: cargo test --lib --locked -p micopi-plugin-api -p micopi-painting-tools -p micopi-compositing
+      - name: Measure bounded native contact cost and coverage reuse
+        run: cargo test --release --lib --locked -p micopi-painting-tools bounded_stroke_cost -- --ignored --nocapture --test-threads=1
       - name: Check native A8 and coverage ABI
         run: python scripts/smoke-native-masks.py
       - name: Build release
@@ -66,6 +73,8 @@ jobs:
         run: python scripts/smoke-owner-movement.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify persistent layer links and explicit multi-owner movement
         run: python scripts/smoke-linked-movement.py --skip-gui --cli target/release/micopi-cli.exe
+      - name: Verify capped stroke opacity, independent Flow and outcome replay
+        run: python scripts/smoke-stroke-opacity.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify single-layer mask ownership and outcome replay
         run: python scripts/smoke-mask-owners.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify mask-preserving group creation and hierarchy moves

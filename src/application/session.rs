@@ -16,6 +16,18 @@ pub enum ToolKind {
     Hand,
     Zoom,
 }
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OpacityMode {
+    #[default]
+    Dab,
+    Stroke,
+}
+impl OpacityMode {
+    pub fn is_dab(&self) -> bool {
+        *self == Self::Dab
+    }
+}
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Parameters {
     pub radius: f32,
@@ -32,6 +44,16 @@ pub struct Parameters {
     pub spacing: f32,
     #[serde(default, skip_serializing_if = "zero_opacity")]
     pub minimum_opacity: f32,
+    #[serde(default = "default_flow", skip_serializing_if = "full_flow")]
+    pub flow: f32,
+    #[serde(default, skip_serializing_if = "OpacityMode::is_dab")]
+    pub opacity_mode: OpacityMode,
+}
+fn default_flow() -> f32 {
+    1.
+}
+fn full_flow(value: &f32) -> bool {
+    *value == 1.
 }
 fn default_spacing() -> f32 {
     0.11
@@ -57,6 +79,8 @@ impl Default for Parameters {
             minimum_radius: 0.08,
             spacing: default_spacing(),
             minimum_opacity: 0.,
+            flow: 1.,
+            opacity_mode: OpacityMode::Dab,
         }
     }
 }
@@ -322,10 +346,16 @@ impl Session {
     pub fn is_panning(&self) -> bool {
         self.stroke.panning()
     }
-    pub fn state(&self) -> Value {
+    pub(crate) fn parameter_state(&self) -> Value {
         let mut parameters = json!(self.parameters);
         parameters["spacing"] = json!(self.parameters.spacing);
         parameters["minimum_opacity"] = json!(self.parameters.minimum_opacity);
+        parameters["flow"] = json!(self.parameters.flow);
+        parameters["opacity_mode"] = json!(self.parameters.opacity_mode);
+        parameters
+    }
+    pub fn state(&self) -> Value {
+        let parameters = self.parameter_state();
         json!({"document_info":self.doc.info().state(self.doc.width,self.doc.height),"revision":self.revision,"width":self.doc.width,"height":self.doc.height,"dirty":self.doc.dirty,"active_layer":self.doc.active,"selected_layer_ids":self.doc.selected_layer_ids(),"layer_links":self.doc.layer_link_sets(),"groups":self.doc.groups_state(),"raster_masks":crate::plugins::raster_masks::state(self),"layers":(0..self.doc.layers.len()).map(|index|self.layer_state(index)).collect::<Vec<_>>(),"selected_tool":self.selected_tool,"tool_kind":self.tool,"parameters":parameters,"view":self.view,"file":self.file,"ui":self.ui,"drawing":self.stroke.drawing(),"selection":{"active":self.doc.selection().current.is_some(),"can_reselect":self.doc.selection().previous.is_some()},"selection_sampling":self.selection_sampling(),"selection_defaults":self.selection_defaults,"last_transform":crate::plugins::affine::repeat_state(self),"movement_defaults":self.movement_defaults,"movement_options":self.movement_options(),"graph_enabled":self.doc.graph.enabled,"render_error":self.doc.render_error})
     }
     pub(crate) fn layer_state(&self, index: usize) -> Value {

@@ -285,7 +285,7 @@ impl Document {
         self.mask_contact = Some(lease);
         Ok(lease)
     }
-    fn valid_mask_lease(&self, lease: MaskLease) -> bool {
+    pub(super) fn valid_mask_lease(&self, lease: MaskLease) -> bool {
         lease.document_identity == self.identity
             && lease.storage_epoch == self.mask_storage_epoch
             && self.mask_contact == Some(lease)

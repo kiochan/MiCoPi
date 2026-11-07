@@ -1871,6 +1871,8 @@ mod mask_group_editing;
 mod mask_owner_editing;
 #[path = "mix.rs"]
 mod mix;
+#[path = "origin_loans.rs"]
+mod origin_loans;
 #[path = "owner_movement.rs"]
 mod owner_movement;
 pub(crate) use owner_movement::OWNER_MOVE_STAGING_LIMIT;

@@ -9,6 +9,7 @@ mod projective;
 mod raster;
 mod resample;
 mod selection;
+mod stroke;
 mod trim;
 use input::{Dynamics, Sample, Stabilizer};
 use micopi_plugin_api as abi;
@@ -30,6 +31,9 @@ struct State {
     contact: Option<Contact>,
     spacing: f32,
     minimum_opacity: f32,
+    flow: f32,
+    stroke_opacity: bool,
+    stroke_cache: stroke::Coverage,
 }
 impl Default for State {
     fn default() -> Self {
@@ -41,6 +45,9 @@ impl Default for State {
             contact: None,
             spacing: 0.11,
             minimum_opacity: 0.,
+            flow: 1.,
+            stroke_opacity: false,
+            stroke_cache: Default::default(),
         }
     }
 }
@@ -133,6 +140,13 @@ impl State {
                     };
                     return abi::OK;
                 }
+                let capped = (handler == 1 || handler == 2) && self.stroke_opacity;
+                if capped
+                    && (!stroke::supported(host, self.a8_target)
+                        || self.stroke_cache.begin(p.width, p.height).is_err())
+                {
+                    return abi::ERROR;
+                }
                 let mut contact = Contact {
                     handler,
                     parameters,
@@ -152,6 +166,12 @@ impl State {
                                 >> 8) as u8
                         }),
                         spacing: self.spacing,
+                        flow: self.flow,
+                        stroke: if capped {
+                            Some(std::mem::take(&mut self.stroke_cache))
+                        } else {
+                            None
+                        },
                         width: p.width,
                         height: p.height,
                         ..Default::default()
@@ -246,6 +266,10 @@ impl State {
             }
             if contact.raster.failed {
                 status = abi::ERROR;
+            }
+            if let Some(mut coverage) = contact.raster.stroke.take() {
+                coverage.release();
+                self.stroke_cache = coverage;
             }
         }
         self.filter.cancel();
@@ -347,13 +371,34 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
         || flags
             & !(abi::TOOL_OPTION_ALPHA_LOCK
                 | abi::TOOL_OPTION_SELECTION
-                | abi::TOOL_OPTION_A8_TARGET)
+                | abi::TOOL_OPTION_A8_TARGET
+                | abi::TOOL_OPTION_STROKE_OPACITY)
             != 0
         || flags & (abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_A8_TARGET)
             == (abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_A8_TARGET)
     {
         return abi::ERROR;
     }
+    let complete_stroke =
+        header.struct_size >= std::mem::size_of::<abi::ToolOptionsStroke>() as u32;
+    if (flags & abi::TOOL_OPTION_STROKE_OPACITY != 0 && !complete_stroke)
+        || (header.struct_size > std::mem::size_of::<abi::ToolOptionsSelection>() as u32
+            && !complete_stroke)
+    {
+        return abi::ERROR;
+    }
+    let flow = if complete_stroke {
+        let extended = std::ptr::read_unaligned(options.cast::<abi::ToolOptionsStroke>());
+        if !extended.flow.is_finite()
+            || !(0. ..=1.).contains(&extended.flow)
+            || extended.reserved != 0
+        {
+            return abi::ERROR;
+        }
+        extended.flow
+    } else {
+        1.
+    };
     let mask = if flags & abi::TOOL_OPTION_SELECTION != 0 {
         if header.struct_size < std::mem::size_of::<abi::ToolOptionsSelection>() as u32 {
             return abi::ERROR;
@@ -380,6 +425,8 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
     }
     state.spacing = options.spacing;
     state.minimum_opacity = options.minimum_opacity;
+    state.flow = flow;
+    state.stroke_opacity = flags & abi::TOOL_OPTION_STROKE_OPACITY != 0;
     state.alpha_locked = flags & abi::TOOL_OPTION_ALPHA_LOCK != 0;
     state.a8_target = flags & abi::TOOL_OPTION_A8_TARGET != 0;
     state.selection = mask;
@@ -391,7 +438,10 @@ static OPTIONS: abi::ToolOptionsApiExt = abi::ToolOptionsApiExt {
         struct_size: std::mem::size_of::<abi::ToolOptionsApiExt>() as u32,
         configure: Some(configure),
     },
-    features: abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_SELECTION | abi::TOOL_OPTION_A8_TARGET,
+    features: abi::TOOL_OPTION_ALPHA_LOCK
+        | abi::TOOL_OPTION_SELECTION
+        | abi::TOOL_OPTION_A8_TARGET
+        | abi::TOOL_OPTION_STROKE_OPACITY,
 };
 #[no_mangle]
 pub extern "C" fn micopi_tool_options_v1() -> *const abi::ToolOptionsApi {

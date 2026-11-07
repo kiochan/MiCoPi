@@ -15,7 +15,9 @@ pub use selection_sampling::SelectionSampling;
 pub mod workflow;
 pub(crate) use actions::empty_object as actions_empty_object;
 pub use actions::{Action, ActionError, ActionResult, Operation};
-pub use session::{parse_color, Parameters, Pointer, PointerPhase, Session, ToolKind, View};
+pub use session::{
+    parse_color, OpacityMode, Parameters, Pointer, PointerPhase, Session, ToolKind, View,
+};
 #[cfg(test)]
 mod tests;
 
@@ -23,6 +25,8 @@ mod tests;
 mod alpha_lock_tests;
 #[cfg(test)]
 mod blend_mode_tests;
+#[cfg(test)]
+mod brush_opacity_tests;
 #[cfg(test)]
 mod canvas_editing_tests;
 #[cfg(test)]
@@ -70,6 +74,8 @@ mod result_revision_tests;
 mod selected_merge_tests;
 #[cfg(test)]
 mod selection_tests;
+#[cfg(test)]
+mod stroke_opacity_tests;
 #[cfg(test)]
 mod tool_tests;
 #[cfg(test)]

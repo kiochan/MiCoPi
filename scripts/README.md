@@ -19,6 +19,7 @@ Run these tools from the repository root. Downloaded toolchains, builds, capture
 | smoke-mask-geometry.py | Compare document framing, rotations/flips, image sampling and Trim against independent raw-mask references across JSONL/MCP/GUI, with undo, legacy capability rejection and DLL-free replay |
 | smoke-owner-movement.py | Compare linked raster/mask Move, independent stable-ID mask Move/nudge, selection outlines and compound Undo against exact raw/composition references across JSONL/MCP/GUI; capture four-language narrow/wide controls |
 | smoke-linked-movement.py | Verify persistent layer links, exact multi-owner raster/mask Move, one Undo, contact/rollback guards and DLL-free outcomes through JSONL/MCP and optional GUI attachment |
+| smoke-stroke-opacity.py | Compare capped influence and independent Flow against tiny RGBA/A8 references through JSONL/MCP and optional owned-GUI attachment, including history and DLL-free replay |
 | smoke-mask-owners.py | Compare single-layer mask copies/deletions, independent storage, ID bindings, targets, grouped composition, undo, rollback and DLL-free replay across JSONL/MCP/GUI |
 | smoke-mask-groups.py | Compare mask-preserving group creation/reparenting, raw ownership, explicit targets, composition, undo, rollback and DLL-free replay across JSONL/MCP/GUI |
 | smoke-mask-group-delete.py | Verify nested/empty group deletion, independent masks, result-array bindings, compound Undo, rollback and DLL-free outcomes across JSONL/MCP/GUI |
@@ -88,5 +89,14 @@ isolation and verified outcomes. The full run adds attached-GUI parity and four
 native Layers captures under `target/test-output/mask-group-duplicate-smoke/`.
 See [Mask Group Duplication](../docs/mask-group-duplicate.md) for the supported
 ownership subset and remaining structural boundaries.
+
+`smoke-stroke-opacity.py --skip-gui` uses 7×5 independent influence/composition
+references through JSONL/MCP, with typed public parameters, masks/selections,
+Undo, projects and DLL-free outcome restoration. Without that flag it adds
+transport parity through one isolated GUI process. Output stays under
+`target/test-output/stroke-opacity-smoke/`; it does not produce reviewed UI
+screenshots or establish tablet behavior. Coverage is authored and pending CI.
+See [Brush opacity and Flow](../docs/stroke-opacity.md) for the arithmetic,
+compatibility and separately scoped synthetic cost probes.
 
 See [Development](../docs/development.md) for prerequisites and [Project Structure](../docs/project-structure.md) for ownership rules.

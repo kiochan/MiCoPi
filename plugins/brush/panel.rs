@@ -1,6 +1,16 @@
 //! Feature-owned presentation adapter; document changes use shared actions.
 use super::panels::{parameter, section};
 use super::*;
+pub(super) const OPACITY_MODES: [crate::application::OpacityMode; 2] = [
+    crate::application::OpacityMode::Dab,
+    crate::application::OpacityMode::Stroke,
+];
+pub(super) fn opacity_mode_title(mode: crate::application::OpacityMode) -> &'static str {
+    match mode {
+        crate::application::OpacityMode::Dab => "Build Up",
+        crate::application::OpacityMode::Stroke => "Per Stroke",
+    }
+}
 impl Editor {
     pub(super) fn brush_ui(&mut self, ui: &mut Ui) {
         self.area_ui(ui);
@@ -78,14 +88,26 @@ impl Editor {
                         }
                     }
                     ui.painter().add(Shape::mesh(preview));
-                    ui.painter().with_clip_rect(r.shrink(2.)).text(
-                        pos2(r.center().x, r.bottom() - 13.),
-                        Align2::CENTER_CENTER,
-                        crate::i18n::translated_for(
+                    let title = WidgetText::from(
+                        RichText::new(crate::i18n::translated_for(
                             self.session.registry.contribution_owner("tools", &tool.id),
                             name,
+                        ))
+                        .size(a.small_font_size)
+                        .color(colors.muted),
+                    )
+                    .into_galley(
+                        ui,
+                        Some(TextWrapMode::Truncate),
+                        (r.width() - 4.).max(0.),
+                        TextStyle::Small,
+                    );
+                    ui.painter().with_clip_rect(r.shrink(2.)).galley(
+                        pos2(
+                            r.center().x - title.size().x * 0.5,
+                            r.bottom() - 13. - title.size().y * 0.5,
                         ),
-                        FontId::proportional(a.small_font_size),
+                        title,
                         colors.muted,
                     );
                     let response = response.on_hover_text(tr_for(
@@ -103,6 +125,31 @@ impl Editor {
         parameter(ui, "Size", &mut diameter, 1.0..=400., " px", false, true);
         self.radius = diameter / 2.;
         parameter(ui, "Opacity", &mut self.opacity, 0.0..=1., "%", true, false);
+        ui.add_enabled_ui(self.area_mode == 0 && matches!(self.tool, Tool::Brush | Tool::Eraser), |ui| {
+        let mut flow = self.session.parameters.flow;
+        let flow_response = ui.scope(|ui| parameter(ui, "Flow", &mut flow, 0.0..=1., "%", true, false)).response;
+        #[cfg(test)]
+        ui.data_mut(|data| data.insert_temp(Id::new("brush-flow-control"), flow_response.rect));
+        flow_response.on_hover_text(tr("How quickly paint builds up as you draw."));
+        if flow != self.session.parameters.flow {
+            self.core("brush.set", serde_json::json!({"flow":flow}));
+        }
+        let mut limited = self.session.parameters.opacity_mode == crate::application::OpacityMode::Stroke;
+        let response = ui.scope(|ui| {
+            ui.style_mut().wrap_mode = Some(TextWrapMode::Wrap);
+            ui.add(Checkbox::new(&mut limited, tr("Limit opacity per stroke")))
+        }).inner;
+        #[cfg(test)]
+        ui.data_mut(|data| data.insert_temp(Id::new("brush-stroke-opacity-control"), response.rect));
+        if response.changed() {
+            self.core("brush.set", serde_json::json!({"opacity_mode":if limited {"stroke"} else {"dab"}}));
+        }
+        ui.add(Label::new(tr(if self.session.parameters.opacity_mode == crate::application::OpacityMode::Stroke {
+            "Keep each stroke within Opacity; lift the pen to build another coat."
+        } else {
+            "Paint builds up as you pass over the same area."
+        }).weak()).wrap());
+        }).response.on_disabled_hover_text(tr("Flow and stroke opacity apply to Brush and Eraser."));
         parameter(
             ui,
             "Hardness",
@@ -203,3 +250,7 @@ impl Editor {
         });
     }
 }
+
+#[cfg(test)]
+#[path = "opacity_ui_tests.rs"]
+mod opacity_ui_tests;

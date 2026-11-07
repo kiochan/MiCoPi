@@ -181,6 +181,19 @@
       "additionalProperties": false,
       "description": "Painting defaults shared by desktop and headless sessions.",
       "properties": {
+        "flow": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1,
+          "description": "Paint deposited by each dab; in stroke mode it builds toward the stroke opacity limit."
+        },
+        "opacity_mode": {
+          "type": "string",
+          "enum": ["dab", "stroke"],
+          "default": "dab",
+          "description": "Per-dab buildup or a cumulative opacity limit for each continuous stroke."
+        },
         "stabilizer": {
           "type": "number",
           "minimum": 0,

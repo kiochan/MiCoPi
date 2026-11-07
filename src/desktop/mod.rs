@@ -538,6 +538,8 @@ impl Editor {
             return;
         }
         let desired = crate::application::Parameters {
+            flow: self.session.parameters.flow,
+            opacity_mode: self.session.parameters.opacity_mode,
             spacing: self.session.parameters.spacing,
             minimum_opacity: self.session.parameters.minimum_opacity,
             radius: self.radius,

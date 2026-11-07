@@ -137,7 +137,8 @@ Acceptance: parameter units/ranges and alpha/color behavior are documented; dete
 
 ### P6 — Illustrator painting tools
 
-- [ ] Prioritize brush flow, sampled/textured tips, accurate tip shape/rotation feedback and deterministic spacing/size/opacity/color dynamics through cached native tools.
+- [x] Implement independent Flow and opt-in capped stroke opacity through cached native Brush/Eraser tools on RGBA and raw A8 targets, preserving pressure/stabilization, fractional selection, one Undo/outcome and DLL-free replay. Retain default per-dab pixels and bound coverage/origin storage. Tests and bounded contact measurements are wired to CI; runtime and physical-device evidence are recorded separately. See [Stroke opacity](stroke-opacity.md).
+- [ ] Add sampled/textured tips, accurate tip shape/rotation feedback and deterministic spacing/size/opacity/color dynamics through cached native tools.
 - [ ] Add brush preset editing/import/export within a bounded, versioned MiCoPi format.
 - [ ] Add straight-line/angle-assisted strokes, symmetry and configurable smoothing/stabilization modes with explicit latency and pressure-continuity behavior.
 - [ ] Add clone stamp and measured blur/sharpen/smudge tools through native plugins.

@@ -1413,5 +1413,17 @@
   "Link or Unlink Layers": "レイヤーをリンク／解除",
   "Persistent raster layer links": "レイヤーリンクの状態",
   "Link": "リンク",
-  "Unlink": "解除"
+  "Unlink": "解除",
+  "Flow": "流量",
+  "Brush Flow": "ブラシの流量",
+  "Opacity Mode": "不透明度モード",
+  "Build Up": "重ね塗り",
+  "Per Stroke": "ストロークごと",
+  "Limit opacity per stroke": "ストロークごとの不透明度を制限",
+  "How quickly paint builds up as you draw.": "描画中に色が重なる速さを調整します。",
+  "Keep each stroke within Opacity; lift the pen to build another coat.": "一筆ごとに不透明度を制限します。ペンを離すとさらに色を重ねられます。",
+  "Paint builds up as you pass over the same area.": "同じ場所をなぞるほど色が重なります。",
+  "Choose build-up painting or limit opacity within each stroke.": "重ね塗り、または一筆ごとの不透明度制限を選びます。",
+  "Glazing Marker": "重ね塗りマーカー",
+  "Flow and stroke opacity apply to Brush and Eraser.": "流量とストロークごとの不透明度はブラシと消しゴムに適用されます。"
 }

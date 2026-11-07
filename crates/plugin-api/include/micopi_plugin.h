@@ -24,6 +24,20 @@ typedef struct {
     uint32_t width, height, stride, origin_x, origin_y;
 } MicopiA8Pixels;
 typedef int32_t (*MicopiA8Transform)(void *, MicopiA8Pixels *);
+/* Immutable contact-original undo tile samples. Coordinate extents match the
+   paired current region; row strides can differ. Never retain these pointers. */
+typedef struct {
+    const uint32_t *data; size_t len;
+    uint32_t width, height, stride, origin_x, origin_y;
+} MicopiOriginPixels;
+typedef struct {
+    const uint8_t *data; size_t len;
+    uint32_t width, height, stride, origin_x, origin_y;
+} MicopiOriginA8Pixels;
+typedef int32_t (*MicopiOriginTransform)(void *, const MicopiOriginPixels *, MicopiPixels *);
+typedef int32_t (*MicopiA8OriginTransform)(void *, const MicopiOriginA8Pixels *, MicopiA8Pixels *);
+typedef int32_t (*MicopiOriginPixelsLoan)(void *, MicopiRegion, MicopiOriginTransform, void *);
+typedef int32_t (*MicopiOriginA8Loan)(void *, MicopiRegion, MicopiA8OriginTransform, void *);
 typedef struct {
     uint32_t abi_version, struct_size;
     void *context;
@@ -78,6 +92,18 @@ typedef struct {
     MicopiToolHost base;
     int32_t (*a8)(void *, MicopiRegion, MicopiA8Transform, void *);
 } MicopiToolHostA8;
+#define MICOPI_TOOL_HOST_ORIGIN_RGBA 1u
+#define MICOPI_TOOL_HOST_ORIGIN_A8 2u
+/* SDK1.3 optional complete tail; read only with complete struct_size, matching
+   feature and non-null callback. Each synchronous, non-reentrant loan prepares
+   the full ROI once then calls the transform for tile intersections. Current
+   and immutable original storage are disjoint. tile_side is64. */
+typedef struct {
+    MicopiToolHostA8 base;
+    uint32_t features, tile_side;
+    MicopiOriginPixelsLoan pixels_origin;
+    MicopiOriginA8Loan a8_origin;
+} MicopiToolHostStroke;
 typedef struct {
     uint32_t abi_version, struct_size;
     void *(*create)(void);
@@ -103,8 +129,13 @@ const MicopiToolOptionsApi *micopi_tool_options_v1(void);
 #define MICOPI_TOOL_OPTION_SELECTION 2u
 /* Both options capability and flag. Requires complete MicopiToolHostA8, cannot
    combine with alpha lock. Brush value=(54R+183G+19B+128)>>8; eraser reveals 255.
-   Selection scales dab opacity once before rounded byte interpolation. */
+   Dab mode clips each deposit; capped mode clips cumulative influence once
+   before rounded byte interpolation. */
 #define MICOPI_TOOL_OPTION_A8_TARGET 4u
+/* Capability negotiates Flow tail; flag selects capped stroke mode. Nondefault
+   Flow also requires the full tail in dab mode. Capped contacts require the
+   complete MicopiToolHostStroke, with only their admitted target exposed. */
+#define MICOPI_TOOL_OPTION_STROKE_OPACITY 8u
 typedef struct {
     const uint8_t *data; size_t len;
     uint32_t width, height, stride;
@@ -117,6 +148,8 @@ typedef struct {
 /* Additive tails, available only if the prefix struct_size includes the tail. */
 typedef struct { MicopiToolOptions base; uint32_t flags; } MicopiToolOptionsExt;
 typedef struct { MicopiToolOptionsExt base; MicopiCoverage selection; } MicopiToolOptionsSelection;
+/* Legacy configure resets flow1/dab; finite flow0..1 and reserved0 required. */
+typedef struct { MicopiToolOptionsSelection base; float flow; uint32_t reserved; } MicopiToolOptionsStroke;
 typedef struct {
     uint32_t kind, mode; float bounds[4];
     const float (*points)[2]; size_t count;

@@ -1413,5 +1413,17 @@
   "Link or Unlink Layers": "Link or Unlink Layers",
   "Persistent raster layer links": "Persistent raster layer links",
   "Link": "Link",
-  "Unlink": "Unlink"
+  "Unlink": "Unlink",
+  "Flow": "Flow",
+  "Brush Flow": "Brush Flow",
+  "Opacity Mode": "Opacity Mode",
+  "Build Up": "Build Up",
+  "Per Stroke": "Per Stroke",
+  "Limit opacity per stroke": "Limit opacity per stroke",
+  "How quickly paint builds up as you draw.": "How quickly paint builds up as you draw.",
+  "Keep each stroke within Opacity; lift the pen to build another coat.": "Keep each stroke within Opacity; lift the pen to build another coat.",
+  "Paint builds up as you pass over the same area.": "Paint builds up as you pass over the same area.",
+  "Choose build-up painting or limit opacity within each stroke.": "Choose build-up painting or limit opacity within each stroke.",
+  "Glazing Marker": "Glazing Marker",
+  "Flow and stroke opacity apply to Brush and Eraser.": "Flow and stroke opacity apply to Brush and Eraser."
 }

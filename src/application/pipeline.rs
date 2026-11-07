@@ -73,7 +73,15 @@ pub(crate) fn resource_schema(id: &str) -> Value {
             json!({"type":"object","properties":{"active":{"type":"string"},"documents":{"type":"array","items":document},"multiple_documents":{"type":"boolean"}},"required":["active","documents","multiple_documents"]})
         }
         "painting.tool" => {
-            json!({"type":"object","properties":{"selected":{"type":"string"},"kind":{"type":"string"},"parameters":{"type":"object"},"view":{"type":"object"},"drawing":{"type":"boolean"}},"required":["selected","kind","parameters","view","drawing"]})
+            let mut parameters = Operation::Parameters.schema();
+            let required = parameters["properties"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect::<Vec<_>>();
+            parameters["required"] = json!(required);
+            json!({"type":"object","properties":{"selected":{"type":"string"},"kind":{"type":"string"},"parameters":parameters,"capabilities":{"type":"object","properties":{"flow":{"type":"boolean"},"stroke_opacity":{"type":"boolean"}},"required":["flow","stroke_opacity"],"additionalProperties":false},"view":{"type":"object"},"drawing":{"type":"boolean"}},"required":["selected","kind","parameters","capabilities","view","drawing"]})
         }
         "input.pointer" => {
             json!({"type":"object","properties":{"last":{"description":"Last accepted Pointer or null"},"pen_observed":{"type":"boolean"},"windows_ink_supported":{"type":"boolean"},"device_enumeration":{"type":"boolean"}},"required":["last","pen_observed","windows_ink_supported","device_enumeration"]})
@@ -108,7 +116,7 @@ pub fn context(s: &mut Session, args: Value) -> ActionResult {
                 Ok(json!({"active":"active","documents":[document(s)],"multiple_documents":false}))
             }
             "painting.tool" => Ok(
-                json!({"selected":s.selected_tool,"kind":s.tool,"parameters":s.parameters,"view":s.view,"drawing":s.is_drawing()}),
+                json!({"selected":s.selected_tool,"kind":s.tool,"parameters":s.parameter_state(),"capabilities":s.registry.tool_option_capabilities(&s.selected_tool),"view":s.view,"drawing":s.is_drawing()}),
             ),
             "input.pointer" => Ok(json!({"last":s.last_pointer,"pen_observed":s.pen_observed,
                 "windows_ink_supported":cfg!(windows),"device_enumeration":false,

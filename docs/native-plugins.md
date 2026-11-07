@@ -31,7 +31,7 @@ opaque geometry callbacks unrestricted access or add a new ABI loan.
 
 Isolated [layer groups](layer-groups.md) and transparent image nodes use an optional complete `CompositorApiFeatures` tail. The existing `CompositorApi` prefix and render callback stay unchanged; its advertised `struct_size` must cover the appended `u64 capabilities` before the host reads `COMPOSITOR_TRANSPARENT`. Kind 4 is a constant transparent source with zero `a`, `b`, `mode` and `amount`. New hosts retain prefix-only DLLs for original plans and reject unsupported groups/transparent graphs before installation. Extended DLLs retain original four-kind behavior. Input/output spans must be bounded and disjoint; rendering retains one dirty-region call and 64 per-pixel `u32` slots without image intermediates.
 
-crates/plugin-api contains dependency-free repr(C) types, function tables and include/micopi_plugin.h. Independent examples are painting, native-paint, ai-assistant and compositing. The SDK source package builds without the host or GUI crates.
+crates/plugin-api contains dependency-free repr(C) types, function tables and include/micopi_plugin.h. SDK 1.3.0 retains ABI 1 and adds optional Flow/stroke-origin tails; see the [SDK README](https://github.com/kiochan/MiCoPi/blob/main/crates/plugin-api/README.md). Independent examples are painting, native-paint, ai-assistant and compositing. The SDK source package builds without the host or GUI crates.
 
 ```powershell
 cargo build --release --locked -p micopi-native-paint
@@ -194,7 +194,48 @@ The host rejects locked painting if this capability is absent. Locked brushes bl
 
 `A8Pixels` mirrors the 40-byte `Pixels` descriptor with a mutable byte pointer; lengths and strides count bytes. Its transform is synchronous and scoped to one region. The host captures byte undo tiles before lending storage, preserves identity/permissions for the contact and rolls back the complete stroke on failure. It separately rejects an RGBA loan on an A8 target and an A8 loan on an RGBA target; action `HostApi.edit_region` keeps its RGBA contract. The typed Session Brush/Eraser route issues A8 contacts using a cached mask lease and tool instance, with capabilities/options prepared before raw materialization at DOWN. Read-only, reentrant and stale loans reject without creating a second editing path.
 
-The painting DLL reuses pressure, spacing, interpolation and stabilization. Only its dab sink differs. Brush freezes `(54*R+183*G+19*B+128)/256` using integer division on encoded RGB; Eraser and pen eraser reveal toward 255. With effective dab byte `a`, blend `round_half_up((old*(255-a)+target*a)/255)`. Frozen fractional selection coverage multiplies dab strength once. Validate region/origin/stride/storage, reject misaligned metadata before dereferencing, and reject writable storage overlapping the descriptor, dab parameters or immutable selection before forming a mutable slice. Preserve row padding. Final UP/CANCEL stabilization failures return an error after clearing the contact; the host must roll back all its captured tiles. No JSON, mask compression, whole-plane copy or extra options call occurs per MOVE.
+The painting DLL reuses pressure, spacing, interpolation and stabilization. Only its dab sink differs. Brush freezes `(54*R+183*G+19*B+128)/256` using integer division on encoded RGB; Eraser and pen eraser reveal toward 255. With effective dab byte `a`, blend `round_half_up((old*(255-a)+target*a)/255)`. In Dab mode, frozen fractional selection coverage multiplies each dab strength once; Stroke mode instead applies it once to cumulative influence. Validate region/origin/stride/storage, reject misaligned metadata before dereferencing, and reject writable storage overlapping the descriptor, dab parameters or immutable selection before forming a mutable slice. Preserve row padding. Final UP/CANCEL stabilization failures return an error after clearing the contact; the host must roll back all its captured tiles. No JSON, mask compression, whole-plane copy or extra options call occurs per MOVE.
+
+### Stroke opacity and Flow: SDK 1.3
+
+`TOOL_OPTION_STROKE_OPACITY` / `MICOPI_TOOL_OPTION_STROKE_OPACITY` is feature
+`0x8`. It negotiates both Flow and capped stroke opacity. As a configured flag it
+selects Stroke mode; nondefault Flow in Dab mode still requires the complete
+tail, with this flag clear. `ToolOptionsStroke` / `MicopiToolOptionsStroke`
+retains the `ToolOptionsSelection` prefix, appending `float flow` at offset 56
+and a zero `u32 reserved` at 60, for 64 bytes on x64. Flow must be finite and in
+0–1. Prefix-only options reset Flow to 1 and mode to Dab. Unknown flags,
+incomplete requested tails, nonzero reserved values and changes during a contact
+reject. `ToolParameters` and all previous v1 prefixes remain unchanged.
+
+For a capped contact, `ToolHostStroke` / `MicopiToolHostStroke` retains the
+40-byte `ToolHostA8` prefix and appends `features` at 40, `tile_side` at 44,
+`pixels_origin` at 48 and `a8_origin` at 56, giving 64 bytes. Require the complete
+size, tile side 64, the matching `TOOL_HOST_ORIGIN_RGBA` (`1`) or
+`TOOL_HOST_ORIGIN_A8` (`2`) bit, and a nonnull callback. Only the admitted target
+is advertised. Default contacts retain the previous 32-byte RGBA / 40-byte A8
+host shapes; this feature does not expand generic action pixel access.
+
+An origin loan receives a region and a synchronous transform with an immutable
+`OriginPixels` or `OriginA8Pixels` descriptor beside mutable current storage.
+The host prepares its existing Undo originals and splits callbacks at 64×64 tile
+intersections. Coordinates/extents match; original stride is the edge-aware Undo
+tile stride while current stride can span the canvas. Validate both descriptors
+and complete spans, preserve padding and reject aliases before writes. These
+views allocate/copy nothing; first-touch Undo capture still has its existing
+cost. Neither pointer may survive the callback. Busy/reentry, read-only,
+pixel/alpha-lock and frozen A8-lease checks remain enforced; any callback failure
+rolls back the complete contact, including across recording chunk boundaries.
+
+The bundled DLL accumulates bounded `u16` influence in sparse tiles and
+recomposes live against those originals. It never derives originals by inverting
+rounded destination pixels. At most 4096 active coverage tiles contain 32 MiB of
+samples; after UP/Cancel at most 64 tiles (512 KiB) are retained per cached native
+state, plus bounded metadata. Flow 1 / Dab retains the previous exact raster
+path without allocating or consulting stroke coverage. Registry native inventory and `painting.tool`
+capabilities expose `flow` / `stroke_opacity` availability. See [Brush opacity and
+Flow](stroke-opacity.md) for the numeric recurrence, pressure/selection behavior,
+persistence and pending-CI verification scope.
 
 Run `python scripts/check-native-abi.py` with the documented portable compiler, or pass `--cc <existing-x64-clang>`, to compile the C11 and C++17 layout/callback fixtures without creating binary output. Rust SDK tests independently retain old prefix offsets and assert the new layouts.
 

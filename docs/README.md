@@ -28,6 +28,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Clipboard](clipboard.md) | Internal transfers, Windows PNG/DIB adapter, limits, external effects and native verification status |
 | [Selections](selections.md) | Marquee/lasso gestures, color commands, native clipping, history and limits |
 | [Painting Tools](painting-tools.md) | Pressure controls, connected fill, gradient gestures and performance limits |
+| [Brush Opacity and Flow](stroke-opacity.md) | Independent Flow, opt-in per-stroke influence limits, public settings, live original-tile loans and bounded native storage |
 | [Command Contact Admission](command-contact-admission.md) | Private cached frontend policy, shared execution, argument-form synchronization fences and native/local input continuity |
 | [Raster Owner Movement](raster-owner-movement.md) | Linked layer/mask integer Move, independent stable-mask targets, outline admission, compound history and exact clipping/fill rules |
 | [Layer Links](layer-links.md) | Persistent raster sets, explicit multi-owner Move/nudge, active-only painting, grouped history and shared action/state nodes |

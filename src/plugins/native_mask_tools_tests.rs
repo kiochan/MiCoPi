@@ -507,6 +507,7 @@ fn a8_loan_rejects_wrong_targets_read_tools_reentry_and_stale_regions_before_cal
         failed: false,
         write_pixels: false,
         mask_lease: Some(lease),
+        stroke_opacity: false,
         denied: None,
     };
     let pointer = (&mut context as *mut ToolContext).cast();

@@ -1,0 +1,13 @@
+{"action":"canvas.new","args":{"width":160,"height":120}}
+{"action":"layer.rename","args":{"name":"Capped marker"}}
+{"action":"brush.set","args":{"radius":18,"hardness":1,"color":"#68538F","opacity":0.4,"flow":0.25,"opacity_mode":"stroke","stabilizer":0.35,"pressure_size":true,"pressure_opacity":true,"minimum_opacity":0.1}}
+{"action":"canvas.stroke","args":{"points":[{"x":28,"y":35,"pressure":0.5,"pen":true,"time":100},{"x":72,"y":45,"pressure":0.9,"pen":true,"time":125},{"x":116,"y":35,"pressure":0.7,"pen":true,"time":150},{"x":72,"y":45,"pressure":0.4,"pen":true,"time":175}]}}
+{"action":"canvas.stroke","args":{"points":[{"x":28,"y":70,"pressure":0.5,"pen":true,"time":200},{"x":72,"y":80,"pressure":0.9,"pen":true,"time":225},{"x":116,"y":70,"pressure":0.7,"pen":true,"time":250}]}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Legacy dab flow"}}
+{"action":"brush.set","args":{"opacity_mode":"dab","flow":0.25,"color":"#E8B2CD"}}
+{"action":"canvas.stroke","args":{"points":[{"x":35,"y":100},{"x":125,"y":100}]}}
+{"action":"canvas.state","args":{}}
+{"action":"replay.verify","args":{}}

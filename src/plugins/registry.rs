@@ -761,7 +761,27 @@ impl Registry {
         out
     }
     pub fn describe(&self) -> Value {
-        json!({"directory":self.root,"loaded":self.loaded,"packages":self.packages,"contribution_owners":self.contribution_owners(),"disabled":self.disabled,"lifecycle":{"contributions":"restart_required","native_library":"restart_required","locales":"hot_reload"},"native":self.native_plugins.iter().map(|(id,p)|json!({"id":id,"library":p.path,"abi_version":micopi_plugin_api::ABI_VERSION})).collect::<Vec<_>>(),"diagnostics":self.diagnostics,"tools":self.tools.values().collect::<Vec<_>>(),"actions":self.actions.values().collect::<Vec<_>>(),"states":self.states.values().collect::<Vec<_>>(),"nodes":self.nodes.values().map(|(_,d)|d).collect::<Vec<_>>(),"panels":self.panels.values().collect::<Vec<_>>()})
+        json!({"directory":self.root,"loaded":self.loaded,"packages":self.packages,"contribution_owners":self.contribution_owners(),"disabled":self.disabled,"lifecycle":{"contributions":"restart_required","native_library":"restart_required","locales":"hot_reload"},"native":self.native_plugins.iter().map(|(id,p)|json!({"id":id,"library":p.path,"abi_version":micopi_plugin_api::ABI_VERSION,"tool_options":{"flow":p.supports_stroke_opacity(),"stroke_opacity":p.supports_stroke_opacity()}})).collect::<Vec<_>>(),"diagnostics":self.diagnostics,"tools":self.tools.values().collect::<Vec<_>>(),"actions":self.actions.values().collect::<Vec<_>>(),"states":self.states.values().collect::<Vec<_>>(),"nodes":self.nodes.values().map(|(_,d)|d).collect::<Vec<_>>(),"panels":self.panels.values().collect::<Vec<_>>()})
+    }
+    /// Cold discovery of the selected tool's provider, never pointer admission.
+    pub(crate) fn tool_option_capabilities(&self, tool: &str) -> Value {
+        let base = self
+            .tools
+            .get(tool)
+            .and_then(|definition| match definition.kind {
+                crate::application::ToolKind::Brush => Some("brush"),
+                crate::application::ToolKind::Eraser => Some("eraser"),
+                _ => None,
+            });
+        let available = base
+            .and_then(|base| {
+                self.native_tools
+                    .get(tool)
+                    .or_else(|| self.native_tools.get(base))
+            })
+            .and_then(|(owner, _)| self.native_plugins.get(owner))
+            .is_some_and(|plugin| plugin.supports_stroke_opacity());
+        json!({"flow":available,"stroke_opacity":available})
     }
 }
 pub fn valid_id(id: &str) -> bool {

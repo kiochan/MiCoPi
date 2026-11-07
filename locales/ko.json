@@ -1413,5 +1413,17 @@
   "Link or Unlink Layers": "레이어 링크/해제",
   "Persistent raster layer links": "레이어 링크 상태",
   "Link": "연결",
-  "Unlink": "연결 해제"
+  "Unlink": "연결 해제",
+  "Flow": "흐름",
+  "Brush Flow": "브러시 흐름",
+  "Opacity Mode": "불투명도 모드",
+  "Build Up": "누적",
+  "Per Stroke": "획별",
+  "Limit opacity per stroke": "획마다 불투명도 제한",
+  "How quickly paint builds up as you draw.": "그리는 동안 색이 쌓이는 속도를 조절합니다.",
+  "Keep each stroke within Opacity; lift the pen to build another coat.": "획마다 불투명도를 제한합니다. 펜을 떼면 색을 더 겹칠 수 있습니다.",
+  "Paint builds up as you pass over the same area.": "같은 영역을 반복해서 그리면 색이 계속 쌓입니다.",
+  "Choose build-up painting or limit opacity within each stroke.": "색을 계속 쌓거나 획마다 불투명도를 제한하도록 선택합니다.",
+  "Glazing Marker": "글레이징 마커",
+  "Flow and stroke opacity apply to Brush and Eraser.": "흐름과 획별 불투명도는 브러시와 지우개에 적용됩니다."
 }

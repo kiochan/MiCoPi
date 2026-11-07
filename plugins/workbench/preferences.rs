@@ -241,6 +241,22 @@ const SETTINGS: &[Setting] = &[
         range: None,
     },
     Setting {
+        id: "painting.flow",
+        title: "Brush Flow",
+        description: "How quickly paint builds up as you draw.",
+        keywords: "flow brush paint glazing buildup 流量",
+        category: Category::Painting,
+        range: Some((0., 1.)),
+    },
+    Setting {
+        id: "painting.opacity_mode",
+        title: "Opacity Mode",
+        description: "Choose build-up painting or limit opacity within each stroke.",
+        keywords: "opacity stroke flow cap glazing 不透明度 单笔",
+        category: Category::Painting,
+        range: None,
+    },
+    Setting {
         id: "painting.stabilizer",
         title: "Brush Stabilizer",
         description: "0 disables stabilization; 1 is strongest. Applies to future strokes.",
@@ -784,10 +800,13 @@ impl Studio {
                     if let Some((low, high)) = item.range {
                         let mut number = v.as_f64().unwrap();
                         let step = if high <= 4. { 0.01 } else { 1. };
-                        if ui
-                            .add(DragValue::new(&mut number).range(low..=high).speed(step))
-                            .changed()
-                        {
+                        let response =
+                            ui.add(DragValue::new(&mut number).range(low..=high).speed(step));
+                        #[cfg(test)]
+                        ui.data_mut(|data| {
+                            data.insert_temp(Id::new(("setting-number", item.id)), response.rect)
+                        });
+                        if response.changed() {
                             v = if v.is_u64() {
                                 serde_json::json!(number as u64)
                             } else {
@@ -798,6 +817,21 @@ impl Studio {
                         if ui.checkbox(&mut enabled, tr("Enabled")).changed() {
                             v = serde_json::json!(enabled);
                         }
+                    } else if item.id == "painting.opacity_mode" {
+                        let mut mode: crate::application::OpacityMode =
+                            serde_json::from_value(v.clone()).unwrap_or_default();
+                        ComboBox::from_id_salt(item.id)
+                            .selected_text(tr(brush::opacity_mode_title(mode)))
+                            .show_ui(ui, |ui| {
+                                for candidate in brush::OPACITY_MODES {
+                                    ui.selectable_value(
+                                        &mut mode,
+                                        candidate,
+                                        tr(brush::opacity_mode_title(candidate)),
+                                    );
+                                }
+                            });
+                        v = serde_json::to_value(mode).unwrap();
                     } else if item.id == "movement.target" {
                         let mut target: crate::application::MoveTarget =
                             serde_json::from_value(v.clone()).unwrap_or_default();
@@ -1057,6 +1091,10 @@ impl Studio {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "brush_opacity_settings_tests.rs"]
+mod brush_opacity_settings_tests;
 fn category_buttons(ui: &mut Ui, prefs: &mut Preferences) {
     for category in [
         Category::All,

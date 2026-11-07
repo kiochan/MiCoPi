@@ -1,7 +1,6 @@
 use crate::Brush;
 use micopi_plugin_api as abi;
 use std::ffi::c_void;
-#[derive(Default)]
 pub struct Raster {
     pub selection: abi::Coverage,
     pub alpha_locked: bool,
@@ -13,6 +12,26 @@ pub struct Raster {
     pub height: u32,
     pub failed: bool,
     pub spacing: f32,
+    pub flow: f32,
+    pub stroke: Option<crate::stroke::Coverage>,
+}
+impl Default for Raster {
+    fn default() -> Self {
+        Self {
+            selection: Default::default(),
+            alpha_locked: false,
+            a8_value: None,
+            last: None,
+            last_brush: None,
+            distance: 0.,
+            width: 0,
+            height: 0,
+            failed: false,
+            spacing: 0.,
+            flow: 1.,
+            stroke: None,
+        }
+    }
 }
 impl Raster {
     pub fn begin(&mut self, host: &abi::ToolHost, x: f32, y: f32, brush: Brush) {
@@ -59,7 +78,7 @@ impl Raster {
         self.last_brush = Some(b);
     }
 
-    fn dab(&mut self, host: &abi::ToolHost, x: f32, y: f32, b: Brush) {
+    fn dab(&mut self, host: &abi::ToolHost, x: f32, y: f32, mut b: Brush) {
         if self.failed || b.opacity <= 0. || b.radius <= 0. {
             return;
         }
@@ -69,6 +88,31 @@ impl Raster {
         let x1 = (x + r + 1.).ceil().max(0.).min(self.width as f32) as u32;
         let y1 = (y + r + 1.).ceil().max(0.).min(self.height as f32) as u32;
         if x0 >= x1 || y0 >= y1 {
+            return;
+        }
+        if let Some(stroke) = &mut self.stroke {
+            self.failed = stroke.dab(
+                host,
+                abi::Region {
+                    x: x0,
+                    y: y0,
+                    width: x1 - x0,
+                    height: y1 - y0,
+                },
+                b,
+                x,
+                y,
+                self.flow,
+                self.selection,
+                self.alpha_locked,
+                self.a8_value,
+            ) != abi::OK;
+            return;
+        }
+        if self.flow != 1. {
+            b.opacity *= self.flow;
+        }
+        if b.opacity <= 0. {
             return;
         }
         if let Some(value) = self.a8_value {
@@ -357,7 +401,7 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
     }
     abi::OK
 }
-fn atop(dst: u32, src: u32) -> u32 {
+pub(super) fn atop(dst: u32, src: u32) -> u32 {
     if dst >> 24 == 0 {
         return dst;
     }

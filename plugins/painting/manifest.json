@@ -51,6 +51,8 @@
       "title": "Pencil",
       "kind": "brush",
       "parameters": {
+        "flow": 1,
+        "opacity_mode": "dab",
         "radius": 2,
         "opacity": 1,
         "hardness": 1
@@ -63,6 +65,8 @@
       "title": "Ink",
       "kind": "brush",
       "parameters": {
+        "flow": 1,
+        "opacity_mode": "dab",
         "radius": 6,
         "opacity": 1,
         "hardness": 0.9
@@ -75,6 +79,8 @@
       "title": "Brush Preset",
       "kind": "brush",
       "parameters": {
+        "flow": 1,
+        "opacity_mode": "dab",
         "radius": 12,
         "opacity": 0.85,
         "hardness": 0.8
@@ -87,6 +93,8 @@
       "title": "Soft",
       "kind": "brush",
       "parameters": {
+        "flow": 1,
+        "opacity_mode": "dab",
         "radius": 24,
         "opacity": 0.45,
         "hardness": 0.1
@@ -99,9 +107,25 @@
       "title": "Marker",
       "kind": "brush",
       "parameters": {
+        "flow": 1,
+        "opacity_mode": "dab",
         "radius": 18,
         "opacity": 0.5,
         "hardness": 1
+      },
+      "preset": true,
+      "native": 1
+    },
+    {
+      "id": "glaze_marker",
+      "title": "Glazing Marker",
+      "kind": "brush",
+      "parameters": {
+        "radius": 18,
+        "opacity": 0.4,
+        "hardness": 1,
+        "flow": 0.25,
+        "opacity_mode": "stroke"
       },
       "preset": true,
       "native": 1
@@ -112,6 +136,8 @@
       "kind": "eraser",
       "preset": true,
       "parameters": {
+        "flow": 1,
+        "opacity_mode": "dab",
         "radius": 20,
         "opacity": 1,
         "hardness": 1

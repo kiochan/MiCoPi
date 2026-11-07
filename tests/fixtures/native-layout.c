@@ -1,6 +1,7 @@
-/* Compile-only C/C++ checks for the published x64 ABI and optional mask tails. */
+/* Compile-only C/C++ checks for the published x64 ABI and optional tails. */
 #include "micopi_plugin.h"
 #ifdef __cplusplus
+#include <type_traits>
 #define ABI_ASSERT static_assert
 extern "C" {
 #else
@@ -18,6 +19,40 @@ ABI_ASSERT(offsetof(MicopiA8Pixels, origin_y) == 32, "A8 origin offset");
 ABI_ASSERT(sizeof(MicopiToolHostA8) == 40, "Complete A8 host tail");
 ABI_ASSERT(offsetof(MicopiToolHostA8, a8) == 32, "A8 callback offset");
 ABI_ASSERT(MICOPI_TOOL_OPTION_A8_TARGET == 4, "Independent A8 option flag");
+ABI_ASSERT(sizeof(MicopiToolOptions) == 16, "Legacy tool options prefix");
+ABI_ASSERT(sizeof(MicopiToolOptionsExt) == 20, "Legacy flagged options prefix");
+ABI_ASSERT(sizeof(MicopiCoverage) == 32, "Legacy frozen selection descriptor");
+ABI_ASSERT(sizeof(MicopiToolOptionsSelection) == 56, "Legacy selection options tail");
+ABI_ASSERT(sizeof(MicopiToolOptionsApi) == 16, "Legacy options API prefix");
+ABI_ASSERT(sizeof(MicopiToolOptionsApiExt) == 24, "Legacy options features tail");
+ABI_ASSERT(sizeof(MicopiOriginPixels) == 40, "Immutable RGBA origin descriptor");
+ABI_ASSERT(sizeof(MicopiOriginA8Pixels) == 40, "Immutable A8 origin descriptor");
+ABI_ASSERT(offsetof(MicopiOriginPixels, len) == 8, "RGBA origin length offset");
+ABI_ASSERT(offsetof(MicopiOriginPixels, stride) == 24, "RGBA origin stride offset");
+ABI_ASSERT(offsetof(MicopiOriginPixels, origin_y) == 32, "RGBA origin coordinate offset");
+ABI_ASSERT(offsetof(MicopiOriginA8Pixels, len) == 8, "A8 origin length offset");
+ABI_ASSERT(offsetof(MicopiOriginA8Pixels, origin_y) == 32, "A8 origin coordinate offset");
+ABI_ASSERT(sizeof(MicopiToolOptionsStroke) == 64, "Complete stroke options tail");
+ABI_ASSERT(offsetof(MicopiToolOptionsStroke, base) == 0, "Stroke options preserve selection prefix");
+ABI_ASSERT(offsetof(MicopiToolOptionsStroke, flow) == 56, "Stroke flow offset");
+ABI_ASSERT(offsetof(MicopiToolOptionsStroke, reserved) == 60, "Stroke reserved offset");
+ABI_ASSERT(sizeof(MicopiToolHostStroke) == 64, "Complete origin host tail");
+ABI_ASSERT(offsetof(MicopiToolHostStroke, base) == 0, "Stroke host preserves A8 prefix");
+ABI_ASSERT(offsetof(MicopiToolHostStroke, features) == 40, "Origin host features offset");
+ABI_ASSERT(offsetof(MicopiToolHostStroke, tile_side) == 44, "Origin host tile side offset");
+ABI_ASSERT(offsetof(MicopiToolHostStroke, pixels_origin) == 48, "RGBA original loan offset");
+ABI_ASSERT(offsetof(MicopiToolHostStroke, a8_origin) == 56, "A8 original loan offset");
+ABI_ASSERT(MICOPI_TOOL_OPTION_STROKE_OPACITY == 8, "Independent stroke option flag");
+ABI_ASSERT((MICOPI_TOOL_OPTION_STROKE_OPACITY & (MICOPI_TOOL_OPTION_ALPHA_LOCK | MICOPI_TOOL_OPTION_SELECTION | MICOPI_TOOL_OPTION_A8_TARGET)) == 0, "Stroke option preserves old feature bits");
+ABI_ASSERT(MICOPI_TOOL_HOST_ORIGIN_RGBA == 1, "RGBA original loan capability");
+ABI_ASSERT(MICOPI_TOOL_HOST_ORIGIN_A8 == 2, "A8 original loan capability");
+#ifdef __cplusplus
+ABI_ASSERT((std::is_same<decltype(((MicopiOriginPixels *)0)->data), const uint32_t *>::value), "RGBA origin samples are immutable");
+ABI_ASSERT((std::is_same<decltype(((MicopiOriginA8Pixels *)0)->data), const uint8_t *>::value), "A8 origin samples are immutable");
+#else
+ABI_ASSERT(_Generic(((MicopiOriginPixels *)0)->data, const uint32_t *: 1, default: 0), "RGBA origin samples are immutable");
+ABI_ASSERT(_Generic(((MicopiOriginA8Pixels *)0)->data, const uint8_t *: 1, default: 0), "A8 origin samples are immutable");
+#endif
 ABI_ASSERT(sizeof(MicopiCompositeNode) == 20, "Legacy instruction layout");
 ABI_ASSERT(sizeof(MicopiCompositeLayer) == 32, "Legacy layer descriptor");
 ABI_ASSERT(sizeof(MicopiCompositorApi) == 16, "Legacy compositor prefix");
@@ -62,6 +97,22 @@ static int32_t byte_loan(void *context, MicopiRegion region,
     (void)context; (void)region; (void)transform; (void)user;
     return MICOPI_OK;
 }
+static int32_t origin_transform(void *user, const MicopiOriginPixels *origin, MicopiPixels *current) {
+    (void)user; (void)origin; (void)current;
+    return MICOPI_OK;
+}
+static int32_t a8_origin_transform(void *user, const MicopiOriginA8Pixels *origin, MicopiA8Pixels *current) {
+    (void)user; (void)origin; (void)current;
+    return MICOPI_OK;
+}
+static int32_t origin_loan(void *context, MicopiRegion region, MicopiOriginTransform transform, void *user) {
+    (void)context; (void)region; (void)transform; (void)user;
+    return MICOPI_OK;
+}
+static int32_t a8_origin_loan(void *context, MicopiRegion region, MicopiA8OriginTransform transform, void *user) {
+    (void)context; (void)region; (void)transform; (void)user;
+    return MICOPI_OK;
+}
 static void *create_effects(void) { return NULL; }
 static void destroy_effects(void *context) { (void)context; }
 static int32_t effect_region(void *context, const MicopiMaskEffectRequest *request,
@@ -93,6 +144,18 @@ int main(void) {
     MicopiCompositeRenderMaskedFn callback = masked;
     MicopiToolHostA8 host;
     host.a8 = byte_loan;
+    MicopiOriginTransform rgba_original_callback = origin_transform;
+    MicopiA8OriginTransform a8_original_callback = a8_origin_transform;
+    MicopiOriginPixelsLoan rgba_original_loan = origin_loan;
+    MicopiOriginA8Loan a8_original_loan_callback = a8_origin_loan;
+    MicopiToolHostStroke stroke_host;
+    stroke_host.pixels_origin = rgba_original_loan;
+    stroke_host.a8_origin = a8_original_loan_callback;
+    stroke_host.features = MICOPI_TOOL_HOST_ORIGIN_RGBA | MICOPI_TOOL_HOST_ORIGIN_A8;
+    stroke_host.tile_side = 64;
+    MicopiToolOptionsStroke stroke_options;
+    stroke_options.flow = 1.0f;
+    stroke_options.reserved = 0;
     MicopiCompositorApiMaskEffects effects;
     effects.create_mask_effects = create_effects;
     effects.destroy_mask_effects = destroy_effects;
@@ -103,6 +166,12 @@ int main(void) {
     sampler.geometry = a8_geometry;
     sampler.resample = a8_resample;
     return callback == masked && host.a8 == byte_loan
+        && rgba_original_callback == origin_transform
+        && a8_original_callback == a8_origin_transform
+        && stroke_host.pixels_origin == origin_loan
+        && stroke_host.a8_origin == a8_origin_loan
+        && stroke_host.features == 3 && stroke_host.tile_side == 64
+        && stroke_options.flow == 1.0f && stroke_options.reserved == 0
         && effects.create_mask_effects == create_effects
         && effects.destroy_mask_effects == destroy_effects
         && effects.mask_effect_region == effect_region

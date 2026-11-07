@@ -1,5 +1,13 @@
 # Painting dynamics, fill and gradients
 
+The Brush panel places **Opacity** and **Flow** together. **Limit opacity per
+stroke** keeps one continuous stroke within its opacity limit while Flow controls
+how quickly it builds; lift the pen for another coat. **Glazing Marker** selects
+40% Opacity, 25% Flow and this mode. Default **Build Up** with Flow 100% preserves
+the existing per-dab pixels. See [Brush opacity and Flow](stroke-opacity.md) for
+pressure, selection, storage bounds and compatibility. These controls apply to
+Brush/Eraser contacts; fill and gradients retain their own opacity semantics.
+
 The Brush panel exposes pressure size/opacity, minimum size and pressure gamma under **Pressure Dynamics**. A response curve previews gamma; 1 is linear, smaller values respond more strongly to light pressure. Minimum size is a fraction of the selected radius. These controls use existing `brush.set` parameters and the typed native pen path. Mouse input ignores pressure; zero-pressure pen samples deposit no paint. Controls change the current Session; use Painting settings to save startup defaults.
 
 **Dab Spacing** controls stamp distance as a fraction of brush diameter: 0.01–2 (1–200%), with the original 0.11 (11%) default. Larger spacing creates separated marks and reduces stamp callbacks, trading continuous coverage for a different brush appearance. **Minimum Opacity** under Pressure Dynamics retains a fraction of brush opacity at light pressure when pressure opacity is enabled. The response becomes `minimum + (1 - minimum) × pressure^gamma`; zero pressure still deposits nothing. Mouse strokes ignore this floor. Both controls support `brush.set`, project replay metadata and startup settings as `painting.spacing` and `painting.minimum_opacity`.
@@ -8,7 +16,7 @@ The Brush panel exposes pressure size/opacity, minimum size and pressure gamma u
 {"action":"brush.set","args":{"spacing":0.25,"pressure_opacity":true,"minimum_opacity":0.2}}
 ```
 
-Options are copied into the native contact at DOWN, without extra configuration calls or JSON on MOVE. The optional `micopi_tool_options_v1` extension leaves existing tool tables and parameter sizes unchanged. Older DLLs accept default settings; custom values fail explicitly when the extension is absent. New DLLs use legacy defaults with an older host. Default option fields are omitted from replay parameter metadata to preserve old recording hashes; public `canvas.state.parameters` always reports both values. Nondefault recordings require a host that understands the new parameters.
+Options are copied into the native contact at DOWN, without extra configuration calls or JSON on MOVE. The optional `micopi_tool_options_v1` extension leaves existing tool tables and parameter sizes unchanged. Older DLLs accept default settings; unsupported custom values fail explicitly. New DLLs use legacy defaults with an older host. Default spacing, minimum opacity, Flow and mode fields are omitted from replay parameter metadata to preserve old recording hashes; public `canvas.state.parameters` and `painting.tool.parameters` report them explicitly. Nondefault recordings require a host that understands the new parameters. Settings stores the new startup defaults as `painting.flow` and `painting.opacity_mode` (`dab` / `stroke`).
 
 Choose **Flood Fill** in the Brush panel, set **Fill Tolerance** and click a pixel. The operation fills the four-connected region on the current visible layer, using the foreground color and brush opacity with source-over blending. Clear **Contiguous Fill** to fill every seed-matching pixel across the current layer, including disconnected regions. The default remains four-connected fill. It samples this layer, rather than the merged canvas. Tolerance is 0–255, compared with the seed in premultiplied 8-bit RGB and alpha; transparent pixels with different hidden RGB therefore belong to the same region at tolerance zero. Higher tolerance compares every candidate with the original seed, rather than accumulating differences along a path.
 
@@ -52,6 +60,6 @@ Nonzero edge controls build a one-bit-per-pixel region mask and reuse one byte p
 
 Brush rasterization rejects pixels outside the dab circle before computing distance, and avoids distance evaluation inside solid hard dabs. Antialiased boundaries retain the previous distance formula. Legacy spacing, pressure, stabilization and the typed MOVE path remain unchanged at default options. No additional dependency is introduced. Exact DLL-versus-reference stroke tests protect existing pixels. A deterministic 100-pixel line at radius 5 uses 11 stamp callbacks at 100% spacing, versus more than 80 at default spacing; this measures work reduction for sparse brushes, rather than end-to-end input latency.
 
-Regression checks include an independent breadth-first fill oracle, tolerance/connectivity/transparency fixtures, gradient endpoints and alpha fringes, gesture commit/cancel behavior, undo, atomic failure, replay parity and PNG comparisons across JSONL, MCP and GUI. Selections, fill gap closing, merged-layer sampling, textured brush tips and arbitrary pressure curves remain future work.
+Regression checks include an independent breadth-first fill oracle, tolerance/connectivity/transparency fixtures, gradient endpoints and alpha fringes, gesture commit/cancel behavior, undo, atomic failure, replay parity and PNG comparisons across JSONL, MCP and GUI. Fill gap closing, merged-layer fill sampling, textured brush tips and arbitrary editable pressure curves remain future work. New stroke-opacity coverage is authored and pending CI, as detailed in its [guide](stroke-opacity.md#verification-status-and-measurement-scope).
 
 Locked typed strokes reuse undo tile snapshots for alpha validation. Fully transparent locked regions are culled before capturing tiles. Unlocked strokes retain their existing pixel path; no region-sized copy or JSON call is added to typed MOVE. Region-based plugin actions use the existing staging buffer and validate alpha before committing.

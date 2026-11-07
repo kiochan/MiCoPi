@@ -80,8 +80,40 @@ pub struct A8Pixels {
     pub origin_x: u32,
     pub origin_y: u32,
 }
+/// Immutable contact-origin RGBA samples from an already captured undo tile.
+/// Stride may differ from the paired current region. Read only width samples
+/// per row; no pointer or descriptor may outlive the synchronous callback.
+#[repr(C)]
+pub struct OriginPixels {
+    pub data: *const u32,
+    pub len: usize,
+    pub width: u32,
+    pub height: u32,
+    pub stride: u32,
+    pub origin_x: u32,
+    pub origin_y: u32,
+}
+/// Immutable raw A8 contact-origin samples; never effective mask coverage.
+#[repr(C)]
+pub struct OriginA8Pixels {
+    pub data: *const u8,
+    pub len: usize,
+    pub width: u32,
+    pub height: u32,
+    pub stride: u32,
+    pub origin_x: u32,
+    pub origin_y: u32,
+}
 pub type Transform = unsafe extern "C" fn(*mut c_void, *mut Pixels) -> i32;
 pub type A8Transform = unsafe extern "C" fn(*mut c_void, *mut A8Pixels) -> i32;
+pub type OriginTransform =
+    unsafe extern "C" fn(*mut c_void, *const OriginPixels, *mut Pixels) -> i32;
+pub type A8OriginTransform =
+    unsafe extern "C" fn(*mut c_void, *const OriginA8Pixels, *mut A8Pixels) -> i32;
+pub type OriginPixelsLoan =
+    unsafe extern "C" fn(*mut c_void, Region, Option<OriginTransform>, *mut c_void) -> i32;
+pub type OriginA8Loan =
+    unsafe extern "C" fn(*mut c_void, Region, Option<A8OriginTransform>, *mut c_void) -> i32;
 #[repr(C)]
 pub struct HostApi {
     pub abi_version: u32,
@@ -210,6 +242,22 @@ pub struct ToolHostA8 {
     pub a8:
         Option<unsafe extern "C" fn(*mut c_void, Region, Option<A8Transform>, *mut c_void) -> i32>,
 }
+pub const TOOL_HOST_ORIGIN_RGBA: u32 = 1;
+pub const TOOL_HOST_ORIGIN_A8: u32 = 2;
+/// Optional complete tail for capped stroke contacts. Read only when the base
+/// header covers this entire struct, the matching feature is set and its loan
+/// is present. The host snapshots the full requested ROI once, then calls the
+/// transform for each undo-tile intersection. Origins and current regions have
+/// matching coordinates, disjoint storage and potentially different strides.
+/// All loans are synchronous, non-reentrant and bound to the admitted target.
+#[repr(C)]
+pub struct ToolHostStroke {
+    pub base: ToolHostA8,
+    pub features: u32,
+    pub tile_side: u32,
+    pub pixels_origin: Option<OriginPixelsLoan>,
+    pub a8_origin: Option<OriginA8Loan>,
+}
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct ToolApi {
@@ -257,8 +305,13 @@ pub const TOOL_OPTION_SELECTION: u32 = 2;
 /// ToolOptionsApiExt capability and ToolOptionsExt flag. Freeze the A8 target at
 /// DOWN, require a complete ToolHostA8 before touching storage, and reject its
 /// combination with alpha lock. Encoded-RGB grayscale is (54R+183G+19B+128)>>8;
-/// erasing reveals 255. Selection scales dab opacity once before byte mixing.
+/// erasing reveals 255. Dab mode scales each deposit by selection; capped
+/// stroke mode applies selection once to cumulative influence before byte mixing.
 pub const TOOL_OPTION_A8_TARGET: u32 = 4;
+/// ToolOptionsApiExt capability for independent Flow and capped stroke opacity.
+/// As an options flag, selects capped stroke mode and requires ToolHostStroke.
+/// Nondefault Flow requires the complete ToolOptionsStroke even in dab mode.
+pub const TOOL_OPTION_STROKE_OPACITY: u32 = 8;
 /// Borrowed full-canvas 8-bit coverage, frozen until the contact ends.
 /// A null pointer with all other fields zero means unrestricted painting.
 #[repr(C)]
@@ -291,6 +344,16 @@ pub struct ToolOptionsExt {
 pub struct ToolOptionsSelection {
     pub base: ToolOptionsExt,
     pub selection: Coverage,
+}
+/// Additive options negotiated by TOOL_OPTION_STROKE_OPACITY capability. Flow
+/// is finite 0..1; reserved must be zero. Capped mode is the flags bit, while
+/// flow-only dab mode uses this tail without that bit. Legacy calls reset to
+/// flow 1 / dab mode. Configure once before DOWN; borrowed selection stays frozen.
+#[repr(C)]
+pub struct ToolOptionsStroke {
+    pub base: ToolOptionsSelection,
+    pub flow: f32,
+    pub reserved: u32,
 }
 /// Optional cold-path selection blending. Both pixel regions share coordinates;
 /// `before` is immutable and must not alias mutable `after` storage.
@@ -852,6 +915,39 @@ mod transform_layout_tests {
             COMPOSITOR_MASKS & (COMPOSITOR_TRANSPARENT | COMPOSITOR_MIX),
             0
         );
+    }
+    #[test]
+    fn stroke_opacity_tails_preserve_all_published_prefixes_and_const_views() {
+        assert_eq!(TOOL_ABI_VERSION, 1);
+        assert_eq!(ABI_VERSION, 1);
+        assert_eq!(size_of::<ToolOptionsStroke>(), 64);
+        assert_eq!(offset_of!(ToolOptionsStroke, base), 0);
+        assert_eq!(offset_of!(ToolOptionsStroke, flow), 56);
+        assert_eq!(offset_of!(ToolOptionsStroke, reserved), 60);
+        assert_eq!(size_of::<ToolHostStroke>(), 64);
+        assert_eq!(offset_of!(ToolHostStroke, base), 0);
+        assert_eq!(offset_of!(ToolHostStroke, features), 40);
+        assert_eq!(offset_of!(ToolHostStroke, tile_side), 44);
+        assert_eq!(offset_of!(ToolHostStroke, pixels_origin), 48);
+        assert_eq!(offset_of!(ToolHostStroke, a8_origin), 56);
+        assert_eq!(size_of::<OriginPixels>(), size_of::<Pixels>());
+        assert_eq!(size_of::<OriginA8Pixels>(), size_of::<A8Pixels>());
+        assert_eq!(offset_of!(OriginPixels, data), 0);
+        assert_eq!(offset_of!(OriginPixels, len), 8);
+        assert_eq!(offset_of!(OriginPixels, width), 16);
+        assert_eq!(offset_of!(OriginPixels, stride), 24);
+        assert_eq!(offset_of!(OriginPixels, origin_x), 28);
+        assert_eq!(offset_of!(OriginPixels, origin_y), 32);
+        assert_eq!(offset_of!(OriginA8Pixels, origin_y), 32);
+        assert_eq!(TOOL_OPTION_STROKE_OPACITY, 8);
+        assert_eq!(
+            TOOL_OPTION_STROKE_OPACITY
+                & (TOOL_OPTION_ALPHA_LOCK | TOOL_OPTION_SELECTION | TOOL_OPTION_A8_TARGET),
+            0
+        );
+        assert_eq!(TOOL_HOST_ORIGIN_RGBA, 1);
+        assert_eq!(TOOL_HOST_ORIGIN_A8, 2);
+        assert_eq!(TOOL_HOST_ORIGIN_RGBA & TOOL_HOST_ORIGIN_A8, 0);
     }
     #[test]
     fn independent_projective_table_preserves_the_published_affine_layout() {

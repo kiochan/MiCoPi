@@ -843,3 +843,29 @@ See [Layer Links](layer-links.md) for the 192 MiB output-staging ceiling and
 remaining linked Free Transform boundary. No whole-suite local rerun or large
 stress workload is required for each small source edit. Manual screenshot review
 and physical tablet evidence remain separate from automated CI.
+
+## Stroke opacity and Flow checks
+
+The authored feature coverage includes native/reference arithmetic, original-tile
+loans, pressure/selection/rollback/chunk continuity, default-byte compatibility,
+presets and searchable Settings. CI builds matching hosts/DLLs and runs complete
+regressions plus `scripts/smoke-stroke-opacity.py --skip-gui`. The optional GUI
+smoke compares shared execution through one owned attachment process; it is not
+reviewed screenshot or physical-tablet evidence. Track the pushed commit's
+actual CI result; feature validation is pending, rather than assumed from test
+source.
+
+The CI-selected bounded native probe is:
+
+```powershell
+cargo test --release --lib --locked -p micopi-painting-tools bounded_stroke_cost -- --ignored --nocapture --test-threads=1
+```
+
+It reports median/tail timing, coverage allocations and retained bytes for tiny
+64×64 synthetic RGBA/A8 contacts (41 samples, one warm-up plus 21 measured
+contacts). Fixture setup, Undo capture, Session validation, journal, UI and tablet
+latency are excluded. Do not present these native timings as full Session latency
+or a measured process-memory bound. No result is asserted before execution.
+Local focused checks remain serial and resource-limited; avoid repeating full
+local suites while CI runs. See [Brush opacity and Flow](stroke-opacity.md) for
+the contract and computed storage limits.

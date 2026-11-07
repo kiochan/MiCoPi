@@ -588,6 +588,16 @@ impl NativePlugin {
     pub(crate) fn supports_a8_sampler(&self) -> bool {
         self.a8_sampler.is_some()
     }
+    pub(crate) fn supports_stroke_opacity(&self) -> bool {
+        self.tool_options
+            .is_some_and(|(_, features)| features & abi::TOOL_OPTION_STROKE_OPACITY != 0)
+    }
+    #[cfg(test)]
+    pub(crate) fn replace_tool_options_features_for_test(&mut self, features: u32) -> Option<u32> {
+        self.tool_options
+            .as_mut()
+            .map(|(_, current)| std::mem::replace(current, features))
+    }
     pub(crate) fn a8_reframe(
         &self,
         request: &abi::A8Reframe,
@@ -2529,6 +2539,7 @@ mod tests {
             failed: false,
             write_pixels: true,
             mask_lease: None,
+            stroke_opacity: false,
             denied: None,
         };
         let region = abi::Region {
@@ -2785,6 +2796,7 @@ mod tests {
             failed: false,
             write_pixels: false,
             mask_lease: None,
+            stroke_opacity: false,
             denied: None,
         };
         let region = abi::Region {
@@ -2947,10 +2959,14 @@ mod tests {
 #[cfg(test)]
 #[path = "native_mask_tools_tests.rs"]
 mod mask_tool_tests;
+#[cfg(test)]
+#[path = "native_origin_tools_tests.rs"]
+mod origin_tool_tests;
 
 /// Cached for the document session; moved into a contact for allocation-free moves.
 pub(crate) struct ToolInstance {
     selection: Option<crate::engine::selection::Mask>,
+    stroke_opacity: bool,
     plugin: Arc<NativePlugin>,
     state: *mut c_void,
     api: abi::ToolApi,
@@ -2977,6 +2993,7 @@ impl ToolInstance {
             state,
             api,
             selection: None,
+            stroke_opacity: false,
         })
     }
     pub(crate) fn prepare_contact(
@@ -2986,6 +3003,16 @@ impl ToolInstance {
         a8_target: bool,
     ) -> Result<(), ActionError> {
         if painting {
+            let stroke_opacity =
+                session.parameters.opacity_mode == crate::application::OpacityMode::Stroke;
+            if (stroke_opacity || session.parameters.flow != 1.)
+                && !self.plugin.supports_stroke_opacity()
+            {
+                return Err(ActionError::new(
+                    "tool_options_unsupported",
+                    "Tool DLL does not support Flow or stroke opacity",
+                ));
+            }
             if a8_target
                 && self
                     .plugin
@@ -3033,8 +3060,34 @@ impl ToolInstance {
                     abi::TOOL_OPTION_A8_TARGET
                 } else {
                     0
+                } | if stroke_opacity {
+                    abi::TOOL_OPTION_STROKE_OPACITY
+                } else {
+                    0
                 };
-                let status = if features & abi::TOOL_OPTION_SELECTION != 0 {
+                let status = if features & abi::TOOL_OPTION_STROKE_OPACITY != 0 {
+                    let extended = abi::ToolOptionsStroke {
+                        base: abi::ToolOptionsSelection {
+                            base: abi::ToolOptionsExt {
+                                base: abi::ToolOptions {
+                                    struct_size: std::mem::size_of::<abi::ToolOptionsStroke>()
+                                        as u32,
+                                    ..options
+                                },
+                                flags: flags
+                                    | if self.selection.is_some() {
+                                        abi::TOOL_OPTION_SELECTION
+                                    } else {
+                                        0
+                                    },
+                            },
+                            selection: self.selection.as_ref().map(coverage).unwrap_or_default(),
+                        },
+                        flow: p.flow,
+                        reserved: 0,
+                    };
+                    unsafe { (api.configure.unwrap())(self.state, &extended.base.base.base) }
+                } else if features & abi::TOOL_OPTION_SELECTION != 0 {
                     let extended = abi::ToolOptionsSelection {
                         base: abi::ToolOptionsExt {
                             base: abi::ToolOptions {
@@ -3081,6 +3134,9 @@ impl ToolInstance {
                     },
                 ));
             }
+            self.stroke_opacity = stroke_opacity;
+        } else {
+            self.stroke_opacity = false;
         }
         Ok(())
     }
@@ -3093,31 +3149,51 @@ impl ToolInstance {
         painting: bool,
         mask_lease: Option<crate::engine::raster_masks::MaskLease>,
     ) -> Result<abi::ToolOutput, ActionError> {
+        let stroke_opacity = painting && self.stroke_opacity;
         let mut context = ToolContext {
             session,
             busy: false,
             failed: false,
             write_pixels: painting,
             mask_lease,
+            stroke_opacity,
             denied: None,
         };
-        let host = abi::ToolHostA8 {
-            base: abi::ToolHost {
-                abi_version: abi::TOOL_ABI_VERSION,
-                struct_size: if mask_lease.is_some() {
-                    std::mem::size_of::<abi::ToolHostA8>()
+        let host = abi::ToolHostStroke {
+            base: abi::ToolHostA8 {
+                base: abi::ToolHost {
+                    abi_version: abi::TOOL_ABI_VERSION,
+                    struct_size: if stroke_opacity {
+                        std::mem::size_of::<abi::ToolHostStroke>()
+                    } else if mask_lease.is_some() {
+                        std::mem::size_of::<abi::ToolHostA8>()
+                    } else {
+                        std::mem::size_of::<abi::ToolHost>()
+                    } as u32,
+                    context: (&mut context as *mut ToolContext).cast(),
+                    pixels: tool_pixels,
+                    pick: tool_pick,
+                },
+                a8: if mask_lease.is_some() {
+                    Some(tool_a8)
                 } else {
-                    std::mem::size_of::<abi::ToolHost>()
-                } as u32,
-                context: (&mut context as *mut ToolContext).cast(),
-                pixels: tool_pixels,
-                pick: tool_pick,
+                    None
+                },
             },
-            a8: if mask_lease.is_some() {
-                Some(tool_a8)
+            features: if stroke_opacity {
+                if mask_lease.is_some() {
+                    abi::TOOL_HOST_ORIGIN_A8
+                } else {
+                    abi::TOOL_HOST_ORIGIN_RGBA
+                }
             } else {
-                None
+                0
             },
+            tile_side: crate::engine::TILE as u32,
+            pixels_origin: (stroke_opacity && mask_lease.is_none())
+                .then_some(tool_pixels_origin as abi::OriginPixelsLoan),
+            a8_origin: (stroke_opacity && mask_lease.is_some())
+                .then_some(tool_a8_origin as abi::OriginA8Loan),
         };
         let mut output = abi::ToolOutput::default();
         let status = unsafe {
@@ -3126,7 +3202,7 @@ impl ToolInstance {
                 handler,
                 &sample,
                 parameters.map_or(std::ptr::null(), |p| p as *const _),
-                &host.base,
+                &host.base.base,
                 &mut output,
             )
         };
@@ -3174,6 +3250,7 @@ struct ToolContext {
     failed: bool,
     write_pixels: bool,
     mask_lease: Option<crate::engine::raster_masks::MaskLease>,
+    stroke_opacity: bool,
     denied: Option<ActionError>,
 }
 unsafe extern "C" fn tool_pixels(
@@ -3296,6 +3373,188 @@ unsafe extern "C" fn tool_a8(
     };
     (*context).busy = true;
     let status = transform(user, &mut pixels);
+    (*context).busy = false;
+    if status != abi::OK {
+        (*context).failed = true;
+    }
+    status
+}
+
+unsafe extern "C" fn tool_pixels_origin(
+    context: *mut c_void,
+    region: abi::Region,
+    transform: Option<abi::OriginTransform>,
+    user: *mut c_void,
+) -> i32 {
+    if context.is_null() {
+        return abi::ERROR;
+    }
+    let context = context.cast::<ToolContext>();
+    if (*context).busy {
+        (*context).failed = true;
+        return abi::ERROR;
+    }
+    let Some(transform) = transform else {
+        (*context).failed = true;
+        return abi::ERROR;
+    };
+    let session = &mut *(*context).session;
+    if !(*context).stroke_opacity || !(*context).write_pixels || session.read_depth != 0 {
+        (*context).failed = true;
+        return abi::ERROR;
+    }
+    if (*context).mask_lease.is_some() {
+        (*context).failed = true;
+        (*context).denied = Some(ActionError::new(
+            "tool_target",
+            "An A8 contact cannot borrow RGBA origins",
+        ));
+        return abi::ERROR;
+    }
+    if let Err(error) = PixelAccess::Pixels.require(&session.doc, session.doc.active) {
+        (*context).failed = true;
+        (*context).denied = Some(error);
+        return abi::ERROR;
+    }
+    let (x, y, width, height) = (
+        region.x as usize,
+        region.y as usize,
+        region.width as usize,
+        region.height as usize,
+    );
+    if session.doc.locked_region_empty(x, y, width, height) {
+        return abi::OK;
+    }
+    if !session.doc.prepare_plugin_region(x, y, width, height) {
+        (*context).failed = true;
+        return abi::ERROR;
+    }
+    // Snapshot the complete ROI once before any intersection callback. Original
+    // Arc tile storage stays owned by the active Edit until the loan returns.
+    (*context).busy = true;
+    let stride = session.doc.width;
+    let tile = crate::engine::TILE;
+    let mut status = abi::OK;
+    'tiles: for ty in y / tile..=(y + height - 1) / tile {
+        for tx in x / tile..=(x + width - 1) / tile {
+            let left = x.max(tx * tile);
+            let top = y.max(ty * tile);
+            let w = (x + width).min((tx + 1) * tile) - left;
+            let h = (y + height).min((ty + 1) * tile) - top;
+            let original = match session.doc.plugin_origin_region(left, top, w, h) {
+                Ok(original) => original,
+                Err(error) => {
+                    (*context).denied = Some(ActionError::new("tool_origin", error));
+                    status = abi::ERROR;
+                    break 'tiles;
+                }
+            };
+            let mut current = abi::Pixels {
+                data: session.doc.layers[session.doc.active]
+                    .pixels
+                    .as_mut_ptr()
+                    .add(top * stride + left),
+                len: (h - 1) * stride + w,
+                width: w as u32,
+                height: h as u32,
+                stride: stride as u32,
+                origin_x: left as u32,
+                origin_y: top as u32,
+            };
+            status = transform(user, &original, &mut current);
+            if status != abi::OK || (*context).failed {
+                status = abi::ERROR;
+                break 'tiles;
+            }
+        }
+    }
+    (*context).busy = false;
+    if status != abi::OK || !session.doc.locked_tool_region_valid(x, y, width, height) {
+        (*context).failed = true;
+        return abi::ERROR;
+    }
+    status
+}
+
+unsafe extern "C" fn tool_a8_origin(
+    context: *mut c_void,
+    region: abi::Region,
+    transform: Option<abi::A8OriginTransform>,
+    user: *mut c_void,
+) -> i32 {
+    if context.is_null() {
+        return abi::ERROR;
+    }
+    let context = context.cast::<ToolContext>();
+    if (*context).busy {
+        (*context).failed = true;
+        return abi::ERROR;
+    }
+    let Some(transform) = transform else {
+        (*context).failed = true;
+        return abi::ERROR;
+    };
+    let session = &mut *(*context).session;
+    if !(*context).stroke_opacity || !(*context).write_pixels || session.read_depth != 0 {
+        (*context).failed = true;
+        return abi::ERROR;
+    }
+    let Some(lease) = (*context).mask_lease else {
+        (*context).failed = true;
+        (*context).denied = Some(ActionError::new(
+            "tool_target",
+            "An RGBA contact cannot borrow A8 origins",
+        ));
+        return abi::ERROR;
+    };
+    let (x, y, width, height) = (
+        region.x as usize,
+        region.y as usize,
+        region.width as usize,
+        region.height as usize,
+    );
+    let full = match session.doc.mask_region(lease, x, y, width, height) {
+        Ok(current) => current,
+        Err(error) => {
+            (*context).failed = true;
+            (*context).denied = Some(ActionError::new("mask_lease", error));
+            return abi::ERROR;
+        }
+    };
+    (*context).busy = true;
+    let tile = crate::engine::TILE;
+    let stride = full.stride as usize;
+    let mut status = abi::OK;
+    'tiles: for ty in y / tile..=(y + height - 1) / tile {
+        for tx in x / tile..=(x + width - 1) / tile {
+            let left = x.max(tx * tile);
+            let top = y.max(ty * tile);
+            let w = (x + width).min((tx + 1) * tile) - left;
+            let h = (y + height).min((ty + 1) * tile) - top;
+            let original = match session.doc.mask_origin_region(lease, left, top, w, h) {
+                Ok(original) => original,
+                Err(error) => {
+                    (*context).denied = Some(ActionError::new("mask_lease", error));
+                    status = abi::ERROR;
+                    break 'tiles;
+                }
+            };
+            let mut current = abi::A8Pixels {
+                data: full.data.add((top - y) * stride + left - x),
+                len: (h - 1) * stride + w,
+                width: w as u32,
+                height: h as u32,
+                stride: full.stride,
+                origin_x: left as u32,
+                origin_y: top as u32,
+            };
+            status = transform(user, &original, &mut current);
+            if status != abi::OK || (*context).failed {
+                status = abi::ERROR;
+                break 'tiles;
+            }
+        }
+    }
     (*context).busy = false;
     if status != abi::OK {
         (*context).failed = true;
