@@ -140,6 +140,10 @@ static int32_t a8_resample(const MicopiResample *request, const MicopiCompositeM
     (void)request; (void)source; (void)width; (void)height; (void)output;
     return MICOPI_OK;
 }
+#ifdef __cplusplus
+}
+#endif
+
 int main(void) {
     MicopiCompositeRenderMaskedFn callback = masked;
     MicopiToolHostA8 host;
@@ -180,6 +184,3 @@ int main(void) {
         && sampler.geometry == a8_geometry
         && sampler.resample == a8_resample ? 0 : 1;
 }
-#ifdef __cplusplus
-}
-#endif
