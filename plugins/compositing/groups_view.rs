@@ -400,7 +400,11 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
                         ("Green", &curves.green),
                         ("Blue", &curves.blue),
                     ] {
-                        ui.label(format!("{}: {}", tr(title), curve.points.len()));
+                        ui.label(format!(
+                            "{}: {}",
+                            crate::i18n::translated_for(Some("compositing"), title),
+                            curve.points.len()
+                        ));
                     }
                 }
                 NodeKind::Levels { parameters } => {

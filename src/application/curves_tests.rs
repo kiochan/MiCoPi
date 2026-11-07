@@ -186,7 +186,7 @@ fn mixed_disconnected_tables_use_storage_order_and_preflight_the_full_budget() {
             input: 0,
         });
     }
-    assert!(oversized.compile(1).unwrap_err().contains("table limit"));
+    assert!(matches!(oversized.compile(1),Err(error) if error.contains("table limit")));
 }
 #[test]
 fn invalid_disabled_curves_and_missing_capability_preserve_publication() {
