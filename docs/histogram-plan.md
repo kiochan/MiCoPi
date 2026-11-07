@@ -1,10 +1,10 @@
 # Prepared-plan histogram foundation
 
-This is a native prerequisite for node input/output observations. The public
-`histogram.query` action and current controls still expose only visible composite
-and explicit raw-layer scopes. Node selection, source/actual-view ID binding and
-their command/UI integration remain planned. Do not infer those features from
-the native capability alone.
+The native sampler now backs fenced node input/output observations through
+`histogram.query`, shared command forms, workflow nodes, JSONL and MCP. This
+integration is implemented in source and awaits CI. Specialized chart source
+pickers still expose composite/raw-layer scopes; node-aware chart controls and
+reviewed captures remain planned.
 
 ## Optional negotiation
 
@@ -56,11 +56,15 @@ strict grid validation and cached live-DLL discovery. SDK Rust/C/C++ layout
 fixtures include the new tail. Runtime and cost checks await CI; no local heavy
 build, device validation or reviewed UI capture is claimed.
 
-The next Session integration must resolve explicit node IDs and image ports in
-either source Layer Filters or generated Actual Composition, fence them by
-document/revision, honor mask/group/Pass Through semantics and expose precise
-scope in results. A source ID must not be mistaken for a generated node ID.
-Reject missing nodes, coverage ports and active contacts without changing the
-document. Reuse prepared tables, preserve read-only history/replay behavior and
-keep local UI drafts distinct from published inputs. See the
+Session requires explicit view/node/image-port selectors and captured document
+identity/revision. `graph.read.histogram_views` publishes both view graphs with
+those fences. Projection redirects a private output while retaining source IDs,
+ordered color intents and table indices. Actual observations include generated
+mask/group/Pass Through gates and disabled flat-filter bypass. Source observations
+use declarations, including disabled effects, without ancestor or owned-mask gates.
+Missing IDs, coverage ports, stale fences and active contacts reject explicitly.
+Unchanged intent reuses published tables; alternate source intent may prepare a
+bounded temporary plan without replacing the document cache. Queries preserve
+pixels, history and outcomes; local UI drafts remain separate. Authored Session,
+cache, pipeline/workflow and extended JSONL/MCP references await CI. See the
 [editing plan](photoshop-essentials.md) for open delivery gates.

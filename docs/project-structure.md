@@ -5,7 +5,11 @@ through an optional SDK tail. It shares grid selection with raw histogram sampli
 and instruction evaluation with `masks.rs`; it never allocates an image buffer.
 `src/plugins/native_histogram.rs` owns cached negotiation, adapter bounds and
 shared complete result/grid validation. Native/host fixtures accompany both
-modules. [Node-scope integration](histogram-plan.md) remains planned.
+modules. `src/engine/histogram_observation.rs` owns source/actual graph discovery, private
+output projection, stable table indices and immutable mask/layer loans.
+`src/plugins/histogram.rs` validates explicit node selectors and document/revision
+fences. [Node queries](histogram-plan.md) use the shared Session action; specialized
+node chart controls remain planned.
 
 The optional `LevelsApiChannels` SDK tail and C layout fixtures describe native
 master/R/G/B preparation. `plugins/compositing/src/levels.rs` owns the fixed-table
@@ -24,7 +28,7 @@ source/argument validation and published snapshot schema; document ownership and
 recording remain in Session. The manifest registers its generated workflow node.
 `plugins/compositing/histogram_ui.rs` owns manual query controls, one shared
 bounded snapshot and presentation-only charts reused by Levels/Curves controls.
-It dispatches Session actions and never scans pixels. Per-node/input scope remains planned.
+It dispatches Session actions and never scans pixels. Node-scope commands now share this action; specialized chart controls remain planned.
 
 `plugins/compositing/src/curves.rs` owns bounded cold channel-curve interpolation
 and the independent optional Curves export. `src/plugins/native_curves.rs`

@@ -1568,5 +1568,11 @@
   "Revision": "리비전",
   "Histogram snapshots use published composite or raw layer pixels, not the local curve draft.": "히스토그램은 적용된 합성 이미지 또는 원본 레이어 픽셀을 사용하며 로컬 곡선 초안은 포함하지 않습니다.",
   "Reset Channel": "채널 초기화",
-  "Channels": "채널"
+  "Channels": "채널",
+  "Graph View": "그래프 보기",
+  "Node ID": "노드 ID",
+  "Image Port": "이미지 포트",
+  "Input Index": "입력 인덱스",
+  "Document Identity": "문서 식별자",
+  "Document Revision": "문서 리비전"
 }

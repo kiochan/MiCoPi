@@ -40,8 +40,43 @@ def commands(*, negative=False):
         parameters=dict(source='layer', layer_id=1, max_samples=4))], edges=[]))
     p.add('dry', 'workflow.validate')
     p.add('run', 'workflow.run', atomic=True)
+    p.add('node-new', 'canvas.new', width=4, height=4)
+    p.add('node-fill', 'layer.fill_color', color='#204060')
+    graph = dict(enabled=True, linked=True, nodes=[
+        dict(id=11, kind='layer', index=0, position=[0, 0]),
+        dict(id=22, node_type='compositing.filter', kind='filter', filter='invert', amount=1, position=[200, 0]),
+        dict(id=33, kind='output', position=[400, 0])], edges=[
+        dict(**{'from': 11}, to=22, input=0), dict(**{'from': 22}, to=33, input=0)])
+    p.add('node-graph', 'graph.set', graph=graph)
+    p.add('node-before', 'canvas.state')
+    for key, view, node, port in [('node-input', 'source', 22, 'input'),
+                                  ('node-output', 'source', 22, 'output')]:
+        add_observation(p, key, view, node, port)
+    p.add('node-after', 'canvas.state')
+    p.add('node-disable', 'graph.set', graph=dict(graph, enabled=False))
+    p.add('disabled-before', 'canvas.state')
+    add_observation(p, 'disabled-source', 'source', 22, 'output')
+    add_observation(p, 'disabled-actual', 'actual',
+                    {'$ref': 'read#/result/histogram_views/actual/nodes/1/id'}, 'output')
+    p.add('disabled-after', 'canvas.state')
+    if negative:
+        p.add('node-stale-before', 'canvas.state')
+        p.add('node-stale', 'histogram.query', error='histogram_stale', source='node',
+              graph_view='source', node_id=22, port='output', document_identity=1, document_revision=0)
+        p.add('node-stale-after', 'canvas.state')
     p.add('verify', 'replay.verify')
     return p
+
+
+def add_observation(plan, key, view, node, port):
+    args = dict(source='node', graph_view=view, node_id=node, port=port, max_samples=4,
+                document_identity={'$ref': 'read#/result/document_identity'},
+                document_revision={'$ref': 'read#/result/revision'})
+    if port == 'input':
+        args['input_index'] = 0
+    plan.add(key, 'pipeline.run', atomic=True, steps=[
+        dict(id='read', action='graph.read', args={}),
+        dict(id='sample', action='histogram.query', args=args)])
 
 
 def validate(values, plan):
@@ -61,6 +96,30 @@ def validate(values, plan):
         assert actual['rgb'] == [count if i in [32, 64, 96] else 0 for i in range(256)]
         # Document identities are session-local, while counts and sample grids
         # are deterministic across transports.
+        histograms[key] = {k: v for k, v in actual.items() if k not in ['document_identity', 'revision']}
+    assert at('node-before') == at('node-after')
+    assert at('disabled-before') == at('disabled-after')
+    if 'node-stale' in plan.positions:
+        assert at('node-stale-before') == at('node-stale-after')
+    for key, expected, enabled, view in [
+            ('node-input', [32, 64, 96], True, 'source'),
+            ('node-output', [223, 191, 159], True, 'source'),
+            ('disabled-source', [223, 191, 159], False, 'source'),
+            ('disabled-actual', [32, 64, 96], True, 'actual')]:
+        report = at(key)
+        assert report['ok'], (key, report)
+        read = report['results']['read']['result']
+        actual = report['results']['sample']['result']
+        assert actual['source'] == 'node' and actual['graph_view'] == view
+        assert actual['document_identity'] == read['document_identity']
+        assert actual['revision'] == read['revision']
+        assert actual['graph_enabled'] is enabled and not actual['exact']
+        assert actual['sampled_pixels'] == actual['nontransparent_pixels'] == 4
+        assert actual['port'] == ('input' if key == 'node-input' else 'output')
+        if key == 'disabled-actual':
+            assert read['histogram_views']['actual']['nodes'][1]['kind'] == 'output'
+        for channel, byte in zip(['red', 'green', 'blue'], expected):
+            assert actual[channel] == [4 if i == byte else 0 for i in range(256)], key
         histograms[key] = {k: v for k, v in actual.items() if k not in ['document_identity', 'revision']}
     empty = at('empty-composite')
     assert empty['nontransparent_pixels'] == 0 and empty['ignored_transparent_pixels'] == 16

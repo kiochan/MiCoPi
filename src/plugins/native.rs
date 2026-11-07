@@ -952,6 +952,20 @@ impl NativePlugin {
     }
 }
 impl crate::engine::graph::Renderer for NativePlugin {
+    fn supports_histogram_plan(&self) -> bool {
+        NativePlugin::supports_histogram_plan(self)
+    }
+    fn histogram_plan(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        luts: &[abi::CompositeLut],
+        request: abi::HistogramRequest,
+    ) -> Result<abi::HistogramResult, String> {
+        NativePlugin::histogram_plan(self, nodes, layers, masks, luts, request)
+            .map_err(|e| e.to_string())
+    }
     fn supports_curves(&self) -> bool {
         self.supports_curves_preparation() && self.supports_curves_rendering()
     }

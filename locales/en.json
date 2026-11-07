@@ -1568,5 +1568,11 @@
   "Revision": "Revision",
   "Histogram snapshots use published composite or raw layer pixels, not the local curve draft.": "Histogram snapshots use published composite or raw layer pixels, not the local curve draft.",
   "Reset Channel": "Reset Channel",
-  "Channels": "Channels"
+  "Channels": "Channels",
+  "Graph View": "Graph View",
+  "Node ID": "Node ID",
+  "Image Port": "Image Port",
+  "Input Index": "Input Index",
+  "Document Identity": "Document Identity",
+  "Document Revision": "Document Revision"
 }

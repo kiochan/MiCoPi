@@ -1,10 +1,10 @@
 # Documentation
 
 See [Histograms](histograms.md) for bounded native color queries through Session,
-nodes and MCP, with shared manual chart overlays; per-node/input scopes remain planned.
+nodes and MCP, with shared manual chart overlays; fenced node-scope commands are implemented in source, pending CI; specialized node charts remain planned.
 
 The optional [prepared-plan histogram foundation](histogram-plan.md) evaluates a
-bounded native sample grid without an image copy. Node-scope integration remains planned.
+bounded native sample grid without an image copy. Published-node command integration is implemented in source; node-aware chart controls remain planned.
 
 See [Levels](levels.md) for typed source effects, affect-below adjustments and
 cached native rendering.

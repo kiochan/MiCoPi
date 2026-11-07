@@ -4,7 +4,8 @@
 
 The optional complete 24-byte [prepared-plan tail](histogram-plan.md) extends the
 raw sampler prefix with bounded image-plan observations. Old 16-byte providers
-remain compatible. Public node-scope action/UI integration is still planned.
+remain compatible. Fenced node-scope actions now use it through the active renderer; specialized
+node chart controls remain planned and runtime verification is pending.
 
 Optional `micopi_histogram_v1` returns a complete 16-byte `HistogramApi` with
 version/size and the mandatory synchronous `sample` callback at offset 8. Missing

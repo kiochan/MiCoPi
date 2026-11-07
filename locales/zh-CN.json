@@ -1568,5 +1568,11 @@
   "Revision": "修订号",
   "Histogram snapshots use published composite or raw layer pixels, not the local curve draft.": "直方图快照取自已应用的合成画面或图层原始像素，不包含本地曲线草稿。",
   "Reset Channel": "重置通道",
-  "Channels": "通道"
+  "Channels": "通道",
+  "Graph View": "图视图",
+  "Node ID": "节点 ID",
+  "Image Port": "图像端口",
+  "Input Index": "输入端口序号",
+  "Document Identity": "文档身份",
+  "Document Revision": "文档修订号"
 }

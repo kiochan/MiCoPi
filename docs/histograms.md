@@ -4,7 +4,8 @@
 Session, command search, schema-derived workflow nodes, JSONL and MCP. It uses
 the optional native compositor histogram capability. This source increment
 awaits complete CI verification; shared artist-facing charts are implemented in
-source. Per-node/input histograms remain planned.
+source. Fenced node input/output queries are implemented in source; specialized
+node chart controls and runtime verification remain pending.
 
 ```json
 {"action":"histogram.query","args":{"source":"composite","max_samples":65536}}
@@ -18,8 +19,8 @@ source. Per-node/input histograms remain planned.
 ignoring that layer's visibility, opacity, filters and owned mask. A composite
 request rejects `layer_id`; a raw request never defaults to the active layer or
 expands links/multi-selection. Pixel/position locks permit this immutable read.
-Selections are not implicit inputs. The query does not describe the image below
-an adjustment or the input of an arbitrary source node.
+Selections are not implicit inputs. These two scopes do not describe an effect's
+input; use explicit node scope below for a published graph image port.
 
 The default and maximum budget is **65,536 pixels**. Smaller images are scanned
 completely. Larger images sample a deterministic centered rectangular grid with
@@ -70,10 +71,54 @@ raw scope, contact rejection and unchanged document/history/events. The tiny
 stress workload. These runtime checks await CI. Sampling bounds are not latency
 measurements; reviewed visual captures and physical-device checks remain separate.
 
+## Published node inputs and outputs
+
+Use `source=node` with explicit `graph_view` (`source` or `actual`), `node_id`,
+`port` (`input` or `output`), `document_identity` and `document_revision`.
+Input queries require `input_index`; output queries forbid it. `layer_id` is
+forbidden, and node selectors are forbidden in composite/raw-layer scopes.
+Discover graphs and fences together through `graph.read.histogram_views`.
+`graph.read` and `graph.catalog` report `renderer_histogram_plan`.
+
+- **source** evaluates the committed Source Layer Filters/free graph declarations,
+  even if disabled. Local layer visibility/opacity apply, while generated owned
+  masks, adjustments and ancestor gates are absent. This is a declaration
+  observation, not an assertion that the effect is currently visible.
+- **actual** evaluates the current composition graph, including group gates,
+  Pass Through, owned effective A8 masks and filter bypass. A disabled flat source
+  materializes its plain layer stack. Hidden/bypassed nodes omitted by generation
+  are unavailable; do not reuse their source-view IDs in this view.
+
+IDs belong to the selected graph at the captured document/revision. Stale fences
+reject with `histogram_stale`; absent native sampling reports
+`histogram_plan_unavailable`. Missing nodes/connections and coverage ports report
+`histogram_node`. A node's input query evaluates its connected predecessor;
+coverage inputs/outputs cannot be silently interpreted as color. Disconnected
+incomplete branches reject when selected. Existing full declaration/capability
+admission remains in place, including disabled definitions.
+
+Results echo the requested view/node/port, optional input index,
+`resolved_node_id`, original `graph_enabled` and `evaluation`
+(`source_declaration` or `actual_plan`), alongside normal counts and fences.
+Queries redirect a private output and borrow immutable full-canvas planes. Source
+storage order keeps LUT indices stable. Matching intent borrows existing prepared
+tables; source/actual differences may prepare bounded private tables. Actual mask
+queries may refresh existing derived coverage caches. No RGBA surface or row
+buffer is allocated, no document graph/cache is replaced, and no Undo/replay
+outcome or revision is published. Active contacts remain rejected.
+
+The [tiny example](../examples/automation/node-histograms.jsonl) reads identity and
+revision in a pipeline, then binds them to before/after queries. Schema-generated
+workflow nodes can wire the same `graph.read` outputs. Editing a workflow does
+not execute it. These are published-graph observations, never local curve drafts.
+Session, masks/Pass Through, stable-cache, stale/port/contact and JSONL/MCP tests
+are authored; runtime verification and specialized chart integration remain pending.
+
 ## Artist-facing inspection
 
-The separate [prepared-plan native sampler](histogram-plan.md) is a prerequisite
-for node observations. It does not yet extend this action's source choices.
+The [prepared-plan native sampler](histogram-plan.md) also serves node-scope API
+queries. The specialized inspector's source picker still offers composite/raw
+layers; a node-aware chart picker remains planned.
 
 Expand **Histogram** above the image graph or in built-in Levels/Curves adjustment
 properties. Choose **Visible Composite** or **Raw Active Layer**, set Maximum
@@ -99,7 +144,8 @@ Snapshots describe the published composite or raw pixels, **not a local curve
 or Levels draft**, nor the arbitrary input below that effect. Source/exactness
 captions remain visible; hover for full source ID, count and revision. A graph
 Apply/Live Preview invalidates the previous snapshot. Per-node/input scope is a
-separate planned renderer contract, not inferred from node placement.
+separate explicit API contract below, not inferred from chart placement. Node-aware
+chart controls remain planned.
 
 The snapshot uses four fixed 256-bin arrays behind one shared `Arc`, with no
 retained image copy. Source and budget are temporary inspection controls, not

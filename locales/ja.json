@@ -1568,5 +1568,11 @@
   "Revision": "リビジョン",
   "Histogram snapshots use published composite or raw layer pixels, not the local curve draft.": "ヒストグラムは適用済みの合成画像またはレイヤーの生ピクセルを参照し、ローカルのカーブ下書きは含みません。",
   "Reset Channel": "チャンネルをリセット",
-  "Channels": "チャンネル"
+  "Channels": "チャンネル",
+  "Graph View": "グラフ表示",
+  "Node ID": "ノード ID",
+  "Image Port": "画像ポート",
+  "Input Index": "入力インデックス",
+  "Document Identity": "ドキュメント識別子",
+  "Document Revision": "ドキュメントのリビジョン"
 }

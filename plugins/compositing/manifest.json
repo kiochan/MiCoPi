@@ -65,6 +65,36 @@
           "renderer_channel_levels": {
             "type": "boolean",
             "description": "The loaded compositor negotiated channel Levels preparation and three-table rendering."
+          },
+          "renderer_histogram_plan": {
+            "type": "boolean",
+            "description": "The active document renderer supports bounded prepared-plan histogram observations."
+          },
+          "histogram_views": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "object",
+                "description": "Published source declarations, including disabled effects; IDs require the current document/revision."
+              },
+              "actual": {
+                "type": "object",
+                "description": "Actual composition, including disabled flat-filter bypass, masks and group gates. IDs belong only to this view/revision."
+              }
+            },
+            "required": [
+              "source",
+              "actual"
+            ],
+            "additionalProperties": false
+          },
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
           }
         },
         "required": [
@@ -72,7 +102,11 @@
           "renderer_mix",
           "renderer_levels",
           "renderer_curves",
-          "renderer_channel_levels"
+          "renderer_channel_levels",
+          "renderer_histogram_plan",
+          "histogram_views",
+          "document_identity",
+          "revision"
         ]
       }
     },
@@ -139,6 +173,10 @@
           "renderer_channel_levels": {
             "type": "boolean",
             "description": "The loaded compositor negotiated channel Levels preparation and three-table rendering."
+          },
+          "renderer_histogram_plan": {
+            "type": "boolean",
+            "description": "The active document renderer supports bounded prepared-plan histogram observations."
           }
         },
         "required": [
@@ -146,7 +184,8 @@
           "renderer_mix",
           "renderer_levels",
           "renderer_curves",
-          "renderer_channel_levels"
+          "renderer_channel_levels",
+          "renderer_histogram_plan"
         ]
       }
     },
@@ -185,7 +224,8 @@
             "type": "string",
             "enum": [
               "composite",
-              "layer"
+              "layer",
+              "node"
             ]
           },
           "layer_id": {
@@ -290,6 +330,45 @@
               "minimum": 0,
               "maximum": 196608
             }
+          },
+          "graph_view": {
+            "type": "string",
+            "enum": [
+              "source",
+              "actual"
+            ]
+          },
+          "node_id": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "resolved_node_id": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4294967295
+          },
+          "graph_enabled": {
+            "type": "boolean"
+          },
+          "evaluation": {
+            "type": "string",
+            "enum": [
+              "source_declaration",
+              "actual_plan"
+            ]
+          },
+          "port": {
+            "type": "string",
+            "enum": [
+              "input",
+              "output"
+            ]
+          },
+          "input_index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
           }
         },
         "required": [
@@ -368,12 +447,62 @@
             "description": "Currently available modes, including the CPU Normal fallback; known but unsupported modes remain in graph.catalog.blend_modes."
           },
           "renderer_mix": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "The loaded compositor supports premultiplied backdrop mixing."
+          },
+          "renderer_levels": {
+            "type": "boolean",
+            "description": "The loaded compositor supports scalar Levels preparation/rendering."
+          },
+          "renderer_curves": {
+            "type": "boolean",
+            "description": "The loaded compositor supports Curves preparation/rendering."
+          },
+          "renderer_channel_levels": {
+            "type": "boolean",
+            "description": "The loaded compositor negotiated channel Levels preparation and three-table rendering."
+          },
+          "renderer_histogram_plan": {
+            "type": "boolean",
+            "description": "The active document renderer supports bounded prepared-plan histogram observations."
+          },
+          "histogram_views": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "object",
+                "description": "Published source declarations, including disabled effects; IDs require the current document/revision."
+              },
+              "actual": {
+                "type": "object",
+                "description": "Actual composition, including disabled flat-filter bypass, masks and group gates. IDs belong only to this view/revision."
+              }
+            },
+            "required": [
+              "source",
+              "actual"
+            ],
+            "additionalProperties": false
+          },
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
           }
         },
         "required": [
           "available_blend_modes",
-          "renderer_mix"
+          "renderer_mix",
+          "renderer_levels",
+          "renderer_curves",
+          "renderer_channel_levels",
+          "renderer_histogram_plan",
+          "histogram_views",
+          "document_identity",
+          "revision"
         ]
       }
     }

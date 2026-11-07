@@ -8,8 +8,9 @@ manual cached histogram overlays are implemented in source; reviewed screenshots
 remain planned.
 
 Bounded [histogram queries](histograms.md) are available through shared commands;
-manual overlays share explicit composite/raw snapshots. Per-node/input scope
-remains planned; published snapshots do not represent the local curve draft.
+manual overlays share explicit composite/raw snapshots. Fenced node input/output
+queries now serve automation; specialized chart source selection remains planned.
+Published snapshots do not represent the local curve draft.
 
 Insert **Curves** through a source node's **Insert Filter** menu or a free graph's
 node menu. Built-in nodes and adjustment properties share the curve editor;

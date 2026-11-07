@@ -30,6 +30,8 @@ mod levels_adjustment_tests;
 #[cfg(test)]
 mod levels_tests;
 mod mask_boundary;
+#[cfg(test)]
+mod node_histogram_tests;
 pub mod pipeline;
 pub(crate) mod png_io;
 mod presentation_captures;

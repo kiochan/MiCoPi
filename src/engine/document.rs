@@ -1902,6 +1902,9 @@ mod blend_modes;
 mod canvas_editing;
 #[path = "group_editing.rs"]
 mod group_editing;
+#[path = "histogram_observation.rs"]
+mod histogram_observation;
+pub use histogram_observation::{HistogramObservation, HistogramPort, HistogramView};
 #[path = "group_merge.rs"]
 mod group_merge;
 #[path = "layer_editing.rs"]

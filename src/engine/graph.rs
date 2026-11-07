@@ -347,6 +347,19 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 pub trait Renderer {
+    fn supports_histogram_plan(&self) -> bool {
+        false
+    }
+    fn histogram_plan(
+        &self,
+        _nodes: &[abi::CompositeNode],
+        _layers: &[abi::CompositeLayer],
+        _masks: &[abi::CompositeMask],
+        _luts: &[abi::CompositeLut],
+        _request: abi::HistogramRequest,
+    ) -> Result<abi::HistogramResult, String> {
+        Err("The compositor does not support histogram plan sampling".into())
+    }
     fn supports_levels_channels(&self) -> bool {
         false
     }
