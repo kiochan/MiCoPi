@@ -2,13 +2,14 @@
 
 `src/plugins/native_levels.rs` negotiates and caches optional native Levels
 preparation, validates host arguments and publishes successful byte tables.
-Rendering and document effects remain separate integration work.
+It also admits borrowed prepared-table rendering through the shared renderer.
 
 `src/engine/levels.rs` owns typed five-field Levels intent and cold preparation
 through the shared Renderer contract. Derived LUTs are borrowed render inputs,
-not serialized intent. Document plan caching and effect registration remain pending.
+not serialized intent. `group_editing.rs` installs derived caches with document plans.
 `PreparedLevelsPlan` provides a bounded reusable cache with transactional rebuilds
-and retained renderer lifetime; installation into document graphs remains pending.
+and retained renderer lifetime. `compositing.levels` registers the source-node
+schema in its feature manifest; adjustment-layer integration remains pending.
 
 The repository separates executable source, plugin packages, examples, documentation and local output. Paths that participate in the runtime contract remain stable; documentation and examples are grouped for navigation.
 

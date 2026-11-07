@@ -1,5 +1,8 @@
 # Documentation
 
+See [Levels Source Nodes](levels.md) for typed source effects, cached native
+rendering and the remaining adjustment-layer integration.
+
 The technical documentation is maintained in English. The project overview is also available in [Chinese](../README.zh.md), [Japanese](../README.ja.md) and [Korean](../README.ko.md).
 
 | Start here | What it explains |

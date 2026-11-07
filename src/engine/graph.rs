@@ -13,7 +13,8 @@ pub fn schema() -> serde_json::Value {
         "enabled":{"type":"boolean"},"linked":{"type":"boolean","default":false,"description":"A validated layer-stack chain; structural layer edits keep its branches synchronized"},
         "nodes":{"type":"array","maxItems":64,"items":{"type":"object","required":["id","position","kind"],"additionalProperties":false,"properties":{
             "node_type":{"type":"string"},"id":id,"position":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-1000000,"maximum":1000000}},
-            "kind":{"type":"string","enum":["layer","filter","blend","mix","output","transparent","mask_source","apply_mask","masked_mix"]},"index":{"type":"integer","minimum":0,"maximum":15},
+            "kind":{"type":"string","enum":["layer","filter","levels","blend","mix","output","transparent","mask_source","apply_mask","masked_mix"]},"index":{"type":"integer","minimum":0,"maximum":15},
+            "parameters":super::levels::Levels::schema(),
             "mask_id":{"type":"integer","minimum":1,"maximum":4294967295u64},
             "filter":{"type":"string","enum":Filter::ALL},"amount":{"type":"number","minimum":-1,"maximum":1},
             "mode":{"type":"string","enum":BlendMode::ALL},"opacity":{"type":"number","minimum":0,"maximum":1}
@@ -256,6 +257,7 @@ pub enum NodeKind {
     Transparent,
     Layer { index: usize },
     Filter { filter: Filter, amount: f32 },
+    Levels { parameters: super::levels::Levels },
     Blend { mode: BlendMode, opacity: f32 },
     Mix { opacity: f32 },
     MaskSource { mask_id: u64 },
@@ -303,6 +305,7 @@ impl NodeKind {
             Self::Transparent => "Transparent".into(),
             Self::Layer { index } => format!("Layer {}", index + 1),
             Self::Filter { filter, .. } => filter.title().into(),
+            Self::Levels { .. } => "Levels".into(),
             Self::Blend { mode, .. } => format!("Blend · {}", mode.title()),
             Self::Mix { .. } => "Backdrop Mix".into(),
             Self::MaskSource { mask_id } => format!("Mask #{mask_id}"),
@@ -424,6 +427,20 @@ pub trait Renderer {
     }
 }
 impl Graph {
+    pub fn levels_intents(&self) -> Vec<super::levels::Levels> {
+        self.nodes
+            .iter()
+            .filter_map(|node| match node.data {
+                NodeKind::Levels { parameters } => Some(parameters),
+                _ => None,
+            })
+            .collect()
+    }
+    pub fn has_levels(&self) -> bool {
+        self.nodes
+            .iter()
+            .any(|n| matches!(n.data, NodeKind::Levels { .. }))
+    }
     pub fn from_layers(layers: &[super::Layer]) -> Self {
         let mut graph = Self {
             enabled: true,
@@ -538,6 +555,7 @@ impl Graph {
                 return Err("Duplicate node ID or invalid position".into());
             }
             match n.data {
+                NodeKind::Levels { parameters } => parameters.validate()?,
                 NodeKind::Layer { index } if index >= layer_count => {
                     return Err("Node references a missing layer".into())
                 }
@@ -671,6 +689,16 @@ impl Graph {
                         b: 0,
                         mode: filter as u32,
                         amount,
+                    },
+                    NodeKind::Levels { .. } => abi::CompositeNode {
+                        kind: 9,
+                        a: input(0),
+                        b: 0,
+                        mode: self.nodes[..i]
+                            .iter()
+                            .filter(|n| matches!(n.data, NodeKind::Levels { .. }))
+                            .count() as u32,
+                        amount: 1.,
                     },
                     NodeKind::Blend { mode, opacity } => abi::CompositeNode {
                         kind: 2,

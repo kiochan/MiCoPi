@@ -236,16 +236,17 @@ impl Document {
                 .as_ref()
                 .ok_or("Compositor DLL is not loaded")?;
             if self.has_raster_masks() {
-                renderer.render_masked(
+                renderer.render_prepared(
                     &self.plan,
                     &layers,
                     &descriptors,
+                    self.levels_plan.as_ref().map_or(&[], |p| p.tables()),
                     self.width as u32,
                     self.height as u32,
                     &mut output,
                 )?;
             } else {
-                renderer.render(
+                renderer.render_prepared(
                     if self.has_mixed_stack()
                         || self.graph.enabled && (!self.graph.linked || self.graph.has_filters())
                     {
@@ -254,6 +255,8 @@ impl Document {
                         &[]
                     },
                     &layers,
+                    &[],
+                    self.levels_plan.as_ref().map_or(&[], |p| p.tables()),
                     self.width as u32,
                     self.height as u32,
                     &mut output,

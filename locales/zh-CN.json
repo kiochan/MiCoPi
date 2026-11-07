@@ -1518,5 +1518,11 @@
   "Rotate Brush Tip Counterclockwise (15°)": "逆时针旋转笔尖（15°）",
   "Round tips flatten into ellipses; square tips flatten into rectangles.": "圆形笔尖压扁后呈椭圆形，方形笔尖压扁后呈长方形。",
   "Width of the short side compared with the long side, from 25% to 100%.": "短边相对于长边的宽度比例，范围为 25% 至 100%。",
-  "Rotate the tip clockwise and keep its angle fixed as you draw.": "顺时针旋转笔尖，绘画时角度保持固定。"
+  "Rotate the tip clockwise and keep its angle fixed as you draw.": "顺时针旋转笔尖，绘画时角度保持固定。",
+  "Levels": "色阶",
+  "Input Black": "输入黑场",
+  "Input White": "输入白场",
+  "Midtone Gamma": "中间调伽马",
+  "Output Black": "输出黑场",
+  "Output White": "输出白场"
 }

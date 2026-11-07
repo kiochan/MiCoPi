@@ -116,6 +116,7 @@ impl Definition {
                 let fields: &[&str] = match operation.as_str() {
                     "layer" => &["index"],
                     "filter" => &["filter", "amount"],
+                    "levels" => &["parameters"],
                     "blend" => &["mode", "opacity"],
                     "mix" => &["opacity"],
                     "output" | "transparent" => &[],
@@ -137,6 +138,7 @@ impl Definition {
                 value["kind"] = json!(operation);
                 let kind: NodeKind = serde_json::from_value(value).map_err(|e| e.to_string())?;
                 match kind {
+                    NodeKind::Levels { parameters } => parameters.validate()?,
                     NodeKind::Layer { index } if index >= 16 => {
                         return Err("Default layer index is out of range".into())
                     }

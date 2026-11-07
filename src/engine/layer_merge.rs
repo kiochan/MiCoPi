@@ -58,9 +58,12 @@ impl Document {
             origin_x: 0,
             origin_y: 0,
         };
-        renderer.render(
+        let levels = self.prepare_levels_cache(&graph, true)?;
+        renderer.render_prepared(
             &plan,
             &layers,
+            &[],
+            levels.as_ref().map_or(&[], |p| p.tables()),
             self.width as u32,
             self.height as u32,
             &mut output,

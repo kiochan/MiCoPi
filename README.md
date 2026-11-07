@@ -1,5 +1,9 @@
 # MiCoPi
 
+[Levels source nodes](docs/levels.md) now share linked/free graphs, cached native
+rendering, Undo, projects and verified outcomes. CI validation is pending;
+Levels adjustment layers and dedicated controls remain planned.
+
 [English](README.md) · [简体中文](README.zh.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 
 A small Rust painting studio for anime and manga illustrators, focused on responsive pen input and an extensible, AI-ready execution core.

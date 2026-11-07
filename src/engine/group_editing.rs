@@ -5,6 +5,7 @@ use serde_json::{json, Value};
 
 pub(super) struct GroupPlan {
     pub plan: Vec<micopi_plugin_api::CompositeNode>,
+    pub levels: Option<Arc<crate::engine::levels::PreparedLevelsPlan>>,
     pub graph: Option<Graph>,
     pub visible: [bool; MAX_LAYERS],
     pub nodes: BTreeMap<u64, u32>,
@@ -12,6 +13,46 @@ pub(super) struct GroupPlan {
     pub masked_layers: [bool; MAX_LAYERS],
 }
 impl Document {
+    pub(crate) fn refresh_renderer_plan(&mut self) -> Result<(), String> {
+        self.refresh_group_cache()
+    }
+    pub fn ensure_levels_capability(&self, graph: &Graph, require: bool) -> Result<(), String> {
+        for intent in graph.levels_intents() {
+            intent.validate()?;
+        }
+        if require
+            && graph.has_levels()
+            && self.renderer.as_ref().is_none_or(|r| !r.supports_levels())
+        {
+            return Err("The compositor does not support Levels rendering".into());
+        }
+        Ok(())
+    }
+    pub(super) fn prepare_levels_cache(
+        &self,
+        graph: &Graph,
+        require: bool,
+    ) -> Result<Option<Arc<crate::engine::levels::PreparedLevelsPlan>>, String> {
+        self.ensure_levels_capability(graph, require)?;
+        if !graph.has_levels() {
+            return Ok(None);
+        }
+        let Some(renderer) = self.renderer.as_ref().filter(|r| r.supports_levels()) else {
+            return Ok(None);
+        };
+        let intents = graph.levels_intents();
+        if let Some(old) = &self.levels_plan {
+            if old.matches(renderer, &intents) {
+                return Ok(Some(old.clone()));
+            }
+            let mut next = old.as_ref().clone();
+            next.rebuild(renderer.clone(), &intents)?;
+            Ok(Some(Arc::new(next)))
+        } else {
+            crate::engine::levels::PreparedLevelsPlan::new(renderer.clone(), &intents)
+                .map(|p| Some(Arc::new(p)))
+        }
+    }
     pub fn has_groups(&self) -> bool {
         self.groups.as_ref().is_some_and(|t| !t.groups.is_empty())
     }
@@ -38,6 +79,7 @@ impl Document {
         Ok(())
     }
     pub fn ensure_graph_renderer(&self) -> Result<(), String> {
+        self.ensure_levels_capability(&self.graph, true)?;
         if self.has_raster_masks() || self.has_adjustments() {
             self.validate_mask_storage()?;
             // Restored metadata can be inspected without a DLL, but editing or
@@ -167,6 +209,7 @@ impl Document {
         require: bool,
     ) -> Result<GroupPlan, String> {
         validate_layer_links(metadata)?;
+        self.ensure_levels_capability(graph, require)?;
         if require {
             self.ensure_blend_modes(graph, groups, modes)?;
             self.ensure_mix_capability(graph, groups)?;
@@ -228,6 +271,7 @@ impl Document {
                 tree.compile_stack_details(graph, &ids, modes, opacities, masks, false)?;
             Ok(GroupPlan {
                 plan: effective.compile_with_masks(ids.len(), &mask_ids)?,
+                levels: self.prepare_levels_cache(&effective, require)?,
                 graph: Some(effective),
                 visible: tree.effective_visibility(&ids),
                 nodes,
@@ -239,6 +283,7 @@ impl Document {
                 super::mask_composition::masked_flat_graph(graph, &ids, modes, opacities, masks)?;
             Ok(GroupPlan {
                 plan: effective.compile_with_masks(ids.len(), &mask_ids)?,
+                levels: self.prepare_levels_cache(&effective, require)?,
                 graph: Some(effective),
                 visible: [true; MAX_LAYERS],
                 nodes: BTreeMap::new(),
@@ -248,6 +293,7 @@ impl Document {
         } else {
             Ok(GroupPlan {
                 plan: graph.compile(ids.len())?,
+                levels: self.prepare_levels_cache(graph, require)?,
                 graph: None,
                 visible: [true; MAX_LAYERS],
                 nodes: BTreeMap::new(),
@@ -258,6 +304,7 @@ impl Document {
     }
     pub(super) fn install_group_plan(&mut self, prepared: GroupPlan) {
         self.plan = prepared.plan;
+        self.levels_plan = prepared.levels;
         self.effective_graph = prepared.graph;
         self.group_visibility = prepared.visible;
         self.group_nodes = prepared.nodes;

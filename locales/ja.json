@@ -1518,5 +1518,11 @@
   "Rotate Brush Tip Counterclockwise (15°)": "ブラシ先端を反時計回りに回転（15°）",
   "Round tips flatten into ellipses; square tips flatten into rectangles.": "丸型の先端は楕円形に、正方形の先端は長方形に扁平化します。",
   "Width of the short side compared with the long side, from 25% to 100%.": "長辺に対する短辺の幅の比率です。25%から100%まで設定できます。",
-  "Rotate the tip clockwise and keep its angle fixed as you draw.": "先端を時計回りに回転し、描画中もその角度を保ちます。"
+  "Rotate the tip clockwise and keep its angle fixed as you draw.": "先端を時計回りに回転し、描画中もその角度を保ちます。",
+  "Levels": "レベル補正",
+  "Input Black": "入力の黒点",
+  "Input White": "入力の白点",
+  "Midtone Gamma": "中間調ガンマ",
+  "Output Black": "出力の黒点",
+  "Output White": "出力の白点"
 }

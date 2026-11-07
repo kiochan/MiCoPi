@@ -392,6 +392,17 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
                     ui.label(tr(filter.title()));
                     ui.label(format!("{amount:.2}"));
                 }
+                NodeKind::Levels { parameters } => {
+                    ui.label(tr("Levels"));
+                    ui.label(format!(
+                        "{} / {:.2} / {}",
+                        parameters.input_black, parameters.gamma, parameters.input_white
+                    ));
+                    ui.label(format!(
+                        "{} / {}",
+                        parameters.output_black, parameters.output_white
+                    ));
+                }
                 NodeKind::Blend { mode, opacity } => {
                     ui.label(tr(mode.title()));
                     if !self.names.contains_key(&snarl[id].id) {

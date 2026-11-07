@@ -17,6 +17,8 @@ pub mod codec;
 pub(crate) mod creation;
 #[cfg(test)]
 mod layer_arrangement_tests;
+#[cfg(test)]
+mod levels_tests;
 mod mask_boundary;
 pub mod pipeline;
 pub(crate) mod png_io;

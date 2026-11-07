@@ -683,7 +683,9 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
         }
         let mut bounds = Rect::NOTHING;
         for (_, pos, node) in snarl.nodes_pos_ids() {
-            let height = if self.linked && matches!(node.data, NodeKind::Layer { .. }) {
+            let height = if matches!(node.data, NodeKind::Levels { .. }) {
+                self.width * 4. + 96.
+            } else if self.linked && matches!(node.data, NodeKind::Layer { .. }) {
                 self.width * 1.4 + 24.
             } else {
                 self.width + 24.
@@ -940,15 +942,15 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
         if self.linked {
             if matches!(
                 snarl[id].data,
-                NodeKind::Layer { .. } | NodeKind::Filter { .. }
+                NodeKind::Layer { .. } | NodeKind::Filter { .. } | NodeKind::Levels { .. }
             ) {
                 ui.menu_button(tr("Insert Filter"), |ui| {
                     if let Some(defs) = self.definitions {
-                        for def in defs.values().filter(|d| matches!(&d.binding, crate::plugins::nodes::Binding::Image { operation, .. } if operation == "filter")) {
+                        for def in defs.values().filter(|d| matches!(&d.binding, crate::plugins::nodes::Binding::Image { operation, .. } if operation == "filter" || operation == "levels")) {
                             if ui.button(tr(&def.title)).clicked() {
-                                if let crate::plugins::nodes::Binding::Image { defaults, .. } = &def.binding {
+                                if let crate::plugins::nodes::Binding::Image { defaults, operation } = &def.binding {
                                     let mut data = defaults.clone();
-                                    data["kind"] = serde_json::json!("filter");
+                                    data["kind"] = serde_json::json!(operation);
                                     if let Ok(kind) = serde_json::from_value(data) {
                                         let pos = snarl.get_node_info(id).unwrap().pos + vec2(260., 0.);
                                         insert_filter(snarl, id, pos, kind, &def.id);
@@ -960,8 +962,10 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
                     }
                 });
             }
-            if matches!(snarl[id].data, NodeKind::Filter { .. })
-                && ui.button(tr("Delete Node")).clicked()
+            if matches!(
+                snarl[id].data,
+                NodeKind::Filter { .. } | NodeKind::Levels { .. }
+            ) && ui.button(tr("Delete Node")).clicked()
             {
                 remove_filter(snarl, id);
                 ui.close();
@@ -1128,7 +1132,15 @@ impl Editor {
             state.previous = Some(effect);
             state.edited = Some(Instant::now());
         }
+        let protected_contact = (self.session.stroke.active()
+            || self.session.pointer_checkpoint.is_some())
+            && (self.session.doc.graph.has_levels()
+                || state
+                    .snarl
+                    .nodes_ids_data()
+                    .any(|(_, n)| matches!(n.value.data, NodeKind::Levels { .. })));
         if state.preview
+            && !protected_contact
             && !conflict
             && state
                 .edited
@@ -1136,7 +1148,7 @@ impl Editor {
         {
             apply = true;
         }
-        if state.preview && state.edited.is_some() {
+        if state.preview && state.edited.is_some() && !protected_contact {
             ui.ctx().request_repaint_after(Duration::from_millis(100));
         }
         if apply && !conflict {

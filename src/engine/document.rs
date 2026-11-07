@@ -293,6 +293,7 @@ pub(crate) struct HistoryCheckpoint {
     redo: Vec<Edit>,
     identity: u64,
     renderer: Option<Arc<dyn Renderer>>,
+    levels_plan: Option<Arc<crate::engine::levels::PreparedLevelsPlan>>,
     stroke: Option<Edit>,
     last: Option<(f32, f32)>,
     last_brush: Option<Brush>,
@@ -396,6 +397,7 @@ pub struct Document {
     pub graph: Graph,
     pub(crate) renderer: Option<Arc<dyn Renderer>>,
     plan: Vec<micopi_plugin_api::CompositeNode>,
+    levels_plan: Option<Arc<crate::engine::levels::PreparedLevelsPlan>>,
     pub render_error: Option<String>,
     pub width: usize,
     pub height: usize,
@@ -439,6 +441,7 @@ impl Document {
             redo: self.redo.clone(),
             identity: self.identity,
             renderer: self.renderer.clone(),
+            levels_plan: self.levels_plan.clone(),
             stroke: self.stroke.clone(),
             last: self.last,
             last_brush: self.last_brush,
@@ -463,6 +466,7 @@ impl Document {
         self.redo = saved.redo;
         self.identity = saved.identity;
         self.renderer = saved.renderer;
+        self.levels_plan = saved.levels_plan;
         self.stroke = saved.stroke;
         self.last = saved.last;
         self.last_brush = saved.last_brush;
@@ -530,6 +534,7 @@ impl Document {
             replay_data: None,
             renderer: None,
             plan,
+            levels_plan: None,
             render_error: None,
             width,
             height,
@@ -700,6 +705,7 @@ impl Document {
             .max(self.layer_metadata.iter().map(|m| m.id).max().unwrap_or(0) + 1);
         self.workflow = state.workflow;
         self.graph = state.graph;
+        self.levels_plan = None;
         self.plan = self.graph.compile(self.layers.len()).unwrap_or_default();
         for (l, (visible, opacity, mode)) in self.layers.iter_mut().zip(state.layers) {
             l.visible = visible;
@@ -1002,7 +1008,7 @@ impl Document {
                             &mut pixels,
                         )
                     } else {
-                        self.renderer.as_ref().unwrap().render(
+                        self.renderer.as_ref().unwrap().render_prepared(
                             if self.has_mixed_stack()
                                 || self.graph.enabled
                                     && (!self.graph.linked || self.graph.has_filters())
@@ -1012,6 +1018,8 @@ impl Document {
                                 &[]
                             },
                             &layers[..self.layers.len()],
+                            &[],
+                            self.levels_plan.as_ref().map_or(&[], |p| p.tables()),
                             self.width as u32,
                             self.height as u32,
                             &mut pixels,
@@ -1839,6 +1847,7 @@ impl Document {
         // A legacy project did not opt into linked semantics. Preserve its exact metadata.
         doc.graph = Graph::default();
         doc.plan.clear();
+        doc.levels_plan = None;
         if &magic == b"MICOPI02" || &magic == b"MICOPI03" || &magic == b"MICOPI04" {
             let mut length = [0u8; 4];
             f.read_exact(&mut length)?;

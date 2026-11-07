@@ -386,6 +386,76 @@
         "required": [],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "compositing.levels",
+      "title": "Levels",
+      "category": "Image",
+      "binding": {
+        "kind": "image",
+        "operation": "levels",
+        "defaults": {
+          "parameters": {
+            "input_black": 0,
+            "input_white": 255,
+            "gamma": 1,
+            "output_black": 0,
+            "output_white": 255
+          }
+        }
+      },
+      "parameters_schema": {
+        "type": "object",
+        "properties": {
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "input_black": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "title": "Input Black"
+              },
+              "input_white": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "title": "Input White"
+              },
+              "gamma": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 10,
+                "title": "Midtone Gamma"
+              },
+              "output_black": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "title": "Output Black"
+              },
+              "output_white": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "title": "Output White"
+              }
+            },
+            "required": [
+              "input_black",
+              "input_white",
+              "gamma",
+              "output_black",
+              "output_white"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "parameters"
+        ],
+        "additionalProperties": false
+      }
     }
   ]
 }

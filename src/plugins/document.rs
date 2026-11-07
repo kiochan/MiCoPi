@@ -76,7 +76,10 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             let mut doc = codec::open(&path)?;
             let journal = crate::application::replay::read_embedded(&mut doc)?;
             doc.renderer = s.registry.renderer();
+            s.registry.validate_image_nodes(&doc.graph)?;
             super::adjustments::validate_document(&s.registry, &doc)?;
+            doc.refresh_renderer_plan()
+                .map_err(|e| ActionError::new("renderer_plan", e))?;
             doc.ensure_graph_renderer()
                 .map_err(|e| ActionError::new("renderer_missing", e))?;
             if let Some(graph) = s.workflow_stack.first() {

@@ -6,12 +6,16 @@ use std::sync::Arc;
 
 /// Cold, bounded rendering cache. A failed rebuild preserves the previous plan.
 /// Holding the renderer also holds the DLL while its callbacks may be used.
+#[derive(Clone)]
 pub struct PreparedLevelsPlan {
     provider: Arc<dyn Renderer>,
     intents: Vec<Levels>,
     tables: Vec<abi::CompositeLut>,
 }
 impl PreparedLevelsPlan {
+    pub fn matches(&self, provider: &Arc<dyn Renderer>, intents: &[Levels]) -> bool {
+        Arc::ptr_eq(&self.provider, provider) && self.intents == intents
+    }
     pub fn new(provider: Arc<dyn Renderer>, intents: &[Levels]) -> Result<Self, String> {
         Self::validate(intents)?;
         let tables = intents
@@ -96,6 +100,15 @@ impl Default for Levels {
     }
 }
 impl Levels {
+    pub fn schema() -> serde_json::Value {
+        serde_json::json!({"type":"object","properties":{
+            "input_black":{"type":"integer","minimum":0,"maximum":255},
+            "input_white":{"type":"integer","minimum":0,"maximum":255},
+            "gamma":{"type":"number","minimum":0.1,"maximum":10},
+            "output_black":{"type":"integer","minimum":0,"maximum":255},
+            "output_white":{"type":"integer","minimum":0,"maximum":255}},
+            "required":["input_black","input_white","gamma","output_black","output_white"],"additionalProperties":false})
+    }
     pub fn validate(self) -> Result<(), String> {
         if self.input_black >= self.input_white
             || !self.gamma.is_finite()

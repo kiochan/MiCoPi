@@ -5,7 +5,8 @@
 The bundled compositor exports optional `micopi_levels_v1`, with a 16-byte
 `LevelsApi` prefix and a complete 24-byte `LevelsApiRender` tail. ABI version 1
 provides synchronous `prepare` and optional `render` callbacks. This is a
-native prerequisite; the host does not yet register a Levels document effect.
+native interface used by the registered Levels source node. True Levels
+adjustment-layer ownership remains planned.
 The loader caches the optional callback and rejects malformed advertised tables.
 Native inventory reports `filters.levels_prepare` and `filters.levels_render`
 separately. The host adapter validates endpoints/gamma and keeps unsuccessful
@@ -31,8 +32,8 @@ RGB channels. All instructions, including unused ones, are checked before writes
 output must not overlap LUT storage, and output row padding remains intact.
 Legacy render callbacks reject kind 9. Preparation-only 16-byte tables remain
 supported; partial rendering tails and missing advertised callbacks reject.
-Document plan caching and public nodes/adjustments remain planned; ABI and native
-runtime checks await CI.
+Document plans cache these tables for registered Levels source nodes. True Levels
+adjustments remain planned; runtime checks await CI. See [Levels](levels.md).
 
 The shared engine `Renderer` contract exposes `supports_levels`, `prepare_levels`
 and `render_prepared`. Its legacy defaults reject LUT plans explicitly. The native
@@ -46,8 +47,8 @@ calls or allocation. Rebuild validates all intents first, prepares changed slots
 in private storage and replaces the cache only on complete success. A different
 renderer prepares every slot. Rendering borrows the cached tables. Steady LUT
 storage is at most 16 KiB; rebuilding may temporarily retain another 16 KiB,
-plus bounded intent/vector metadata. This cache is not yet installed in document
-graphs; no per-MOVE preparation or frame-sized buffer is introduced.
+plus bounded intent/vector metadata. Document graph publication installs this
+cache; no per-MOVE preparation or frame-sized buffer is introduced.
 
 ## Loading and compatibility
 
