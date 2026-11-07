@@ -3,6 +3,7 @@ use micopi_plugin_api as abi;
 #[cfg(test)]
 mod blend_tests;
 mod blends;
+mod levels;
 mod mask_effects;
 #[cfg(test)]
 mod mask_tests;
