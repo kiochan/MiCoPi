@@ -31,18 +31,39 @@ fn control(
 ) -> Response {
     let icon = appearance.icon_size;
     let padding = appearance.panel_padding * 0.65;
-    let galley = ui.painter().layout_no_wrap(
+    let natural = ui.painter().layout_no_wrap(
         localize(title).into_owned(),
         FontId::proportional(appearance.font_size),
         Color32::PLACEHOLDER,
     );
-    let size = vec2(
-        icon + appearance.item_spacing + galley.size().x + padding * 2.,
-        appearance.control_height.max(icon + padding),
+    let prefix = icon + appearance.item_spacing + padding * 2.;
+    let width = (prefix + natural.size().x)
+        .min(ui.available_width())
+        .max(1.);
+    let galley = WidgetText::from(
+        RichText::new(localize(title))
+            .font(FontId::proportional(appearance.font_size))
+            .color(Color32::PLACEHOLDER),
+    )
+    .into_galley(
+        ui,
+        Some(TextWrapMode::Truncate),
+        (width - prefix).max(0.),
+        TextStyle::Body,
     );
+    let size = vec2(width, appearance.control_height.max(icon + padding));
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+    let full_title = if unlink {
+        "Unlink Selected"
+    } else {
+        "Link Selected"
+    };
     response.widget_info(|| {
-        egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), localize(title))
+        egui::WidgetInfo::labeled(
+            egui::WidgetType::Button,
+            ui.is_enabled(),
+            localize(full_title),
+        )
     });
     let visuals = ui.style().interact(&response);
     ui.painter().rect(
@@ -71,7 +92,7 @@ fn control(
         galley,
         visuals.text_color(),
     );
-    response.on_hover_text(format!("{}\n{}", localize(title), localize("Links apply to Move and nudges. Painting stays on the active layer. Linked Free Transform is not available yet.")))
+    response.on_hover_text(format!("{}\n{}", localize(full_title), localize("Links apply to Move and nudges. Painting stays on the active layer. Linked Free Transform is not available yet.")))
 }
 
 impl Editor {
@@ -88,10 +109,28 @@ impl Editor {
                 .linked_layer_ids(*id)
                 .is_ok_and(|ids| ids.len() > 1)
         });
-        ui.horizontal_wrapped(|ui| {
+        // Child enabled scopes cannot announce their intrinsic width to a
+        // wrapping parent in advance. Choose the row/column before entering them.
+        let required = ["Link", "Unlink"]
+            .into_iter()
+            .map(|title| {
+                let text = ui.painter().layout_no_wrap(
+                    localize(title).into_owned(),
+                    FontId::proportional(self.settings.ui.font_size),
+                    Color32::PLACEHOLDER,
+                );
+                self.settings.ui.icon_size
+                    + self.settings.ui.item_spacing
+                    + self.settings.ui.panel_padding * 1.3
+                    + text.size().x
+            })
+            .sum::<f32>()
+            + ui.spacing().item_spacing.x;
+        let inline = required <= ui.available_width();
+        let mut buttons = |ui: &mut Ui| {
             for (linked, title, allowed) in [
-                (true, "Link Selected", selected.len() > 1),
-                (false, "Unlink Selected", any_linked),
+                (true, "Link", selected.len() > 1),
+                (false, "Unlink", any_linked),
             ] {
                 let response = ui
                     .add_enabled_ui(enabled && allowed, |ui| {
@@ -112,7 +151,12 @@ impl Editor {
                     ));
                 }
             }
-        });
+        };
+        if inline {
+            ui.horizontal(&mut buttons);
+        } else {
+            ui.vertical(&mut buttons);
+        }
         let active = self.session.doc.layer_id(self.session.doc.active);
         if let Ok(ids) = self.session.doc.linked_layer_ids(active) {
             if ids.len() > 1 {

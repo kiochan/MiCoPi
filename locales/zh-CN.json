@@ -1411,5 +1411,7 @@
   "Links apply to Move and nudges. Painting stays on the active layer. Linked Free Transform is not available yet.": "链接用于一起移动和微移图层。绘画仍只作用于活动图层，暂不支持联动自由变换。",
   "Inspect Layer Links": "查看图层链接",
   "Link or Unlink Layers": "链接或取消链接图层",
-  "Persistent raster layer links": "图层链接状态"
+  "Persistent raster layer links": "图层链接状态",
+  "Link": "链接",
+  "Unlink": "取消链接"
 }

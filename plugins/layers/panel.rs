@@ -1056,7 +1056,9 @@ impl Editor {
                 ui.weak(tr(format!("{} / 16", self.session.doc.layers.len())));
             });
         });
-        self.layer_link_controls_ui(ui, &mut pending, focus.is_none());
+        if focus.is_none() {
+            self.layer_link_controls_ui(ui, &mut pending, true);
+        }
         let a = self.settings.ui.clone();
         if !self.group_properties_ui(ui, &mut pending) {
             let index = self.session.doc.active;

@@ -388,6 +388,17 @@ fn owner_moves_explicit_nonactive_pairs_share_one_raw_history_group() {
     doc.redo.clear();
     doc.replay_tiles.clear();
     doc.replay_mask_tiles.clear();
+    // The new raster is inserted after active ID1, before the grouped ID2.
+    // Explicit targets must resolve stable identities rather than assume slots.
+    assert_eq!(
+        (0..doc.layers.len())
+            .map(|index| doc.layer_id(index))
+            .collect::<Vec<_>>(),
+        vec![1, 3, 2]
+    );
+    let layer_a = doc.layer_index(1).unwrap();
+    let layer_b = doc.layer_index(2).unwrap();
+    let untouched_layer = doc.layer_index(3).unwrap();
     let before = doc.composition();
     let original: Vec<_> = doc
         .layers
@@ -395,7 +406,7 @@ fn owner_moves_explicit_nonactive_pairs_share_one_raw_history_group() {
         .map(|layer| layer.pixels.clone())
         .collect();
     let original_raw = [raw(&doc, 1), raw(&doc, 3)];
-    let untouched = doc.layers[2].pixels.as_ptr();
+    let untouched = doc.layers[untouched_layer].pixels.as_ptr();
     assert_eq!(
         doc.validate_owner_moves(&[2, 1]).unwrap(),
         vec![(2, Some(3)), (1, Some(1))]
@@ -414,9 +425,9 @@ fn owner_moves_explicit_nonactive_pairs_share_one_raw_history_group() {
         ])
         .unwrap());
     assert_eq!(doc.composition(), before);
-    assert_eq!(doc.layers[0].pixels, output_a);
-    assert_eq!(doc.layers[1].pixels, output_b);
-    assert_eq!(doc.layers[2].pixels.as_ptr(), untouched);
+    assert_eq!(doc.layers[layer_a].pixels, output_a);
+    assert_eq!(doc.layers[layer_b].pixels, output_b);
+    assert_eq!(doc.layers[untouched_layer].pixels.as_ptr(), untouched);
     let group = doc.undo[0].group.as_ref().unwrap();
     assert_eq!(doc.undo.len(), 1);
     assert_eq!(group.edits.len(), 2);
@@ -426,7 +437,7 @@ fn owner_moves_explicit_nonactive_pairs_share_one_raw_history_group() {
             .iter()
             .map(|edit| edit.layer)
             .collect::<Vec<_>>(),
-        vec![1, 0]
+        vec![layer_b, layer_a]
     );
     assert!(group
         .edits
@@ -435,7 +446,7 @@ fn owner_moves_explicit_nonactive_pairs_share_one_raw_history_group() {
     assert_eq!(doc.history_bytes(), (6 * 4 + 6) * 2 + 2 * 8 + 64);
     assert_eq!(
         doc.replay_tiles.iter().copied().collect::<Vec<_>>(),
-        vec![(0, 0), (1, 0)]
+        vec![(layer_a, 0), (layer_b, 0)]
     );
     assert_eq!(
         doc.replay_mask_tiles.iter().copied().collect::<Vec<_>>(),
@@ -453,9 +464,11 @@ fn owner_moves_explicit_nonactive_pairs_share_one_raw_history_group() {
     );
     assert_eq!(raw(&doc, 1), original_raw[0]);
     assert_eq!(raw(&doc, 3), original_raw[1]);
+    assert_eq!(doc.layers[untouched_layer].pixels.as_ptr(), untouched);
     doc.redo();
-    assert_eq!(doc.layers[0].pixels, output_a);
-    assert_eq!(doc.layers[1].pixels, output_b);
+    assert_eq!(doc.layers[layer_a].pixels, output_a);
+    assert_eq!(doc.layers[layer_b].pixels, output_b);
+    assert_eq!(doc.layers[untouched_layer].pixels.as_ptr(), untouched);
     assert_eq!(doc.composition(), before);
 }
 
@@ -665,17 +678,37 @@ fn owner_moves_grouped_saved_mask_planes_remain_isolated_from_pinned_redo() {
     doc.undo();
     let checkpoint = doc.checkpoint_history();
     let saved = checkpoint.redo[0].group.as_ref().unwrap();
-    let pinned: Vec<_> = saved
+    // Undo reverses grouped children so structural history can replay safely.
+    // Plane identity, rather than the group's current direction, owns samples.
+    assert_eq!(
+        saved
+            .edits
+            .iter()
+            .map(|edit| {
+                let Some(MaskChange::Replace { saved, .. }) = &edit.mask_change else {
+                    panic!("Expected saved raw mask")
+                };
+                saved.id
+            })
+            .collect::<Vec<_>>(),
+        vec![3, 1]
+    );
+    let pinned: BTreeMap<_, _> = saved
         .edits
         .iter()
         .map(|edit| {
             let Some(MaskChange::Replace { saved, .. }) = &edit.mask_change else {
                 panic!("Expected saved raw mask")
             };
-            saved.clone()
+            (saved.id, saved.clone())
         })
         .collect();
+    assert_eq!(pinned.keys().copied().collect::<Vec<_>>(), vec![1, 3]);
+    assert_eq!(pinned[&1].samples, SamplePlane::Dense(moved[0].clone()));
+    assert_eq!(pinned[&3].samples, SamplePlane::Dense(moved[1].clone()));
     doc.redo();
+    assert_eq!(raw(&doc, 1), moved[0]);
+    assert_eq!(raw(&doc, 3), moved[1]);
     doc.apply_owner_moves(vec![
         (
             1,
@@ -689,6 +722,6 @@ fn owner_moves_grouped_saved_mask_planes_remain_isolated_from_pinned_redo() {
         ),
     ])
     .unwrap();
-    assert_eq!(pinned[0].samples, SamplePlane::Dense(moved[0].clone()));
-    assert_eq!(pinned[1].samples, SamplePlane::Dense(moved[1].clone()));
+    assert_eq!(pinned[&1].samples, SamplePlane::Dense(moved[0].clone()));
+    assert_eq!(pinned[&3].samples, SamplePlane::Dense(moved[1].clone()));
 }

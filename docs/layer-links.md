@@ -4,8 +4,8 @@ Layer links keep related ink, color and shading rasters together during Move
 without changing where Brush or Eraser paints. They are document relationships,
 separate from multi-selection, folders and image-graph connections.
 
-Select several layers and use **Link Selected** in Layers. The chain indicator
-shows membership. **Unlink Selected** removes those layers while retaining any
+Select several layers and use **Link** in Layers (the **Link Selected** action).
+The chain indicator shows membership. **Unlink** removes those layers while retaining any
 remaining group of two or more. Linking members of existing sets joins those
 sets; unrelated sets stay independent. Painting remains on the active raster or
 its explicitly selected mask.

@@ -1411,5 +1411,7 @@
   "Links apply to Move and nudges. Painting stays on the active layer. Linked Free Transform is not available yet.": "연결은 함께 이동하거나 방향키로 미세 이동할 때 적용됩니다. 그리기는 활성 레이어에만 적용되며 연결된 자유 변형은 아직 지원하지 않습니다.",
   "Inspect Layer Links": "레이어 링크 확인",
   "Link or Unlink Layers": "레이어 링크/해제",
-  "Persistent raster layer links": "레이어 링크 상태"
+  "Persistent raster layer links": "레이어 링크 상태",
+  "Link": "연결",
+  "Unlink": "연결 해제"
 }

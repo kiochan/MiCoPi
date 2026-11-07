@@ -1411,5 +1411,7 @@
   "Links apply to Move and nudges. Painting stays on the active layer. Linked Free Transform is not available yet.": "Links apply to Move and nudges. Painting stays on the active layer. Linked Free Transform is not available yet.",
   "Inspect Layer Links": "Inspect Layer Links",
   "Link or Unlink Layers": "Link or Unlink Layers",
-  "Persistent raster layer links": "Persistent raster layer links"
+  "Persistent raster layer links": "Persistent raster layer links",
+  "Link": "Link",
+  "Unlink": "Unlink"
 }

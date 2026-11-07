@@ -140,7 +140,7 @@ fn layer_links_controls_wrap_translated_feedback_without_changing_document_state
     }
     for language in crate::i18n::Language::ALL {
         crate::i18n::set_language(language);
-        for width in [260., 680.] {
+        for width in [176., 260., 680.] {
             let before = Snapshot::capture(&app.editor);
             let mut output = frame(&mut app, &ctx, width, vec![], 0.);
             for t in 1..3 {
@@ -150,11 +150,7 @@ fn layer_links_controls_wrap_translated_feedback_without_changing_document_state
             for shape in &output.shapes {
                 collect(&shape.shape, &mut texts);
             }
-            for title in [
-                "Link Selected",
-                "Unlink Selected",
-                "Painting stays on the active layer.",
-            ] {
+            for title in ["Link", "Unlink", "Painting stays on the active layer."] {
                 let label = localize(title);
                 let (_, bounds) = texts
                     .iter()
