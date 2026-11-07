@@ -219,6 +219,12 @@ impl Document {
     ) -> Result<GroupPlan, String> {
         validate_layer_links(metadata)?;
         if require
+            && groups.is_some_and(|tree| tree.adjustments.iter().any(|a| a.curves.is_some()))
+            && self.renderer.as_ref().is_none_or(|r| !r.supports_curves())
+        {
+            return Err("The compositor does not support Curves adjustments".into());
+        }
+        if require
             && groups.is_some_and(|tree| tree.adjustments.iter().any(|a| a.levels.is_some()))
             && self.renderer.as_ref().is_none_or(|r| !r.supports_levels())
         {

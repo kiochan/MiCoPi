@@ -166,6 +166,7 @@ fn levels_adjustment_rejects_hidden_unsupported_and_ambiguous_definitions_before
         filter: Filter::Invert,
         amount: 1.,
         levels: None,
+        curves: None,
     };
     let legacy = serde_json::to_value(&spec).unwrap();
     assert!(legacy.get("levels").is_none());

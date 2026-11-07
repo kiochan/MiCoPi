@@ -8,8 +8,10 @@ in `crates/plugin-api/` with compile-only C/C++ fixtures under `tests/fixtures/`
 `src/engine/curves.rs` owns typed master/channel intent, schema and preparation.
 The existing `PreparedLevelsPlan` caches mixed one-table Levels and three-table
 Curves intents without changing history ownership. `compositing.curves` registers
-source-node defaults/schema; its UI uses the existing schema editor. Affect-below
-Curves adjustments and dedicated controls remain planned.
+source-node defaults/schema; its UI uses the existing schema editor. Adjustment
+metadata carries an optional strict Curves tail; `src/plugins/adjustments.rs`
+merges nested object patches, replaces point arrays and validates provider bounds.
+Generated adjustment nodes reuse the prepared renderer; dedicated controls remain planned.
 
 `src/plugins/native_levels.rs` negotiates and caches optional native Levels
 preparation, validates host arguments and publishes successful byte tables.

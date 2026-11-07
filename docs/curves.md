@@ -1,9 +1,10 @@
-# Curves source nodes
+# Curves
 
 `compositing.curves` is a registered source effect for linked Layer Filters and
 free image graphs. It preserves source pixels and alpha while mapping encoded
-RGB. This source increment awaits CI. Affect-below Curves adjustments, dedicated
-curve/histogram controls and reviewed screenshots remain planned.
+RGB. The same intent supports real affect-below Curves adjustment layers. Runtime
+validation awaits CI; dedicated curve/histogram controls and reviewed screenshots
+remain planned.
 
 Insert **Curves** through a source node's **Insert Filter** menu or a free graph's
 node menu. The existing schema editor exposes the parameters. Editing changes
@@ -63,3 +64,16 @@ cached pointer drawing, atomic failure, projects and DLL-free replay. Linked
 smoke includes Levels/Curves across JSONL, MCP and GUI attachment with structural
 and geometry changes and PNG parity. Runtime and visual validation are pending.
 The broader [editing plan](photoshop-essentials.md) remains open.
+
+## Affect-below adjustments
+
+Use New Adjustment or `adjustment.create` with `node_type=compositing.curves`.
+The same full channel schema is exposed by `adjustment.catalog`. Partial nested
+patches retain defaults/current fields; arrays replace complete point lists.
+Provider changes reset to complete defaults, clearing other effect tails.
+Opacity, owned A8 masks, root/Isolated/Pass Through placement, compound Undo,
+atomic rollback, project storage and DLL-free outcome replay use the existing
+adjustment contracts. Painting remains on the active raster. Hidden/bypassed
+Curves records still preflight native capability. See [Adjustment layers](adjustment-layers.md)
+for shared actions and the strict optional metadata tail. Session and independent
+transport references are authored and await CI; dedicated controls remain planned.

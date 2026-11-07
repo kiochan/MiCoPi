@@ -16,6 +16,8 @@ pub(crate) mod canvas_geometry;
 pub mod codec;
 pub(crate) mod creation;
 #[cfg(test)]
+mod curves_adjustment_tests;
+#[cfg(test)]
 mod curves_tests;
 #[cfg(test)]
 mod layer_arrangement_tests;

@@ -3,8 +3,8 @@
 See [Levels](levels.md) for typed source effects, affect-below adjustments and
 cached native rendering.
 
-[Curves source nodes](curves.md) add typed master/channel intent and bounded native
-rendering; affect-below Curves adjustments and dedicated controls remain planned.
+[Curves](curves.md) source nodes and affect-below adjustments share typed
+master/channel intent and bounded native rendering; dedicated controls are planned.
 
 The technical documentation is maintained in English. The project overview is also available in [Chinese](../README.zh.md), [Japanese](../README.ja.md) and [Korean](../README.ko.md).
 

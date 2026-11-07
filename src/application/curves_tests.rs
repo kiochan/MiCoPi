@@ -311,7 +311,7 @@ fn curves_reject_live_contact_and_atomic_failure_restores_the_prior_plan() {
 }
 
 #[test]
-fn curves_pointer_moves_borrow_the_three_published_tables() {
+fn curves_source_and_adjustment_pointer_moves_borrow_the_three_published_tables() {
     use crate::engine::graph::Renderer;
     use micopi_plugin_api as abi;
     use std::{cell::Cell, sync::Arc};
@@ -320,6 +320,9 @@ fn curves_pointer_moves_borrow_the_three_published_tables() {
         preparations: Cell<usize>,
     }
     impl Renderer for Counted {
+        fn supports_mix(&self) -> bool {
+            self.native.supports_mix()
+        }
         fn supports_curves(&self) -> bool {
             self.native.supports_curves()
         }
@@ -356,43 +359,59 @@ fn curves_pointer_moves_borrow_the_three_published_tables() {
             self.native.render_prepared(n, l, m, t, w, h, o)
         }
     }
-    let mut s = fixture();
-    let renderer = Arc::new(Counted {
-        native: s.doc.renderer.clone().unwrap(),
-        preparations: Cell::new(0),
-    });
-    s.doc.renderer = Some(renderer.clone());
-    call(&mut s, "graph.set", json!({"graph":graph(true)}));
-    assert_eq!(renderer.preparations.get(), 4);
-    let p = Pointer {
-        phase: PointerPhase::Down,
-        x: 1.5,
-        y: 0.5,
-        pressure: 1.,
-        time: 1,
-        pen: false,
-        eraser: false,
-        tool_override: None,
-        view_x: None,
-        view_y: None,
-    };
-    s.pointer(p).unwrap();
-    s.doc.compose();
-    for time in 2..16 {
+    for adjustment in [false, true] {
+        let mut s = fixture();
+        let renderer = Arc::new(Counted {
+            native: s.doc.renderer.clone().unwrap(),
+            preparations: Cell::new(0),
+        });
+        s.doc.renderer = Some(renderer.clone());
+        if adjustment {
+            call(
+                &mut s,
+                "adjustment.create",
+                json!({"node_type":"compositing.curves","index":1}),
+            );
+        } else {
+            call(&mut s, "graph.set", json!({"graph":graph(true)}));
+        }
+        // Adjustment creation performs a read-only candidate preflight before
+        // publication. Measure drawing against the fully published cold plan.
+        let prepared = renderer.preparations.get();
+        assert!(prepared >= 4);
+        if !adjustment {
+            assert_eq!(prepared, 4);
+        }
+        let p = Pointer {
+            phase: PointerPhase::Down,
+            x: 1.5,
+            y: 0.5,
+            pressure: 1.,
+            time: 1,
+            pen: false,
+            eraser: false,
+            tool_override: None,
+            view_x: None,
+            view_y: None,
+        };
+        s.pointer(p).unwrap();
+        s.doc.compose();
+        for time in 2..16 {
+            s.pointer(Pointer {
+                phase: PointerPhase::Move,
+                time,
+                ..p
+            })
+            .unwrap();
+            s.doc.compose();
+        }
         s.pointer(Pointer {
-            phase: PointerPhase::Move,
-            time,
+            phase: PointerPhase::Up,
+            time: 16,
             ..p
         })
         .unwrap();
         s.doc.compose();
+        assert_eq!(renderer.preparations.get(), prepared);
     }
-    s.pointer(Pointer {
-        phase: PointerPhase::Up,
-        time: 16,
-        ..p
-    })
-    .unwrap();
-    s.doc.compose();
-    assert_eq!(renderer.preparations.get(), 4);
 }

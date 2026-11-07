@@ -1,6 +1,6 @@
 //! Strict non-raster affect-below stack metadata. Pixel kernels remain native.
 use super::graph::Filter;
-use super::levels::Levels;
+use super::{curves::Curves, levels::Levels};
 use serde::{Deserialize, Serialize};
 
 pub const MAX_ADJUSTMENTS: usize = 16;
@@ -16,9 +16,20 @@ pub struct AdjustmentSpec {
     pub amount: f32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub levels: Option<Levels>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub curves: Option<Curves>,
 }
 impl AdjustmentSpec {
     pub fn validate(&self) -> Result<(), String> {
+        if self.levels.is_some() && self.curves.is_some() {
+            return Err("Adjustment intent must select only one effect family".into());
+        }
+        if let Some(curves) = &self.curves {
+            curves.validate()?;
+            if self.filter != Filter::Invert || self.amount != 0. {
+                return Err("Curves adjustments require neutral legacy filter fields".into());
+            }
+        }
         if let Some(levels) = self.levels {
             levels.validate()?;
             if self.filter != Filter::Invert || self.amount != 0. {
@@ -55,6 +66,8 @@ pub struct Adjustment {
     pub amount: f32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub levels: Option<Levels>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub curves: Option<Curves>,
 }
 impl Adjustment {
     pub fn new(id: u64, spec: AdjustmentSpec) -> Self {
@@ -67,6 +80,7 @@ impl Adjustment {
             filter: spec.filter,
             amount: spec.amount,
             levels: spec.levels,
+            curves: spec.curves,
         }
     }
     pub fn spec(&self) -> AdjustmentSpec {
@@ -78,6 +92,7 @@ impl Adjustment {
             filter: self.filter,
             amount: self.amount,
             levels: self.levels,
+            curves: self.curves.clone(),
         }
     }
     pub fn validate(&self) -> Result<(), String> {
@@ -87,6 +102,14 @@ impl Adjustment {
         self.spec().validate()
     }
     pub fn memory_bytes(&self) -> usize {
-        std::mem::size_of::<Self>() + self.name.len() + self.node_type.len()
+        std::mem::size_of::<Self>()
+            + self.name.len()
+            + self.node_type.len()
+            + self.curves.as_ref().map_or(0, |p| {
+                [&p.master, &p.red, &p.green, &p.blue]
+                    .iter()
+                    .map(|c| c.points.len() * std::mem::size_of::<super::curves::Point>())
+                    .sum::<usize>()
+            })
     }
 }

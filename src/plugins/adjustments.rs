@@ -6,6 +6,7 @@ use super::{
 use crate::application::{ActionError, ActionResult, Operation, Session};
 use crate::engine::{
     adjustments::{Adjustment, AdjustmentSpec, MAX_ADJUSTMENTS},
+    curves::Curves,
     graph::Filter,
     levels::Levels,
     raster_masks::{MaskOwner, SamplePlane},
@@ -34,13 +35,16 @@ pub(crate) fn schema(op: Operation) -> Value {
         properties["name"] = json!({"type":"string","description":"Nonblank, single-line artist-owned name, at most 512 UTF-8 bytes."});
         properties["visible"] = json!({"type":"boolean"});
         properties["opacity"] = json!({"type":"number","minimum":0,"maximum":1});
-        properties["node_type"] = json!({"type":"string","description":"Registered image Filter node ID; all parameters also obey that provider's schema."});
+        properties["node_type"] = json!({"type":"string","description":"Registered image Filter, Levels or Curves node ID; all parameters also obey that provider's schema."});
         properties["parameters"] = json!({"type":"object","properties":{
             "filter":{"type":"string","enum":Filter::ALL},
             "amount":{"type":"number","minimum":-1,"maximum":1}},"additionalProperties":false});
         let mut levels = Levels::schema();
         levels.as_object_mut().unwrap().remove("required");
         properties["parameters"]["properties"]["parameters"] = levels;
+        let mut curves = Curves::schema();
+        partial_objects(&mut curves);
+        properties["parameters"]["properties"]["curves"] = curves;
     }
     if matches!(op, AdjustmentCreate | AdjustmentMove) {
         properties["parent_id"] = json!({"type":"integer","minimum":0,"maximum":4294967295u64});
@@ -66,14 +70,20 @@ struct ResolvedParameters {
     filter: Filter,
     amount: f32,
     levels: Option<Levels>,
+    curves: Option<Curves>,
 }
 impl ResolvedParameters {
     fn value(&self) -> Value {
+        if let Some(curves) = &self.curves {
+            return curve_parameters(curves);
+        }
         self.levels
             .map_or_else(|| parameters(self.filter, self.amount), level_parameters)
     }
     fn title(&self) -> &'static str {
-        if self.levels.is_some() {
+        if self.curves.is_some() {
+            "Curves"
+        } else if self.levels.is_some() {
             "Levels"
         } else {
             self.filter.title()
@@ -83,7 +93,13 @@ impl ResolvedParameters {
 pub(crate) fn level_parameters(parameters: Levels) -> Value {
     json!({"parameters":parameters})
 }
+pub(crate) fn curve_parameters(curves: &Curves) -> Value {
+    json!({"curves":curves})
+}
 pub(crate) fn item_parameters(item: &Adjustment) -> Value {
+    if let Some(curves) = &item.curves {
+        return curve_parameters(curves);
+    }
     item.levels
         .map_or_else(|| parameters(item.filter, item.amount), level_parameters)
 }
@@ -100,13 +116,39 @@ fn definition(registry: &Registry, id: &str) -> Result<Resolved, ActionError> {
         .nodes
         .get(id)
         .ok_or_else(|| error(format!("Registered adjustment filter is unavailable: {id}")))?;
-    if !matches!(&node.binding, Binding::Image {operation,..} if operation == "filter" || operation == "levels")
+    if !matches!(&node.binding, Binding::Image {operation,..} if operation == "filter" || operation == "levels" || operation == "curves")
     {
         return Err(error(
-            "Adjustment nodes must bind a native scalar Filter or Levels kernel",
+            "Adjustment nodes must bind a native scalar Filter, Levels or Curves kernel",
         ));
     }
     node.resolve(registry, owner).map_err(error)
+}
+
+fn merge_patch(target: &mut Value, patch: &Value) {
+    if let (Some(target), Some(patch)) = (target.as_object_mut(), patch.as_object()) {
+        for (key, value) in patch {
+            if let Some(old) = target.get_mut(key) {
+                if old.is_object() && value.is_object() {
+                    merge_patch(old, value);
+                } else {
+                    *old = value.clone();
+                }
+            } else {
+                target.insert(key.clone(), value.clone());
+            }
+        }
+    }
+}
+fn partial_objects(schema: &mut Value) {
+    if schema["type"] == "object" {
+        schema.as_object_mut().unwrap().remove("required");
+        if let Some(properties) = schema["properties"].as_object_mut() {
+            for value in properties.values_mut() {
+                partial_objects(value);
+            }
+        }
+    }
 }
 
 fn resolve_parameters(
@@ -119,26 +161,28 @@ fn resolve_parameters(
     let mut value = base
         .filter(|old| old.node_type == id)
         .map_or(def.defaults.clone(), item_parameters);
-    if let Some(fields) = patch.as_object() {
-        for (key, value_patch) in fields {
-            if key == "parameters" && value_patch.is_object() && value[key].is_object() {
-                for (field, v) in value_patch.as_object().unwrap() {
-                    value[key][field] = v.clone();
-                }
-            } else {
-                value[key] = value_patch.clone();
-            }
-        }
+    if patch.is_object() {
+        merge_patch(&mut value, patch);
     }
     // Validate the raw caller domain before rounding to the native f32 kernel.
     super::validate(&def.parameters_schema, &value)?;
-    let typed = if matches!(&def.binding,Binding::Image {operation,..} if operation=="levels") {
+    let typed = if matches!(&def.binding,Binding::Image {operation,..} if operation=="curves") {
+        let curves: Curves = serde_json::from_value(value["curves"].clone())?;
+        curves.validate().map_err(error)?;
+        ResolvedParameters {
+            filter: Filter::Invert,
+            amount: 0.,
+            levels: None,
+            curves: Some(curves),
+        }
+    } else if matches!(&def.binding,Binding::Image {operation,..} if operation=="levels") {
         let levels: Levels = serde_json::from_value(value["parameters"].clone())?;
         levels.validate().map_err(error)?;
         ResolvedParameters {
             filter: Filter::Invert,
             amount: 0.,
             levels: Some(levels),
+            curves: None,
         }
     } else {
         let scalar: FilterParameters = serde_json::from_value(value)?;
@@ -146,6 +190,7 @@ fn resolve_parameters(
             filter: scalar.filter,
             amount: scalar.amount,
             levels: None,
+            curves: None,
         }
     };
     if !typed.amount.is_finite() || !(typed.filter.minimum()..=1.).contains(&typed.amount) {
@@ -181,12 +226,7 @@ pub(crate) fn validate_literal(
         if let Some(id) = args["node_type"].as_str() {
             let def = definition(registry, id)?;
             let mut partial = def.parameters_schema.clone();
-            partial.as_object_mut().unwrap().remove("required");
-            if matches!(&def.binding,Binding::Image {operation,..} if operation=="levels") {
-                if let Some(inner) = partial["properties"]["parameters"].as_object_mut() {
-                    inner.remove("required");
-                }
-            }
+            partial_objects(&mut partial);
             if args["parameters"].is_object() {
                 super::validate(&partial, &args["parameters"])?;
             }
@@ -296,6 +336,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 filter: parameters.filter,
                 amount: parameters.amount,
                 levels: parameters.levels,
+                curves: parameters.curves,
             };
             let (parent, index) = placement(s, &args)?;
             let with_mask = args["mask_source"] == "selection";
@@ -335,6 +376,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 filter: parameters.filter,
                 amount: parameters.amount,
                 levels: parameters.levels,
+                curves: parameters.curves,
             };
             let changed = s.doc.set_adjustment(id, spec).map_err(error)?;
             Ok(
