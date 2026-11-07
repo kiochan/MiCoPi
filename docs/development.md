@@ -869,3 +869,12 @@ or a measured process-memory bound. No result is asserted before execution.
 Local focused checks remain serial and resource-limited; avoid repeating full
 local suites while CI runs. See [Brush opacity and Flow](stroke-opacity.md) for
 the contract and computed storage limits.
+
+## Raw-A8 affine prerequisite checks
+
+Author native scalar-reference, border/stride/alias rejection and optional-table
+loader tests with [the raw-A8 affine prerequisite](native-a8-affine.md); full
+matching-DLL regressions and ABI fixtures run in CI. It adds no public owner or
+linked Free Transform operation, so no transformed-document or UI validation is
+claimed. Current coverage is authored and pending CI. Keep local checks focused
+and resource-limited rather than repeating a full build for documentation edits.

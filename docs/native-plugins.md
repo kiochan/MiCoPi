@@ -275,6 +275,13 @@ The synchronous callback receives fixed-layout `SelectionEdges` (`kind` 0 expand
 
 ## Optional raw A8 sampler
 
+An independent affine prerequisite is described in [Native raw-A8 affine](native-a8-affine.md).
+Its `micopi_a8_affine_v1` export accepts a forward matrix, nearest/bilinear
+sampling and explicit exterior fill over borrowed dense/uniform bytes. The host
+loads/caches this separate ABI-1 table without changing earlier samplers. It
+adds no public owner/linked Free Transform path or availability; those document
+guards remain in place.
+
 `micopi_a8_sampler_v1` returns an independent `A8SamplerApi` /
 `MicopiA8SamplerApi`. On x64 its 32-byte layout has the version/size header,
 then mandatory `reframe`, `geometry` and `resample` callbacks at offsets 8, 16

@@ -83,6 +83,12 @@ ABI_ASSERT(sizeof(MicopiA8SamplerApi) == 32, "Independent A8 sampler table");
 ABI_ASSERT(offsetof(MicopiA8SamplerApi, reframe) == 8, "A8 reframe callback offset");
 ABI_ASSERT(offsetof(MicopiA8SamplerApi, geometry) == 16, "A8 geometry callback offset");
 ABI_ASSERT(offsetof(MicopiA8SamplerApi, resample) == 24, "A8 resample callback offset");
+ABI_ASSERT(sizeof(MicopiA8Affine) == 56, "Raw A8 affine request");
+ABI_ASSERT(offsetof(MicopiA8Affine, method) == 0, "A8 affine method offset");
+ABI_ASSERT(offsetof(MicopiA8Affine, fill) == 4, "A8 affine fill offset");
+ABI_ASSERT(offsetof(MicopiA8Affine, matrix) == 8, "A8 affine matrix offset");
+ABI_ASSERT(sizeof(MicopiA8AffineApi) == 16, "Independent A8 affine table");
+ABI_ASSERT(offsetof(MicopiA8AffineApi, sample) == 8, "A8 affine callback offset");
 
 static int32_t masked(const MicopiCompositeNode *nodes, size_t count,
                       const MicopiCompositeLayer *layers, size_t layer_count,
@@ -140,6 +146,12 @@ static int32_t a8_resample(const MicopiResample *request, const MicopiCompositeM
     (void)request; (void)source; (void)width; (void)height; (void)output;
     return MICOPI_OK;
 }
+static int32_t a8_affine(const MicopiA8Affine *request, const MicopiCompositeMask *source,
+                          uint32_t width, uint32_t height, MicopiA8Pixels *output) {
+    (void)request; (void)source; (void)width; (void)height; (void)output;
+    return MICOPI_OK;
+}
+static const MicopiA8AffineApi *a8_affine_entry(void) { return NULL; }
 #ifdef __cplusplus
 }
 #endif
@@ -169,6 +181,10 @@ int main(void) {
     sampler.reframe = a8_reframe;
     sampler.geometry = a8_geometry;
     sampler.resample = a8_resample;
+    MicopiA8AffineFn affine_callback = a8_affine;
+    MicopiA8AffineEntry affine_entry_callback = a8_affine_entry;
+    MicopiA8AffineApi affine_sampler;
+    affine_sampler.sample = affine_callback;
     return callback == masked && host.a8 == byte_loan
         && rgba_original_callback == origin_transform
         && a8_original_callback == a8_origin_transform
@@ -182,5 +198,7 @@ int main(void) {
         && effects.reserve_mask_effects == reserve_effects
         && sampler.reframe == a8_reframe
         && sampler.geometry == a8_geometry
-        && sampler.resample == a8_resample ? 0 : 1;
+        && sampler.resample == a8_resample
+        && affine_sampler.sample == a8_affine
+        && affine_entry_callback == a8_affine_entry ? 0 : 1;
 }

@@ -352,6 +352,16 @@ typedef struct {
     MicopiA8ResampleFn resample;
 } MicopiA8SamplerApi;
 const MicopiA8SamplerApi *micopi_a8_sampler_v1(void);
+/* Independent optional raw-A8 affine table; the existing sampler is unchanged.
+   Forward row-major document-edge map. nearest0/bilinear1 sample inverse mapped
+   pixel centers; each exterior tap uses fill0..255. Bilinear axis weights are
+   Q16, scalar aggregate is rounded half-up. No premultiplication, fullframe
+   scratch or retained pointer. Output origin0 and row padding is untouched. */
+typedef struct { uint32_t method, fill; double matrix[6]; } MicopiA8Affine;
+typedef int32_t (*MicopiA8AffineFn)(const MicopiA8Affine *, const MicopiCompositeMask *, uint32_t, uint32_t, MicopiA8Pixels *);
+typedef struct { uint32_t abi_version, struct_size; MicopiA8AffineFn sample; } MicopiA8AffineApi;
+typedef const MicopiA8AffineApi *(*MicopiA8AffineEntry)(void);
+const MicopiA8AffineApi *micopi_a8_affine_v1(void);
 /* Independent read-only trim analysis. Modes: 0 alpha <= tolerance, 1 top-left
    RGBA, 2 bottom-right RGBA. Color matching uses max channel difference; two
    zero-alpha colors match regardless of hidden RGB. Tolerance 0..255.

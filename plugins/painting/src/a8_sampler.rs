@@ -32,14 +32,14 @@ fn layout(width: u32, height: u32, stride: u32, len: usize) -> bool {
             .is_some_and(|needed| needed <= len)
 }
 
-struct Validated<R> {
-    request: R,
-    source: abi::CompositeMask,
-    output: abi::A8Pixels,
+pub(super) struct Validated<R> {
+    pub(super) request: R,
+    pub(super) source: abi::CompositeMask,
+    pub(super) output: abi::A8Pixels,
 }
 // Copy validated metadata before forming pixel references: an output pointer
 // may alias caller-owned request/descriptor storage, which must reject first.
-unsafe fn validate<R>(
+pub(super) unsafe fn validate<R>(
     request: *const R,
     source: *const abi::CompositeMask,
     sw: u32,

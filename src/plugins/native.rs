@@ -198,6 +198,24 @@ unsafe fn decode_a8_sampler_table(
     }
     Ok(api)
 }
+unsafe fn decode_a8_affine_table(
+    pointer: *const abi::A8AffineApi,
+) -> Result<abi::A8AffineApi, String> {
+    if pointer.is_null() {
+        return Err("A8 affine sampler returned a null table".into());
+    }
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.abi_version != abi::ABI_VERSION
+        || header.struct_size < std::mem::size_of::<abi::A8AffineApi>() as u32
+    {
+        return Err("Incompatible A8 affine sampler ABI".into());
+    }
+    let api = std::ptr::read_unaligned(pointer);
+    if api.sample.is_none() {
+        return Err("A8 affine sampler is missing the sample callback".into());
+    }
+    Ok(api)
+}
 unsafe fn decode_move_table(pointer: *const abi::MoveApi) -> Result<abi::MoveApi, String> {
     if pointer.is_null() {
         return Err("Null move table".into());
@@ -364,6 +382,23 @@ impl Module {
             }
             let entry = std::mem::transmute::<*mut c_void, abi::A8SamplerEntry>(address);
             decode_a8_sampler_table(entry()).map(Some)
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(None)
+        }
+    }
+
+    unsafe fn a8_affine_api(&self) -> Result<Option<abi::A8AffineApi>, String> {
+        #[cfg(windows)]
+        {
+            let address =
+                GetProcAddress(self.handle as *mut c_void, abi::A8_AFFINE_SYMBOL.as_ptr());
+            if address.is_null() {
+                return Ok(None);
+            }
+            let entry = std::mem::transmute::<*mut c_void, abi::A8AffineEntry>(address);
+            decode_a8_affine_table(entry()).map(Some)
         }
         #[cfg(not(windows))]
         {
@@ -546,6 +581,7 @@ pub struct NativePlugin {
     resample: Option<abi::ResampleApi>,
     resample_features: u32,
     a8_sampler: Option<abi::A8SamplerApi>,
+    a8_affine: Option<abi::A8AffineApi>,
     compositor: Option<abi::CompositorApi>,
     compositor_capabilities: u64,
     compositor_blend_modes: u64,
@@ -587,6 +623,30 @@ impl NativePlugin {
     }
     pub(crate) fn supports_a8_sampler(&self) -> bool {
         self.a8_sampler.is_some()
+    }
+    pub(crate) fn supports_a8_affine(&self) -> bool {
+        self.a8_affine.is_some()
+    }
+    /// Synchronous borrowed sampling; the caller owns checked output staging.
+    pub(crate) fn a8_affine(
+        &self,
+        request: &abi::A8Affine,
+        source: &abi::CompositeMask,
+        source_width: u32,
+        source_height: u32,
+        output: &mut abi::A8Pixels,
+    ) -> Result<(), String> {
+        let callback = self
+            .a8_affine
+            .as_ref()
+            .and_then(|api| api.sample)
+            .ok_or("Painting DLL does not support raw A8 affine sampling")?;
+        let status = unsafe { callback(request, source, source_width, source_height, output) };
+        if status == abi::OK {
+            Ok(())
+        } else {
+            Err(format!("Native A8 affine sampling failed: {status}"))
+        }
     }
     pub(crate) fn supports_stroke_opacity(&self) -> bool {
         self.tool_options
@@ -710,6 +770,7 @@ impl NativePlugin {
             None => (None, 0),
         };
         let a8_sampler = unsafe { module.a8_sampler_api()? };
+        let a8_affine = unsafe { module.a8_affine_api()? };
         let tools = unsafe { module.tool_api()? };
         let tool_options = unsafe { module.tool_options_api()? };
         let (selection_mix, selection_color, selection_edges, selection_transfer) =
@@ -765,6 +826,7 @@ impl NativePlugin {
                 resample,
                 resample_features,
                 a8_sampler,
+                a8_affine,
                 compositor,
                 compositor_capabilities,
                 compositor_blend_modes,
@@ -1434,6 +1496,9 @@ unsafe extern "C" fn edit_region(
     (*host).busy = false;
     status
 }
+#[cfg(test)]
+#[path = "native_a8_affine_tests.rs"]
+mod a8_affine_tests;
 #[cfg(test)]
 #[path = "native_a8_sampler_tests.rs"]
 mod a8_sampler_tests;

@@ -1,0 +1,68 @@
+# Native raw-A8 affine prerequisite
+
+The independent `micopi_a8_affine_v1` export samples a borrowed raw A8 plane
+through an affine matrix. It is a native SDK/loader prerequisite, **not public
+owner or linked-layer Free Transform support**. Existing document/action guards,
+transform recipes and desktop availability are unchanged. There is no new action,
+workflow editing operation or transform UI in this increment.
+
+## ABI and sampling
+
+The current unreleased SDK **1.3.0** keeps ABI **1** and all existing tables
+unchanged. `A8AffineApi` is a separate 16-byte x64 table: version/size header,
+then one `sample` callback. `A8Affine` is 56 bytes: `u32 method` at offset 0,
+`u32 fill` at 4 and `[f64; 6] matrix` at 8. The callback receives request,
+immutable `CompositeMask`, source width/height and caller-owned mutable
+`A8Pixels` output. It is synchronous and retains no pointer.
+
+The matrix is the forward document-edge map `[a,b,tx,c,d,ty]`:
+
+```text
+destination_x = a * source_x + b * source_y + tx
+destination_y = c * source_x + d * source_y + ty
+```
+
+Every coefficient must be finite; linear coefficients are bounded by ±256 and
+translations by ±4194304. Absolute determinant must be at least `1e-8`.
+The kernel validates/inverts once, then maps destination pixel centers back into
+the source. `method=0` uses nearest sampling (`floor` of source edge coordinates).
+`method=1` uses bilinear scalar sampling around source pixel centers, Q16 weights
+on each axis and half-up aggregate rounding over `2^32`. No RGB, alpha
+premultiplication, density or feather operation is performed.
+
+`fill` is an explicit byte, 0–255, used for **each** out-of-frame tap. Bilinear
+sampling can mix interior values with exterior fill. Uniform input still has a
+finite frame and obeys the same border rule. Raster-mask consumers use neutral
+reveal **255**, rather than the zero exterior used by pixel selections.
+
+## Storage and validation
+
+Source `CompositeMask` uses the existing dense/uniform convention. Uniform means
+null data, zero length/stride and a byte constant; dense means nonnull data,
+constant zero and complete checked row storage. Source and output sides are
+1–4096; dense/output stride is at least width and at most 4096, with lengths
+bounded to 4096² bytes. Output origin is zero.
+
+Validate request/descriptor alignment, matrix/method/fill, dimensions, row
+extents and complete spans before writing. Writable output must not overlap
+source storage or request/descriptor metadata. Source bytes and stride padding
+remain untouched. The kernel allocates no full-frame scratch. The host caches
+the optional callback; `native[].samplers.raw_a8_affine` in registry inventory
+reports provider capability, not document-operation availability. An absent export does
+not disable unrelated plugin capabilities.
+
+The host wrapper borrows input and accepts a caller-owned output descriptor; it
+does not allocate an output secretly. A future document operation must preflight
+locks, contacts, logical budgets and capabilities before staging at most one
+checked A8 output (up to 16 MiB at 4096²), then supply its own atomic history,
+selection/link policies and verified outcome contract. This primitive alone does
+none of that and cannot bypass the current guarded document paths.
+
+## Validation status
+
+Kernel/host coverage is authored for inverse-coordinate references, nearest and
+Q16 bilinear borders, dense/uniform sources, strides/padding, malformed spans,
+aliases, invalid matrices and missing/malformed optional tables. Validation is
+pending CI; this guide claims no completed run, measured speedup, new screenshot
+or tablet evidence. See [Native Plugins](native-plugins.md) and
+[Development](development.md) for the existing ABI and CI-first workflow.

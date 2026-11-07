@@ -5,8 +5,8 @@ use super::{
 };
 use micopi_plugin_api as abi;
 const UNIT: u64 = 65536;
-const DEN: u64 = UNIT * UNIT;
-fn inverse(o: &abi::Affine) -> Option<[f64; 6]> {
+pub(super) const DEN: u64 = UNIT * UNIT;
+pub(super) fn inverse(o: &abi::Affine) -> Option<[f64; 6]> {
     let m = o.matrix;
     if o.kind > 2
         || o.method > 1
@@ -30,11 +30,11 @@ fn inverse(o: &abi::Affine) -> Option<[f64; 6]> {
         (m[3] * m[2] - m[0] * m[5]) / det,
     ])
 }
-fn coordinate(m: &[f64; 6], x: usize, y: usize) -> (f64, f64) {
+pub(super) fn coordinate(m: &[f64; 6], x: usize, y: usize) -> (f64, f64) {
     let (x, y) = (x as f64 + 0.5, y as f64 + 0.5);
     (m[0] * x + m[1] * y + m[2], m[3] * x + m[4] * y + m[5])
 }
-fn weights(x: f64, y: f64) -> (i64, i64, [u64; 4]) {
+pub(super) fn weights(x: f64, y: f64) -> (i64, i64, [u64; 4]) {
     let (x, y) = (x - 0.5, y - 0.5);
     let (ix, iy) = (x.floor(), y.floor());
     let (a, b) = (

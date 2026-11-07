@@ -14,6 +14,11 @@ DLLs run in process; this boundary provides no crash or permission isolation.
 
 ## SDK 1.3 additions
 
+- The independent `micopi_a8_affine_v1` export adds a 56-byte `A8Affine` request
+  and 16-byte `A8AffineApi` table for borrowed dense/uniform raw-A8 nearest or
+  bilinear sampling with explicit exterior fill. It is an unreleased SDK
+  prerequisite, not a public document-transform command. See
+  [Native raw-A8 affine](../../docs/native-a8-affine.md).
 - `TOOL_OPTION_STROKE_OPACITY` (`0x8`) negotiates independent Flow and capped
   stroke opacity through a complete 64-byte `ToolOptionsStroke`. Flow lives at
   offset 56; reserved at 60 is zero. The configured bit selects Stroke mode;

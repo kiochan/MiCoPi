@@ -731,6 +731,33 @@ pub struct A8SamplerApi {
 }
 pub type A8SamplerEntry = unsafe extern "C" fn() -> *const A8SamplerApi;
 
+/// Independent optional scalar affine sampling; the published A8SamplerApi
+/// table remains unchanged. Sources are immutable dense/uniform raw bytes.
+pub const A8_AFFINE_SYMBOL: &[u8] = b"micopi_a8_affine_v1\0";
+/// Finite forward document-edge affine map, in row-major order. Methods are
+/// nearest0 / bilinear1; uncovered scalar samples use fill0..255. Sampling maps
+/// destination pixel centers through the inverse. Bilinear rounds axis weights
+/// to Q16 and the final scalar sum half-up; it does not premultiply coverage.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct A8Affine {
+    pub method: u32,
+    pub fill: u32,
+    pub matrix: [f64; 6],
+}
+pub type A8AffineFn =
+    unsafe extern "C" fn(*const A8Affine, *const CompositeMask, u32, u32, *mut A8Pixels) -> i32;
+/// Complete independent optional table. Inputs/output are disjoint and scoped
+/// to one synchronous call. Output origin is zero; row padding is untouched.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct A8AffineApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub sample: Option<A8AffineFn>,
+}
+pub type A8AffineEntry = unsafe extern "C" fn() -> *const A8AffineApi;
+
 /// Independent read-only automatic trim analysis. No pointer survives a call.
 pub const TRIM_SYMBOL: &[u8] = b"micopi_trim_v1\0";
 #[repr(C)]
@@ -948,6 +975,22 @@ mod transform_layout_tests {
         assert_eq!(TOOL_HOST_ORIGIN_RGBA, 1);
         assert_eq!(TOOL_HOST_ORIGIN_A8, 2);
         assert_eq!(TOOL_HOST_ORIGIN_RGBA & TOOL_HOST_ORIGIN_A8, 0);
+    }
+    #[test]
+    fn independent_a8_affine_table_preserves_existing_sampling_tables() {
+        assert_eq!(A8_AFFINE_SYMBOL, b"micopi_a8_affine_v1\0");
+        assert_eq!(size_of::<A8Affine>(), 56);
+        assert_eq!(offset_of!(A8Affine, method), 0);
+        assert_eq!(offset_of!(A8Affine, fill), 4);
+        assert_eq!(offset_of!(A8Affine, matrix), 8);
+        assert_eq!(size_of::<A8AffineApi>(), 16);
+        assert_eq!(offset_of!(A8AffineApi, sample), 8);
+        assert_eq!(size_of::<A8SamplerApi>(), 32);
+        assert_eq!(offset_of!(A8SamplerApi, reframe), 8);
+        assert_eq!(offset_of!(A8SamplerApi, geometry), 16);
+        assert_eq!(offset_of!(A8SamplerApi, resample), 24);
+        assert_eq!(size_of::<Affine>(), 56);
+        assert_eq!(size_of::<AffineApi>(), 32);
     }
     #[test]
     fn independent_projective_table_preserves_the_published_affine_layout() {

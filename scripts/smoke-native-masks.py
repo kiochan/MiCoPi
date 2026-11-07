@@ -5,6 +5,7 @@ project storage or physical tablet hardware. No GUI or build tools are started.
 """
 import argparse
 import ctypes as C
+from fractions import Fraction
 import hashlib
 import json
 import math
@@ -100,6 +101,17 @@ class Layer(C.Structure):
 
 class Mask(C.Structure):
     _fields_ = [('data', C.POINTER(U8)), ('len', SIZE), ('stride', U32), ('constant', U32)]
+
+
+class A8Affine(C.Structure):
+    _fields_ = [('method', U32), ('fill', U32), ('matrix', C.c_double*6)]
+
+
+A8AffineSample = C.CFUNCTYPE(I32, C.POINTER(A8Affine), C.POINTER(Mask), U32, U32, C.POINTER(A8Pixels))
+
+
+class A8AffineApi(C.Structure):
+    _fields_ = [('version', U32), ('size', U32), ('sample', A8AffineSample)]
 
 
 class Node(C.Structure):
@@ -385,6 +397,101 @@ def artifact(path):
     return dict(path=str(path), bytes=path.stat().st_size, sha256=hashlib.sha256(path.read_bytes()).hexdigest())
 
 
+def affine_reference(source, sw, sh, width, height, matrix, method, fill):
+    """Rational inverse lookup and explicit Q16 scalar interpolation; no DLL helpers."""
+    a, b, c, d, e, f = map(Fraction, matrix)
+    determinant = a*e-b*d
+
+    def at(x, y):
+        return source[y*sw+x] if 0 <= x < sw and 0 <= y < sh else fill
+
+    result = []
+    for y in range(height):
+        for x in range(width):
+            px, py = Fraction(2*x+1, 2)-c, Fraction(2*y+1, 2)-f
+            sx, sy = (e*px-b*py)/determinant, (a*py-d*px)/determinant
+            if method == 0:
+                result.append(at(sx.numerator//sx.denominator, sy.numerator//sy.denominator))
+                continue
+            sx, sy = sx-Fraction(1, 2), sy-Fraction(1, 2)
+            ix, iy = sx.numerator//sx.denominator, sy.numerator//sy.denominator
+            rounded = lambda value: (2*value.numerator+value.denominator)//(2*value.denominator)
+            wx, wy = rounded((sx-ix)*65536), rounded((sy-iy)*65536)
+            numerator = (at(ix, iy)*(65536-wx)*(65536-wy)+at(ix+1, iy)*wx*(65536-wy)
+                         +at(ix, iy+1)*(65536-wx)*wy+at(ix+1, iy+1)*wx*wy)
+            result.append((numerator+(1 << 31))//(1 << 32))
+    return result
+
+
+def check_a8_affine(painting):
+    """The new table is independent of tool, selection and old A8 sampler prefixes."""
+    table = entry(painting.library, 'micopi_a8_affine_v1', A8AffineApi)
+    assert table.sample, 'Raw A8 affine table lacks its mandatory callback'
+    sw, sh, source_stride, guard, sentinel = 5, 3, 8, 13, 231
+    source = (U8*(guard*2+source_stride*sh))(*([sentinel]*(guard*2+source_stride*sh)))
+    packed = [i*17 for i in range(sw*sh)]
+    for y in range(sh):
+        for x in range(sw):
+            source[guard+y*source_stride+x] = packed[y*sw+x]
+    frozen = bytes(source)
+    source_pointer = pointer_at(source, guard, U8)
+    matrices = [(1, 0, 0, 0, 1, 0), (1, 0, 1, 0, 1, -1), (-1, 0, 5, 0, 1, 0),
+                (0, -1, 4, 1, 0, -1), (1, .5, -.25, 0, 1, .5), (2, 0, -.5, 0, .5, .25)]
+    checks = 0
+    for width, height in [(5, 3), (7, 5)]:
+        stride = width+4
+        length = guard*2+stride*height
+        for constant in [None, 0, 73, 255]:
+            descriptor = (Mask(source_pointer, source_stride*sh, source_stride, 0) if constant is None
+                          else Mask(None, 0, 0, constant))
+            samples = packed if constant is None else [constant]*(sw*sh)
+            for matrix in matrices:
+                for method in [0, 1]:
+                    for fill in [37, 255]:
+                        data = (U8*length)(*([sentinel]*length))
+                        output = A8Pixels(pointer_at(data, guard, U8), (height-1)*stride+width,
+                                          width, height, stride, 0, 0)
+                        request = A8Affine(method, fill, (C.c_double*6)(*matrix))
+                        assert table.sample(C.byref(request), C.byref(descriptor), sw, sh, C.byref(output)) == 0
+                        actual = [data[guard+y*stride+x] for y in range(height) for x in range(width)]
+                        expected = affine_reference(samples, sw, sh, width, height, matrix, method, fill)
+                        assert actual == expected, dict(matrix=matrix, method=method, fill=fill, constant=constant)
+                        touched = {guard+y*stride+x for y in range(height) for x in range(width)}
+                        assert all(value == sentinel for i, value in enumerate(data) if i not in touched), 'Raw A8 affine overwrote guard/padding'
+                        assert bytes(source) == frozen, 'Raw A8 affine mutated its immutable source'
+                        checks += 1
+    for case in range(10):
+        data = (U8*(guard*2+source_stride*sh))(*([sentinel]*(guard*2+source_stride*sh)))
+        output = A8Pixels(pointer_at(data, guard, U8), source_stride*sh, sw, sh, source_stride, 0, 0)
+        descriptor = Mask(source_pointer, source_stride*sh, source_stride, 0)
+        request = A8Affine(1, 255, (C.c_double*6)(1, 0, .5, 0, 1, 0))
+        if case == 0:
+            request.fill = 256
+        elif case == 1:
+            request.method = 2
+        elif case == 2:
+            request.matrix[0] = 0
+        elif case == 3:
+            request.matrix[0] = float('nan')
+        elif case == 4:
+            descriptor.len = 1
+        elif case == 5:
+            descriptor = Mask(None, 0, 0, 256)
+        elif case == 6:
+            descriptor = Mask(None, 1, 0, 73)
+        elif case == 7:
+            output.stride = sw-1
+        elif case == 8:
+            output.origin_x = 1
+        else:
+            output.data = source_pointer
+        before = bytes(data)
+        assert table.sample(C.byref(request), C.byref(descriptor), sw, sh, C.byref(output)) != 0, case
+        assert bytes(data) == before and bytes(source) == frozen, ('Rejected affine wrote source/output', case)
+        checks += 1
+    return checks
+
+
 def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('--painting', type=Path, default=ROOT/'plugins/painting/micopi_painting_tools.dll')
@@ -393,7 +500,8 @@ def main():
     parser.add_argument('--old-compositor', type=Path)
     args = parser.parse_args()
     assert C.sizeof(PTR) == 8, 'The native ABI check requires 64-bit Python'
-    for kind, size in [(ToolHost, 32), (ToolHostA8, 40), (A8Pixels, 40), (Mask, 24), (Compositor, 16), (CompositorMasks, 40)]:
+    for kind, size in [(ToolHost, 32), (ToolHostA8, 40), (A8Pixels, 40), (Mask, 24), (Compositor, 16), (CompositorMasks, 40),
+                       (A8Affine, 56), (A8AffineApi, 16)]:
         assert C.sizeof(kind) == size, f'ctypes layout mismatch: {kind.__name__}'
     paths = {key: value.resolve() for key, value in vars(args).items() if value is not None}
     assert all(path.is_file() for path in paths.values()), 'A requested native DLL does not exist'
@@ -401,14 +509,15 @@ def main():
     old_painting = Painting(paths['old_painting'], False) if 'old_painting' in paths else None
     library, native = compositor(paths['compositor'], True)
     old_library, old_native = compositor(paths['old_compositor'], False) if 'old_compositor' in paths else (None, None)
-    checks = dict(painting=check_painting(painting, old_painting), composition=check_compositor(native, old_native))
+    checks = dict(painting=check_painting(painting, old_painting), composition=check_compositor(native, old_native),
+                  raw_a8_affine=check_a8_affine(painting))
     output = ROOT/'target/test-output/native-mask-smoke'/str(time.time_ns())
     output.mkdir(parents=True)
     report = dict(scope='Native primitives only; no application mask, Session/replay or physical tablet claim',
                   checks=checks, old_painting_a8_gated=old_painting is not None,
                   artifacts={name: artifact(path) for name, path in paths.items()})
     (output/'report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
-    print(f'Actual DLL native-mask conformance passed: {checks["painting"]} painting fixtures, {checks["composition"]} composition fixtures; scoped A8/selection/stride, typed references and legacy parity.')
+    print(f'Actual DLL native-mask conformance passed: {checks["painting"]} painting fixtures, {checks["composition"]} composition fixtures, {checks["raw_a8_affine"]} raw A8 affine fixtures; scoped A8/selection/stride, typed references and legacy parity.')
     print(output)
 
 

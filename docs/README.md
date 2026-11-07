@@ -48,6 +48,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Plugin Windows](plugin-windows.md) | Independent control bar, canvas, feature adapters and registered layout commands |
 | [Capture Requests](capture-requests.md) | Asynchronous workspace/native PNG capture, request IDs, bounded queues, diagnostic polling and file/renderer boundaries |
 | [Native Plugins](native-plugins.md) | DLL lifecycle, C ABI, borrowed pixels and independent builds |
+| [Native Raw-A8 Affine](native-a8-affine.md) | Optional scalar sampler prerequisite, explicit borders and borrowed output; owner/linked Free Transform remains guarded |
 | [AI Pipeline](ai-pipeline.md) | Discovery, public state, validated execution and partial failures |
 | [Image Nodes](node-editor.md) | Non-destructive filters and layer blending |
 | [Workflow Nodes](workflow-nodes.md) | Schema-driven action/state nodes and AI-editable workflows |
