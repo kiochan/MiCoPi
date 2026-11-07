@@ -7,6 +7,7 @@ const SENTINEL: u8 = 231;
 thread_local! {
     static CALLS: Cell<usize> = const { Cell::new(0) };
     static STATUS: Cell<i32> = const { Cell::new(0) };
+    static BOUNDS_RESULT: Cell<abi::TrimBounds> = const { Cell::new(abi::TrimBounds{x:0,y:0,width:0,height:0}) };
 }
 
 unsafe extern "C" fn dispatch(
@@ -409,4 +410,170 @@ fn a8_affine_registry_discovery_reports_the_independent_optional_table() {
         native.iter().find(|p| p["id"] == "painting").unwrap()["samplers"]["raw_a8_affine"],
         false
     );
+}
+
+unsafe extern "C" fn dispatch_bounds(
+    source: *const abi::CompositeMask,
+    width: u32,
+    height: u32,
+    neutral: u32,
+    output: *mut abi::TrimBounds,
+) -> i32 {
+    CALLS.with(|calls| calls.set(calls.get() + 1));
+    assert!((*source).data.is_null());
+    assert_eq!(
+        ((*source).len, (*source).stride, (*source).constant),
+        (0, 0, 73)
+    );
+    assert_eq!((width, height, neutral), (3, 2, 255));
+    output.write(BOUNDS_RESULT.with(Cell::get));
+    STATUS.with(Cell::get)
+}
+
+#[test]
+fn a8_affine_optional_bounds_tail_requires_only_the_complete_known_prefix() {
+    let prefix = table();
+    assert!(unsafe { decode_a8_affine_bounds(&prefix) }
+        .unwrap()
+        .is_none());
+    let mut ext = abi::A8AffineApiExt {
+        base: abi::A8AffineApi {
+            struct_size: 24,
+            ..table()
+        },
+        bounds: Some(dispatch_bounds),
+    };
+    assert!(unsafe { decode_a8_affine_bounds(&ext.base) }
+        .unwrap()
+        .is_some());
+    // Physically allocate the known tail; bytes beyond it remain uninspected.
+    ext.base.struct_size = 32;
+    assert!(unsafe { decode_a8_affine_bounds(&ext.base) }
+        .unwrap()
+        .is_some());
+    ext.bounds = None;
+    assert!(unsafe { decode_a8_affine_bounds(&ext.base) }
+        .unwrap()
+        .is_none());
+    ext.base.sample = None;
+    assert!(unsafe { decode_a8_affine_bounds(&ext.base) }.is_err());
+    assert!(unsafe { decode_a8_affine_bounds(std::ptr::null()) }.is_err());
+}
+
+#[test]
+fn a8_affine_bounds_host_adapter_checks_native_results_status_and_missing_capability() {
+    let mut plugin = plugin();
+    Arc::get_mut(&mut plugin).unwrap().a8_affine_bounds = Some(dispatch_bounds);
+    let source = uniform(73);
+    CALLS.with(|calls| calls.set(0));
+    STATUS.with(|status| status.set(abi::OK));
+    BOUNDS_RESULT.with(|result| {
+        result.set(abi::TrimBounds {
+            x: 1,
+            y: 0,
+            width: 2,
+            height: 2,
+        })
+    });
+    assert!(plugin.supports_a8_affine_bounds());
+    assert_eq!(
+        plugin.a8_affine_bounds(&source, 3, 2, 255).unwrap(),
+        Some([1, 0, 3, 2])
+    );
+    BOUNDS_RESULT.with(|result| result.set(abi::TrimBounds::default()));
+    assert_eq!(plugin.a8_affine_bounds(&source, 3, 2, 255).unwrap(), None);
+    for rect in [
+        abi::TrimBounds {
+            x: 1,
+            y: 0,
+            width: 0,
+            height: 1,
+        },
+        abi::TrimBounds {
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 0,
+        },
+        abi::TrimBounds {
+            x: 3,
+            y: 0,
+            width: 1,
+            height: 1,
+        },
+        abi::TrimBounds {
+            x: 0,
+            y: 2,
+            width: 1,
+            height: 1,
+        },
+        abi::TrimBounds {
+            x: u32::MAX,
+            y: 0,
+            width: 2,
+            height: 1,
+        },
+        abi::TrimBounds {
+            x: 1,
+            y: 0,
+            width: 3,
+            height: 1,
+        },
+    ] {
+        BOUNDS_RESULT.with(|result| result.set(rect));
+        assert!(
+            plugin.a8_affine_bounds(&source, 3, 2, 255).is_err(),
+            "{rect:?}"
+        );
+    }
+    STATUS.with(|status| status.set(-73));
+    assert!(plugin.a8_affine_bounds(&source, 3, 2, 255).is_err());
+    let before = CALLS.with(Cell::get);
+    Arc::get_mut(&mut plugin).unwrap().a8_affine_bounds = None;
+    assert!(!plugin.supports_a8_affine_bounds());
+    assert!(
+        plugin.supports_a8_affine(),
+        "sample-only compatibility remains available"
+    );
+    assert!(plugin.a8_affine_bounds(&source, 3, 2, 255).is_err());
+    CALLS.with(|calls| assert_eq!(calls.get(), before));
+    assert!(
+        source.data.is_null() && source.len == 0 && source.stride == 0 && source.constant == 73
+    );
+}
+
+#[test]
+fn a8_affine_actual_dll_bounds_include_raw_mask_support_beyond_raster_ink() {
+    let plugin = plugin();
+    assert!(plugin.supports_a8_affine_bounds());
+    assert_eq!(
+        plugin.a8_affine_bounds(&uniform(255), 7, 5, 255).unwrap(),
+        None
+    );
+    assert_eq!(
+        plugin.a8_affine_bounds(&uniform(73), 7, 5, 255).unwrap(),
+        Some([0, 0, 7, 5])
+    );
+    assert_eq!(
+        plugin.a8_affine_bounds(&uniform(73), 7, 5, 73).unwrap(),
+        None
+    );
+    let mut bytes = storage(7, 5, 10);
+    for y in 0..5 {
+        bytes[GUARD + y * 10..GUARD + y * 10 + 7].fill(255);
+    }
+    bytes[GUARD + 4 * 10 + 6] = 254;
+    let frozen = bytes.clone();
+    let descriptor = dense(&bytes, 7, 5, 10);
+    assert_eq!(
+        plugin.a8_affine_bounds(&descriptor, 7, 5, 255).unwrap(),
+        Some([6, 4, 7, 5])
+    );
+    assert_eq!(bytes, frozen);
+    let malformed = abi::CompositeMask {
+        len: 1,
+        ..descriptor
+    };
+    assert!(plugin.a8_affine_bounds(&malformed, 7, 5, 255).is_err());
+    assert_eq!(bytes, frozen);
 }

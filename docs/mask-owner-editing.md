@@ -144,10 +144,13 @@ all existing owners, raw planes and targets through one structural Undo/outcome.
 owner masks through one compound history entry. [Subtree duplication](mask-group-duplicate.md)
 copies all descendant owner planes with ordered fresh IDs and explicit target/selection
 mapping. Ungrouping, structural layer batches, Layer via
-Copy/Cut, owner Free Transform, group-mask movement, selected-pixel movement and layer rotations, merges/stamp/flatten,
+Copy/Cut, group-mask movement, selected-pixel movement and layer rotations, merges/stamp/flatten,
 clipboard mutations and group-mask Apply remain guarded where incomplete.
 Clipping masks remain planned. The full [mask design](raster-masks-design.md)
 and [roadmap](../ROADMAP.md) remain open.
+
+[Owner affine Free Transform](owner-affine.md) separately preserves linked raw
+masks and exact repeat scopes; projective/copy owner transforms remain guarded.
 
 Regression sources cover raw/metadata independence, target rules, compound Undo,
 allocator limits, live contact continuity, rollback, schema bindings, project

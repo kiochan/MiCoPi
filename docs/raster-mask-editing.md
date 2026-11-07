@@ -15,10 +15,11 @@ border selects the raw mask thumbnail independently of the active raster row.*
 the canvas, including hidden, disabled and unlinked masks. Mask-bearing documents
 support [single-layer owner copy/delete](mask-owner-editing.md),
 [group creation/movement](mask-group-editing.md), [subtree deletion](mask-group-delete.md)
-and [subtree duplication](mask-group-duplicate.md). Owner movement/Free Transform,
-layer rotations, ungrouping, batches, merge/flatten and transfer paths retain
-their guards. `linked` is stored, editable metadata; it does not enable linked
-owner transforms yet. The full raster-mask
+and [subtree duplication](mask-group-duplicate.md). [Integer owner movement](raster-owner-movement.md)
+and [owner/linked affine Free Transform](owner-affine.md) carry linked raw raster
+masks or transform one independently. Group-mask geometry, selected-pixel
+transfers, layer rotations, ungrouping, batches and merge/clipboard paths retain
+their unsupported-domain guards. The full raster-mask
 roadmap item remains unchecked. See [remaining boundaries](#current-boundaries)
 and the complete [implementation design](raster-masks-design.md).
 
@@ -230,9 +231,12 @@ properties on hidden or disabled masks.
 [Raster-owner integer movement](raster-owner-movement.md) supports whole layers
 with linked masks, independent raw raster masks and pixel-selection outlines.
 It preserves unrelated raw planes and commits one compound Undo/outcome.
+[Owner affine Free Transform](owner-affine.md) adds exact raster sets and
+independent raw raster-mask targets, with one union mapping and captured repeat
+scope. Its runtime validation is pending CI.
 
 The following remain guarded with `mask_editing_pending` while mask items exist:
-owner Free Transform, group-mask movement, selected-pixel movement and layer rotations,
+group-mask movement, selected-pixel movement and layer rotations,
 ungrouping, owner transfer, batch layer edits,
 merge/stamp/flatten and cut/paste. Their mutation plans/previews are guarded too.
 Mask-aware layer ordering is supported; the guard is not a promise that every
@@ -256,8 +260,8 @@ source/candidate preflight and one structural Undo/outcome. [Group/subtree
 deletion](mask-group-delete.md) removes only consumed owner masks, with explicit
 target/selection fallback and one compound history edit. [Subtree duplication](mask-group-duplicate.md)
 creates fresh independent raw planes and maps owned targets/copied selection under
-one compound history/outcome. Linked/unlinked owner
-transforms, ungrouping, batch structure, Layer via
+one compound history/outcome. Owner projective/copy transforms, group-mask
+geometry, ungrouping, batch structure, Layer via
 Copy/Cut, complete merge/clipboard handling and clipping masks remain planned. The current native,
 host, transport and UI fixtures test their stated scopes; synthetic pen input
 does not establish physical tablet/driver compatibility. Final delivery evidence

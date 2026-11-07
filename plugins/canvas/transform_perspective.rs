@@ -4,7 +4,16 @@ use super::*;
 pub(super) fn mode(ui: &mut Ui, d: &mut Draft) {
     ui.horizontal_wrapped(|ui| {
         if d.params.quad.is_none() {
-            if ui.button(tr("Edit Perspective Corners")).clicked() {
+            if ui
+                .add_enabled(
+                    !d.guarded_contact,
+                    Button::new(tr("Edit Perspective Corners")),
+                )
+                .on_disabled_hover_text(tr(
+                    "Perspective corners are unavailable for masks and linked layers.",
+                ))
+                .clicked()
+            {
                 match bake(d.params, d.bounds) {
                     Ok(next) => {
                         d.params = next;
@@ -30,6 +39,11 @@ pub(super) fn mode(ui: &mut Ui, d: &mut Draft) {
             }
         }
     });
+    if d.guarded_contact {
+        ui.weak(tr(
+            "Perspective corners are unavailable for masks and linked layers.",
+        ));
+    }
 }
 pub(super) fn controls(ui: &mut Ui, quad: &mut [[f64; 2]; 4], spacing: f32) {
     Grid::new("perspective-corners")

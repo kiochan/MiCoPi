@@ -819,8 +819,8 @@ python scripts/smoke-owner-movement.py --cli <built-cli> --gui <built-desktop>
 See [Raster owner movement](raster-owner-movement.md) for fill/clipping, lock,
 contact, staging and compatibility boundaries. These are tiny deterministic
 correctness fixtures, not physical-tablet or large-image latency measurements.
-The wider owner Free Transform, selected-pixel/group-mask and structural mask
-matrix remains open.
+Owner affine Free Transform has separate checks below; the selected-pixel,
+group-mask and structural mask matrix remains open.
 
 ## Layer link checks
 
@@ -840,7 +840,7 @@ active-only painting and four-language narrow/wide layout. Authored coverage is
 distinct from passing execution; track the exact pushed commit's CI result.
 
 See [Layer Links](layer-links.md) for the 192 MiB output-staging ceiling and
-remaining linked Free Transform boundary. No whole-suite local rerun or large
+the linked affine scope contract. No whole-suite local rerun or large
 stress workload is required for each small source edit. Manual screenshot review
 and physical tablet evidence remain separate from automated CI.
 
@@ -873,8 +873,35 @@ the contract and computed storage limits.
 ## Raw-A8 affine prerequisite checks
 
 Author native scalar-reference, border/stride/alias rejection and optional-table
-loader tests with [the raw-A8 affine prerequisite](native-a8-affine.md); full
-matching-DLL regressions and ABI fixtures run in CI. It adds no public owner or
-linked Free Transform operation, so no transformed-document or UI validation is
-claimed. Current coverage is authored and pending CI. Keep local checks focused
+loader tests with [the raw-A8 affine primitive](native-a8-affine.md); full
+matching-DLL regressions and ABI fixtures run in CI. Its independent sample and
+optional neutral-bounds callbacks underpin the owner operation below; the native
+primitive does not own document history or UI. Keep local checks focused
 and resource-limited rather than repeating a full build for documentation edits.
+
+## Owner and linked affine checks
+
+[Owner Free Transform](owner-affine.md) has authored engine and Session coverage
+for strict bounded recipe compatibility, exact scopes, linked/unlinked raw
+masks, union bounds, locks, grouped raw/recipe Undo, contact-safe planning,
+failure/atomic recovery and DLL-free outcomes. Preview coverage checks borrowed
+untouched sources/caches and separate composite/effect costs. Native A8 bounds
+tests include dense/uniform support and invalid descriptor/output aliases;
+the C/C++ fixture retains the 16-byte base while asserting the optional tail.
+
+`scripts/smoke-owner-affine.py --skip-gui` uses tiny independent inverse-coordinate
+RGBA/A8 and composition references through JSONL/MCP, compound Undo/Redo, project
+round trips, raw-context/damage checks, admission/atomic failures and DLL-free
+replay. Omit `--skip-gui` with an explicit `--gui` executable to add one isolated
+owned desktop attachment; `--cli` selects the matching CLI. The runnable
+[owner-affine example](../examples/automation/owner-affine.jsonl) uses the same
+public actions, without a second execution path.
+
+Build/stage matching painting and compositor DLLs before executing these tests
+or transport checks. Root CI runs full desktop/headless and native/transport
+coverage; current increment results are pending, not passing evidence. Keep old
+unmasked affine/perspective/repeat and recording compatibility regressions.
+The 192 MiB staging limit, 64+64 MiB preview limits and existing 32 MiB native
+feather scratch are separate logical costs, not measured peak memory. No new
+reviewed screenshots, physical-tablet result or large-image latency measurement
+is claimed by this source increment.

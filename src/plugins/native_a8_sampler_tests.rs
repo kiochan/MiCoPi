@@ -81,6 +81,7 @@ fn stub(api: Option<abi::A8SamplerApi>) -> NativePlugin {
         resample_features: 0,
         a8_sampler: api,
         a8_affine: None,
+        a8_affine_bounds: None,
         compositor: None,
         compositor_capabilities: 0,
         compositor_blend_modes: 0,

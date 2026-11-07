@@ -40,6 +40,7 @@ mod layers;
 mod linked_movement;
 mod mask_geometry;
 pub(crate) mod movement;
+pub(crate) mod owner_affine;
 mod owner_movement;
 mod painting;
 pub(crate) mod raster_masks;

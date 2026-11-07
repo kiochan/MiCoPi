@@ -58,6 +58,8 @@ mod mask_group_editing_tests;
 #[cfg(test)]
 mod mask_owner_editing_tests;
 #[cfg(test)]
+mod owner_affine_tests;
+#[cfg(test)]
 mod pass_through_tests;
 #[cfg(test)]
 mod pipeline_tests;

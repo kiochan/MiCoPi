@@ -1,6 +1,6 @@
-# Linked layers and integer movement
+# Linked layers
 
-Layer links keep related ink, color and shading rasters together during Move
+Layer links keep related ink, color and shading rasters together during Move and Free Transform
 without changing where Brush or Eraser paints. They are document relationships,
 separate from multi-selection, folders and image-graph connections.
 
@@ -20,8 +20,8 @@ nudges use the same whole-layer rules and configured step sizes.
 Auto retains its existing priority: a selected painting mask, then selected
 pixels, then the active raster. Mask-only and selected-pixel movement do not
 expand layer links. An explicit Layer target moves the raster link set even
-while a pixel selection exists. Linked Free Transform, align/distribute and
-other linked geometric operations are not implemented by this increment.
+while a pixel selection exists. [Linked affine Free Transform](owner-affine.md)
+uses a separately captured owner scope; align/distribute remain planned.
 
 Every moved raster carries only its owned **linked** raw A8 mask, including a
 disabled mask. Unlinked, group and unrelated masks stay fixed. Both current and
@@ -96,6 +96,22 @@ ceiling, separate from source storage, bounded history, effective caches,
 composite and replay buffers; it is not a measured process-memory peak. No JSON,
 image copies, sampling or link discovery is added to drag Move samples or the
 typed brush Move path. No dependency or native ABI change is required.
+
+## Free Transform a captured set
+
+Whole-layer Free Transform captures the active raster's link set once when the
+desktop draft opens, then supplies explicit `layer_ids` to `canvas.transform`.
+Shared and headless execution never discovers or expands persistent raster
+links implicitly. Every raster uses one union content/raw-mask frame and one
+matrix; disabled owned-linked masks move, while unlinked and unrelated masks
+stay fixed. Raw outputs and the exact repeat recipe share one Undo/outcome.
+
+Repeat intentionally reuses the captured raster IDs even if links later change.
+It revalidates exact owned-linked mask pairings and does not fall back to the
+current active raster. A mask-only recipe similarly retains its original owner.
+Owner Copy Repeat and perspective remain guarded. See [Owner and Linked Free
+Transform](owner-affine.md) for locks, raw fill, preview limits and pending CI
+validation. Integer Move/nudge continues to preserve the previous repeat recipe.
 
 ## Persistence and structural edits
 

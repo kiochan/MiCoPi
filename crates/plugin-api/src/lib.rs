@@ -756,6 +756,19 @@ pub struct A8AffineApi {
     pub struct_size: u32,
     pub sample: Option<A8AffineFn>,
 }
+/// Read-only support bounds relative to neutral0..255. Uniform neutral has no
+/// support (zero bounds); a different uniform sample covers the complete frame.
+/// Output must be disjoint from source bytes and the source descriptor.
+pub type A8AffineBoundsFn =
+    unsafe extern "C" fn(*const CompositeMask, u32, u32, u32, *mut TrimBounds) -> i32;
+/// Optional tail. A complete base table remains a supported sample-only API;
+/// inspect struct_size before reading bounds, which may itself be absent.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct A8AffineApiExt {
+    pub base: A8AffineApi,
+    pub bounds: Option<A8AffineBoundsFn>,
+}
 pub type A8AffineEntry = unsafe extern "C" fn() -> *const A8AffineApi;
 
 /// Independent read-only automatic trim analysis. No pointer survives a call.
@@ -985,12 +998,68 @@ mod transform_layout_tests {
         assert_eq!(offset_of!(A8Affine, matrix), 8);
         assert_eq!(size_of::<A8AffineApi>(), 16);
         assert_eq!(offset_of!(A8AffineApi, sample), 8);
+        assert_eq!(size_of::<A8AffineApiExt>(), 24);
+        assert_eq!(offset_of!(A8AffineApiExt, base), 0);
+        assert_eq!(offset_of!(A8AffineApiExt, bounds), 16);
         assert_eq!(size_of::<A8SamplerApi>(), 32);
         assert_eq!(offset_of!(A8SamplerApi, reframe), 8);
         assert_eq!(offset_of!(A8SamplerApi, geometry), 16);
         assert_eq!(offset_of!(A8SamplerApi, resample), 24);
         assert_eq!(size_of::<Affine>(), 56);
         assert_eq!(size_of::<AffineApi>(), 32);
+    }
+    #[test]
+    fn optional_a8_bounds_callback_uses_the_published_scalar_descriptor_and_output() {
+        unsafe extern "C" fn callback(
+            source: *const CompositeMask,
+            width: u32,
+            height: u32,
+            neutral: u32,
+            output: *mut TrimBounds,
+        ) -> i32 {
+            if (*source).constant != neutral {
+                output.write(TrimBounds {
+                    x: 0,
+                    y: 0,
+                    width,
+                    height,
+                });
+            } else {
+                output.write(TrimBounds::default());
+            }
+            OK
+        }
+        let callback: A8AffineBoundsFn = callback;
+        let api = A8AffineApiExt {
+            base: A8AffineApi {
+                abi_version: 1,
+                struct_size: size_of::<A8AffineApiExt>() as u32,
+                sample: None,
+            },
+            bounds: Some(callback),
+        };
+        let source = CompositeMask {
+            data: std::ptr::null(),
+            len: 0,
+            stride: 0,
+            constant: 73,
+        };
+        let mut output = TrimBounds::default();
+        assert_eq!(
+            unsafe { api.bounds.unwrap()(&source, 5, 3, 255, &mut output) },
+            OK
+        );
+        assert_eq!(
+            output,
+            TrimBounds {
+                x: 0,
+                y: 0,
+                width: 5,
+                height: 3
+            }
+        );
+        assert_eq!(unsafe { callback(&source, 5, 3, 73, &mut output) }, OK);
+        assert_eq!(output, TrimBounds::default());
     }
     #[test]
     fn independent_projective_table_preserves_the_published_affine_layout() {

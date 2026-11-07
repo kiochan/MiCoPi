@@ -2,7 +2,9 @@
 use super::*;
 use crate::{
     application::MoveTarget,
+    engine::transform::OwnerScope,
     plugins::affine::{self, Method, Parameters},
+    plugins::owner_affine,
 };
 use std::time::Duration;
 #[path = "transform_perspective.rs"]
@@ -13,6 +15,8 @@ pub(super) struct Draft {
     bounds: [usize; 4],
     bounds_valid: bool,
     bounds_target: MoveTarget,
+    scope: DraftScope,
+    guarded_contact: bool,
     observed: Parameters,
     changed: Instant,
     attempt: Option<Parameters>,
@@ -20,9 +24,60 @@ pub(super) struct Draft {
     texture: Option<TextureHandle>,
     mask: Option<TextureHandle>,
     error: String,
+    preview_error: String,
     preview: bool,
     locked: bool,
     drag: Option<Drag>,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DraftScope {
+    Legacy,
+    Owners(OwnerScope),
+}
+fn capture_scope(
+    s: &crate::application::Session,
+    target: MoveTarget,
+    ids: Option<&[u64]>,
+    mask: Option<u64>,
+    capture_links: bool,
+) -> Result<DraftScope, String> {
+    if ids.is_none() && mask.is_none() && capture_links {
+        if let crate::plugins::movement::MoveDestination::Layer { layer_id, .. } =
+            crate::plugins::movement::destination(s, target, None)
+                .map_err(|error| error.to_string())?
+        {
+            let members = s.doc.linked_layer_ids(layer_id)?;
+            if s.doc.has_raster_masks() || members.len() > 1 {
+                return owner_affine::resolve(s, target, Some(&members), None)?
+                    .map(DraftScope::Owners)
+                    .ok_or("Owner transform scope is unavailable".into());
+            }
+        }
+    }
+    Ok(owner_affine::resolve(s, target, ids, mask)?.map_or(DraftScope::Legacy, DraftScope::Owners))
+}
+fn scope_plan(
+    s: &crate::application::Session,
+    scope: DraftScope,
+    p: Parameters,
+) -> Result<([usize; 4], String), String> {
+    match scope {
+        DraftScope::Legacy if s.doc.has_raster_masks() => {
+            Err(crate::engine::MASK_EDITING_PENDING.into())
+        }
+        DraftScope::Legacy => {
+            affine::source_bounds(s, p.target.unwrap()).map(|bounds| (bounds, String::new()))
+        }
+        DraftScope::Owners(scope) => owner_affine::plan(s, &scope, p)
+            .map(|plan| (plan.bounds, plan.preview_error.unwrap_or_default())),
+    }
+}
+fn target_title(target: MoveTarget, guarded: bool) -> &'static str {
+    if guarded && target == MoveTarget::Auto {
+        "Auto: Mask, Selection or Layer"
+    } else {
+        canvas_movement::target_title(target)
+    }
 }
 #[derive(Clone, Copy)]
 enum Handle {
@@ -127,8 +182,13 @@ fn relocate_pivot(
     Some(next)
 }
 impl Draft {
+    fn source_matches(&self, s: &crate::application::Session) -> bool {
+        self.source == (s.doc.identity, s.revision, s.doc.layer_id(s.doc.active))
+    }
     fn valid(&self, s: &crate::application::Session) -> bool {
-        self.source == (s.doc.identity, s.revision, s.doc.layer_id(s.doc.active)) && !s.is_drawing()
+        self.source_matches(s)
+            && !s.is_drawing()
+            && !(self.guarded_contact && (s.stroke.active() || s.pointer_checkpoint.is_some()))
     }
     fn ready(&self, s: &crate::application::Session) -> bool {
         self.valid(s)
@@ -136,6 +196,7 @@ impl Draft {
             && self.preview
             && self.painted == Some(self.params)
             && self.error.is_empty()
+            && self.preview_error.is_empty()
     }
     fn rotate_point(&self, zoom: f32, size: f32) -> Option<Pos2> {
         if self.params.quad.is_some() {
@@ -148,20 +209,83 @@ impl Draft {
     }
 }
 impl Editor {
+    pub(super) fn guarded_transform_modal(&self) -> bool {
+        self.transform
+            .as_ref()
+            .is_some_and(|draft| draft.guarded_contact)
+    }
     pub(super) fn open_transform(&mut self) {
-        self.finish_stroke();
-        self.pen_active = false;
-        self.push_gui_parameters();
-        self.push_gui_view();
-        let target = crate::plugins::movement::resolved_target(
-            &self.session,
-            self.session.movement_options().target,
+        self.open_transform_draft(
+            Parameters {
+                target: Some(self.session.movement_options().target),
+                ..Default::default()
+            },
+            None,
+            None,
+            true,
         );
-        let params = Parameters {
-            target: Some(target),
-            ..Default::default()
+    }
+    pub(super) fn open_transform_parameters(
+        &mut self,
+        p: Parameters,
+        ids: Option<&[u64]>,
+        mask: Option<u64>,
+    ) {
+        self.open_transform_draft(p, ids, mask, false);
+    }
+    fn open_transform_draft(
+        &mut self,
+        mut params: Parameters,
+        ids: Option<&[u64]>,
+        mask: Option<u64>,
+        capture_links: bool,
+    ) {
+        let requested = if mask.is_some() {
+            MoveTarget::Auto
+        } else {
+            params
+                .target
+                .unwrap_or(self.session.movement_options().target)
         };
-        let bounds = affine::source_bounds(&self.session, target);
+        let captured = capture_scope(&self.session, requested, ids, mask, capture_links);
+        let guarded_contact = self.session.doc.has_raster_masks()
+            || matches!(&captured, Ok(DraftScope::Owners(_)))
+            || captured.is_err();
+        if guarded_contact {
+            self.command_sync_suspended = true;
+            if !self.backend_contact_active() {
+                self.clear_local_contact();
+                self.pen_active = false;
+            }
+        } else if self
+            .transform
+            .as_ref()
+            .is_none_or(|draft| draft.guarded_contact)
+        {
+            self.discard_command_sync();
+            self.finish_stroke();
+            self.pen_active = false;
+            self.push_gui_parameters();
+            self.push_gui_view();
+        }
+        let scope = captured.as_ref().copied().unwrap_or(DraftScope::Legacy);
+        let target = match scope {
+            DraftScope::Owners(scope) if scope.is_mask_only() => MoveTarget::Auto,
+            DraftScope::Owners(_) => MoveTarget::Layer,
+            DraftScope::Legacy => {
+                crate::plugins::movement::resolved_target(&self.session, requested)
+            }
+        };
+        params.target = Some(target);
+        let planned = captured.and_then(|_| scope_plan(&self.session, scope, params));
+        let bounds = planned
+            .as_ref()
+            .map(|(bounds, _)| *bounds)
+            .map_err(Clone::clone);
+        let preview_error = planned
+            .as_ref()
+            .map(|(_, error)| error.clone())
+            .unwrap_or_default();
         let error = bounds.as_ref().err().cloned().unwrap_or_default();
         let bounds_valid = bounds.is_ok();
         self.transform = Some(Draft {
@@ -174,6 +298,8 @@ impl Editor {
             bounds: bounds.unwrap_or([0, 0, self.session.doc.width, self.session.doc.height]),
             bounds_valid,
             bounds_target: target,
+            scope,
+            guarded_contact,
             observed: params,
             changed: Instant::now(),
             attempt: None,
@@ -181,6 +307,7 @@ impl Editor {
             texture: None,
             mask: None,
             error,
+            preview_error,
             preview: true,
             locked: true,
             drag: None,
@@ -542,17 +669,31 @@ impl Editor {
         let Some(mut d) = self.transform.take() else {
             return;
         };
-        let before = self.session.revision;
-        self.push_gui_parameters();
-        self.push_gui_view();
-        if d.source.1 == before {
-            d.source.1 = self.session.revision;
+        if !d.guarded_contact {
+            let before = self.session.revision;
+            self.push_gui_parameters();
+            self.push_gui_view();
+            if d.source.1 == before {
+                d.source.1 = self.session.revision;
+            }
+        } else if d.valid(&self.session) {
+            // Navigation alone cannot alter captured source pixels or bounds.
+            // Rebase only this known local view publication, never a stale draft.
+            self.push_gui_view_now();
+            if d.source.0 == self.session.doc.identity {
+                d.source.1 = self.session.revision;
+            }
         }
-        let stale = !d.valid(&self.session);
+        let stale = !d.source_matches(&self.session);
+        let contact = d.guarded_contact && self.backend_contact_active();
         let a = self.settings.ui.clone();
         let c = theme::Colors::new(&a);
         let frame = Frame::window(&ctx.style()).inner_margin(Margin::same(a.panel_padding as i8));
         let width = a.control_height * 14.;
+        let width = width.min(
+            (ctx.content_rect().width() - a.outer_padding * 2. - frame.total_margin().sum().x)
+                .max(a.control_height * 6.),
+        );
         let mut open = true;
         let mut apply = false;
         let mut cancel = false;
@@ -570,6 +711,7 @@ impl Editor {
             )
             .frame(frame)
             .default_width(width)
+            .max_width(width)
             .default_pos(pos2(
                 ctx.content_rect().right() - width - frame.total_margin().sum().x - a.outer_padding,
                 ctx.content_rect().center().y - a.control_height * 9.,
@@ -607,36 +749,61 @@ impl Editor {
                         }
                         ui.add_space(a.item_spacing);
                         let mut target = d.params.target.unwrap();
-                        ui.horizontal_wrapped(|ui| {
+                        ui.add_enabled_ui(!stale && !contact, |ui| ui.horizontal_wrapped(|ui| {
                             ui.label(tr("Target"));
                             ComboBox::from_id_salt("transform-target")
-                                .selected_text(tr(canvas_movement::target_title(target)))
+                                .selected_text(tr(target_title(target,d.guarded_contact)))
                                 .show_ui(ui, |ui| {
                                     for t in canvas_movement::TARGETS {
-                                        if t != MoveTarget::Auto {
+                                        if t != MoveTarget::Auto || d.guarded_contact {
                                             ui.selectable_value(
                                                 &mut target,
                                                 t,
-                                                tr(canvas_movement::target_title(t)),
+                                                tr(target_title(t,d.guarded_contact)),
                                             );
                                         }
                                     }
                                 });
-                        });
+                        }));
                         d.params.target = Some(target);
                         if target != d.bounds_target {
                             d.bounds_target = target;
-                            match affine::source_bounds(&self.session, target) {
-                                Ok(b) => {
+                            let scope=capture_scope(&self.session,target,None,None,true);
+                            d.guarded_contact |= self.session.doc.has_raster_masks() || matches!(&scope,Ok(DraftScope::Owners(_))) || scope.is_err();
+                            if d.guarded_contact {self.command_sync_suspended=true;}
+                            match scope.and_then(|scope|scope_plan(&self.session,scope,d.params).map(|plan|(scope,plan))) {
+                                Ok((scope,(b,preview_error))) => {
+                                    d.scope=scope;
                                     d.bounds = b;
                                     d.bounds_valid = true;
                                     d.error.clear();
+                                    d.preview_error=preview_error;
                                 }
                                 Err(e) => {
                                     d.error = e;
                                     d.bounds_valid = false;
                                 }
                             }
+                            d.attempt=None;
+                            d.painted=None;
+                            d.changed=Instant::now();
+                        }
+                        match d.scope {
+                            DraftScope::Owners(scope) if scope.is_mask_only()=>{
+                                if let Some(index)=scope.mask_owner_layer_id().and_then(|id|self.session.doc.layer_index(id)) {
+                                    ui.weak(format!("{}: {}",tr("Raster mask"),self.session.doc.layer_name(index)));
+                                }
+                                ui.weak(tr("Mask only; layer pixels stay fixed."));
+                                ui.weak(tr("Exposed mask areas reveal the layer."));
+                            }
+                            DraftScope::Owners(scope)=>{
+                                ui.weak(tr("Transforming {count} layers and their linked masks.").replace("{count}",&scope.layer_ids().len().to_string()));
+                                if !scope.mask_ids().is_empty() {ui.weak(tr("Exposed mask areas reveal the layer."));}
+                                if self.session.doc.mask_state().items.iter().any(|mask|matches!(mask.owner,crate::engine::raster_masks::MaskOwner::Layer{id} if scope.layer_ids().contains(&id)) && !mask.linked) {
+                                    ui.weak(tr("Unlinked mask stays fixed."));
+                                }
+                            }
+                            DraftScope::Legacy=>{}
                         }
                         perspective::mode(ui,&mut d);
                         if let Some(quad)=&mut d.params.quad {
@@ -784,6 +951,7 @@ impl Editor {
                                 tr("Document changed; reopen Free Transform."),
                             );
                         }
+                        if contact { ui.colored_label(c.accent,tr("Finish the current stroke or pan before applying Free Transform.")); }
                         let matrix = d.params.mapping(d.bounds);
                         if let Err(e) = &matrix {
                             ui.colored_label(c.accent, tr(e));
@@ -791,7 +959,13 @@ impl Editor {
                         if !d.error.is_empty() {
                             ui.colored_label(c.accent, tr(&d.error));
                         }
-                        allowed = !stale
+                        if !d.preview_error.is_empty() {
+                            let message=if d.preview_error=="Transform preview exceeds its separate composite or mask-effect memory limit; disable Preview to apply" {
+                                "Preview is unavailable for this document. Turn off Preview to apply the transform."
+                            } else {&d.preview_error};
+                            ui.colored_label(c.muted,tr(message));
+                        }
+                        allowed = !stale && !contact
                             && d.bounds_valid
                             && d.error.is_empty()
                             && matrix.is_ok_and(|(m, _)| !m.identity());
@@ -818,11 +992,26 @@ impl Editor {
                 d.error.clear();
             }
         }
-        if !stale && d.bounds_valid && d.preview && d.attempt != Some(d.params) && d.drag.is_none()
+        if !stale
+            && !contact
+            && d.bounds_valid
+            && d.preview
+            && d.attempt != Some(d.params)
+            && d.drag.is_none()
         {
             if d.changed.elapsed() >= Duration::from_millis(150) {
                 d.attempt = Some(d.params);
-                match affine::preview(&self.session, d.params) {
+                let preview = match d.scope {
+                    DraftScope::Legacy => affine::preview(&self.session, d.params),
+                    DraftScope::Owners(scope) => owner_affine::preview_cached(
+                        &self.session,
+                        &scope,
+                        d.params,
+                        (d.source.0, d.source.1),
+                        d.bounds,
+                    ),
+                };
+                match preview {
                     Ok((pixels, selection)) => {
                         let w = self.session.doc.width;
                         let h = self.session.doc.height;
@@ -859,10 +1048,15 @@ impl Editor {
                         });
                         d.painted = Some(d.params);
                         d.error.clear();
+                        d.preview_error.clear();
                         ctx.request_repaint();
                     }
                     Err(e) => {
-                        d.error = e;
+                        if matches!(d.scope, DraftScope::Owners(_)) {
+                            d.preview_error = e;
+                        } else {
+                            d.error = e;
+                        }
                         d.painted = None;
                         ctx.request_repaint();
                     }
@@ -876,12 +1070,16 @@ impl Editor {
         if apply {
             let mut action = crate::application::Action::new(
                 "canvas.transform",
-                serde_json::to_value(d.params).unwrap(),
+                match d.scope {
+                    DraftScope::Legacy => serde_json::to_value(d.params).unwrap(),
+                    DraftScope::Owners(scope) => owner_affine::action_args(&scope, &d.params),
+                },
             );
             action.expected_revision = Some(d.source.1);
             match self.session.apply(action) {
                 Ok(_) => {
                     self.sync_from_session();
+                    self.release_command_sync();
                     return;
                 }
                 Err(e) => d.error = e.to_string(),
@@ -889,6 +1087,8 @@ impl Editor {
         }
         if open && !cancel {
             self.transform = Some(d);
+        } else {
+            self.release_command_sync();
         }
     }
 }
@@ -900,3 +1100,7 @@ mod tests;
 #[cfg(test)]
 #[path = "transform_perspective_tests.rs"]
 mod perspective_tests;
+
+#[cfg(test)]
+#[path = "transform_owner_ui_tests.rs"]
+mod owner_ui_tests;

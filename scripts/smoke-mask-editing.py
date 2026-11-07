@@ -416,9 +416,8 @@ def run_mcp(cli, flags, plan, require_masks=True):
 def boundary_cases():
     cases = [
         ('canvas.move', dict(dx=1, dy=0, target='selection')),
-        ('canvas.transform', dict(target='layer', translate_x=1)),
-        ('canvas.transform.plan', dict(target='layer', translate_x=1)),
-        ('canvas.transform.configure', dict(parameters=dict(target='layer', translate_x=1))),
+        ('canvas.transform', dict(target='selection', translate_x=1)),
+        ('canvas.transform.plan', dict(target='selection', translate_x=1)),
         ('canvas.transform.repeat', {}), ('canvas.transform.repeat_copy', {}),
         ('canvas.nudge', dict(direction='right', target='selection')),
         ('layer.via_copy', {}), ('layer.via_cut', {}),
@@ -445,6 +444,8 @@ def negatives(plan, output, project):
     add('boundary-before', 'canvas.state')
     add('boundary-masks-before', 'mask.query')
     add('boundary-png-before', 'canvas.snapshot')
+    add('boundary-headless-preview', 'canvas.transform.configure', error='ui_unavailable',
+        parameters=dict(target='layer', translate_x=1))
     for index, (action, parameters) in enumerate(boundary_cases()):
         add(f'boundary-{index}', action, error='mask_editing_pending', **parameters)
     add('boundary-after', 'canvas.state')

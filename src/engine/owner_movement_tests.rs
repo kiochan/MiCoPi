@@ -87,6 +87,7 @@ fn fixture() -> Document {
         denominator: [0., 0., 1.],
         target: crate::engine::transform::Target::Layer,
         method: crate::engine::transform::Method::Nearest,
+        owners: None,
     });
     doc.undo.clear();
     doc.redo.clear();

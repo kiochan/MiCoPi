@@ -91,7 +91,7 @@ The new synchronous callback receives the existing instructions/layers followed 
 
 Masked-renderer kinds 6/7/8 add coverage source (`a` is the descriptor index, other fields zero), ApplyMask (`a` image, `b` coverage, `mode=0`) and MaskedMix (`a` before, `b` after, `mode` coverage slot). Slots carry distinct image/coverage types within the same 64-word scratch budget; references must precede the instruction, and the final slot must be an image. Types validate even on disconnected instructions. ApplyMask and MaskedMix require finite `amount` in 0–1. Set `o=round_half_up(amount*255)` and `t=round_half_up(o*coverage/255)` once. ApplyMask uses `floor(alpha*t/255)`, retains RGB when that alpha is nonzero and otherwise returns zero. MaskedMix uses the existing exact premultiplied Mix at `t`, including its endpoint identities. The original callback rejects kinds 6–8. An unmasked call through the new host adapter retains the legacy callback path.
 
-These primitives are used by the implemented [document/history/project foundation](raster-mask-storage.md), [public editing subset](raster-mask-editing.md), [document-wide geometry](mask-canvas-geometry.md), [single-layer owner copy/delete](mask-owner-editing.md), [owner-preserving group creation/movement](mask-group-editing.md), [mask-aware subtree deletion](mask-group-delete.md) and [subtree duplication](mask-group-duplicate.md). Generated coverage gates are not independently creatable editable source-filter nodes. Registered mask actions/state become workflow nodes through their schemas; owner geometry and ungroup/batch/merge/transfer integration remain planned in [Raster Masks Design](raster-masks-design.md).
+These primitives are used by the implemented [document/history/project foundation](raster-mask-storage.md), [public editing subset](raster-mask-editing.md), [document-wide geometry](mask-canvas-geometry.md), [single-layer owner copy/delete](mask-owner-editing.md), [owner-preserving group creation/movement](mask-group-editing.md), [mask-aware subtree deletion](mask-group-delete.md) and [subtree duplication](mask-group-duplicate.md). Generated coverage gates are not independently creatable editable source-filter nodes. Registered mask actions/state become workflow nodes through their schemas. [Owner affine transforms](owner-affine.md) preserve raw ownership through shared staging; group-mask geometry and ungroup/batch/merge/selected-pixel transfer integration remain planned in [Raster Masks Design](raster-masks-design.md).
 
 ### Optional native mask effects
 
@@ -275,12 +275,14 @@ The synchronous callback receives fixed-layout `SelectionEdges` (`kind` 0 expand
 
 ## Optional raw A8 sampler
 
-An independent affine prerequisite is described in [Native raw-A8 affine](native-a8-affine.md).
+An independent affine primitive is described in [Native raw-A8 affine](native-a8-affine.md).
 Its `micopi_a8_affine_v1` export accepts a forward matrix, nearest/bilinear
 sampling and explicit exterior fill over borrowed dense/uniform bytes. The host
-loads/caches this separate ABI-1 table without changing earlier samplers. It
-adds no public owner/linked Free Transform path or availability; those document
-guards remain in place.
+loads/caches this separate ABI-1 table without changing earlier samplers. The
+complete 16-byte sample prefix remains supported; a size-gated 24-byte extension
+can additionally expose neutral-relative raw bounds. [Owner/linked Free
+Transform](owner-affine.md) requires the relevant cached sample/bounds callbacks
+and separately supplies document admission, exact scope, history and replay.
 
 `micopi_a8_sampler_v1` returns an independent `A8SamplerApi` /
 `MicopiA8SamplerApi`. On x64 its 32-byte layout has the version/size header,
@@ -349,7 +351,7 @@ Source/destination dimensions match, sides/strides are 1–4096, storage is boun
 
 Source/destination frames match; sides/strides are 1–4096, stride is at least width, origins are zero and storage is bounded to 4096² elements. Pixel and coverage sources are immutable and disjoint from mutable outputs. Coverage is absent for whole-layer pixels and required at matching dimensions for selected pixels. Dense mask output has exactly width × height bytes. Descriptors validate before writes, stride padding remains untouched and no pointer outlives the call. Inverse gathering avoids source/destination overlap feedback. Kernels allocate no buffers or execute host commands. See [Free Transform](canvas-editing.md#free-transform) for exact sampling, alpha, clipping, preview and publication semantics.
 
-The affine `bounds` callback receives immutable full-frame raw pixels and writes `TrimBounds` for all pixels with alpha > 0, ignoring hidden RGB. All-zero bounds means an empty layer. The host validates native rectangles with wide arithmetic; it uses content bounds for layer handles/pivots and rejects empty layer transforms. Pixel sampling still covers the full frame. Bounds reuse the native alpha scanner and do not require a separate trim extension to be exported. Selected modes use the existing positive-coverage container bounds. `canvas.transform.plan` exposes geometry without a pixel sampler or document mutation.
+The affine `bounds` callback receives immutable full-frame raw pixels and writes `TrimBounds` for all pixels with alpha > 0, ignoring hidden RGB. All-zero bounds means an empty layer. The host validates native rectangles with wide arithmetic; legacy single-layer handles/pivots reject empty raw content. Owner scopes instead union all raster-alpha bounds with raw A8 support unequal to 255, falling back to the complete canvas when that union is empty. Pixel sampling still covers the full frame. Bounds reuse the native alpha scanner and do not require a separate trim extension to be exported. Selected modes use the existing positive-coverage container bounds. Legacy `canvas.transform.plan` can expose geometry without a pixel sampler; owner plans preflight their required sampler/bounds capabilities. Both remain read-only and permit contact inspection.
 
 
 ### Optional projective sampling table

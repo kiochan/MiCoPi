@@ -61,6 +61,14 @@ impl Editor {
             Action::OpenPalette
             | Action::UiCommand(10140 | 10144 | 10145 | 10166..=10174 | 10200) => true,
             Action::UiCommand(10176..=10183) if self.movement_contact_guarded() => true,
+            Action::UiCommand(10184) if self.movement_contact_guarded() => true,
+            Action::UiCommand(10185 | 10186)
+                if self.session.doc.last_transform().is_some_and(|recipe| {
+                    recipe.target == crate::engine::transform::Target::Owners
+                }) =>
+            {
+                true
+            }
             Action::UiCommand(id) => self.settings.keys.plugin_action(id).is_some_and(|id| {
                 self.session
                     .registry
@@ -560,7 +568,7 @@ impl Studio {
                 && (self.editor.palette.is_none() || self.editor.command_palette_open())
                 && !self.editor.new_open
                 && self.editor.export_draft.is_none()
-                && self.editor.transform.is_none()
+                && (self.editor.transform.is_none() || self.editor.guarded_transform_modal())
                 && (self.editor.command_form.is_none() || self.editor.guarded_command_form())
             {
                 if self.editor.command_palette_open() {
@@ -570,6 +578,7 @@ impl Studio {
                 } else {
                     self.editor.geometry = None;
                     self.editor.command_form = None;
+                    self.editor.transform = None;
                 }
                 self.editor.release_command_sync();
                 continue;

@@ -260,6 +260,7 @@ fn cached_effect_instance_is_created_once_even_after_errors_and_destroyed_with_i
         resample_features: 0,
         a8_sampler: None,
         a8_affine: None,
+        a8_affine_bounds: None,
         compositor: None,
         compositor_capabilities: 0,
         compositor_blend_modes: 0,

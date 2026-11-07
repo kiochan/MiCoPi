@@ -369,6 +369,13 @@ const MicopiA8AffineApi *micopi_a8_affine_v1(void);
 typedef struct { uint32_t mode, tolerance, sides; } MicopiTrim;
 /* Both dimensions zero mean all pixels match; otherwise an in-bounds frame. */
 typedef struct { uint32_t x, y, width, height; } MicopiTrimBounds;
+/* Optional raw-A8 affine tail, declared after its bounds output type.
+   Bounds cover samples different from neutral0..255. Neutral uniform input
+   returns zero bounds; different uniform input covers the full frame. Output
+   must not overlap the source descriptor or dense source bytes. Inspect the
+   base struct_size before reading the optional, nullable bounds callback. */
+typedef int32_t (*MicopiA8AffineBoundsFn)(const MicopiCompositeMask *, uint32_t, uint32_t, uint32_t, MicopiTrimBounds *);
+typedef struct { MicopiA8AffineApi base; MicopiA8AffineBoundsFn bounds; } MicopiA8AffineApiExt;
 typedef struct {
     uint32_t abi_version, struct_size;
     int32_t (*bounds)(const MicopiTrim *, const MicopiPixels *, MicopiTrimBounds *);

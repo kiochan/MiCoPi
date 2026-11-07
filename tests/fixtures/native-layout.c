@@ -89,6 +89,9 @@ ABI_ASSERT(offsetof(MicopiA8Affine, fill) == 4, "A8 affine fill offset");
 ABI_ASSERT(offsetof(MicopiA8Affine, matrix) == 8, "A8 affine matrix offset");
 ABI_ASSERT(sizeof(MicopiA8AffineApi) == 16, "Independent A8 affine table");
 ABI_ASSERT(offsetof(MicopiA8AffineApi, sample) == 8, "A8 affine callback offset");
+ABI_ASSERT(sizeof(MicopiA8AffineApiExt) == 24, "Optional A8 bounds tail");
+ABI_ASSERT(offsetof(MicopiA8AffineApiExt, base) == 0, "A8 bounds base prefix");
+ABI_ASSERT(offsetof(MicopiA8AffineApiExt, bounds) == 16, "A8 bounds callback offset");
 
 static int32_t masked(const MicopiCompositeNode *nodes, size_t count,
                       const MicopiCompositeLayer *layers, size_t layer_count,
@@ -152,6 +155,11 @@ static int32_t a8_affine(const MicopiA8Affine *request, const MicopiCompositeMas
     return MICOPI_OK;
 }
 static const MicopiA8AffineApi *a8_affine_entry(void) { return NULL; }
+static int32_t a8_affine_bounds(const MicopiCompositeMask *source, uint32_t width,
+                               uint32_t height, uint32_t neutral, MicopiTrimBounds *output) {
+    (void)source; (void)width; (void)height; (void)neutral; (void)output;
+    return MICOPI_OK;
+}
 #ifdef __cplusplus
 }
 #endif
@@ -184,7 +192,14 @@ int main(void) {
     MicopiA8AffineFn affine_callback = a8_affine;
     MicopiA8AffineEntry affine_entry_callback = a8_affine_entry;
     MicopiA8AffineApi affine_sampler;
+    affine_sampler.abi_version = 1;
+    affine_sampler.struct_size = sizeof(MicopiA8AffineApi);
     affine_sampler.sample = affine_callback;
+    MicopiA8AffineBoundsFn bounds_callback = a8_affine_bounds;
+    MicopiA8AffineApiExt affine_sampler_ext;
+    affine_sampler_ext.base = affine_sampler;
+    affine_sampler_ext.base.struct_size = sizeof(MicopiA8AffineApiExt);
+    affine_sampler_ext.bounds = bounds_callback;
     return callback == masked && host.a8 == byte_loan
         && rgba_original_callback == origin_transform
         && a8_original_callback == a8_origin_transform
@@ -200,5 +215,7 @@ int main(void) {
         && sampler.geometry == a8_geometry
         && sampler.resample == a8_resample
         && affine_sampler.sample == a8_affine
+        && affine_sampler_ext.base.sample == a8_affine
+        && affine_sampler_ext.bounds == a8_affine_bounds
         && affine_entry_callback == a8_affine_entry ? 0 : 1;
 }

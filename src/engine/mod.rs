@@ -15,4 +15,5 @@ pub mod selection;
 pub mod transform;
 pub mod workflow;
 
+pub(crate) use document::OwnerPreviewCost;
 pub use document::{over, Brush, Document, Layer, MAX_LAYERS, MAX_SIDE, TILE};

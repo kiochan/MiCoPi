@@ -1425,5 +1425,9 @@
   "Paint builds up as you pass over the same area.": "同じ場所をなぞるほど色が重なります。",
   "Choose build-up painting or limit opacity within each stroke.": "重ね塗り、または一筆ごとの不透明度制限を選びます。",
   "Glazing Marker": "重ね塗りマーカー",
-  "Flow and stroke opacity apply to Brush and Eraser.": "流量とストロークごとの不透明度はブラシと消しゴムに適用されます。"
+  "Flow and stroke opacity apply to Brush and Eraser.": "流量とストロークごとの不透明度はブラシと消しゴムに適用されます。",
+  "Transforming {count} layers and their linked masks.": "{count} 個のレイヤーと連動マスクを変形します。",
+  "Perspective corners are unavailable for masks and linked layers.": "マスクと連動レイヤーでは遠近変形を使用できません。",
+  "Finish the current stroke or pan before applying Free Transform.": "現在の描画やパン操作を終えてから自由変形を適用してください。",
+  "Preview is unavailable for this document. Turn off Preview to apply the transform.": "この文書はプレビューできません。プレビューをオフにすると変形を適用できます。"
 }

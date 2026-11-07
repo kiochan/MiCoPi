@@ -68,14 +68,88 @@ unsafe extern "C" fn sample(
     abi::OK
 }
 
-static API: abi::A8AffineApi = abi::A8AffineApi {
-    abi_version: 1,
-    struct_size: std::mem::size_of::<abi::A8AffineApi>() as u32,
-    sample: Some(sample),
+unsafe extern "C" fn bounds(
+    source: *const abi::CompositeMask,
+    width: u32,
+    height: u32,
+    neutral: u32,
+    output: *mut abi::TrimBounds,
+) -> i32 {
+    if neutral > 255 || !a8_sampler::dimensions(width, height) {
+        return abi::ERROR;
+    }
+    let Some(source_descriptor) = a8_sampler::span(source, 1) else {
+        return abi::ERROR;
+    };
+    let Some(output_span) = a8_sampler::span(output, 1) else {
+        return abi::ERROR;
+    };
+    if a8_sampler::overlaps(source_descriptor, output_span) {
+        return abi::ERROR;
+    }
+    let source = std::ptr::read(source);
+    let result = if source.data.is_null() {
+        if source.len != 0 || source.stride != 0 || source.constant > 255 {
+            return abi::ERROR;
+        }
+        if source.constant == neutral {
+            abi::TrimBounds::default()
+        } else {
+            abi::TrimBounds {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            }
+        }
+    } else {
+        if source.constant != 0 || !a8_sampler::layout(width, height, source.stride, source.len) {
+            return abi::ERROR;
+        }
+        let Some(source_span) = a8_sampler::span(source.data, source.len) else {
+            return abi::ERROR;
+        };
+        if a8_sampler::overlaps(source_span, output_span) {
+            return abi::ERROR;
+        }
+        let bytes = std::slice::from_raw_parts(source.data, source.len);
+        let (mut left, mut top, mut right, mut bottom) = (width, height, 0, 0);
+        for y in 0..height {
+            for x in 0..width {
+                if u32::from(bytes[y as usize * source.stride as usize + x as usize]) != neutral {
+                    left = left.min(x);
+                    top = top.min(y);
+                    right = right.max(x + 1);
+                    bottom = bottom.max(y + 1);
+                }
+            }
+        }
+        if right == 0 {
+            abi::TrimBounds::default()
+        } else {
+            abi::TrimBounds {
+                x: left,
+                y: top,
+                width: right - left,
+                height: bottom - top,
+            }
+        }
+    };
+    output.write(result);
+    abi::OK
+}
+
+static API: abi::A8AffineApiExt = abi::A8AffineApiExt {
+    base: abi::A8AffineApi {
+        abi_version: 1,
+        struct_size: std::mem::size_of::<abi::A8AffineApiExt>() as u32,
+        sample: Some(sample),
+    },
+    bounds: Some(bounds),
 };
 #[no_mangle]
 pub extern "C" fn micopi_a8_affine_v1() -> *const abi::A8AffineApi {
-    &API
+    &API.base
 }
 
 #[cfg(test)]

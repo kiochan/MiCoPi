@@ -583,6 +583,11 @@ impl Operation {
         if matches!(self, Self::MovePixels | Self::Nudge) {
             props["layer_ids"] = crate::plugins::layer_links::ids_schema();
         }
+        if self == Self::TransformPixels {
+            props["layer_ids"] = crate::plugins::layer_links::ids_schema();
+            props["mask_id"] = json!({"type":"integer","minimum":1,"maximum":4294967295u64,"description":"Transform this whole raw raster-owner mask independently of the active layer. Requires an omitted or auto target. Affine controls only; exterior samples reveal white."});
+            props["target"]["description"] = json!("Auto prioritizes the selected raster painting mask, then selected pixels or the active layer. Explicit layer ignores pixel selection and carries only its linked mask. layer_ids is an exact whole-raster set; never expands current link membership. Owner/masked perspective and masked selected pixels remain unsupported.");
+        }
         json!({"type":"object","properties":props,"required":required,"additionalProperties":false})
     }
     pub fn read_only(self) -> bool {

@@ -11,6 +11,21 @@ impl Session {
         operation: Option<Operation>,
         args: &Value,
     ) -> Result<(), ActionError> {
+        if operation == Some(Operation::TransformPreview) && self.runtime != "desktop" {
+            return Err(ActionError::new("ui_unavailable","Free Transform controls require the desktop; use canvas.transform for headless editing"));
+        }
+        if let Some(
+            op @ (Operation::TransformPixels
+            | Operation::TransformPlan
+            | Operation::TransformPreview
+            | Operation::TransformRepeat
+            | Operation::TransformRepeatCopy),
+        ) = operation
+        {
+            if crate::plugins::owner_affine::admit(self, op, args)? {
+                return Ok(());
+            }
+        }
         if matches!(operation, Some(Operation::MovePixels | Operation::Nudge))
             && args.get("layer_ids").is_some()
         {

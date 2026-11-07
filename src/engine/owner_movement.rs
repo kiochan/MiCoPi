@@ -4,12 +4,12 @@ use crate::engine::raster_masks::{MaskOwner, MaskPlane, SamplePlane};
 
 pub(crate) const OWNER_MOVE_STAGING_LIMIT: usize = 192 * 1024 * 1024;
 
-struct OwnerMove {
-    layer: Option<usize>,
-    mask: Option<usize>,
+pub(super) struct OwnerMove {
+    pub(super) layer: Option<usize>,
+    pub(super) mask: Option<usize>,
 }
 
-fn same_samples(left: &SamplePlane, right: &SamplePlane) -> bool {
+pub(super) fn same_samples(left: &SamplePlane, right: &SamplePlane) -> bool {
     match (left, right) {
         (SamplePlane::Uniform(a), SamplePlane::Uniform(b)) => a == b,
         (SamplePlane::Dense(a), SamplePlane::Dense(b)) => a == b,
@@ -27,6 +27,12 @@ impl Document {
         if self.stroke.is_some() || self.mask_contact.is_some() {
             return Err("Finish the current contact before moving raster owners".into());
         }
+        self.validate_owner_transform_source()
+    }
+
+    /// Immutable source inspection may run during an admitted native contact.
+    /// It neither changes contact ownership nor copies/materializes raw frames.
+    pub(crate) fn validate_owner_transform_source(&self) -> Result<(), String> {
         self.validate_canvas_geometry_frame(self.width, self.height)?;
         let area = self.width * self.height;
         if self.layers.iter().any(|layer| layer.pixels.len() != area)
@@ -53,7 +59,7 @@ impl Document {
         self.owner_move_target_plan(layer_id, mask_id, true)
     }
 
-    fn owner_move_target_plan(
+    pub(super) fn owner_move_target_plan(
         &self,
         layer_id: Option<u64>,
         mask_id: Option<u64>,
@@ -164,6 +170,15 @@ impl Document {
         if self.history_group.is_some() {
             return Err("Finish the current layer history group before moving owners".into());
         }
+        self.owner_geometry_pairs(ids)
+    }
+
+    /// Pair/lock/budget validation after the caller's immutable source checks.
+    /// Contact admission belongs to the operation, not read-only planning.
+    pub(super) fn owner_geometry_pairs(
+        &self,
+        ids: &[u64],
+    ) -> Result<Vec<(u64, Option<u64>)>, String> {
         if ids.is_empty()
             || ids.len() > MAX_LAYERS
             || ids
@@ -263,7 +278,7 @@ impl Document {
         Ok(true)
     }
 
-    fn publish_owner_move(
+    pub(super) fn publish_owner_move(
         &mut self,
         plan: OwnerMove,
         pixels: Option<Vec<u32>>,

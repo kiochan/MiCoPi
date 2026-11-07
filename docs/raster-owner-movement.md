@@ -6,7 +6,9 @@ schema-derived nodes, JSONL and MCP share these handlers. Native plugins perform
 the exact integer sampling; the host owns admission, history and verified outcomes.
 
 This is a bounded owner-movement subset. Group-mask movement, selected-pixel
-movement on mask-bearing documents and owner Free Transform remain guarded.
+movement on mask-bearing documents remain guarded. [Owner affine Free
+Transform](owner-affine.md) separately supports captured raster sets, linked
+companions and independent raw raster masks.
 Persistent [layer links](layer-links.md) extend whole-layer movement to explicitly
 captured raster sets. Off-canvas storage remains unavailable.
 
@@ -32,7 +34,8 @@ with an explicit Layer, Selected Pixels or Selection Outline target is a literal
 Existence, owner and capabilities are contextual checks at execution, so a prior
 pipeline node can create a mask and bind its returned ID into a later move.
 
-The existing movement preference enum and Free Transform resolver are unchanged.
+The existing movement preference enum is unchanged; Free Transform has its own
+[explicit owner-scope resolver](owner-affine.md).
 There is no new `raster_mask` preference value. The resolved event-context label
 `raster_mask` describes the executed domain rather than a new input enum.
 

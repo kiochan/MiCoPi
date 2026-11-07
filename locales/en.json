@@ -1425,5 +1425,9 @@
   "Paint builds up as you pass over the same area.": "Paint builds up as you pass over the same area.",
   "Choose build-up painting or limit opacity within each stroke.": "Choose build-up painting or limit opacity within each stroke.",
   "Glazing Marker": "Glazing Marker",
-  "Flow and stroke opacity apply to Brush and Eraser.": "Flow and stroke opacity apply to Brush and Eraser."
+  "Flow and stroke opacity apply to Brush and Eraser.": "Flow and stroke opacity apply to Brush and Eraser.",
+  "Transforming {count} layers and their linked masks.": "Transforming {count} layers and their linked masks.",
+  "Perspective corners are unavailable for masks and linked layers.": "Perspective corners are unavailable for masks and linked layers.",
+  "Finish the current stroke or pan before applying Free Transform.": "Finish the current stroke or pan before applying Free Transform.",
+  "Preview is unavailable for this document. Turn off Preview to apply the transform.": "Preview is unavailable for this document. Turn off Preview to apply the transform."
 }

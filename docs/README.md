@@ -32,6 +32,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Command Contact Admission](command-contact-admission.md) | Private cached frontend policy, shared execution, argument-form synchronization fences and native/local input continuity |
 | [Raster Owner Movement](raster-owner-movement.md) | Linked layer/mask integer Move, independent stable-mask targets, outline admission, compound history and exact clipping/fill rules |
 | [Layer Links](layer-links.md) | Persistent raster sets, explicit multi-owner Move/nudge, active-only painting, grouped history and shared action/state nodes |
+| [Owner and Linked Free Transform](owner-affine.md) | Exact captured raster/mask scopes, union bounds, one affine mapping, grouped recipe/history, repeat policies and separate preview costs |
 | [Atomic Operations](atomic-operations.md) | Rollback, plugin capabilities, contact commits and compact event storage |
 | [Verified Replay](replay.md) | Event journal, integrity checks, time-lapse preview and frame export |
 | [Project Structure](project-structure.md) | Directory responsibilities, generated files and Git boundaries |
@@ -48,7 +49,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Plugin Windows](plugin-windows.md) | Independent control bar, canvas, feature adapters and registered layout commands |
 | [Capture Requests](capture-requests.md) | Asynchronous workspace/native PNG capture, request IDs, bounded queues, diagnostic polling and file/renderer boundaries |
 | [Native Plugins](native-plugins.md) | DLL lifecycle, C ABI, borrowed pixels and independent builds |
-| [Native Raw-A8 Affine](native-a8-affine.md) | Optional scalar sampler prerequisite, explicit borders and borrowed output; owner/linked Free Transform remains guarded |
+| [Native Raw-A8 Affine](native-a8-affine.md) | Independent scalar sampler and optional neutral-support bounds, explicit borders and borrowed output for owner geometry |
 | [AI Pipeline](ai-pipeline.md) | Discovery, public state, validated execution and partial failures |
 | [Image Nodes](node-editor.md) | Non-destructive filters and layer blending |
 | [Workflow Nodes](workflow-nodes.md) | Schema-driven action/state nodes and AI-editable workflows |
@@ -59,6 +60,6 @@ The technical documentation is maintained in English. The project overview is al
 
 | Design | Status |
 | --- | --- |
-| [Paintable Raster Masks](raster-masks-design.md) | Foundations, painting/actions/effects/UI, document geometry, single-owner copy/delete, group creation/movement and subtree copying/deletion implemented; owner transforms, ungrouping, batches, merges and transfers remain planned |
+| [Paintable Raster Masks](raster-masks-design.md) | Foundations, painting/actions/effects/UI, document geometry, owner copy/delete/affine, group creation/movement and subtree copying/deletion; group-mask geometry, ungrouping, batches, merges and selected-pixel transfers remain planned |
 
 Runnable material is indexed in [Examples](../examples/README.md); actual application captures are indexed in [Screenshots](screenshots/README.md). See [Contributing](../CONTRIBUTING.md) and [Changelog](../CHANGELOG.md) for the collaboration process and release history.

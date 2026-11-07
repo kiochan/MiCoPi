@@ -412,7 +412,10 @@ impl Editor {
         self.core_at_revision(id, args, None)
     }
     fn contact_draft_modal(&self) -> bool {
-        self.geometry.is_some() || self.guarded_command_form() || self.command_palette_open()
+        self.geometry.is_some()
+            || self.guarded_command_form()
+            || self.command_palette_open()
+            || self.guarded_transform_modal()
     }
     fn backend_contact_active(&self) -> bool {
         self.session.stroke.active() || self.session.pointer_checkpoint.is_some()
@@ -444,6 +447,7 @@ impl Editor {
         self.command_sync_suspended
             || self.command_palette_open()
             || self.guarded_command_form()
+            || self.guarded_transform_modal()
             || self
                 .actions
                 .iter()
@@ -453,6 +457,7 @@ impl Editor {
         if self.command_sync_suspended
             && !self.command_palette_open()
             && !self.guarded_command_form()
+            && !self.guarded_transform_modal()
             && !self
                 .actions
                 .iter()
@@ -564,6 +569,9 @@ impl Editor {
         if self.command_sync_blocked() {
             return;
         }
+        self.push_gui_view_now();
+    }
+    fn push_gui_view_now(&mut self) {
         let view = crate::application::View {
             zoom: self.zoom,
             pan_x: self.pan.x,
@@ -950,22 +958,38 @@ impl Studio {
                 }
                 Some("transform.open") => self.editor.open_transform(),
                 Some("transform.parameters") => {
-                    if let Ok(mut params) = serde_json::from_value::<
-                        crate::plugins::affine::Parameters,
-                    >(effect["value"].clone())
+                    if effect.get("document_identity").is_some_and(|value| {
+                        value.as_u64() != Some(self.editor.session.doc.identity)
+                    }) || effect
+                        .get("revision")
+                        .is_some_and(|value| value.as_u64() != Some(self.editor.session.revision))
                     {
-                        if self.editor.transform.is_none() {
-                            self.editor.open_transform();
+                        self.editor.status = "Document changed; reopen Free Transform.".into();
+                        continue;
+                    }
+                    match crate::plugins::owner_affine::decode(effect["value"].clone()) {
+                        Ok((mut params, ids, mask)) => {
+                            if ids.is_none()
+                                && mask.is_none()
+                                && self.editor.transform.is_some()
+                                && !self.editor.guarded_transform_modal()
+                            {
+                                // Legacy parameter updates retain the existing draft's source.
+                                params.target = Some(crate::plugins::movement::resolved_target(
+                                    &self.editor.session,
+                                    params
+                                        .target
+                                        .unwrap_or(self.editor.session.movement_options().target),
+                                ));
+                                if let Some(draft) = &mut self.editor.transform {
+                                    draft.params = params;
+                                }
+                            } else {
+                                self.editor
+                                    .open_transform_parameters(params, ids.as_deref(), mask);
+                            }
                         }
-                        params.target = Some(crate::plugins::movement::resolved_target(
-                            &self.editor.session,
-                            params
-                                .target
-                                .unwrap_or(self.editor.session.movement_options().target),
-                        ));
-                        if let Some(d) = &mut self.editor.transform {
-                            d.params = params;
-                        }
+                        Err(error) => self.editor.status = error.to_string(),
                     }
                 }
                 Some("selection.options") | Some("movement.options") => self.editor.finish_stroke(),
@@ -1175,7 +1199,7 @@ impl Studio {
             && (self.editor.palette.is_none() || self.editor.command_palette_open())
             && !self.editor.new_open
             && self.editor.export_draft.is_none()
-            && self.editor.transform.is_none()
+            && (self.editor.transform.is_none() || self.editor.guarded_transform_modal())
             && (self.editor.command_form.is_none() || self.editor.guarded_command_form())
             && !self.replay.open;
         if self.editor.blocked

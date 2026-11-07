@@ -412,9 +412,172 @@ fn raw_a8_affine_rejects_null_unaligned_metadata_and_all_mutable_aliases() {
 #[test]
 fn raw_a8_affine_entry_is_independent_and_keeps_the_old_sampler_table_complete() {
     let api = unsafe { &*micopi_a8_affine_v1() };
-    assert_eq!((api.abi_version, api.struct_size), (1, 16));
+    assert_eq!((api.abi_version, api.struct_size), (1, 24));
     assert!(api.sample.is_some());
+    let extended = unsafe { &*(api as *const abi::A8AffineApi).cast::<abi::A8AffineApiExt>() };
+    assert!(extended.bounds.is_some());
     let old = unsafe { &*super::super::a8_sampler::micopi_a8_sampler_v1() };
     assert_eq!((old.abi_version, old.struct_size), (1, 32));
     assert!(old.reframe.is_some() && old.geometry.is_some() && old.resample.is_some());
+}
+
+#[test]
+fn raw_a8_bounds_uniform_neutral_is_empty_and_other_uniforms_cover_the_frame_without_materializing()
+{
+    for neutral in [0, 73, 255] {
+        for constant in [0, 73, 255] {
+            for (width, height) in [(5, 3), (4096, 4096)] {
+                let source = uniform(constant);
+                let mut output = abi::TrimBounds {
+                    x: 999,
+                    y: 998,
+                    width: 997,
+                    height: 996,
+                };
+                assert_eq!(
+                    unsafe { bounds(&source, width, height, neutral, &mut output) },
+                    abi::OK
+                );
+                let expected = if constant == neutral {
+                    abi::TrimBounds::default()
+                } else {
+                    abi::TrimBounds {
+                        x: 0,
+                        y: 0,
+                        width,
+                        height,
+                    }
+                };
+                assert_eq!(output, expected);
+                assert!(source.data.is_null() && source.len == 0 && source.stride == 0);
+            }
+        }
+    }
+}
+
+#[test]
+fn raw_a8_bounds_find_exact_non_neutral_support_and_ignore_stride_padding() {
+    for neutral in [0u8, 73, 255] {
+        let mut data = [neutral; 24];
+        // Different padding must never enlarge support to the frame edges.
+        for y in 0..3 {
+            data[y * 8 + 5..y * 8 + 8].fill(neutral.wrapping_add(1));
+        }
+        let source = dense(&data, 8);
+        let mut output = abi::TrimBounds::default();
+        assert_eq!(
+            unsafe { bounds(&source, 5, 3, u32::from(neutral), &mut output) },
+            abi::OK
+        );
+        assert_eq!(output, abi::TrimBounds::default());
+        data[1 * 8 + 1] = neutral.wrapping_add(1);
+        data[2 * 8 + 3] = neutral.wrapping_sub(1);
+        let frozen = data;
+        let source = dense(&data, 8);
+        assert_eq!(
+            unsafe { bounds(&source, 5, 3, u32::from(neutral), &mut output) },
+            abi::OK
+        );
+        assert_eq!(
+            output,
+            abi::TrimBounds {
+                x: 1,
+                y: 1,
+                width: 3,
+                height: 2
+            }
+        );
+        assert_eq!(data, frozen);
+        // A mark outside ink's usual bounds must contribute, even at the edge.
+        data[0] = neutral.wrapping_add(2);
+        let source = dense(&data, 8);
+        assert_eq!(
+            unsafe { bounds(&source, 5, 3, u32::from(neutral), &mut output) },
+            abi::OK
+        );
+        assert_eq!(
+            output,
+            abi::TrimBounds {
+                x: 0,
+                y: 0,
+                width: 4,
+                height: 3
+            }
+        );
+    }
+}
+
+#[test]
+fn raw_a8_bounds_reject_invalid_descriptors_alignment_and_aliases_before_writes() {
+    for case in 0..19 {
+        let mut words = [0x73737373u32; 6];
+        let before_words = words;
+        let mut source = abi::CompositeMask {
+            data: words.as_ptr().cast(),
+            len: 24,
+            stride: 8,
+            constant: 0,
+        };
+        let mut guarded = [0x12345678u32, 71, 72, 73, 74, 0x87654321];
+        let before = guarded;
+        let mut output = unsafe { guarded.as_mut_ptr().add(1).cast::<abi::TrimBounds>() };
+        let (mut width, mut height, mut neutral) = (5, 3, 255);
+        let mut source_pointer = std::ptr::addr_of!(source);
+        match case {
+            0 => source_pointer = std::ptr::null(),
+            1 => output = std::ptr::null_mut(),
+            2 => {
+                source_pointer = unsafe {
+                    (&source as *const abi::CompositeMask)
+                        .cast::<u8>()
+                        .add(1)
+                        .cast()
+                }
+            }
+            3 => output = unsafe { guarded.as_mut_ptr().cast::<u8>().add(1).cast() },
+            4 => width = 0,
+            5 => height = 4097,
+            6 => neutral = 256,
+            7 => {
+                source = abi::CompositeMask {
+                    len: 1,
+                    ..uniform(73)
+                }
+            }
+            8 => {
+                source = abi::CompositeMask {
+                    stride: 1,
+                    ..uniform(73)
+                }
+            }
+            9 => source = uniform(256),
+            10 => source.constant = 1,
+            11 => source.stride = 4,
+            12 => source.len = 1,
+            13 => source.len = 4096 * 4096 + 1,
+            14 => source.data = (usize::MAX - 1) as *const u8,
+            15 => output = (&mut source as *mut abi::CompositeMask).cast(),
+            16 => {
+                output = unsafe {
+                    (&mut source as *mut abi::CompositeMask)
+                        .cast::<u8>()
+                        .add(8)
+                        .cast()
+                }
+            }
+            17 => output = words.as_mut_ptr().cast(),
+            _ => source.stride = 4097,
+        }
+        assert_eq!(
+            unsafe { bounds(source_pointer, width, height, neutral, output) },
+            abi::ERROR,
+            "case{case}"
+        );
+        assert_eq!(guarded, before, "output case{case}");
+        assert_eq!(words, before_words, "source case{case}");
+        if matches!(case, 15 | 16) {
+            assert_eq!(source.data, words.as_ptr().cast());
+            assert_eq!((source.len, source.stride, source.constant), (24, 8, 0));
+        }
+    }
 }

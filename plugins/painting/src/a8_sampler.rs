@@ -5,7 +5,7 @@ use micopi_plugin_api as abi;
 const SIDE: u32 = 4096;
 const AREA: usize = SIDE as usize * SIDE as usize;
 
-fn span<T>(pointer: *const T, count: usize) -> Option<(usize, usize)> {
+pub(super) fn span<T>(pointer: *const T, count: usize) -> Option<(usize, usize)> {
     let bytes = count.checked_mul(std::mem::size_of::<T>())?;
     if pointer.is_null()
         || pointer as usize % std::mem::align_of::<T>() != 0
@@ -15,13 +15,13 @@ fn span<T>(pointer: *const T, count: usize) -> Option<(usize, usize)> {
     }
     Some((pointer as usize, (pointer as usize).checked_add(bytes)?))
 }
-fn overlaps(a: (usize, usize), b: (usize, usize)) -> bool {
+pub(super) fn overlaps(a: (usize, usize), b: (usize, usize)) -> bool {
     a.0 < b.1 && b.0 < a.1
 }
-fn dimensions(width: u32, height: u32) -> bool {
+pub(super) fn dimensions(width: u32, height: u32) -> bool {
     (1..=SIDE).contains(&width) && (1..=SIDE).contains(&height)
 }
-fn layout(width: u32, height: u32, stride: u32, len: usize) -> bool {
+pub(super) fn layout(width: u32, height: u32, stride: u32, len: usize) -> bool {
     dimensions(width, height)
         && stride >= width
         && stride <= SIDE

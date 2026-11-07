@@ -216,6 +216,16 @@ unsafe fn decode_a8_affine_table(
     }
     Ok(api)
 }
+unsafe fn decode_a8_affine_bounds(
+    pointer: *const abi::A8AffineApi,
+) -> Result<Option<abi::A8AffineBoundsFn>, String> {
+    decode_a8_affine_table(pointer)?;
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.struct_size < std::mem::size_of::<abi::A8AffineApiExt>() as u32 {
+        return Ok(None);
+    }
+    Ok(std::ptr::read_unaligned(pointer.cast::<abi::A8AffineApiExt>()).bounds)
+}
 unsafe fn decode_move_table(pointer: *const abi::MoveApi) -> Result<abi::MoveApi, String> {
     if pointer.is_null() {
         return Err("Null move table".into());
@@ -389,7 +399,9 @@ impl Module {
         }
     }
 
-    unsafe fn a8_affine_api(&self) -> Result<Option<abi::A8AffineApi>, String> {
+    unsafe fn a8_affine_api(
+        &self,
+    ) -> Result<Option<(abi::A8AffineApi, Option<abi::A8AffineBoundsFn>)>, String> {
         #[cfg(windows)]
         {
             let address =
@@ -398,7 +410,11 @@ impl Module {
                 return Ok(None);
             }
             let entry = std::mem::transmute::<*mut c_void, abi::A8AffineEntry>(address);
-            decode_a8_affine_table(entry()).map(Some)
+            let pointer = entry();
+            Ok(Some((
+                decode_a8_affine_table(pointer)?,
+                decode_a8_affine_bounds(pointer)?,
+            )))
         }
         #[cfg(not(windows))]
         {
@@ -582,6 +598,7 @@ pub struct NativePlugin {
     resample_features: u32,
     a8_sampler: Option<abi::A8SamplerApi>,
     a8_affine: Option<abi::A8AffineApi>,
+    a8_affine_bounds: Option<abi::A8AffineBoundsFn>,
     compositor: Option<abi::CompositorApi>,
     compositor_capabilities: u64,
     compositor_blend_modes: u64,
@@ -626,6 +643,25 @@ impl NativePlugin {
     }
     pub(crate) fn supports_a8_affine(&self) -> bool {
         self.a8_affine.is_some()
+    }
+    pub(crate) fn supports_a8_affine_bounds(&self) -> bool {
+        self.a8_affine_bounds.is_some()
+    }
+    pub(crate) fn a8_affine_bounds(
+        &self,
+        source: &abi::CompositeMask,
+        width: u32,
+        height: u32,
+        neutral: u32,
+    ) -> Result<Option<[usize; 4]>, String> {
+        let callback = self
+            .a8_affine_bounds
+            .ok_or("Painting DLL does not support raw A8 content bounds")?;
+        let mut result = abi::TrimBounds::default();
+        if unsafe { callback(source, width, height, neutral, &mut result) } != abi::OK {
+            return Err("Native raw A8 content bounds failed".into());
+        }
+        checked_affine_bounds(result, width as usize, height as usize)
     }
     /// Synchronous borrowed sampling; the caller owns checked output staging.
     pub(crate) fn a8_affine(
@@ -770,7 +806,10 @@ impl NativePlugin {
             None => (None, 0),
         };
         let a8_sampler = unsafe { module.a8_sampler_api()? };
-        let a8_affine = unsafe { module.a8_affine_api()? };
+        let (a8_affine, a8_affine_bounds) = match unsafe { module.a8_affine_api()? } {
+            Some((api, bounds)) => (Some(api), bounds),
+            None => (None, None),
+        };
         let tools = unsafe { module.tool_api()? };
         let tool_options = unsafe { module.tool_options_api()? };
         let (selection_mix, selection_color, selection_edges, selection_transfer) =
@@ -827,6 +866,7 @@ impl NativePlugin {
                 resample_features,
                 a8_sampler,
                 a8_affine,
+                a8_affine_bounds,
                 compositor,
                 compositor_capabilities,
                 compositor_blend_modes,
@@ -4125,6 +4165,14 @@ pub(crate) fn projective_mask(
 }
 
 pub(crate) fn affine_bounds(s: &Session) -> Result<[usize; 4], String> {
+    affine_source_bounds(s, &s.doc.layers[s.doc.active].pixels)?
+        .ok_or_else(|| "Layer transform requires nontransparent pixels".into())
+}
+pub(crate) fn affine_layer_bounds(s: &Session, id: u64) -> Result<Option<[usize; 4]>, String> {
+    let index = s.doc.layer_index(id).ok_or("Layer does not exist")?;
+    affine_source_bounds(s, &s.doc.layers[index].pixels)
+}
+fn affine_source_bounds(s: &Session, data: &[u32]) -> Result<Option<[usize; 4]>, String> {
     let kernel = s
         .registry
         .native_plugins
@@ -4132,7 +4180,9 @@ pub(crate) fn affine_bounds(s: &Session) -> Result<[usize; 4], String> {
         .and_then(|p| p.affine)
         .and_then(|p| p.bounds)
         .ok_or("Painting DLL does not support affine content bounds")?;
-    let data = &s.doc.layers[s.doc.active].pixels;
+    if data.len() != s.doc.width * s.doc.height {
+        return Err("Invalid affine source dimensions".into());
+    }
     let source = abi::Pixels {
         data: data.as_ptr() as *mut u32,
         len: data.len(),
@@ -4146,22 +4196,114 @@ pub(crate) fn affine_bounds(s: &Session) -> Result<[usize; 4], String> {
     if unsafe { kernel(&source, &mut out) } != abi::OK {
         return Err("Native transform bounds failed".into());
     }
+    checked_affine_bounds(out, s.doc.width, s.doc.height)
+}
+fn checked_affine_bounds(
+    out: abi::TrimBounds,
+    width: usize,
+    height: usize,
+) -> Result<Option<[usize; 4]>, String> {
     if out == abi::TrimBounds::default() {
-        return Err("Layer transform requires nontransparent pixels".into());
+        return Ok(None);
     }
     if out.width == 0
         || out.height == 0
-        || u64::from(out.x) + u64::from(out.width) > s.doc.width as u64
-        || u64::from(out.y) + u64::from(out.height) > s.doc.height as u64
+        || u64::from(out.x) + u64::from(out.width) > width as u64
+        || u64::from(out.y) + u64::from(out.height) > height as u64
     {
         return Err("Native transform returned invalid content bounds".into());
     }
-    Ok([
+    Ok(Some([
         out.x as usize,
         out.y as usize,
         (out.x + out.width) as usize,
         (out.y + out.height) as usize,
-    ])
+    ]))
+}
+
+pub(crate) fn require_owner_affine(s: &Session, pixels: bool, masks: bool) -> Result<(), String> {
+    let plugin = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .ok_or("Painting DLL is unavailable")?;
+    if pixels
+        && !plugin
+            .affine
+            .is_some_and(|api| api.pixels.is_some() && api.bounds.is_some())
+    {
+        return Err("Painting DLL does not support affine pixel sampling and bounds".into());
+    }
+    if masks && !(plugin.supports_a8_affine() && plugin.supports_a8_affine_bounds()) {
+        return Err("Painting DLL does not support raw A8 affine sampling and bounds".into());
+    }
+    Ok(())
+}
+fn raw_mask_descriptor(s: &Session, id: u64) -> Result<abi::CompositeMask, String> {
+    use crate::engine::raster_masks::PlaneView;
+    Ok(match s.doc.mask_plane(id)? {
+        PlaneView::Uniform(value) => abi::CompositeMask {
+            data: std::ptr::null(),
+            len: 0,
+            stride: 0,
+            constant: u32::from(value),
+        },
+        PlaneView::Dense(data) => abi::CompositeMask {
+            data: data.as_ptr(),
+            len: data.len(),
+            stride: s.doc.width as u32,
+            constant: 0,
+        },
+    })
+}
+pub(crate) fn affine_mask_bounds(s: &Session, id: u64) -> Result<Option<[usize; 4]>, String> {
+    let source = raw_mask_descriptor(s, id)?;
+    s.registry
+        .native_plugins
+        .get("painting")
+        .ok_or("Painting DLL is unavailable")?
+        .a8_affine_bounds(&source, s.doc.width as u32, s.doc.height as u32, 255)
+}
+pub(crate) fn affine_raw_mask(
+    s: &Session,
+    id: u64,
+    options: &abi::Affine,
+) -> Result<crate::engine::raster_masks::SamplePlane, String> {
+    use crate::engine::raster_masks::SamplePlane;
+    let source = raw_mask_descriptor(s, id)?;
+    let plugin = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .filter(|plugin| plugin.supports_a8_affine())
+        .ok_or("Painting DLL does not support raw A8 affine sampling")?;
+    let mut data = vec![0; s.doc.width * s.doc.height];
+    let mut output = abi::A8Pixels {
+        data: data.as_mut_ptr(),
+        len: data.len(),
+        width: s.doc.width as u32,
+        height: s.doc.height as u32,
+        stride: s.doc.width as u32,
+        origin_x: 0,
+        origin_y: 0,
+    };
+    let request = abi::A8Affine {
+        method: options.method,
+        fill: 255,
+        matrix: options.matrix,
+    };
+    plugin.a8_affine(
+        &request,
+        &source,
+        s.doc.width as u32,
+        s.doc.height as u32,
+        &mut output,
+    )?;
+    Ok(if data.iter().all(|value| *value == data[0]) {
+        SamplePlane::Uniform(data[0])
+    } else {
+        SamplePlane::Dense(data)
+    })
 }
 
 #[cfg(test)]
@@ -4171,6 +4313,26 @@ impl NativePlugin {
         api: Option<abi::A8SamplerApi>,
     ) -> Option<abi::A8SamplerApi> {
         std::mem::replace(&mut self.a8_sampler, api)
+    }
+    pub(crate) fn replace_a8_affine_for_test(
+        &mut self,
+        api: Option<abi::A8AffineApi>,
+    ) -> Option<abi::A8AffineApi> {
+        std::mem::replace(&mut self.a8_affine, api)
+    }
+    pub(crate) fn replace_a8_affine_bounds_for_test(
+        &mut self,
+        callback: Option<abi::A8AffineBoundsFn>,
+    ) -> Option<abi::A8AffineBoundsFn> {
+        std::mem::replace(&mut self.a8_affine_bounds, callback)
+    }
+    pub(crate) fn replace_affine_pixels_for_test(
+        &mut self,
+        callback: Option<abi::AffinePixelsFn>,
+    ) -> Option<abi::AffinePixelsFn> {
+        self.affine
+            .as_mut()
+            .and_then(|api| std::mem::replace(&mut api.pixels, callback))
     }
 
     #[cfg(test)]

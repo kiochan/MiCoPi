@@ -1,10 +1,10 @@
-# Native raw-A8 affine prerequisite
+# Native raw-A8 affine
 
 The independent `micopi_a8_affine_v1` export samples a borrowed raw A8 plane
-through an affine matrix. It is a native SDK/loader prerequisite, **not public
-owner or linked-layer Free Transform support**. Existing document/action guards,
-transform recipes and desktop availability are unchanged. There is no new action,
-workflow editing operation or transform UI in this increment.
+through an affine matrix. It is an independent SDK/loader primitive used by
+[owner and linked Free Transform](owner-affine.md). Ownership, selection policy,
+locks, staging and document history remain host responsibilities; directly
+calling this table does not bypass shared action admission.
 
 ## ABI and sampling
 
@@ -14,6 +14,16 @@ then one `sample` callback. `A8Affine` is 56 bytes: `u32 method` at offset 0,
 `u32 fill` at 4 and `[f64; 6] matrix` at 8. The callback receives request,
 immutable `CompositeMask`, source width/height and caller-owned mutable
 `A8Pixels` output. It is synchronous and retains no pointer.
+
+An optional `A8AffineApiExt` tail appends `bounds` at offset 16 for a 24-byte
+x64 table. Read the header/size before accessing it. A complete 16-byte table
+remains sample-capable; the optional bounds callback may be absent. Its signature
+receives immutable `CompositeMask`, width, height, neutral byte and mutable
+`TrimBounds`. It returns the exclusive support rectangle for raw samples unequal
+to the supplied neutral value, or all zeros for empty support. Uniform neutral
+has no support; a different uniform byte covers the full finite frame. The scan
+allocates no full-frame storage and validates metadata/output aliases before
+writing. Owner handles use neutral 255, independently of effective mask effects.
 
 The matrix is the forward document-edge map `[a,b,tx,c,d,ty]`:
 
@@ -50,13 +60,16 @@ remain untouched. The kernel allocates no full-frame scratch. The host caches
 the optional callback; `native[].samplers.raw_a8_affine` in registry inventory
 reports provider capability, not document-operation availability. An absent export does
 not disable unrelated plugin capabilities.
+`native[].samplers.raw_a8_bounds` independently reports the optional bounds tail;
+sample-only providers remain usable for consumers that do not require bounds.
 
 The host wrapper borrows input and accepts a caller-owned output descriptor; it
-does not allocate an output secretly. A future document operation must preflight
-locks, contacts, logical budgets and capabilities before staging at most one
-checked A8 output (up to 16 MiB at 4096²), then supply its own atomic history,
-selection/link policies and verified outcome contract. This primitive alone does
-none of that and cannot bypass the current guarded document paths.
+does not allocate an output secretly. The owner-affine action preflights locks,
+contacts, source storage, logical budgets and callbacks before staging checked
+RGBA/A8 results. Each raw A8 output is at most 16 MiB at 4096² and counts toward
+the shared 192 MiB aggregate. The host provides atomic grouped history,
+selection/link policies, exact repeat scopes and verified outcomes. Primitive
+capability alone does not imply that every document geometry path is supported.
 
 ## Validation status
 

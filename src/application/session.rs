@@ -686,6 +686,17 @@ impl Session {
             if matches!(op, Operation::MovePixels | Operation::Nudge) {
                 crate::plugins::movement::validate_literal(&action.args)?;
             }
+            if matches!(
+                op,
+                Operation::TransformPixels | Operation::TransformPlan | Operation::TransformPreview
+            ) {
+                let args = if op == Operation::TransformPreview {
+                    &action.args["parameters"]
+                } else {
+                    &action.args
+                };
+                crate::plugins::owner_affine::validate_literal(args)?;
+            }
             if op.is_mask() {
                 crate::plugins::raster_masks::validate(op, &action.args)?;
             }

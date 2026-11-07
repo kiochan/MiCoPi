@@ -1425,5 +1425,9 @@
   "Paint builds up as you pass over the same area.": "같은 영역을 반복해서 그리면 색이 계속 쌓입니다.",
   "Choose build-up painting or limit opacity within each stroke.": "색을 계속 쌓거나 획마다 불투명도를 제한하도록 선택합니다.",
   "Glazing Marker": "글레이징 마커",
-  "Flow and stroke opacity apply to Brush and Eraser.": "흐름과 획별 불투명도는 브러시와 지우개에 적용됩니다."
+  "Flow and stroke opacity apply to Brush and Eraser.": "흐름과 획별 불투명도는 브러시와 지우개에 적용됩니다.",
+  "Transforming {count} layers and their linked masks.": "레이어 {count}개와 연결된 마스크를 변형합니다.",
+  "Perspective corners are unavailable for masks and linked layers.": "마스크와 연결된 레이어에는 원근 모서리를 사용할 수 없습니다.",
+  "Finish the current stroke or pan before applying Free Transform.": "현재 획이나 이동을 마친 뒤 자유 변형을 적용하세요.",
+  "Preview is unavailable for this document. Turn off Preview to apply the transform.": "이 문서는 미리 볼 수 없습니다. 미리 보기를 끄면 변형을 적용할 수 있습니다."
 }

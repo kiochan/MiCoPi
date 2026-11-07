@@ -1856,6 +1856,8 @@ mod layer_links;
 mod layer_merge;
 #[path = "layer_selection.rs"]
 mod layer_selection;
+#[path = "owner_affine.rs"]
+mod owner_affine;
 use layer_links::{project_layer_links, validate_layer_links};
 #[path = "mask_apply.rs"]
 mod mask_apply;
@@ -1875,7 +1877,10 @@ mod mix;
 mod origin_loans;
 #[path = "owner_movement.rs"]
 mod owner_movement;
+#[path = "owner_preview.rs"]
+mod owner_preview;
 pub(crate) use owner_movement::OWNER_MOVE_STAGING_LIMIT;
+pub(crate) use owner_preview::OwnerPreviewCost;
 #[path = "raster_mask_editing.rs"]
 mod raster_mask_editing;
 #[path = "raster_mask_project.rs"]

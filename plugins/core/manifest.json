@@ -279,7 +279,8 @@
                 "enum": [
                   "layer",
                   "selection",
-                  "selection_mask"
+                  "selection_mask",
+                  "owners"
                 ]
               },
               "method": {
@@ -297,6 +298,46 @@
                   "type": "number"
                 },
                 "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
+              },
+              "owners": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "enum": [
+                      1
+                    ]
+                  },
+                  "layer_ids": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    }
+                  },
+                  "mask_ids": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    }
+                  },
+                  "mask_owner_layer_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "version",
+                  "layer_ids",
+                  "mask_ids"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -4152,7 +4193,8 @@
                 "enum": [
                   "layer",
                   "selection",
-                  "selection_mask"
+                  "selection_mask",
+                  "owners"
                 ]
               },
               "method": {
@@ -4170,6 +4212,46 @@
                   "type": "number"
                 },
                 "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
+              },
+              "owners": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "enum": [
+                      1
+                    ]
+                  },
+                  "layer_ids": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    }
+                  },
+                  "mask_ids": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    }
+                  },
+                  "mask_owner_layer_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "version",
+                  "layer_ids",
+                  "mask_ids"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -4581,7 +4663,8 @@
                 "enum": [
                   "layer",
                   "selection",
-                  "selection_mask"
+                  "selection_mask",
+                  "owners"
                 ]
               },
               "method": {
@@ -4599,6 +4682,46 @@
                   "type": "number"
                 },
                 "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
+              },
+              "owners": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "enum": [
+                      1
+                    ]
+                  },
+                  "layer_ids": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    }
+                  },
+                  "mask_ids": {
+                    "type": "array",
+                    "maxItems": 16,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    }
+                  },
+                  "mask_owner_layer_id": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "required": [
+                  "version",
+                  "layer_ids",
+                  "mask_ids"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -11116,7 +11239,9 @@
             "enum": [
               "layer",
               "selection",
-              "selection_mask"
+              "selection_mask",
+              "layers",
+              "raster_mask"
             ]
           },
           "source_bounds": {
@@ -11171,6 +11296,86 @@
               "type": "number"
             },
             "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
+          },
+          "layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "mask_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "owner_scope": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "layer_ids": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                }
+              },
+              "mask_ids": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                }
+              },
+              "mask_owner_layer_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              }
+            },
+            "required": [
+              "version",
+              "layer_ids",
+              "mask_ids"
+            ],
+            "additionalProperties": false
+          },
+          "contact_active": {
+            "type": "boolean"
+          },
+          "staged_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "preview_available": {
+            "type": "boolean"
+          },
+          "preview_composite_bytes": {
+            "description": "Bytes, or null when preview is unavailable."
+          },
+          "preview_effect_bytes": {
+            "description": "Private mask effect bytes, or null when preview is unavailable."
+          },
+          "preview_extra_bytes": {
+            "description": "Composite plus private effect bytes, or null when preview is unavailable."
+          },
+          "preview_error": {
+            "description": "Error text, or null when a preview fits its separate budget."
           }
         },
         "required": [
@@ -11185,7 +11390,9 @@
           "height",
           "revision",
           "drawing",
-          "denominator"
+          "denominator",
+          "layer_ids",
+          "mask_ids"
         ]
       }
     },
@@ -11220,7 +11427,8 @@
             "enum": [
               "layer",
               "selection",
-              "selection_mask"
+              "selection_mask",
+              "owners"
             ]
           },
           "method": {
@@ -11238,6 +11446,46 @@
               "type": "number"
             },
             "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
+          },
+          "owners": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "layer_ids": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                }
+              },
+              "mask_ids": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                }
+              },
+              "mask_owner_layer_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              }
+            },
+            "required": [
+              "version",
+              "layer_ids",
+              "mask_ids"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -11515,7 +11763,8 @@
             "enum": [
               "layer",
               "selection",
-              "selection_mask"
+              "selection_mask",
+              "owners"
             ]
           },
           "method": {
@@ -11533,6 +11782,46 @@
               "type": "number"
             },
             "description": "Homogeneous denominator row [g,h,i]: divide both numerator coordinates by g*x+h*y+i. Affine is [0,0,1]."
+          },
+          "owners": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "integer",
+                "enum": [
+                  1
+                ]
+              },
+              "layer_ids": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                }
+              },
+              "mask_ids": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                }
+              },
+              "mask_owner_layer_id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              }
+            },
+            "required": [
+              "version",
+              "layer_ids",
+              "mask_ids"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [

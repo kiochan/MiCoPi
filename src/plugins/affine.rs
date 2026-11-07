@@ -117,6 +117,7 @@ impl Parameters {
             denominator: [0., 0., 1.],
             target: Target::Layer,
             method: self.method,
+            owners: None,
         }
         .validate()?;
         Ok((matrix, pivot))
@@ -246,7 +247,14 @@ pub(crate) fn source_bounds(s: &Session, target: MoveTarget) -> Result<[usize; 4
     }
 }
 pub(crate) fn describe(s: &Session, args: Value) -> ActionResult {
-    let p: Parameters = serde_json::from_value(args)?;
+    let (p, ids, mask) = super::owner_affine::decode(args)?;
+    if let Some(scope) = super::owner_affine::resolve_parameters(s, p, ids.as_deref(), mask)
+        .map_err(|e| ActionError::new("transform", e))?
+    {
+        let plan = super::owner_affine::plan(s, &scope, p)
+            .map_err(|e| ActionError::new("transform", e))?;
+        return Ok(super::owner_affine::describe(&plan, s));
+    }
     let plan = plan(s, p).map_err(|e| ActionError::new("transform", e))?;
     let m = plan.options.matrix;
     let b = plan.bounds;
@@ -258,7 +266,7 @@ pub(crate) fn describe(s: &Session, args: Value) -> ActionResult {
         .corners(b)
         .map_err(|e| ActionError::new("transform", e))?;
     Ok(
-        json!({"target":plan.target,"source_bounds":b,"matrix":m,"pivot_x":plan.pivot[0],"pivot_y":plan.pivot[1],"corners":corners,"denominator":plan.denominator,"identity_matrix":mapping.identity(),"width":s.doc.width,"height":s.doc.height,"revision":s.revision,"drawing":s.is_drawing()}),
+        json!({"target":plan.target,"source_bounds":b,"matrix":m,"pivot_x":plan.pivot[0],"pivot_y":plan.pivot[1],"corners":corners,"denominator":plan.denominator,"identity_matrix":mapping.identity(),"width":s.doc.width,"height":s.doc.height,"revision":s.revision,"drawing":s.is_drawing(),"layer_ids":if plan.target==MoveTarget::SelectionMask{Vec::<u64>::new()}else{vec![s.doc.layer_id(s.doc.active)]},"mask_ids":Vec::<u64>::new()}),
     )
 }
 fn run(s: &mut Session, p: Parameters) -> Result<(), String> {
@@ -282,6 +290,7 @@ fn run(s: &mut Session, p: Parameters) -> Result<(), String> {
                 _ => Target::SelectionMask,
             },
             method: p.method,
+            owners: None,
         };
         s.doc
             .apply_affine(pixels.as_deref(), selection, Some(recipe))?;
@@ -301,7 +310,13 @@ pub(crate) fn execute(s: &mut Session, args: Value) -> ActionResult {
     if args.get("quad").is_some() {
         require_idle(s)?;
     }
-    let parameters: Parameters = serde_json::from_value(args)?;
+    let (parameters, ids, mask) = super::owner_affine::decode(args)?;
+    if let Some(scope) =
+        super::owner_affine::resolve_parameters(s, parameters, ids.as_deref(), mask)
+            .map_err(|e| ActionError::new("transform", e))?
+    {
+        return super::owner_affine::execute(s, scope, parameters);
+    }
     let target = super::movement::resolved_target(
         s,
         parameters.target.unwrap_or(s.movement_options().target),
@@ -322,15 +337,27 @@ pub(crate) fn request_preview(s: &mut Session, args: Value) -> ActionResult {
             "Wait for queued presentation commands before retrying",
         ));
     }
-    let p: Parameters = serde_json::from_value(args["parameters"].clone())?;
-    if p.quad.is_some() {
+    let (p, ids, mask) = super::owner_affine::decode(args["parameters"].clone())?;
+    let scope = super::owner_affine::resolve_parameters(s, p, ids.as_deref(), mask)
+        .map_err(|e| ActionError::new("transform", e))?;
+    if let Some(scope) = scope {
+        super::owner_affine::plan(s, &scope, p).map_err(|e| ActionError::new("transform", e))?;
+    } else if p.quad.is_some() {
         plan(s, p).map_err(|e| ActionError::new("invalid_arguments", e))?;
     } else {
         p.matrix([0, 0, 1, 1])
             .map_err(|e| ActionError::new("invalid_arguments", e))?;
     }
-    s.ui_effects
-        .push_back(json!({"id":"transform.parameters","value":p}));
+    let value = scope
+        .as_ref()
+        .map(|scope| super::owner_affine::action_args(scope, &p))
+        .unwrap_or_else(|| json!(p));
+    let mut effect = json!({"id":"transform.parameters","value":value});
+    if scope.is_some() {
+        effect["document_identity"] = json!(s.doc.identity);
+        effect["revision"] = json!(s.revision);
+    }
+    s.ui_effects.push_back(effect);
     Ok(json!({"queued":true}))
 }
 
@@ -346,6 +373,13 @@ pub(crate) fn repeat_state(s: &Session) -> Value {
     }
 }
 pub(crate) fn repeat(s: &mut Session, duplicate: bool) -> ActionResult {
+    if let Some(recipe) = s
+        .doc
+        .last_transform()
+        .filter(|recipe| recipe.target == Target::Owners)
+    {
+        return super::owner_affine::repeat(s, recipe, duplicate);
+    }
     if !duplicate
         && s.doc
             .last_transform()
@@ -382,6 +416,7 @@ fn repeat_run(s: &mut Session, duplicate: bool) -> Result<(), String> {
         Target::Layer => MoveTarget::Layer,
         Target::Selection => MoveTarget::Selection,
         Target::SelectionMask => MoveTarget::SelectionMask,
+        Target::Owners => return Err("Owner transforms require their captured scope".into()),
     };
     if duplicate && target == MoveTarget::SelectionMask {
         return Err("Cannot duplicate a selection outline; repeat without duplication".into());

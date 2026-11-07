@@ -368,7 +368,9 @@ impl Editor {
         let layer = ui.layer_id();
         let ctx = ui.ctx().clone();
         let on_canvas = |p: Pos2| bounds.contains(p) && ctx.layer_id_at(p) == Some(layer);
-        if self.transform.is_some() {
+        if self.transform.is_some()
+            && !(self.guarded_transform_modal() && self.backend_contact_active())
+        {
             self.transform_input(ui, bounds, layer, &events, mods);
             self.packets.clear();
         }

@@ -1425,5 +1425,9 @@
   "Paint builds up as you pass over the same area.": "在同一区域反复运笔会持续叠色。",
   "Choose build-up painting or limit opacity within each stroke.": "选择持续叠色，或限制每一笔的不透明度。",
   "Glazing Marker": "叠色马克笔",
-  "Flow and stroke opacity apply to Brush and Eraser.": "流量和单笔不透明度仅用于笔刷与橡皮。"
+  "Flow and stroke opacity apply to Brush and Eraser.": "流量和单笔不透明度仅用于笔刷与橡皮。",
+  "Transforming {count} layers and their linked masks.": "变换 {count} 个图层及其链接蒙版。",
+  "Perspective corners are unavailable for masks and linked layers.": "蒙版和链接图层暂不支持透视角点。",
+  "Finish the current stroke or pan before applying Free Transform.": "请先结束当前笔画或平移，再应用自由变换。",
+  "Preview is unavailable for this document. Turn off Preview to apply the transform.": "此文档无法显示预览。关闭预览后可应用变换。"
 }

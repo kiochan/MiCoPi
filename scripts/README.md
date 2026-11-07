@@ -19,6 +19,7 @@ Run these tools from the repository root. Downloaded toolchains, builds, capture
 | smoke-mask-geometry.py | Compare document framing, rotations/flips, image sampling and Trim against independent raw-mask references across JSONL/MCP/GUI, with undo, legacy capability rejection and DLL-free replay |
 | smoke-owner-movement.py | Compare linked raster/mask Move, independent stable-ID mask Move/nudge, selection outlines and compound Undo against exact raw/composition references across JSONL/MCP/GUI; capture four-language narrow/wide controls |
 | smoke-linked-movement.py | Verify persistent layer links, exact multi-owner raster/mask Move, one Undo, contact/rollback guards and DLL-free outcomes through JSONL/MCP and optional GUI attachment |
+| smoke-owner-affine.py | Compare exact-set owner affine RGBA/A8 sampling, captured Repeat, shared plans, grouped Undo, live-contact rejection and DLL-free outcomes through JSONL/MCP and optional owned-GUI attachment |
 | smoke-stroke-opacity.py | Compare capped influence and independent Flow against tiny RGBA/A8 references through JSONL/MCP and optional owned-GUI attachment, including history and DLL-free replay |
 | smoke-mask-owners.py | Compare single-layer mask copies/deletions, independent storage, ID bindings, targets, grouped composition, undo, rollback and DLL-free replay across JSONL/MCP/GUI |
 | smoke-mask-groups.py | Compare mask-preserving group creation/reparenting, raw ownership, explicit targets, composition, undo, rollback and DLL-free replay across JSONL/MCP/GUI |
