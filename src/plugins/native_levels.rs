@@ -1,5 +1,8 @@
 //! Cold optional Levels preparation; never called by typed pointer MOVE.
 use super::*;
+#[cfg(test)]
+#[path = "native_levels_channels_tests.rs"]
+mod channels_tests;
 
 unsafe fn decode(pointer: *const abi::LevelsApi) -> Result<abi::LevelsPrepareFn, String> {
     if pointer.is_null() {
@@ -17,7 +20,14 @@ unsafe fn decode(pointer: *const abi::LevelsApi) -> Result<abi::LevelsPrepareFn,
 impl Module {
     pub(super) unsafe fn levels_api(
         &self,
-    ) -> Result<Option<(abi::LevelsPrepareFn, Option<abi::LevelsRenderFn>)>, String> {
+    ) -> Result<
+        Option<(
+            abi::LevelsPrepareFn,
+            Option<abi::LevelsRenderFn>,
+            Option<(abi::LevelsChannelsPrepareFn, abi::LevelsRenderFn)>,
+        )>,
+        String,
+    > {
         #[cfg(windows)]
         {
             let address = GetProcAddress(self.handle as *mut c_void, abi::LEVELS_SYMBOL.as_ptr());
@@ -26,13 +36,36 @@ impl Module {
             }
             let entry = std::mem::transmute::<*mut c_void, abi::LevelsEntry>(address);
             let pointer = entry();
-            Ok(Some((decode(pointer)?, decode_render(pointer)?)))
+            Ok(Some((
+                decode(pointer)?,
+                decode_render(pointer)?,
+                decode_channels(pointer)?,
+            )))
         }
         #[cfg(not(windows))]
         {
             Ok(None)
         }
     }
+}
+unsafe fn decode_channels(
+    pointer: *const abi::LevelsApi,
+) -> Result<Option<(abi::LevelsChannelsPrepareFn, abi::LevelsRenderFn)>, String> {
+    decode_render(pointer)?;
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.struct_size <= std::mem::size_of::<abi::LevelsApiRender>() as u32 {
+        return Ok(None);
+    }
+    if header.struct_size < std::mem::size_of::<abi::LevelsApiChannels>() as u32 {
+        return Err("Incomplete channel Levels tail".into());
+    }
+    let api = std::ptr::read_unaligned(pointer.cast::<abi::LevelsApiChannels>());
+    Ok(Some((
+        api.prepare_channels
+            .ok_or("Missing channel Levels preparation callback")?,
+        api.render_channels
+            .ok_or("Missing channel Levels rendering callback")?,
+    )))
 }
 unsafe fn decode_render(
     pointer: *const abi::LevelsApi,
@@ -84,6 +117,17 @@ fn prepare(
     Ok(output)
 }
 impl NativePlugin {
+    pub(crate) fn supports_levels_channels(&self) -> bool {
+        self.levels_channels.is_some()
+    }
+    /// Cold prerequisite; document integration must cache the result before any
+    /// pointer contact. Only complete successful tables leave this adapter.
+    pub(crate) fn prepare_levels_channels(
+        &self,
+        parameters: abi::LevelsChannelsParameters,
+    ) -> Result<[abi::CompositeLut; 3], ActionError> {
+        prepare_channels(self.levels_channels.map(|api| api.0), parameters)
+    }
     pub(super) fn render_levels_plan(
         &self,
         nodes: &[abi::CompositeNode],
@@ -152,6 +196,49 @@ impl NativePlugin {
     ) -> Result<[u8; 256], ActionError> {
         prepare(self.levels_prepare, parameters)
     }
+}
+
+fn prepare_channels(
+    callback: Option<abi::LevelsChannelsPrepareFn>,
+    mut p: abi::LevelsChannelsParameters,
+) -> Result<[abi::CompositeLut; 3], ActionError> {
+    for range in [&mut p.master, &mut p.red, &mut p.green, &mut p.blue] {
+        if [
+            range.input_black,
+            range.input_white,
+            range.output_black,
+            range.output_white,
+        ]
+        .iter()
+        .any(|v| *v > 255)
+            || range.input_black >= range.input_white
+            || !range.gamma.is_finite()
+            || !(0.1..=10.).contains(&range.gamma)
+        {
+            return Err(ActionError::new(
+                "levels_parameters",
+                "Invalid channel Levels endpoints or gamma",
+            ));
+        }
+        range.abi_version = 1;
+        range.struct_size = std::mem::size_of::<abi::LevelsParameters>() as u32;
+    }
+    let callback = callback.ok_or_else(|| {
+        ActionError::new(
+            "levels_channels_unavailable",
+            "Native channel Levels preparation is unavailable",
+        )
+    })?;
+    p.abi_version = 1;
+    p.struct_size = std::mem::size_of::<abi::LevelsChannelsParameters>() as u32;
+    let mut tables = [abi::CompositeLut { values: [0; 256] }; 3];
+    if unsafe { callback(&p, tables.as_mut_ptr(), tables.len()) } != abi::OK {
+        return Err(ActionError::new(
+            "levels_channels_prepare",
+            "Native channel Levels preparation failed",
+        ));
+    }
+    Ok(tables)
 }
 
 #[cfg(test)]

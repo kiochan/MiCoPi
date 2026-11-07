@@ -1,5 +1,9 @@
 # Levels Source Nodes
 
+The separate [channel Levels native foundation](channel-levels.md) adds optional
+plugin preparation/rendering. Per-channel document/UI integration remains planned;
+the document operation below still uses five scalar values.
+
 The registered `compositing.levels` image node applies a master encoded-RGB
 curve independently to R, G and B while preserving alpha. It works in linked
 Layer Filters and free image graphs. This source increment awaits CI validation;

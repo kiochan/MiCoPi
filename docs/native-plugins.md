@@ -32,7 +32,7 @@ separately. [Curves source nodes](curves.md) use preparation and a complete opti
 24-byte `CurvesApiRender` tail. Preparation-only 16-byte tables stay valid; partial
 tails and missing advertised render callbacks reject. Source nodes and affect-below
 Curves adjustments share typed intent, prepared plans and local point controls;
-histogram controls remain planned.
+shared manual histogram controls use explicit published composite/raw snapshots.
 
 The fixed 272-byte `CurvesParameters` contains ABI version/size at 0/4,
 point count/interpolation at 8/12 and 32 inline `CurvePoint` pairs at 16. A point
@@ -74,7 +74,8 @@ awaits CI; no latency or hardware claims follow from source review.
 ## Levels preparation prerequisite
 
 The bundled compositor exports optional `micopi_levels_v1`, with a 16-byte
-`LevelsApi` prefix and a complete 24-byte `LevelsApiRender` tail. ABI version 1
+`LevelsApi` prefix, a complete 24-byte `LevelsApiRender` prefix and an optional
+40-byte [channel Levels tail](channel-levels.md). ABI version 1
 provides synchronous `prepare` and optional `render` callbacks. This is a
 native interface used by the registered Levels source node. True Levels
 adjustment layers use the same typed intent and prepared native tables.

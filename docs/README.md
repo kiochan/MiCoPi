@@ -1,13 +1,16 @@
 # Documentation
 
 See [Histograms](histograms.md) for bounded native color queries through Session,
-nodes and MCP; plot overlays and per-node/input scopes remain planned.
+nodes and MCP, with shared manual chart overlays; per-node/input scopes remain planned.
 
 See [Levels](levels.md) for typed source effects, affect-below adjustments and
 cached native rendering.
 
 [Curves](curves.md) source nodes and affect-below adjustments share typed
-master/channel intent and bounded native rendering; dedicated controls are planned.
+master/channel intent, dedicated local controls and bounded native rendering.
+
+The optional [Channel Levels native foundation](channel-levels.md) adds negotiated
+preparation/rendering; per-channel document and UI integration remain planned.
 
 The technical documentation is maintained in English. The project overview is also available in [Chinese](../README.zh.md), [Japanese](../README.ja.md) and [Korean](../README.ko.md).
 

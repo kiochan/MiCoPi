@@ -1,6 +1,9 @@
 //! Cold Levels preparation; the renderer will consume the prepared byte table.
-//! This module is a prerequisite, not yet a registered document effect.
+//! Single-table document integration and optional channel preparation share math.
 use micopi_plugin_api as abi;
+#[cfg(test)]
+#[path = "levels_channels_tests.rs"]
+mod channels_tests;
 
 unsafe extern "C" fn prepare(
     parameters: *const abi::LevelsParameters,
@@ -92,17 +95,78 @@ unsafe extern "C" fn render(
         false,
     )
 }
-static API: abi::LevelsApiRender = abi::LevelsApiRender {
-    base: abi::LevelsApi {
-        abi_version: 1,
-        struct_size: std::mem::size_of::<abi::LevelsApiRender>() as u32,
-        prepare: Some(prepare),
+unsafe extern "C" fn prepare_channels(
+    parameters: *const abi::LevelsChannelsParameters,
+    output: *mut abi::CompositeLut,
+    len: usize,
+) -> i32 {
+    if parameters.is_null() || output.is_null() || len < 3 {
+        return abi::ERROR;
+    }
+    let header = std::ptr::read_unaligned(parameters.cast::<abi::Header>());
+    if header.abi_version != 1
+        || header.struct_size < std::mem::size_of::<abi::LevelsChannelsParameters>() as u32
+    {
+        return abi::ERROR;
+    }
+    let Some(source) = super::span(parameters, 1) else {
+        return abi::ERROR;
+    };
+    let Some(destination) = super::span(output, len) else {
+        return abi::ERROR;
+    };
+    if super::overlaps(source, destination) {
+        return abi::ERROR;
+    }
+    let p = std::ptr::read_unaligned(parameters);
+    let compile = |p: abi::LevelsParameters| {
+        if p.abi_version != 1
+            || p.struct_size != std::mem::size_of::<abi::LevelsParameters>() as u32
+            || [p.input_black, p.input_white, p.output_black, p.output_white]
+                .iter()
+                .any(|v| *v > 255)
+        {
+            return None;
+        }
+        Levels {
+            input_black: p.input_black as u8,
+            input_white: p.input_white as u8,
+            gamma: p.gamma,
+            output_black: p.output_black as u8,
+            output_white: p.output_white as u8,
+        }
+        .prepare()
+    };
+    let Some(master) = compile(p.master) else {
+        return abi::ERROR;
+    };
+    let mut tables = [abi::CompositeLut { values: [0; 256] }; 3];
+    for (target, channel) in tables.iter_mut().zip([p.red, p.green, p.blue]) {
+        let Some(channel) = compile(channel) else {
+            return abi::ERROR;
+        };
+        for (out, input) in target.values.iter_mut().zip(master.0) {
+            *out = channel.0[input as usize];
+        }
+    }
+    std::ptr::copy_nonoverlapping(tables.as_ptr(), output, 3);
+    abi::OK
+}
+static API: abi::LevelsApiChannels = abi::LevelsApiChannels {
+    base: abi::LevelsApiRender {
+        base: abi::LevelsApi {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::LevelsApiChannels>() as u32,
+            prepare: Some(prepare),
+        },
+        render: Some(render),
     },
-    render: Some(render),
+    prepare_channels: Some(prepare_channels),
+    render_channels: Some(super::curves::render),
 };
 #[no_mangle]
 pub extern "C" fn micopi_levels_v1() -> *const abi::LevelsApi {
-    &API.base
+    &API.base.base
 }
 
 #[derive(Clone, Copy, Debug)]

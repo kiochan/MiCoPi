@@ -612,6 +612,7 @@ pub struct NativePlugin {
     compositor_effects: Option<MaskEffectsTable>,
     levels_prepare: Option<abi::LevelsPrepareFn>,
     levels_render: Option<abi::LevelsRenderFn>,
+    levels_channels: Option<(abi::LevelsChannelsPrepareFn, abi::LevelsRenderFn)>,
     curves_prepare: Option<abi::CurvesPrepareFn>,
     curves_render: Option<abi::LevelsRenderFn>,
     histogram: Option<abi::HistogramFn>,
@@ -866,9 +867,10 @@ impl NativePlugin {
             Some((prepare, render)) => (Some(prepare), render),
             None => (None, None),
         };
-        let (levels_prepare, levels_render) = match unsafe { module.levels_api()? } {
-            Some((prepare, render)) => (Some(prepare), render),
-            None => (None, None),
+        let (levels_prepare, levels_render, levels_channels) = match unsafe { module.levels_api()? }
+        {
+            Some((prepare, render, channels)) => (Some(prepare), render, channels),
+            None => (None, None, None),
         };
         let tool_options = unsafe { module.tool_options_api()? };
         let (selection_mix, selection_color, selection_edges, selection_transfer) =
@@ -933,6 +935,7 @@ impl NativePlugin {
                 compositor_effects,
                 levels_prepare,
                 levels_render,
+                levels_channels,
                 curves_prepare,
                 curves_render,
                 histogram,

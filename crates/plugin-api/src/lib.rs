@@ -827,6 +827,31 @@ pub struct LevelsApiRender {
     pub render: Option<LevelsRenderFn>,
 }
 
+/// Cold master-then-channel Levels intent. Nested records have version-1,
+/// exactly 32-byte headers. No document or derived table ownership crosses ABI.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct LevelsChannelsParameters {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub master: LevelsParameters,
+    pub red: LevelsParameters,
+    pub green: LevelsParameters,
+    pub blue: LevelsParameters,
+}
+/// Writes exactly three consecutive R/G/B tables on success. The length counts
+/// CompositeLut records, not bytes. Failure leaves the entire output unchanged.
+pub type LevelsChannelsPrepareFn =
+    unsafe extern "C" fn(*const LevelsChannelsParameters, *mut CompositeLut, usize) -> i32;
+/// Complete optional 40-byte tail; 16/24-byte providers retain old behavior.
+/// Channel rendering accepts kind 10's three-table contract as well as kind 9.
+#[repr(C)]
+pub struct LevelsApiChannels {
+    pub base: LevelsApiRender,
+    pub prepare_channels: Option<LevelsChannelsPrepareFn>,
+    pub render_channels: Option<LevelsRenderFn>,
+}
+
 #[cfg(test)]
 mod levels_layout_tests {
     use super::*;
@@ -839,6 +864,17 @@ mod levels_layout_tests {
         assert_eq!(std::mem::size_of::<LevelsApiRender>(), 24);
         assert_eq!(std::mem::offset_of!(LevelsApiRender, render), 16);
         assert_eq!(std::mem::offset_of!(LevelsApi, prepare), 8);
+        assert_eq!(std::mem::size_of::<LevelsChannelsParameters>(), 136);
+        assert_eq!(std::mem::offset_of!(LevelsChannelsParameters, master), 8);
+        assert_eq!(std::mem::offset_of!(LevelsChannelsParameters, red), 40);
+        assert_eq!(std::mem::offset_of!(LevelsChannelsParameters, green), 72);
+        assert_eq!(std::mem::offset_of!(LevelsChannelsParameters, blue), 104);
+        assert_eq!(std::mem::size_of::<LevelsApiChannels>(), 40);
+        assert_eq!(
+            std::mem::offset_of!(LevelsApiChannels, prepare_channels),
+            24
+        );
+        assert_eq!(std::mem::offset_of!(LevelsApiChannels, render_channels), 32);
         assert_eq!(LEVELS_SYMBOL, b"micopi_levels_v1\0");
     }
 }

@@ -374,6 +374,23 @@ typedef int32_t (*MicopiLevelsRenderFn)(
     const MicopiCompositeMask *, size_t, const MicopiCompositeLut *, size_t,
     uint32_t, uint32_t, MicopiPixels *);
 typedef struct { MicopiLevelsApi base; MicopiLevelsRenderFn render; } MicopiLevelsApiRender;
+/* Complete optional 40-byte Levels tail. Master is applied before the selected
+   R/G/B table, with byte rounding at each step. Nested headers are version 1,
+   size exactly 32; the outer record accepts larger known-prefix sizes.
+   Output length counts CompositeLut records; exactly three are written only on
+   success. Channel rendering accepts kind 10 and kind 9; old callbacks retain
+   their previous rejection behavior. */
+typedef struct {
+    uint32_t abi_version, struct_size;
+    MicopiLevelsParameters master, red, green, blue;
+} MicopiLevelsChannelsParameters;
+typedef int32_t (*MicopiLevelsChannelsPrepareFn)(
+    const MicopiLevelsChannelsParameters *, MicopiCompositeLut *, size_t);
+typedef struct {
+    MicopiLevelsApiRender base;
+    MicopiLevelsChannelsPrepareFn prepare_channels;
+    MicopiLevelsRenderFn render_channels;
+} MicopiLevelsApiChannels;
 /* Complete optional Curves rendering tail. Kind 10: prior image a, b=0,
    amount=1; mode starts three consecutive R/G/B LUTs. Kind 9 remains supported.
    At most 64 total LUTs; legacy and Levels-only callbacks reject kind 10. */

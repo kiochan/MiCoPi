@@ -1,5 +1,12 @@
 # Project Structure and Ownership
 
+The optional `LevelsApiChannels` SDK tail and C layout fixtures describe native
+master/R/G/B preparation. `plugins/compositing/src/levels.rs` owns the fixed-table
+algorithm; channel rendering reuses the native three-table evaluator.
+`src/plugins/native_levels.rs` owns startup negotiation, cached capabilities and
+argument/header validation. Dedicated native/host fixtures accompany the modules.
+This is a [prerequisite](channel-levels.md), not document/UI integration.
+
 `plugins/compositing/src/histogram.rs` owns bounded immutable pixel statistics.
 `src/plugins/native_histogram.rs` negotiates/caches its optional ABI and validates
 complete results. `src/plugins/histogram.rs` owns the shared read-only action,

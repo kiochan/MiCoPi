@@ -89,6 +89,7 @@ fn stub(api: Option<abi::A8SamplerApi>) -> NativePlugin {
         compositor_effects: None,
         levels_prepare: None,
         levels_render: None,
+        levels_channels: None,
         curves_prepare: None,
         curves_render: None,
         histogram: None,

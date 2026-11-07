@@ -268,6 +268,7 @@ fn cached_effect_instance_is_created_once_even_after_errors_and_destroyed_with_i
         compositor_effects: Some((create, destroy, effect, reserve)),
         levels_prepare: None,
         levels_render: None,
+        levels_channels: None,
         curves_prepare: None,
         curves_render: None,
         histogram: None,

@@ -33,7 +33,7 @@ unsafe extern "C" fn prepare(
     abi::OK
 }
 
-unsafe extern "C" fn render(
+pub(super) unsafe extern "C" fn render(
     nodes: *const abi::CompositeNode,
     count: usize,
     layers: *const abi::CompositeLayer,
