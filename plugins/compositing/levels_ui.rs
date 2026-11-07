@@ -157,13 +157,21 @@ mod tests {
                                 CentralPanel::default().show(ctx, |ui| {
                                     let left = ui.max_rect().left();
                                     let right = ui.max_rect().right();
-                                    let start = ui.cursor().top();
-                                    edit(ui, Id::new("levels-test"), &mut value);
+                                    // CentralPanel sets its minimum to the whole
+                                    // viewport. Measure the editor child scope.
+                                    let response =
+                                        ui.scope(|ui| edit(ui, Id::new("levels-test"), &mut value));
+                                    let rect = response.response.rect;
                                     assert!(
-                                        ui.min_rect().left() >= left - 1.
-                                            && ui.min_rect().right() <= right + 1.
+                                        rect.left() >= left - 1. && rect.right() <= right + 1.,
+                                        "{language:?}/{width}/large={large}: {rect:?}"
                                     );
-                                    assert!(ui.min_rect().bottom() - start <= estimated_height(&a));
+                                    assert!(
+                                        rect.height() <= estimated_height(&a),
+                                        "{language:?}/{width}/large={large}: height {} vs {}",
+                                        rect.height(),
+                                        estimated_height(&a)
+                                    );
                                 });
                             },
                         );

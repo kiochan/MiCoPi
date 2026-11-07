@@ -38,7 +38,23 @@ fn all_plugin_actions_states_and_image_definitions_are_discovered_without_invoca
     assert!(nodes
         .iter()
         .any(|n| n["id"] == "state.native_paint.stats" && n["domain"] == "workflow"));
-    assert_eq!(nodes.iter().filter(|n| n["domain"] == "image").count(), 6);
+    let image_ids = nodes
+        .iter()
+        .filter(|n| n["domain"] == "image")
+        .map(|n| n["id"].as_str().unwrap())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        image_ids,
+        std::collections::BTreeSet::from([
+            "compositing.layer",
+            "compositing.filter",
+            "compositing.levels",
+            "compositing.blend",
+            "compositing.mix",
+            "compositing.output",
+            "compositing.transparent",
+        ])
+    );
     let transparent = nodes
         .iter()
         .find(|n| n["id"] == "compositing.transparent")
