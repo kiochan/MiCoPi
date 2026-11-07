@@ -109,13 +109,13 @@ def write_fixture(path, model):
     if model['masks']:
         geometry.write_model(path, model)
         return
-    # MICOPI04 explicitly opts into nondefault raw-mask storage. Unmasked
-    # fixtures retain the legacy project envelope rather than forging that opt-in.
+    # MICOPI04 opts into raw masks; MICOPI03 requires a real embedded archive.
+    # An unmasked fixture without a recording uses the metadata-only v2 envelope.
     metadata = json.dumps(model['composition'], separators=(',', ':'), ensure_ascii=False).encode()
-    data = bytearray(b'MICOPI03'+struct.pack('<IIII', WIDTH, HEIGHT, len(model['rasters']), model['active']))
+    data = bytearray(b'MICOPI02'+struct.pack('<IIII', WIDTH, HEIGHT, len(model['rasters']), model['active']))
     for properties, raster in zip(model['composition']['layers'], model['rasters']):
         data += bytes([int(properties[0]), properties[1]])+struct.pack('<'+'I'*AREA, *raster)
-    path.write_bytes(data+struct.pack('<I', len(metadata))+metadata+struct.pack('<Q', 0))
+    path.write_bytes(data+struct.pack('<I', len(metadata))+metadata)
 
 
 def caps(case):
