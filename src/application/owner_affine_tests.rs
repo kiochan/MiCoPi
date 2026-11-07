@@ -85,7 +85,10 @@ fn content(s: &Session) -> Content {
     }
 }
 fn fixture() -> Session {
-    let mut s = Session::new(Registry::bundled()).unwrap();
+    fixture_with_registry(Registry::bundled())
+}
+fn fixture_with_registry(registry: Registry) -> Session {
+    let mut s = Session::new(registry).unwrap();
     call(&mut s, "canvas.new", json!({"width":W,"height":H}));
     call(&mut s, "layer.add", json!({}));
     call(
@@ -1041,7 +1044,9 @@ fn owner_affine_post_publication_renderer_failure_restores_recipe_raw_planes_and
 
 #[test]
 fn owner_affine_pipeline_resolves_new_owner_ids_after_prior_structural_steps() {
-    let mut s = fixture();
+    // The fill action is contributed by the optional native-paint package.
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins");
+    let mut s = fixture_with_registry(Registry::load(&root).unwrap());
     call(&mut s, "selection.deselect", json!({}));
     let result = call(
         &mut s,

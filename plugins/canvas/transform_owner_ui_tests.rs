@@ -61,6 +61,16 @@ fn warm(app: &mut Studio) -> Context {
     }
     ctx
 }
+fn assert_open_presentation(app: &Studio, mut before: Value) {
+    let revision = before["revision"].as_u64().unwrap();
+    before["revision"] = json!(revision + 1);
+    before["ui"]["transform.open"] = json!(true);
+    assert_eq!(
+        app.editor.session.state(),
+        before,
+        "Opening registered controls may publish only its presentation state and revision"
+    );
+}
 fn raw(app: &Studio, id: u64) -> Vec<u8> {
     let doc = &app.editor.session.doc;
     let plane = doc.mask_plane(id).unwrap();
@@ -159,6 +169,15 @@ fn owner_transform_linked_preview_is_reversible_and_apply_moves_exact_rgba_mask_
     let selected = app.editor.session.doc.selected_layer_ids();
     let target = app.editor.session.doc.mask_state().target;
     let before = Snapshot::capture(&app.editor);
+    let public = app.editor.session.state();
+    let history = app.editor.session.doc.history_bytes();
+    app.editor.actions.push(Action::UiCommand(10184));
+    app.run_actions(&ctx);
+    app.consume_ui_effects(&ctx);
+    assert_open_presentation(&app, public);
+    before.assert_document(&app.editor);
+    assert_eq!(app.editor.session.doc.history_bytes(), history);
+    let admitted = Snapshot::capture(&app.editor);
     let revision = app.editor.session.revision;
     let count = app
         .editor
@@ -167,9 +186,6 @@ fn owner_transform_linked_preview_is_reversible_and_apply_moves_exact_rgba_mask_
         .unwrap()
         .entries
         .len();
-    app.editor.actions.push(Action::UiCommand(10184));
-    app.run_actions(&ctx);
-    app.consume_ui_effects(&ctx);
     let d = app.editor.transform.as_mut().unwrap();
     let DraftScope::Owners(scope) = d.scope else {
         panic!("Linked transform did not capture owners")
@@ -186,7 +202,7 @@ fn owner_transform_linked_preview_is_reversible_and_apply_moves_exact_rgba_mask_
         "{}",
         app.editor.transform.as_ref().unwrap().preview_error
     );
-    before.assert_same(&app.editor);
+    admitted.assert_same(&app.editor);
     let apply = output
         .shapes
         .iter()
@@ -314,6 +330,8 @@ fn owner_transform_open_cancel_and_natural_pen_packets_preserve_brush_and_hand_c
                 app.editor.session.replay_boundary().unwrap();
                 app.editor.session.doc.compose();
                 let before = Snapshot::capture(&app.editor);
+                let public = app.editor.session.state();
+                let history = app.editor.session.doc.history_bytes();
                 let transcript = samples(&mut app);
                 app.editor.radius += 2.;
                 app.editor.pan += vec2(7., 3.);
@@ -331,6 +349,14 @@ fn owner_transform_open_cancel_and_natural_pen_packets_preserve_brush_and_hand_c
                     app.run_actions(&ctx);
                 }
                 app.consume_ui_effects(&ctx);
+                if !queued {
+                    assert_open_presentation(&app, public);
+                } else {
+                    assert_eq!(app.editor.session.state(), public);
+                }
+                before.assert_document(&app.editor);
+                assert_eq!(app.editor.session.doc.history_bytes(), history);
+                let admitted = Snapshot::capture(&app.editor);
                 assert!(app.editor.guarded_transform_modal());
                 if !queued {
                     app.editor.transform.as_mut().unwrap().params.translate_x = 1.;
@@ -342,7 +368,7 @@ fn owner_transform_open_cancel_and_natural_pen_packets_preserve_brush_and_hand_c
                     .find_map(|shape| locate(&shape.shape, "Apply"))
                     .unwrap();
                 click(&mut app, &ctx, apply, 7.1);
-                before.assert_same(&app.editor);
+                admitted.assert_same(&app.editor);
                 assert_eq!(samples(&mut app), transcript);
                 assert_eq!(app.editor.input_owned, local);
                 assert_eq!(app.editor.pen_active, local);
@@ -353,7 +379,7 @@ fn owner_transform_open_cancel_and_natural_pen_packets_preserve_brush_and_hand_c
                 app.editor.actions.push(Action::Cancel);
                 app.run_actions(&ctx);
                 assert!(app.editor.transform.is_none());
-                before.assert_same(&app.editor);
+                admitted.assert_same(&app.editor);
                 assert_eq!(app.editor.radius, app.editor.session.parameters.radius);
                 assert_eq!(
                     app.editor.pan,
@@ -504,6 +530,8 @@ fn owner_transform_unsupported_group_mask_and_selected_pixels_preserve_live_cont
             app.editor.panning = (kind == ToolKind::Hand).then_some(Pos2::ZERO);
             app.editor.session.doc.compose();
             let before = Snapshot::capture(&app.editor);
+            let public = app.editor.session.state();
+            let history = app.editor.session.doc.history_bytes();
             let transcript = samples(&mut app);
             if target == "group" {
                 assert!(!app.editor.core(
@@ -516,15 +544,19 @@ fn owner_transform_unsupported_group_mask_and_selected_pixels_preserve_live_cont
                 app.editor.actions.push(Action::UiCommand(10184));
                 app.run_actions(&ctx);
                 app.consume_ui_effects(&ctx);
+                assert_open_presentation(&app, public);
+                before.assert_document(&app.editor);
+                assert_eq!(app.editor.session.doc.history_bytes(), history);
+                let admitted = Snapshot::capture(&app.editor);
                 let d = app.editor.transform.as_ref().unwrap();
                 assert!(d.guarded_contact);
                 assert!(!d.bounds_valid);
                 assert!(!d.error.is_empty());
                 window(&mut app, &ctx, vec2(1360., 920.), vec![], 7.);
-                before.assert_same(&app.editor);
+                admitted.assert_same(&app.editor);
                 app.editor.actions.push(Action::Cancel);
                 app.run_actions(&ctx);
-                before.assert_same(&app.editor);
+                admitted.assert_same(&app.editor);
             }
             assert_eq!(samples(&mut app), transcript);
             assert!(

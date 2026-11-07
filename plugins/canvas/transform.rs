@@ -694,6 +694,14 @@ impl Editor {
             (ctx.content_rect().width() - a.outer_padding * 2. - frame.total_margin().sum().x)
                 .max(a.control_height * 6.),
         );
+        // Reserve both regions before egui measures a previous-frame window.
+        // Otherwise a longer translated inspector can clip the fixed footer.
+        let scroll_height = (ctx.content_rect().height()
+            - a.control_height * 5.
+            - a.panel_padding * 4.
+            - a.outer_padding * 2.)
+            .max(a.control_height * 2.);
+        let footer_height = a.control_height + a.panel_padding + a.item_spacing * 3. + 1.;
         let mut open = true;
         let mut apply = false;
         let mut cancel = false;
@@ -702,16 +710,11 @@ impl Editor {
             .open(&mut open)
             .collapsible(false)
             .resizable(false)
-            .max_height(
-                (ctx.content_rect().height()
-                    - a.outer_padding * 2.
-                    - frame.total_margin().sum().y
-                    - a.title_height)
-                    .max(a.control_height * 4.),
-            )
             .frame(frame)
             .default_width(width)
+            .min_width(width)
             .max_width(width)
+            .min_height(scroll_height+footer_height)
             .default_pos(pos2(
                 ctx.content_rect().right() - width - frame.total_margin().sum().x - a.outer_padding,
                 ctx.content_rect().center().y - a.control_height * 9.,
@@ -720,15 +723,8 @@ impl Editor {
                 let mut allowed = false;
                 ScrollArea::vertical()
                     .id_salt("transform-controls")
-                    .max_height(
-                        (ctx.content_rect().height()
-                            - a.outer_padding * 2.
-                            - frame.total_margin().sum().y
-                            - a.title_height
-                            - a.control_height
-                            - a.item_spacing * 2.)
-                            .max(a.control_height * 2.),
-                    )
+                    .max_height(scroll_height)
+                    .auto_shrink([false,true])
                     .show(ui, |ui| {
                         if d.params.quad.is_some() {
                             ui.label(tr("Drag corners independently, edges to move a side, or inside to move the quadrilateral."));
