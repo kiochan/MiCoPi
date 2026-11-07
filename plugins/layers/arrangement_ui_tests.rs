@@ -131,9 +131,8 @@ fn click(app: &mut Studio, ctx: &Context, size: Vec2, p: Pos2, time: f64) -> Ful
             time + n as f64 / 100.,
         );
     }
-    let out = frame(app, ctx, size, vec![], time + 0.02);
-    frame(app, ctx, size, vec![], time + 0.03);
-    out
+    frame(app, ctx, size, vec![], time + 0.02);
+    frame(app, ctx, size, vec![], time + 0.03)
 }
 fn label(shape: &Shape, text: &str) -> Option<Pos2> {
     match shape {

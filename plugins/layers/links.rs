@@ -95,6 +95,32 @@ fn control(
     response.on_hover_text(format!("{}\n{}", localize(full_title), localize("Linked layers share whole-layer Move and affine Free Transform. Painting stays on the active layer.")))
 }
 
+fn feedback(ui: &mut Ui, appearance: &crate::configuration::Appearance, text: String) {
+    // CJK runs and long words must wrap inside the actual clipped panel even
+    // when a preceding toolbar's intrinsic width exceeds a narrow viewport.
+    let width = ui.available_width().min(
+        (ui.clip_rect().right() - ui.next_widget_position().x - appearance.item_spacing).max(0.),
+    );
+    if width <= 0. {
+        return;
+    }
+    let color = theme::Colors::new(appearance).muted;
+    let mut job = egui::text::LayoutJob::simple(
+        text.clone(),
+        FontId::proportional(appearance.font_size),
+        color,
+        width,
+    );
+    job.wrap.break_anywhere = true;
+    let galley = ui.fonts_mut(|fonts| fonts.layout_job(job));
+    let (rect, response) = ui.allocate_exact_size(vec2(width, galley.size().y), Sense::hover());
+    ui.painter()
+        .with_clip_rect(ui.clip_rect().intersect(rect))
+        .galley(rect.min, galley, color);
+    response
+        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), text));
+}
+
 impl Editor {
     pub(super) fn layer_link_controls_ui(
         &self,
@@ -160,11 +186,16 @@ impl Editor {
         let active = self.session.doc.layer_id(self.session.doc.active);
         if let Ok(ids) = self.session.doc.linked_layer_ids(active) {
             if ids.len() > 1 {
-                ui.add(
-                    Label::new(tr(format!("{} linked layers move together.", ids.len())).weak())
-                        .wrap(),
+                feedback(
+                    ui,
+                    &self.settings.ui,
+                    localize(format!("{} linked layers move together.", ids.len())),
                 );
-                ui.add(Label::new(tr("Painting stays on the active layer.").weak()).wrap());
+                feedback(
+                    ui,
+                    &self.settings.ui,
+                    localize("Painting stays on the active layer.").into_owned(),
+                );
             }
         }
     }

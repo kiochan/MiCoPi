@@ -596,7 +596,7 @@ fn adjustment_dynamic_inspect_and_rejected_apply_preserve_local_external_brush_h
             let run = out
                 .shapes
                 .iter()
-                .find_map(|shape| label(&shape.shape, "Run"))
+                .find_map(|shape| label(&shape.shape, "Run Command"))
                 .unwrap();
             for (n, pressed) in [true, false].into_iter().enumerate() {
                 ctx.run(
@@ -618,6 +618,24 @@ fn adjustment_dynamic_inspect_and_rejected_apply_preserve_local_external_brush_h
                     |ctx| app.editor.plugin_command_window(ctx),
                 );
             }
+            // Shared command forms retain their result until explicitly closed.
+            ctx.run(
+                RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, command_size)),
+                    time: Some(7.02),
+                    focused: true,
+                    events: vec![Event::Key {
+                        key: Key::Escape,
+                        physical_key: Some(Key::Escape),
+                        pressed: true,
+                        repeat: false,
+                        modifiers: Modifiers::NONE,
+                    }],
+                    ..Default::default()
+                },
+                |ctx| app.editor.plugin_command_window(ctx),
+            );
+            assert!(app.editor.command_form.is_none());
             app.consume_ui_effects(&ctx);
             assert_eq!(app.editor.focused_adjustment_ui(&ctx), Some(id));
             assert_eq!(app.editor.session.state(), public);
@@ -757,12 +775,19 @@ fn adjustment_registered_filter_alias_keeps_its_owned_schema_and_defaults_throug
         .iter()
         .find_map(|shape| label(&shape.shape, "Manga Tone"))
         .unwrap();
-    let out = click(&mut app, &ctx, size, p, 6.);
-    let p = out
-        .shapes
-        .iter()
-        .find_map(|shape| label(&shape.shape, "Brightness"))
-        .unwrap();
+    click(&mut app, &ctx, size, p, 6.);
+    // Both the builtin menu and alias submenu contain a Brightness label.
+    // Hit the actual registered alias control, never the first matching text.
+    let p = ctx
+        .data_mut(|data| {
+            data.get_temp::<Rect>(Id::new((
+                "adjustment-create-choice",
+                "test.manga-tone",
+                Filter::Brightness as u32,
+            )))
+        })
+        .unwrap()
+        .center();
     click(&mut app, &ctx, size, p, 7.);
     let item = app.editor.session.doc.adjustments().first().unwrap();
     assert_eq!(item.node_type, "test.manga-tone");

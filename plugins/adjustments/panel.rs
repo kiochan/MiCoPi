@@ -141,7 +141,9 @@ impl Editor {
                     let mut show=|ui:&mut Ui|{
                         for filter in Filter::ALL {
                             let Some(amount)=allowed(&definition,filter) else{continue;};
-                            if ui.button(tr(filter.title())).clicked() {
+                            let choice=ui.button(tr(filter.title()));
+                            #[cfg(test)] ui.data_mut(|data|data.insert_temp(Id::new(("adjustment-create-choice",definition.id.as_str(),filter as u32)),choice.rect));
+                            if choice.clicked() {
                                 let (parent,index)=self.adjustment_placement_ui(ui.ctx());
                                 let mut args=json!({"node_type":definition.id,"parameters":crate::plugins::adjustments::parameters(filter,amount),"parent_id":parent,"index":index});
                                 if selection {args["mask_source"]=json!("selection");}
