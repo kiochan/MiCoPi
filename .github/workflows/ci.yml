@@ -55,6 +55,8 @@ jobs:
         run: cargo test --release --lib --locked -p micopi-painting-tools bounded_stroke_cost -- --ignored --nocapture --test-threads=1
       - name: Measure bounded analytic tip contact and candidate work
         run: cargo test --release --lib --locked -p micopi-painting-tools bounded_tip_cost -- --ignored --nocapture --test-threads=1
+      - name: Measure bounded histogram sampling and callback allocations
+        run: cargo test --release --lib --locked -p micopi-compositing bounded_histogram_cost -- --ignored --nocapture --test-threads=1
       - name: Check native A8 and coverage ABI
         run: python scripts/smoke-native-masks.py
       - name: Build release

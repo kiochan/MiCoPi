@@ -3,6 +3,8 @@
 `plugins/compositing/src/histogram_plan.rs` owns bounded prepared-plan observations
 through an optional SDK tail. It shares grid selection with raw histogram sampling
 and instruction evaluation with `masks.rs`; it never allocates an image buffer.
+`plugins/compositing/src/histogram_cost.rs` owns the ignored Release callback
+probe and test-only thread-local allocation counter, invoked explicitly by CI.
 `src/plugins/native_histogram.rs` owns cached negotiation, adapter bounds and
 shared complete result/grid validation. Native/host fixtures accompany both
 modules. `src/engine/histogram_observation.rs` owns source/actual graph discovery, private

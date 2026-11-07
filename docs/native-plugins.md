@@ -4,8 +4,9 @@
 
 The optional complete 24-byte [prepared-plan tail](histogram-plan.md) extends the
 raw sampler prefix with bounded image-plan observations. Old 16-byte providers
-remain compatible. Fenced node-scope actions now use it through the active renderer; specialized
-node chart controls remain planned and runtime verification is pending.
+remain compatible. Fenced node-scope actions and explicit Source/Actual chart
+controls use it through the active renderer. The [performance guide](histogram-performance.md)
+records successful backend CI separately from pending picker/cost verification.
 
 Optional `micopi_histogram_v1` returns a complete 16-byte `HistogramApi` with
 version/size and the mandatory synchronous `sample` callback at offset 8. Missing
@@ -37,7 +38,7 @@ separately. [Curves source nodes](curves.md) use preparation and a complete opti
 24-byte `CurvesApiRender` tail. Preparation-only 16-byte tables stay valid; partial
 tails and missing advertised render callbacks reject. Source nodes and affect-below
 Curves adjustments share typed intent, prepared plans and local point controls;
-shared manual histogram controls use explicit published composite/raw snapshots.
+shared manual histogram controls use explicit published composite/raw/node snapshots.
 
 The fixed 272-byte `CurvesParameters` contains ABI version/size at 0/4,
 point count/interpolation at 8/12 and 32 inline `CurvePoint` pairs at 16. A point

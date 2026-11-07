@@ -1,5 +1,10 @@
 # Development and Verification
 
+The [histogram cost probe](histogram-performance.md) runs as an ignored Release
+test in CI, checking independent sampled bins and zero callback Rust heap
+allocations on 1024/4096-square sources. It is separate from local lightweight
+checks and end-to-end Refresh or physical-device measurements.
+
 ## Standard Windows build
 
 Requires Rust 1.88+, Rust 2021, Visual Studio C++ Build Tools and the Windows SDK. Default desktop dependencies are eframe/egui 0.33, egui_dock 0.18 and egui-snarl 0.9 with Glow. No WebView or wgpu is enabled.

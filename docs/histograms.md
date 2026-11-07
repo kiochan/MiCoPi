@@ -6,6 +6,8 @@ the optional native compositor histogram capability. This source increment
 awaits complete CI verification; shared artist-facing charts are implemented in
 source. Fenced node input/output queries and explicit chart source controls are
 implemented in source; complete runtime and reviewed visual verification remain pending.
+The [performance guide](histogram-performance.md) records the successful backend
+CI baseline separately from pending node-picker and callback-cost verification.
 
 ```json
 {"action":"histogram.query","args":{"source":"composite","max_samples":65536}}

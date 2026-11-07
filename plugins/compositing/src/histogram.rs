@@ -1,5 +1,8 @@
 //! Read-only bounded centered-grid sampling. No images or pointers are retained.
 use micopi_plugin_api as abi;
+#[cfg(test)]
+#[path = "histogram_cost.rs"]
+mod cost;
 #[path = "histogram_plan.rs"]
 mod plan;
 unsafe extern "C" fn sample(

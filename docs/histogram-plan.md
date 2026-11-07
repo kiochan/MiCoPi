@@ -36,8 +36,10 @@ are at most **budget + 1** point evaluations, including validation, with at most
 64 instructions per point. The extra private validation pixel never contributes
 to counts. No full image, row output or coordinate list is allocated or copied.
 Result and instruction slots use fixed stack storage, with no retained pointers.
-These bounds are not latency measurements; CI's existing renderer/contact probes
-remain applicable to the shared evaluator change.
+These bounds are not latency measurements. A separate opt-in Release
+[callback cost probe](histogram-performance.md) now checks raw, two/64-instruction
+and masked master/RGB plans, independent bins and callback heap allocations;
+its runtime results remain pending CI.
 
 Headers, capacities, graph types, declared instructions (including unused ones),
 planes and output disjointness validate before result publication. Failed calls
