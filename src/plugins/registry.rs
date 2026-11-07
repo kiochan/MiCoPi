@@ -255,6 +255,8 @@ pub struct Registry {
     pub nodes: BTreeMap<String, (String, super::nodes::Definition)>,
     pub tools: BTreeMap<String, ToolDefinition>,
     pub actions: BTreeMap<String, ActionDefinition>,
+    #[cfg(feature = "desktop")]
+    pub(super) command_contacts: super::command_contact::Cache,
     pub states: BTreeMap<String, StateDefinition>,
     pub owners: BTreeMap<String, String>,
     pub panels: BTreeMap<String, PanelDefinition>,
@@ -443,6 +445,8 @@ impl Registry {
             nodes: BTreeMap::new(),
             tools: BTreeMap::new(),
             actions: BTreeMap::new(),
+            #[cfg(feature = "desktop")]
+            command_contacts: Default::default(),
             states: BTreeMap::new(),
             owners: BTreeMap::new(),
             panels: BTreeMap::new(),
@@ -752,6 +756,8 @@ impl Registry {
                 package
             })
             .collect();
+        #[cfg(feature = "desktop")]
+        out.rebuild_command_contact_policies();
         out
     }
     pub fn describe(&self) -> Value {

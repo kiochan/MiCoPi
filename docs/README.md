@@ -28,6 +28,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Clipboard](clipboard.md) | Internal transfers, Windows PNG/DIB adapter, limits, external effects and native verification status |
 | [Selections](selections.md) | Marquee/lasso gestures, color commands, native clipping, history and limits |
 | [Painting Tools](painting-tools.md) | Pressure controls, connected fill, gradient gestures and performance limits |
+| [Command Contact Admission](command-contact-admission.md) | Private cached frontend policy, shared execution, argument-form synchronization fences and native/local input continuity |
 | [Atomic Operations](atomic-operations.md) | Rollback, plugin capabilities, contact commits and compact event storage |
 | [Verified Replay](replay.md) | Event journal, integrity checks, time-lapse preview and frame export |
 | [Project Structure](project-structure.md) | Directory responsibilities, generated files and Git boundaries |

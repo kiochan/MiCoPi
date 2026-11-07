@@ -60,16 +60,12 @@ impl Editor {
         match action {
             Action::OpenPalette
             | Action::UiCommand(10140 | 10144 | 10145 | 10166..=10174 | 10200) => true,
-            Action::UiCommand(id) => self
-                .settings
-                .keys
-                .plugin_action(id)
-                .and_then(|id| self.session.registry.actions.get(id))
-                .is_some_and(|definition| {
-                    definition
-                        .operation
-                        .is_some_and(crate::application::Operation::is_contact_guarded_command)
-                }),
+            Action::UiCommand(id) => self.settings.keys.plugin_action(id).is_some_and(|id| {
+                self.session
+                    .registry
+                    .command_contact_policy(id)
+                    .preserves_contact()
+            }),
             _ => false,
         }
     }
@@ -81,7 +77,10 @@ impl Editor {
     pub(super) fn open_palette(&mut self, mode: Mode) {
         self.register_commands();
         if mode != Mode::Commands {
+            self.discard_command_sync();
             self.finish_stroke();
+        } else {
+            self.command_sync_suspended = true;
         }
         self.palette = Some(Palette::new(mode, &self.settings.keys));
         self.palette_focus = true;
@@ -483,6 +482,7 @@ impl Editor {
         }
         if command_mode && p.mode != Mode::Commands {
             // Shortcut editing keeps its existing contact-ending behavior.
+            self.discard_command_sync();
             self.finish_stroke();
             self.pen_active = false;
         }
@@ -491,6 +491,16 @@ impl Editor {
         } else {
             self.binding_index = None;
             self.capture_binding = false;
+            if let Some(index) = execute {
+                if let Kind::Press(action) = self.settings.keys.command(index).kind {
+                    if !self.contact_guarded_ui_action(action) {
+                        // Discard the observation draft before the selected
+                        // command makes its own intentional brush/view edits.
+                        self.discard_command_sync();
+                    }
+                }
+            }
+            self.release_command_sync();
         }
     }
     fn confirm_discard(&self) -> bool {
@@ -560,12 +570,16 @@ impl Studio {
                     self.editor.geometry = None;
                     self.editor.command_form = None;
                 }
+                self.editor.release_command_sync();
                 continue;
             }
             let group_edit = matches!(action, Action::UiCommand(10187 | 10200 | 10201))
                 || (matches!(action, Action::UiCommand(10147))
                     && self.editor.session.doc.has_groups());
             let guarded_edit = self.editor.contact_guarded_ui_action(action);
+            if guarded_edit {
+                self.editor.command_sync_suspended = true;
+            }
             if !group_edit && !guarded_edit {
                 self.editor.finish_stroke();
                 self.editor.pen_active = false;
@@ -940,6 +954,7 @@ impl Studio {
                 }
             }
         }
+        self.editor.release_command_sync();
     }
     fn toggle_panel(&mut self, panel: Panel) {
         if let Some(location) = self.dock.find_tab(&panel) {

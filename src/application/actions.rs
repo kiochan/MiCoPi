@@ -272,7 +272,7 @@ impl Operation {
                 | Self::Export
         )
     }
-    #[cfg(feature = "desktop")]
+    #[cfg(any(feature = "desktop", test))]
     pub(crate) fn is_contact_guarded_command(self) -> bool {
         self.is_canvas_geometry_command()
             || matches!(
@@ -289,7 +289,7 @@ impl Operation {
     }
     /// Presentation adapters preserve active contacts until these commands run
     /// through their shared admission checks; opening a form is not admission.
-    #[cfg(feature = "desktop")]
+    #[cfg(any(feature = "desktop", test))]
     pub(crate) fn is_canvas_geometry_command(self) -> bool {
         matches!(
             self,

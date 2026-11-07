@@ -1,10 +1,14 @@
 //! Startup-loaded contributions. Manifests describe tools, action recipes and panels;
 //! Native DLL handlers use the versioned C ABI in micopi-plugin-api.
+#[cfg(any(feature = "desktop", test))]
+mod command_contact;
 pub(crate) mod native;
 pub mod nodes;
 mod packages;
 pub(crate) mod registry;
 pub mod tools;
+#[cfg(feature = "desktop")]
+pub(crate) use command_contact::CommandContactPolicy;
 pub use packages::{PluginInfo, PluginPlan, PluginStatus};
 pub use registry::*;
 /// Match the integer schema for bounded command selectors, including `2.0`.

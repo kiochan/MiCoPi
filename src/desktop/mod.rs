@@ -134,6 +134,7 @@ pub(super) struct Editor {
     locales: Option<crate::i18n::HotReload>,
     headers: std::collections::HashMap<Panel, group_bar::HeaderLayout>,
     command_form: Option<plugin_commands::CommandForm>,
+    command_sync_suspended: bool,
     area_mode: u8,
     movement_gesture: Option<canvas_movement::Gesture>,
     transform: Option<canvas_transform::Draft>,
@@ -267,6 +268,7 @@ impl Editor {
             locales,
             headers: Default::default(),
             command_form: None,
+            command_sync_suspended: false,
             plugin_nodes,
             workflow: Default::default(),
             nodes: Default::default(),
@@ -390,12 +392,15 @@ impl Editor {
         self.settings.keys.ui_hint(id).unwrap_or_default()
     }
     fn finish_stroke(&mut self) {
+        self.session.finish_stroke();
+        self.clear_local_contact();
+    }
+    fn clear_local_contact(&mut self) {
         self.movement_gesture = None;
         self.selection_gesture = None;
         self.area_drag = None;
         self.area_target = None;
-        self.session.finish_stroke();
-        self.drawing = false;
+        self.drawing = self.session.is_drawing();
         self.panning = None;
         self.input_owned = false;
     }
@@ -405,6 +410,62 @@ impl Editor {
     fn contact_draft_modal(&self) -> bool {
         self.geometry.is_some() || self.guarded_command_form() || self.command_palette_open()
     }
+    fn backend_contact_active(&self) -> bool {
+        self.session.stroke.active() || self.session.pointer_checkpoint.is_some()
+    }
+    fn backend_contact_stamp(&self) -> Option<(u64, Option<usize>)> {
+        // The original checkpoint stays fixed while raw sample chunks flush.
+        // A later recorded DOWN has a newer mark; replacement documents use a
+        // distinct identity. Active unrecorded contacts retain a separate case.
+        self.backend_contact_active().then(|| {
+            (
+                self.session.doc.identity,
+                self.session
+                    .pointer_checkpoint
+                    .as_ref()
+                    .map(|(_, mark)| mark.event_count()),
+            )
+        })
+    }
+    fn reconcile_command_contact(&mut self, previous: Option<(u64, Option<usize>)>) {
+        if previous.is_some() && previous != self.backend_contact_stamp() {
+            // A command may end the locally owned contact and start an external
+            // one before returning. Clear only the old frontend ownership; the
+            // replacement backend contact must keep its own pressure/input state.
+            self.clear_local_contact();
+            self.pen_active = false;
+        }
+    }
+    fn command_sync_blocked(&self) -> bool {
+        self.command_sync_suspended
+            || self.command_palette_open()
+            || self.guarded_command_form()
+            || self
+                .actions
+                .iter()
+                .any(|action| self.contact_guarded_ui_action(*action))
+    }
+    fn release_command_sync(&mut self) {
+        if self.command_sync_suspended
+            && !self.command_palette_open()
+            && !self.guarded_command_form()
+            && !self
+                .actions
+                .iter()
+                .any(|action| self.contact_guarded_ui_action(*action))
+        {
+            // A cancelled inspection must not apply its stale local painting or
+            // view draft on the next ordinary frame. Artist name drafts live in
+            // the panel context and are independent of these visible fields.
+            self.discard_command_sync();
+        }
+    }
+    fn discard_command_sync(&mut self) {
+        if self.command_sync_suspended {
+            self.sync_parameters_view_from_session();
+            self.command_sync_suspended = false;
+        }
+    }
     fn core_at_revision(
         &mut self,
         id: &str,
@@ -413,24 +474,9 @@ impl Editor {
     ) -> bool {
         let mut action = crate::application::Action::new(id, args);
         action.expected_revision = expected_revision;
-        let geometry_command = self
-            .session
-            .registry
-            .actions
-            .get(id)
-            .and_then(|definition| definition.operation)
-            .is_some_and(crate::application::Operation::is_canvas_geometry_command);
+        let previous = self.backend_contact_stamp();
         let result = self.session.apply(action);
-        // Legacy owner turns can end a contact. Reconcile only after shared
-        // admission/execution, preserving live contacts on guarded rejection.
-        if geometry_command
-            && self.input_owned
-            && !self.session.stroke.active()
-            && self.session.pointer_checkpoint.is_none()
-        {
-            self.finish_stroke();
-            self.pen_active = false;
-        }
+        self.reconcile_command_contact(previous);
         match result {
             Ok(value) => {
                 let message = match id {
@@ -484,6 +530,9 @@ impl Editor {
         }
     }
     fn push_gui_parameters(&mut self) {
+        if self.command_sync_blocked() {
+            return;
+        }
         let desired = crate::application::Parameters {
             spacing: self.session.parameters.spacing,
             minimum_opacity: self.session.parameters.minimum_opacity,
@@ -506,6 +555,9 @@ impl Editor {
         }
     }
     fn push_gui_view(&mut self) {
+        if self.command_sync_blocked() {
+            return;
+        }
         let view = crate::application::View {
             zoom: self.zoom,
             pan_x: self.pan.x,
@@ -541,6 +593,18 @@ impl Editor {
     }
     fn sync_from_session(&mut self) {
         self.tool = self.session.tool;
+        self.sync_parameters_view_from_session();
+        self.drawing = self.session.is_drawing();
+        if self
+            .texture
+            .as_ref()
+            .is_some_and(|t| t.size() != [self.session.doc.width, self.session.doc.height])
+        {
+            self.texture = None;
+            self.display.clear();
+        }
+    }
+    fn sync_parameters_view_from_session(&mut self) {
         let p = &self.session.parameters;
         self.radius = p.radius;
         self.opacity = p.opacity;
@@ -559,15 +623,6 @@ impl Editor {
         self.zoom = self.session.view.zoom;
         self.pan = vec2(self.session.view.pan_x, self.session.view.pan_y);
         self.fit = self.session.view.fit;
-        self.drawing = self.session.is_drawing();
-        if self
-            .texture
-            .as_ref()
-            .is_some_and(|t| t.size() != [self.session.doc.width, self.session.doc.height])
-        {
-            self.texture = None;
-            self.display.clear();
-        }
     }
 }
 
@@ -1034,8 +1089,10 @@ impl Studio {
     fn frame_ui(&mut self, ctx: &Context) {
         self.editor.push_gui_parameters();
         self.editor.push_gui_view();
+        let previous = self.editor.backend_contact_stamp();
         if let Some(server) = &self.action_server {
             if server.poll(&mut self.editor.session) > 0 {
+                self.editor.reconcile_command_contact(previous);
                 self.editor.sync_from_session();
                 self.editor.status = "Ready to Paint".into();
             }
@@ -1115,7 +1172,10 @@ impl Studio {
             && self.editor.transform.is_none()
             && (self.editor.command_form.is_none() || self.editor.guarded_command_form())
             && !self.replay.open;
-        if self.editor.blocked && self.editor.movement_gesture.is_some() {
+        if self.editor.blocked
+            && !self.editor.contact_draft_allowed
+            && self.editor.movement_gesture.is_some()
+        {
             self.editor.finish_stroke();
         }
         self.editor.headers.clear();
@@ -1236,6 +1296,7 @@ impl Studio {
             self.editor.finish_stroke();
             self.editor.pen_active = false;
         }
+        self.editor.release_command_sync();
         self.editor.push_gui_parameters();
         self.editor.push_gui_view();
     }

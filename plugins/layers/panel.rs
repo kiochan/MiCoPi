@@ -136,18 +136,14 @@ fn batch_action(command: &str, ids: &[u64], mut args: Value) -> crate::applicati
         json!({"action":command,"layer_ids":ids,"args":args}),
     )
 }
-fn owner_contact_guarded(action: &crate::application::Action) -> bool {
-    matches!(
-        action.action.as_str(),
-        "layer.duplicate"
-            | "layer.delete"
-            | "layer.batch"
-            | "group.create"
-            | "group.create_selected"
-            | "group.move"
-            | "group.delete"
-            | "group.duplicate"
-    )
+fn pending_name_draft(action: &crate::application::Action) -> bool {
+    action.action == "layer.rename"
+        || (action.action == "group.set"
+            && action.args.get("name").is_some()
+            && action.args.as_object().is_some_and(|args| {
+                args.keys()
+                    .all(|key| matches!(key.as_str(), "group_id" | "name"))
+            }))
 }
 fn property_action(ids: &[u64], mut args: Value) -> Option<crate::application::Action> {
     if args.as_object().is_none_or(|args| args.is_empty()) {
@@ -349,14 +345,25 @@ impl Editor {
         // pending, or while a guarded argument dialog owns only a local draft.
         let active_contact =
             self.session.stroke.active() || self.session.pointer_checkpoint.is_some();
-        let guarded_pending = pending.iter().find(|action| owner_contact_guarded(action));
-        let defer_names = active_contact
-            && (guarded_pending.is_some()
-                || self
-                    .actions
-                    .iter()
-                    .any(|action| self.contact_guarded_ui_action(*action))
-                || self.contact_draft_modal());
+        let guarded_pending = pending.iter().find(|action| {
+            !pending_name_draft(action)
+                && self
+                    .session
+                    .registry
+                    .command_contact_policy(&action.action)
+                    .preserves_contact()
+        });
+        let local_input =
+            active_contact || self.input_owned || self.drawing || self.panning.is_some();
+        let defer_names = self.command_palette_open()
+            || self.guarded_command_form()
+            || (local_input
+                && (guarded_pending.is_some()
+                    || self
+                        .actions
+                        .iter()
+                        .any(|action| self.contact_guarded_ui_action(*action))
+                    || self.contact_draft_modal()));
         if defer_names {
             if let Some(ctx) = ctx {
                 for draft in &pending {
@@ -380,6 +387,9 @@ impl Editor {
                 }
             }
         }
+        if guarded_pending.is_some() {
+            self.command_sync_suspended = true;
+        }
         if active_contact {
             if let Some(action) = guarded_pending {
                 self.core_at_revision(
@@ -387,11 +397,12 @@ impl Editor {
                     action.args.clone(),
                     action.expected_revision,
                 );
+                self.release_command_sync();
                 return;
             }
         }
         for mut action in pending {
-            if defer_names && action.action == "layer.rename" {
+            if defer_names && pending_name_draft(&action) {
                 continue;
             }
             let property_args = if action.action == "layer.set" {
@@ -426,7 +437,14 @@ impl Editor {
                 )
                 || action.action == "layer.merge_visible" && self.session.doc.has_groups()
                 || unsupported_blend;
-            if !requires_idle && (self.input_owned || self.drawing || self.panning.is_some()) {
+            if !requires_idle
+                && !self
+                    .session
+                    .registry
+                    .command_contact_policy(&action.action)
+                    .preserves_contact()
+                && (self.input_owned || self.drawing || self.panning.is_some())
+            {
                 self.finish_stroke();
             }
             // A pending active-name commit may precede this explicit batch.
@@ -457,6 +475,7 @@ impl Editor {
                 self.sync_from_session();
             }
         }
+        self.release_command_sync();
     }
     fn filtered_layer_indices(&mut self, filter: &LayerFilter) -> Result<Vec<usize>, String> {
         let response = self
@@ -1630,6 +1649,10 @@ mod group_delete_ui_tests;
 #[cfg(test)]
 #[path = "group_duplicate_ui_tests.rs"]
 mod group_duplicate_ui_tests;
+
+#[cfg(test)]
+#[path = "contact_admission_ui_tests.rs"]
+mod contact_admission_ui_tests;
 
 #[cfg(test)]
 mod tests {

@@ -3,6 +3,10 @@ use super::*;
 use serde_json::{json, Value};
 pub(super) struct CommandForm {
     action: String,
+    contact_policy: crate::plugins::CommandContactPolicy,
+    title: String,
+    owner: Option<String>,
+    document_resolution: bool,
     schema: Value,
     args: Value,
     complex: std::collections::BTreeMap<String, String>,
@@ -200,6 +204,7 @@ mod color_selection_tests {
 }
 impl Editor {
     pub(super) fn register_commands(&mut self) {
+        self.session.registry.rebuild_command_contact_policies();
         let actions = self
             .session
             .registry
@@ -215,7 +220,16 @@ impl Editor {
             .register_action_owners(&self.session.registry.owners);
     }
     pub(super) fn begin_plugin_command(&mut self, action: &str) {
-        let Some(def) = self.session.registry.actions.get(action) else {
+        let policy = self.session.registry.command_contact_policy(action);
+        if !policy.preserves_contact() {
+            self.discard_command_sync();
+        }
+        self.command_sync_suspended = policy.preserves_contact();
+        self.command_form = None;
+        let Some(def) = self.session.registry.actions.get(action).cloned() else {
+            self.core(action, json!({}));
+            self.sync_from_session();
+            self.release_command_sync();
             return;
         };
         let mut schema = def.schema();
@@ -253,6 +267,8 @@ impl Editor {
                 .is_none_or(|p| p.is_empty())
         {
             self.core(action, json!({}));
+            self.sync_from_session();
+            self.release_command_sync();
             return;
         }
         let mut args = schema::default_value(&schema);
@@ -269,6 +285,15 @@ impl Editor {
         }
         self.command_form = Some(CommandForm {
             action: action.into(),
+            contact_policy: policy,
+            title: def.title,
+            owner: self
+                .session
+                .registry
+                .contribution_owner("actions", action)
+                .map(str::to_owned),
+            document_resolution: def.operation
+                == Some(crate::application::Operation::DocumentResolution),
             schema,
             args,
             complex: Default::default(),
@@ -277,14 +302,9 @@ impl Editor {
         });
     }
     pub(super) fn guarded_command_form(&self) -> bool {
-        self.command_form.as_ref().is_some_and(|form| {
-            self.session
-                .registry
-                .actions
-                .get(&form.action)
-                .and_then(|definition| definition.operation)
-                .is_some_and(crate::application::Operation::is_contact_guarded_command)
-        })
+        self.command_form
+            .as_ref()
+            .is_some_and(|form| form.contact_policy.preserves_contact())
     }
     pub(super) fn plugin_command_window(&mut self, ctx: &Context) {
         let Some(mut form) = self.command_form.take() else {
@@ -293,12 +313,18 @@ impl Editor {
         // Canvas fitting may settle after the command opens in this frame.
         // Bind that pending local state before rendering the form, while keeping
         // a revision mismatch caused by an intervening external edit stale.
-        let definition = self.session.registry.actions[&form.action].clone();
+        let policy = form.contact_policy;
+        let revision_guarded = matches!(
+            policy,
+            crate::plugins::CommandContactPolicy::SharedAdmission
+                | crate::plugins::CommandContactPolicy::LegacyCleanup
+        );
         let before_sync = self.session.revision;
-        if !definition
-            .operation
-            .is_some_and(crate::application::Operation::is_contact_guarded_command)
-        {
+        if policy.preserves_contact() {
+            // The form is temporarily removed while it renders. Retain the
+            // central frame-sync fence until it is restored or closed.
+            self.command_sync_suspended = true;
+        } else {
             self.push_gui_parameters();
             self.push_gui_view();
         }
@@ -308,12 +334,7 @@ impl Editor {
         let mut open = true;
         let mut run = false;
         let mut invalid = false;
-        let title = tr_for(
-            self.session
-                .registry
-                .contribution_owner("actions", &form.action),
-            &definition.title,
-        );
+        let title = tr_for(form.owner.as_deref(), &form.title);
         Window::new(title)
             .id(Id::new("plugin-command-arguments"))
             .open(&mut open)
@@ -321,7 +342,7 @@ impl Editor {
             .resizable(true)
             .show(ctx, |ui| {
                 ui.weak(&form.action);
-                if definition.operation == Some(crate::application::Operation::DocumentResolution) {
+                if form.document_resolution {
                     if let Some(density) = self.session.doc.info().png_density {
                         ui.label(format!("{}: {} × {} {}",localize("Imported PNG Density"),density.xppu,density.yppu,
                             localize(if density.unit == crate::engine::document_info::DensityUnit::Meter {"pixels per meter"} else {"pixels per unspecified unit"})));
@@ -419,7 +440,7 @@ impl Editor {
                     invalid = true;
                     ui.weak(error.to_string());
                 }
-                if !definition.is_read_only() && form.revision != self.session.revision {
+                if revision_guarded && form.revision != self.session.revision {
                     invalid = true;
                     ui.weak(tr("Document Changed; Refresh Revision Before Running"));
                     if ui.button(tr("Refresh Revision")).clicked() {
@@ -438,16 +459,22 @@ impl Editor {
             });
         if run {
             let mut action = crate::application::Action::new(&form.action, form.args.clone());
-            if !definition.is_read_only() {
+            if revision_guarded {
                 action.expected_revision = Some(form.revision);
             }
-            match self.session.apply(action) {
+            let previous = self.backend_contact_stamp();
+            let result = self.session.apply(action);
+            self.reconcile_command_contact(previous);
+            match result {
                 Ok(result) => {
                     self.sync_from_session();
                     form.message = serde_json::to_string_pretty(&result["result"]).unwrap();
                     form.revision = self.session.revision;
                 }
-                Err(error) => form.message = error.to_string(),
+                Err(error) => {
+                    self.sync_from_session();
+                    form.message = error.to_string();
+                }
             }
         }
         if ctx.input(|i| i.key_pressed(Key::Escape)) {
@@ -456,5 +483,6 @@ impl Editor {
         if open {
             self.command_form = Some(form);
         }
+        self.release_command_sync();
     }
 }
