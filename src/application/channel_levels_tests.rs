@@ -78,7 +78,7 @@ fn graph(linked: bool) -> Graph {
     }
 }
 fn reference(pixel: u32) -> u32 {
-    let master = |shift| ((((pixel >> shift) & 255) as f64 / 255.).sqrt() * 255.).round();
+    let master = |shift: u32| ((((pixel >> shift) & 255u32) as f64 / 255.).sqrt() * 255.).round();
     let red = (master(16) * 128. / 255.).round() as u32;
     let green = (((master(8) - 64.) / 128.).clamp(0., 1.) * 255.).round() as u32;
     let blue = 255 - master(0) as u32;

@@ -161,6 +161,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Reliability, performance and compatibility
 
+- Fix the channel Levels independent reference helper's integer inference exposed by CI for `7d5d63f`: explicitly type the shift and byte mask as `u32`, retaining all expected-pixel assertions. C11/C++17 SDK layout checks passed, but the host test compiler stopped before runtime verification. Corrected Levels and histogram-plan runtime/cost checks remain pending CI.
+
 - Update owner-movement smoke to reflect supported whole-layer affine editing: retain negative selected-pixel affine checks on masked documents and add positive explicit-Layer planning scope/matrix checks while preserving all unchanged-state/PNG assertions. CI for `ad97889` passed 1,139 desktop, 844 headless, 50 compositor, 99 painting and 10 SDK tests plus Curves adjustment, mask editing and geometry transport before exposing the stale negative expectation. Later smoke phases and the newer curve controls/histogram query remain pending CI.
 
 - Register the public preset query/state with the painting package before dependent Brush commands load, preserving state namespaces. Project editor-schema constants/string annotations into the supported registry schema subset while retaining strict typed limits. Extend the fresh-bootstrap lifecycle regression to report diagnostics and require preset action/state registration.
