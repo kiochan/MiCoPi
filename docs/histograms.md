@@ -72,6 +72,9 @@ measurements; reviewed visual captures and physical-device checks remain separat
 
 ## Artist-facing inspection
 
+The separate [prepared-plan native sampler](histogram-plan.md) is a prerequisite
+for node observations. It does not yet extend this action's source choices.
+
 Expand **Histogram** above the image graph or in built-in Levels/Curves adjustment
 properties. Choose **Visible Composite** or **Raw Active Layer**, set Maximum
 Samples, then click **Refresh Histogram**. The raw-layer choice captures the

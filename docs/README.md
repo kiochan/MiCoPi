@@ -3,6 +3,9 @@
 See [Histograms](histograms.md) for bounded native color queries through Session,
 nodes and MCP, with shared manual chart overlays; per-node/input scopes remain planned.
 
+The optional [prepared-plan histogram foundation](histogram-plan.md) evaluates a
+bounded native sample grid without an image copy. Node-scope integration remains planned.
+
 See [Levels](levels.md) for typed source effects, affect-below adjustments and
 cached native rendering.
 

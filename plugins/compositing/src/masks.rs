@@ -209,62 +209,83 @@ pub(super) unsafe fn render_plan(
         let global_y = out.origin_y as usize + y;
         for x in 0..w {
             let global_x = out.origin_x as usize + x;
-            let index = global_y * width as usize + global_x;
-            for (i, n) in nodes.iter().enumerate() {
-                values[i] = match n.kind {
-                    0 => {
-                        let layer = &layers[n.a as usize];
-                        if layer.visible == 0 {
-                            0
-                        } else {
-                            let pixel = opacity(*layer.data.add(index), layer.opacity);
-                            if pixel >> 24 == 0 {
-                                0
-                            } else {
-                                pixel
-                            }
-                        }
-                    }
-                    1 => filter(values[n.a as usize], n.mode, n.amount),
-                    2 => over(
-                        values[n.a as usize],
-                        opacity(values[n.b as usize], (n.amount * 255.).round() as u32),
-                        n.mode,
-                    ),
-                    3 => values[n.a as usize],
-                    4 => 0,
-                    5 => mix(
-                        values[n.a as usize],
-                        values[n.b as usize],
-                        (n.amount * 255.).round() as u32,
-                    ),
-                    6 => {
-                        let mask = &masks[n.a as usize];
-                        if mask.data.is_null() {
-                            mask.constant
-                        } else {
-                            u32::from(*mask.data.add(global_y * mask.stride as usize + global_x))
-                        }
-                    }
-                    7 => apply(values[n.a as usize], weight(n.amount, values[n.b as usize])),
-                    8 => mix(
-                        values[n.a as usize],
-                        values[n.b as usize],
-                        weight(n.amount, values[n.mode as usize]),
-                    ),
-                    9 => super::levels::apply_lut(
-                        &luts[n.mode as usize].values,
-                        values[n.a as usize],
-                    ),
-                    10 => super::curves::apply_channels(
-                        &luts[n.mode as usize..][..3],
-                        values[n.a as usize],
-                    ),
-                    _ => unreachable!(),
-                };
-            }
-            pixels[y * stride + x] = values[count - 1];
+            pixels[y * stride + x] = evaluate(
+                nodes,
+                layers,
+                masks,
+                luts,
+                width,
+                global_x,
+                global_y,
+                &mut values,
+            );
         }
     }
     abi::OK
+}
+
+/// Internal evaluator for already-validated image plans. Coverage remains a
+/// separate typed slot; callers must reject empty plans and coverage outputs.
+#[inline(always)]
+pub(super) unsafe fn evaluate(
+    nodes: &[abi::CompositeNode],
+    layers: &[abi::CompositeLayer],
+    masks: &[abi::CompositeMask],
+    luts: &[abi::CompositeLut],
+    width: u32,
+    global_x: usize,
+    global_y: usize,
+    values: &mut [u32; 64],
+) -> u32 {
+    let index = global_y * width as usize + global_x;
+    for (i, n) in nodes.iter().enumerate() {
+        values[i] = match n.kind {
+            0 => {
+                let layer = &layers[n.a as usize];
+                if layer.visible == 0 {
+                    0
+                } else {
+                    let pixel = opacity(*layer.data.add(index), layer.opacity);
+                    if pixel >> 24 == 0 {
+                        0
+                    } else {
+                        pixel
+                    }
+                }
+            }
+            1 => filter(values[n.a as usize], n.mode, n.amount),
+            2 => over(
+                values[n.a as usize],
+                opacity(values[n.b as usize], (n.amount * 255.).round() as u32),
+                n.mode,
+            ),
+            3 => values[n.a as usize],
+            4 => 0,
+            5 => mix(
+                values[n.a as usize],
+                values[n.b as usize],
+                (n.amount * 255.).round() as u32,
+            ),
+            6 => {
+                let mask = &masks[n.a as usize];
+                if mask.data.is_null() {
+                    mask.constant
+                } else {
+                    u32::from(*mask.data.add(global_y * mask.stride as usize + global_x))
+                }
+            }
+            7 => apply(values[n.a as usize], weight(n.amount, values[n.b as usize])),
+            8 => mix(
+                values[n.a as usize],
+                values[n.b as usize],
+                weight(n.amount, values[n.mode as usize]),
+            ),
+            9 => super::levels::apply_lut(&luts[n.mode as usize].values, values[n.a as usize]),
+            10 => {
+                super::curves::apply_channels(&luts[n.mode as usize..][..3], values[n.a as usize])
+            }
+            _ => unreachable!(),
+        };
+    }
+    values[nodes.len() - 1]
 }

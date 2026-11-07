@@ -395,6 +395,15 @@ typedef struct {
    amount=1; mode starts three consecutive R/G/B LUTs. Kind 9 remains supported.
    At most 64 total LUTs; legacy and Levels-only callbacks reject kind 10. */
 typedef struct { MicopiCurvesApi base; MicopiLevelsRenderFn render; } MicopiCurvesApiRender;
+/* Complete optional 24-byte histogram plan tail. Dense full-canvas immutable
+   inputs; request stride equals width. At most 65,536 centered grid samples,
+   64 instructions, 16 layers, 32 masks and 64 LUTs. No image allocation.
+   Nonempty image plan; validate every declaration/loan before publication. */
+typedef int32_t (*MicopiHistogramPlanFn)(
+    const MicopiHistogramRequest *, const MicopiCompositeNode *, size_t,
+    const MicopiCompositeLayer *, size_t, const MicopiCompositeMask *, size_t,
+    const MicopiCompositeLut *, size_t, MicopiHistogramResult *);
+typedef struct { MicopiHistogramApi base; MicopiHistogramPlanFn sample_plan; } MicopiHistogramApiPlan;
 /* Independent optional exact geometry table, with immutable source and disjoint
    output. Local origins are zero; dimensions/stride are bounded to 4096.
    Kinds: 0 CW, 1 CCW, 2 half turn, 3 flip horizontal, 4 flip vertical.

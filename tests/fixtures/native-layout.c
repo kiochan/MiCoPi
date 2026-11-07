@@ -16,6 +16,8 @@ ABI_ASSERT(offsetof(MicopiHistogramResult, sampled_pixels) == 16, "Histogram cou
 ABI_ASSERT(offsetof(MicopiHistogramResult, bins) == 32, "Histogram bins offset");
 ABI_ASSERT(sizeof(MicopiHistogramApi) == 16, "Independent histogram API");
 ABI_ASSERT(offsetof(MicopiHistogramApi, sample) == 8, "Histogram callback offset");
+ABI_ASSERT(sizeof(MicopiHistogramApiPlan) == 24, "Histogram plan tail");
+ABI_ASSERT(offsetof(MicopiHistogramApiPlan, sample_plan) == 16, "Histogram plan callback offset");
 ABI_ASSERT(sizeof(MicopiCurvePoint) == 8, "Curves point pair");
 ABI_ASSERT(sizeof(MicopiCurvesParameters) == 272, "Bounded Curves parameters");
 ABI_ASSERT(offsetof(MicopiCurvesParameters, count) == 8, "Curves count offset");

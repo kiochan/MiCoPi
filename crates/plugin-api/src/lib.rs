@@ -702,6 +702,26 @@ pub struct HistogramApi {
     pub sample: Option<HistogramFn>,
 }
 pub type HistogramEntry = unsafe extern "C" fn() -> *const HistogramApi;
+/// Read a nonempty prepared image plan at the bounded centered grid. Request
+/// stride equals width; full-canvas loans are immutable and densely stored.
+pub type HistogramPlanFn = unsafe extern "C" fn(
+    *const HistogramRequest,
+    *const CompositeNode,
+    usize,
+    *const CompositeLayer,
+    usize,
+    *const CompositeMask,
+    usize,
+    *const CompositeLut,
+    usize,
+    *mut HistogramResult,
+) -> i32;
+/// Complete optional 24-byte tail over the unchanged raw-pixel sampler prefix.
+#[repr(C)]
+pub struct HistogramApiPlan {
+    pub base: HistogramApi,
+    pub sample_plan: Option<HistogramPlanFn>,
+}
 #[cfg(test)]
 mod histogram_layout_tests {
     use super::*;
@@ -714,6 +734,8 @@ mod histogram_layout_tests {
         assert_eq!(std::mem::offset_of!(HistogramResult, bins), 32);
         assert_eq!(std::mem::size_of::<HistogramApi>(), 16);
         assert_eq!(std::mem::offset_of!(HistogramApi, sample), 8);
+        assert_eq!(std::mem::size_of::<HistogramApiPlan>(), 24);
+        assert_eq!(std::mem::offset_of!(HistogramApiPlan, sample_plan), 16);
     }
 }
 

@@ -1,5 +1,12 @@
 # Project Structure and Ownership
 
+`plugins/compositing/src/histogram_plan.rs` owns bounded prepared-plan observations
+through an optional SDK tail. It shares grid selection with raw histogram sampling
+and instruction evaluation with `masks.rs`; it never allocates an image buffer.
+`src/plugins/native_histogram.rs` owns cached negotiation, adapter bounds and
+shared complete result/grid validation. Native/host fixtures accompany both
+modules. [Node-scope integration](histogram-plan.md) remains planned.
+
 The optional `LevelsApiChannels` SDK tail and C layout fixtures describe native
 master/R/G/B preparation. `plugins/compositing/src/levels.rs` owns the fixed-table
 algorithm; channel rendering reuses the native three-table evaluator.

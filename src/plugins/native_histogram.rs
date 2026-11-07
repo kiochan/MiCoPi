@@ -14,8 +14,26 @@ unsafe fn decode(pointer: *const abi::HistogramApi) -> Result<abi::HistogramFn, 
         .sample
         .ok_or_else(|| "Missing histogram callback".into())
 }
+unsafe fn decode_plan(
+    pointer: *const abi::HistogramApi,
+) -> Result<Option<abi::HistogramPlanFn>, String> {
+    decode(pointer)?;
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.struct_size == std::mem::size_of::<abi::HistogramApi>() as u32 {
+        return Ok(None);
+    }
+    if header.struct_size < std::mem::size_of::<abi::HistogramApiPlan>() as u32 {
+        return Err("Incomplete histogram plan tail".into());
+    }
+    std::ptr::read_unaligned(pointer.cast::<abi::HistogramApiPlan>())
+        .sample_plan
+        .map(Some)
+        .ok_or_else(|| "Missing histogram plan callback".into())
+}
 impl Module {
-    pub(super) unsafe fn histogram_api(&self) -> Result<Option<abi::HistogramFn>, String> {
+    pub(super) unsafe fn histogram_api(
+        &self,
+    ) -> Result<Option<(abi::HistogramFn, Option<abi::HistogramPlanFn>)>, String> {
         #[cfg(windows)]
         {
             let address =
@@ -24,7 +42,8 @@ impl Module {
                 return Ok(None);
             }
             let entry = std::mem::transmute::<*mut c_void, abi::HistogramEntry>(address);
-            decode(entry()).map(Some)
+            let pointer = entry();
+            Ok(Some((decode(pointer)?, decode_plan(pointer)?)))
         }
         #[cfg(not(windows))]
         {
@@ -69,14 +88,30 @@ fn sample(
             "Native histogram sampling failed",
         ));
     }
+    validate_result(output, &p)
+}
+fn validate_result(
+    output: abi::HistogramResult,
+    p: &abi::HistogramRequest,
+) -> Result<abi::HistogramResult, ActionError> {
     let count = output.nontransparent_pixels;
     let area = u64::from(p.width) * u64::from(p.height);
+    let expected_grid = if area <= u64::from(p.max_samples) {
+        (p.width, p.height)
+    } else {
+        let width = ((f64::from(p.max_samples) * f64::from(p.width) / f64::from(p.height))
+            .sqrt()
+            .floor() as u32)
+            .clamp(1, p.width.min(p.max_samples));
+        (width, p.height.min(p.max_samples / width).max(1))
+    };
     if output.abi_version != 1
         || output.struct_size != std::mem::size_of::<abi::HistogramResult>() as u32
         || output.grid_width == 0
         || output.grid_height == 0
         || output.grid_width > p.width
         || output.grid_height > p.height
+        || (output.grid_width, output.grid_height) != expected_grid
         || output.sampled_pixels != u64::from(output.grid_width) * u64::from(output.grid_height)
         || output.sampled_pixels > u64::from(p.max_samples)
         || count > output.sampled_pixels
@@ -96,6 +131,20 @@ fn sample(
     Ok(output)
 }
 impl NativePlugin {
+    pub(crate) fn supports_histogram_plan(&self) -> bool {
+        self.histogram_plan.is_some()
+    }
+    /// Cold read of the same immutable loans accepted by prepared rendering.
+    pub(crate) fn histogram_plan(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        luts: &[abi::CompositeLut],
+        request: abi::HistogramRequest,
+    ) -> Result<abi::HistogramResult, ActionError> {
+        sample_plan(self.histogram_plan, nodes, layers, masks, luts, request)
+    }
     pub(crate) fn supports_histogram(&self) -> bool {
         self.histogram.is_some()
     }
@@ -211,3 +260,63 @@ mod tests {
         assert_eq!(output.bins[3][2], 1);
     }
 }
+
+fn sample_plan(
+    callback: Option<abi::HistogramPlanFn>,
+    nodes: &[abi::CompositeNode],
+    layers: &[abi::CompositeLayer],
+    masks: &[abi::CompositeMask],
+    luts: &[abi::CompositeLut],
+    mut request: abi::HistogramRequest,
+) -> Result<abi::HistogramResult, ActionError> {
+    if !(1..=4096).contains(&request.width)
+        || !(1..=4096).contains(&request.height)
+        || request.stride != request.width
+        || !(1..=abi::HISTOGRAM_MAX_SAMPLES).contains(&request.max_samples)
+        || !(1..=64).contains(&nodes.len())
+        || !(1..=16).contains(&layers.len())
+        || masks.len() > 32
+        || luts.len() > 64
+        || layers
+            .iter()
+            .any(|l| l.data.is_null() || l.len < (request.width as usize * request.height as usize))
+    {
+        return Err(ActionError::new(
+            "histogram_parameters",
+            "Invalid histogram plan bounds or loans",
+        ));
+    }
+    let callback = callback.ok_or_else(|| {
+        ActionError::new(
+            "histogram_plan_unavailable",
+            "Native histogram plan sampling is unavailable",
+        )
+    })?;
+    request.abi_version = 1;
+    request.struct_size = std::mem::size_of::<abi::HistogramRequest>() as u32;
+    let mut result = abi::HistogramResult::default();
+    if unsafe {
+        callback(
+            &request,
+            nodes.as_ptr(),
+            nodes.len(),
+            layers.as_ptr(),
+            layers.len(),
+            masks.as_ptr(),
+            masks.len(),
+            luts.as_ptr(),
+            luts.len(),
+            &mut result,
+        )
+    } != abi::OK
+    {
+        return Err(ActionError::new(
+            "histogram_plan_sample",
+            "Native histogram plan sampling failed",
+        ));
+    }
+    validate_result(result, &request)
+}
+#[cfg(test)]
+#[path = "native_histogram_plan_tests.rs"]
+mod plan_tests;

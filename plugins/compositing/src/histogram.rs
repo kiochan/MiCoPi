@@ -1,5 +1,7 @@
 //! Read-only bounded centered-grid sampling. No images or pointers are retained.
 use micopi_plugin_api as abi;
+#[path = "histogram_plan.rs"]
+mod plan;
 unsafe extern "C" fn sample(
     request: *const abi::HistogramRequest,
     data: *const u32,
@@ -51,16 +53,7 @@ unsafe extern "C" fn sample(
     if super::overlaps(source, destination) || super::overlaps(parameters, destination) {
         return abi::ERROR;
     }
-    let area = u64::from(p.width) * u64::from(p.height);
-    let (gw, gh) = if area <= u64::from(p.max_samples) {
-        (p.width, p.height)
-    } else {
-        let gw = ((f64::from(p.max_samples) * f64::from(p.width) / f64::from(p.height))
-            .sqrt()
-            .floor() as u32)
-            .clamp(1, p.width.min(p.max_samples));
-        (gw, p.height.min(p.max_samples / gw).max(1))
-    };
+    let (gw, gh) = grid(&p);
     let mut result = abi::HistogramResult {
         grid_width: gw,
         grid_height: gh,
@@ -86,14 +79,30 @@ unsafe extern "C" fn sample(
     std::ptr::write_unaligned(output, result);
     abi::OK
 }
-static API: abi::HistogramApi = abi::HistogramApi {
-    abi_version: 1,
-    struct_size: std::mem::size_of::<abi::HistogramApi>() as u32,
-    sample: Some(sample),
+
+fn grid(p: &abi::HistogramRequest) -> (u32, u32) {
+    let area = u64::from(p.width) * u64::from(p.height);
+    if area <= u64::from(p.max_samples) {
+        (p.width, p.height)
+    } else {
+        let gw = ((f64::from(p.max_samples) * f64::from(p.width) / f64::from(p.height))
+            .sqrt()
+            .floor() as u32)
+            .clamp(1, p.width.min(p.max_samples));
+        (gw, p.height.min(p.max_samples / gw).max(1))
+    }
+}
+static API: abi::HistogramApiPlan = abi::HistogramApiPlan {
+    base: abi::HistogramApi {
+        abi_version: 1,
+        struct_size: std::mem::size_of::<abi::HistogramApiPlan>() as u32,
+        sample: Some(sample),
+    },
+    sample_plan: Some(plan::sample_plan),
 };
 #[no_mangle]
 pub extern "C" fn micopi_histogram_v1() -> *const abi::HistogramApi {
-    &API
+    &API.base
 }
 
 #[cfg(test)]

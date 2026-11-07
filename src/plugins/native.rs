@@ -616,6 +616,7 @@ pub struct NativePlugin {
     curves_prepare: Option<abi::CurvesPrepareFn>,
     curves_render: Option<abi::LevelsRenderFn>,
     histogram: Option<abi::HistogramFn>,
+    histogram_plan: Option<abi::HistogramPlanFn>,
     mask_effect_instance: std::sync::Mutex<Option<MaskEffectInstance>>,
     _module: Module,
 }
@@ -862,7 +863,10 @@ impl NativePlugin {
             None => (None, None),
         };
         let tools = unsafe { module.tool_api()? };
-        let histogram = unsafe { module.histogram_api()? };
+        let (histogram, histogram_plan) = match unsafe { module.histogram_api()? } {
+            Some((sample, plan)) => (Some(sample), plan),
+            None => (None, None),
+        };
         let (curves_prepare, curves_render) = match unsafe { module.curves_api()? } {
             Some((prepare, render)) => (Some(prepare), render),
             None => (None, None),
@@ -939,6 +943,7 @@ impl NativePlugin {
                 curves_prepare,
                 curves_render,
                 histogram,
+                histogram_plan,
                 mask_effect_instance: Default::default(),
                 _module: module,
             }),
