@@ -340,16 +340,21 @@ fn arrangement_reference_enables_single_layer_canvas_alignment_and_distribution_
     open(&mut app, &ctx, size, 1.);
     assert!(!control(&ctx, "left").1);
     assert!(!control(&ctx, "distribute_horizontal_centers").1);
-    let reference = ctx
-        .data_mut(|data| data.get_temp::<Rect>(Id::new("layer-arrangement-reference")))
+    let canvas = ctx
+        .data_mut(|data| data.get_temp::<Rect>(Id::new(("layer-arrangement-reference", "canvas"))))
         .unwrap();
-    let out = click(&mut app, &ctx, size, reference.center(), 2.);
-    let canvas = out
+    let out = frame(&mut app, &ctx, size, vec![], 2.);
+    assert!(out
         .shapes
         .iter()
-        .find_map(|shape| label(&shape.shape, "Canvas"))
-        .unwrap();
-    click(&mut app, &ctx, size, canvas, 3.);
+        .any(|shape| label(&shape.shape, "Canvas").is_some()));
+    click(&mut app, &ctx, size, canvas.center(), 3.);
+    assert!(
+        ctx.data_mut(|data| data.get_temp::<Draft>(Id::new(DRAFT)))
+            .unwrap()
+            .reference
+            == Reference::Canvas
+    );
     assert!(control(&ctx, "left").1);
     assert!(!control(&ctx, "distribute_horizontal_centers").1);
     let source = app.editor.session.doc.layers[1].pixels.clone();
@@ -517,8 +522,25 @@ fn arrangement_four_language_narrow_wide_controls_and_search_stay_within_the_vie
                     "{language:?} {mode}: {rect:?}/{size:?}"
                 );
             }
+            for reference in ["targets", "canvas"] {
+                let rect = ctx
+                    .data_mut(|data| {
+                        data.get_temp::<Rect>(Id::new(("layer-arrangement-reference", reference)))
+                    })
+                    .unwrap();
+                assert!(
+                    Rect::from_min_size(Pos2::ZERO, size).contains_rect(rect),
+                    "{language:?} {reference}: {rect:?}/{size:?}"
+                );
+            }
             let out = frame(&mut app, &ctx, size, vec![], 2.);
-            for source in ["Align To", "Align", "Distribute"] {
+            for source in [
+                "Align To",
+                "Selected Layers",
+                "Canvas",
+                "Align",
+                "Distribute",
+            ] {
                 let title = crate::i18n::text_in(language, source);
                 let (clip, p) = out
                     .shapes

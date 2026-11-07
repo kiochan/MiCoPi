@@ -126,14 +126,12 @@ impl Editor {
             ui.strong(crate::i18n::text("Selected layers: {count}").replace("{count}",&draft.ids.len().to_string()));
             ui.add(Label::new(format!("{}: {}",localize("Painting Layer"),self.session.doc.layer_name(self.session.doc.active))).wrap());
             ui.add_space(a.item_spacing);
+            ui.label(tr("Align To"));
             ui.horizontal_wrapped(|ui|{
-                ui.label(tr("Align To"));
-                let _reference=ComboBox::from_id_salt("layer-arrangement-reference").width(ui.available_width()).truncate()
-                    .selected_text(tr(draft.reference.title())).show_ui(ui,|ui|{
-                        ui.selectable_value(&mut draft.reference,Reference::Targets,tr("Selected Layers"));
-                        ui.selectable_value(&mut draft.reference,Reference::Canvas,tr("Canvas"));
-                    });
-                #[cfg(test)] ui.data_mut(|data|data.insert_temp(Id::new("layer-arrangement-reference"),_reference.response.rect));
+                for reference in [Reference::Targets,Reference::Canvas] {
+                    let _response=ui.selectable_value(&mut draft.reference,reference,tr(reference.title()));
+                    #[cfg(test)] ui.data_mut(|data|data.insert_temp(Id::new(("layer-arrangement-reference",reference.value())),_response.rect));
+                }
             });
             ui.add_space(a.item_spacing);
             for row in [0..3,3..6,6..8] {

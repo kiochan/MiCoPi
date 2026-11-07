@@ -567,6 +567,9 @@ fn adjustment_dynamic_inspect_and_rejected_apply_preserve_local_external_brush_h
             app.editor.input_owned = local;
             app.editor.pen_active = local;
             app.editor.panning = (local && tool == ToolKind::Hand).then_some(Pos2::ZERO);
+            // Typed ink defers composition until presentation. Settle that
+            // painted surface before asserting that inspection changes nothing.
+            app.editor.session.doc.compose();
             let before = Content::capture(&app);
             let public = app.editor.session.state();
             let transcript = samples(&mut app);
