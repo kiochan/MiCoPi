@@ -284,6 +284,7 @@ impl Operation {
                     | Self::GroupCreateSelected
                     | Self::GroupMove
                     | Self::GroupDelete
+                    | Self::GroupDuplicate
             )
     }
     /// Presentation adapters preserve active contacts until these commands run

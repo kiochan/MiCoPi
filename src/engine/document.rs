@@ -1852,6 +1852,9 @@ mod selected_merge;
 pub use layer_merge::MergeLayers;
 pub use selected_merge::SelectedMergePlan;
 #[cfg(test)]
+#[path = "mask_group_duplicate_tests.rs"]
+mod mask_group_duplicate_tests;
+#[cfg(test)]
 #[path = "mask_group_editing_tests.rs"]
 mod mask_group_editing_tests;
 #[cfg(test)]

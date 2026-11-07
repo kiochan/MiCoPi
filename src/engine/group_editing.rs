@@ -600,7 +600,7 @@ impl Document {
         Ok(())
     }
     pub fn group_duplicate(&mut self, id: u64) -> Result<u64, String> {
-        self.require_mask_aware_edit()?;
+        self.validate_group_owner_edit()?;
         self.ensure_group_renderer()?;
         let mut tree = self.tree();
         let source = tree.clone();
@@ -619,11 +619,15 @@ impl Document {
             );
             offset += 1;
         }
+        let next_group = self.next_group_id.checked_add(group_ids.len() as u64);
+        let next_layer = self.next_layer_id.checked_add(layer_ids.len() as u64);
         if self.layers.len() + layer_ids.len() > MAX_LAYERS
             || self.width * self.height * (self.layers.len() + layer_ids.len()) > 64 * 1024 * 1024
             || tree.groups.len() + group_ids.len() > MAX_GROUPS
-            || self.next_group_id + group_ids.len() as u64 > u32::MAX as u64 + 1
-            || self.next_layer_id + layer_ids.len() as u64 > u32::MAX as u64 + 1
+            || self.next_group_id == 0
+            || self.next_layer_id == 0
+            || next_group.is_none_or(|next| next > u32::MAX as u64 + 1)
+            || next_layer.is_none_or(|next| next > u32::MAX as u64 + 1)
         {
             return Err("Group copy exceeds layer, group, pixel or identity limits".into());
         }
@@ -690,23 +694,79 @@ impl Document {
                 self.layers[self.layer_index(source).unwrap()].mode
             })
             .collect();
+        let opacities: Vec<_> = ids
+            .iter()
+            .map(|id| {
+                let source = layer_map
+                    .iter()
+                    .find(|(_, to)| to == id)
+                    .map_or(*id, |(from, _)| *from);
+                self.layers[self.layer_index(source).unwrap()].opacity
+            })
+            .collect();
+        let mask_copy = self.plan_group_mask_copy(&layer_map, &group_map)?;
         let old_ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
         let graph = self
             .graph
             .sync_stack_mapped(&modes, &old_ids, &ids, &layer_map, &[])?;
-        let next_group = self.next_group_id + group_map.len() as u64;
-        let prepared =
-            self.prepare_group_plan(&graph, Some(&tree), &metadata, &modes, next_group, true)?;
-        // Only intentional duplicated rasters allocate image buffers, after every preflight.
+        let next_group = next_group.unwrap();
+        let prepared = self.prepare_group_plan_with_masks(
+            &graph,
+            Some(&tree),
+            &metadata,
+            &modes,
+            &opacities,
+            next_group,
+            &mask_copy.state,
+            true,
+        )?;
+        let active = self.active;
+        let active_id = self.layer_id(active);
+        let selected = if layer_map.is_empty() {
+            self.selected_layer_ids()
+        } else {
+            layer_map.iter().map(|(_, to)| *to).collect()
+        };
+        let selected_active = layer_map
+            .iter()
+            .find(|(from, _)| *from == active_id)
+            .map(|(_, to)| *to)
+            .unwrap_or_else(|| {
+                if layer_map.is_empty() {
+                    active_id
+                } else {
+                    *selected.last().unwrap()
+                }
+            });
+        if selected.is_empty()
+            || selected.len() > MAX_LAYERS
+            || selected
+                .iter()
+                .enumerate()
+                .any(|(i, id)| !ids.contains(id) || selected[..i].contains(id))
+            || !selected.contains(&selected_active)
+        {
+            return Err("Invalid copied group raster selection".into());
+        }
+        let selected_active = ids.iter().position(|id| *id == selected_active).unwrap();
+        let mut selected: Vec<_> = ids
+            .iter()
+            .copied()
+            .filter(|id| selected.contains(id))
+            .collect();
+        if selected.len() == 1 {
+            selected.clear();
+        }
+        // Copy only intentional source buffers after all metadata, selection,
+        // identity, logical-budget and renderer checks have passed.
+        let copied_masks = self.stage_group_mask_copy(&mask_copy);
         let mut copies: Vec<_> = layer_map
             .iter()
             .map(|(from, to)| (*to, self.layers[self.layer_index(*from).unwrap()].clone()))
             .collect();
         self.finish();
         let before = self.composition();
-        let active = self.active;
-        let active_id = self.layer_id(active);
-        let mut current = Vec::new();
+        let mut current = Vec::with_capacity(layer_map.len());
         for (index, id) in ids.iter().enumerate() {
             if let Some(position) = copies.iter().position(|(to, _)| to == id) {
                 let (_, layer) = copies.remove(position);
@@ -715,30 +775,23 @@ impl Document {
             }
         }
         self.layer_metadata = metadata;
-        self.next_layer_id += layer_map.len() as u64;
+        self.next_layer_id = next_layer.unwrap();
         self.next_group_id = next_group;
         self.groups = Some(tree);
         self.graph = graph;
-        self.active = self.layer_index(active_id).unwrap();
-        self.normalize_layer_selection();
-        if !layer_map.is_empty() {
-            let copies: Vec<_> = layer_map.iter().map(|(_, to)| *to).collect();
-            let copy_active = layer_map
-                .iter()
-                .find(|(from, _)| *from == active_id)
-                .map(|(_, to)| *to)
-                .unwrap_or(*copies.last().unwrap());
-            self.set_layer_selection(&copies, Some(copy_active))?;
-        }
+        self.active = selected_active;
+        self.selected_layer_ids = selected;
+        let mask_change = self.publish_group_mask_copy(mask_copy, copied_masks);
         self.install_group_plan(prepared);
         self.track_layer_order();
-        self.commit_composition(
+        self.commit_owner_composition(
             before,
             Some(LayerChange::Replace {
                 current,
                 saved: vec![],
                 active,
             }),
+            mask_change,
         );
         Ok(copy)
     }

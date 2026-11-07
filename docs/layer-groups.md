@@ -26,11 +26,12 @@ On documents with raster masks, [group creation, selected-raster grouping and
 hierarchy movement](mask-group-editing.md) retain every existing owner and raw
 plane, with one structural Undo/outcome. Properties and mask painting are also
 available. [Subtree deletion](mask-group-delete.md) removes every consumed group
-and raster mask through one compound Undo/outcome. Whole-group/subtree copying,
-ungrouping and subtree/visible baking
+and raster mask through one compound Undo/outcome. [Subtree duplication](mask-group-duplicate.md)
+copies all descendant owner planes with ordered fresh IDs, independent storage and
+explicit target/selection mapping. Ungrouping and subtree/visible baking
 remain guarded pending complete owner handling. Plain [single-layer copy/delete](mask-owner-editing.md)
-preserves an individual child's mask and its existing parent. Whole-group copying
-and multi-layer batch editing retain their separate guards.
+preserves an individual child's mask and its existing parent. Multi-layer batch
+editing retains its separate guard.
 
 The registered `group.inspect {"group_id":1}` command opens an explicit group's desktop properties without changing the painting target or raster selection. Its queued effect captures document identity. Headless clients receive `ui_unavailable` and can inspect/edit through `group.query` and `group.set`.
 
@@ -74,7 +75,7 @@ Group edits require an idle drawing or non-drawing contact. Inherited visibility
 
 Flat raster storage remains the depth-first leaf order of the tree. Reordering moves owned pixel buffers rather than cloning images. `group.move` rejects duplicate references, ancestor-plus-descendant targets, cycles and invalid final child slots. Legacy flat layer moves cannot cross parent boundaries or split subtrees; the grouped UI uses explicit sibling operations instead.
 
-Ungroup removes the group's visibility, opacity and compositing boundary; it is not an appearance-preserving bake. Group deletion follows existing structural deletion policy and may remove locked descendants, with undo. On mask-bearing documents it removes every consumed owner plane, including empty nested group masks, while retaining unrelated targets and storage; see [Mask group deletion](mask-group-delete.md). Pixel baking keeps its separate lock guards. Merge Down requires adjacent raster siblings and retains their parent. Stamp Visible adds a root raster from the real composite; Flatten bakes the real composite and removes the hierarchy. Multi-layer transforms, clipping masks and mask-aware group copying/ungrouping/baking remain planned; see [raster-mask editing](raster-mask-editing.md) for the available painting and geometry subsets.
+Ungroup removes the group's visibility, opacity and compositing boundary; it is not an appearance-preserving bake. Group deletion follows existing structural deletion policy and may remove locked descendants, with undo. On mask-bearing documents it removes every consumed owner plane, including empty nested group masks, while retaining unrelated targets and storage; see [Mask group deletion](mask-group-delete.md). Pixel baking keeps its separate lock guards. Merge Down requires adjacent raster siblings and retains their parent. Stamp Visible adds a root raster from the real composite; Flatten bakes the real composite and removes the hierarchy. Multi-layer transforms, clipping masks and mask-aware ungrouping/baking remain planned; see [raster-mask editing](raster-mask-editing.md) for the available painting and geometry subsets.
 
 [Selected-only merge](selected-merge.md) accepts explicit noncontiguous or cross-parent raster IDs. It bakes selected leaves plus intermediate group gates over transparency, excluding the lowest common parent's gate and all ancestors. The replacement is a direct child of that common parent above the highest original target branch. Every folder and unselected raw buffer remains, including empty groups. This can change interactions with unselected artwork; its plan and optional review expose placement and consumption without promising whole-composite equality.
 

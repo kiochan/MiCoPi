@@ -146,6 +146,7 @@ fn owner_contact_guarded(action: &crate::application::Action) -> bool {
             | "group.create_selected"
             | "group.move"
             | "group.delete"
+            | "group.duplicate"
     )
 }
 fn property_action(ids: &[u64], mut args: Value) -> Option<crate::application::Action> {
@@ -1625,6 +1626,10 @@ mod group_structure_ui_tests;
 #[cfg(test)]
 #[path = "group_delete_ui_tests.rs"]
 mod group_delete_ui_tests;
+
+#[cfg(test)]
+#[path = "group_duplicate_ui_tests.rs"]
+mod group_duplicate_ui_tests;
 
 #[cfg(test)]
 mod tests {

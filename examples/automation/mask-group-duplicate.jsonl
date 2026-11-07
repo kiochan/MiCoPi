@@ -1,0 +1,20 @@
+{"action":"canvas.new","args":{"width":120,"height":96}}
+{"action":"layer.fill_color","args":{"color":"#243044"}}
+{"action":"layer.rename","args":{"name":"Paper"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.fill_color","args":{"color":"#E5A4C4"}}
+{"action":"layer.rename","args":{"name":"Cel"}}
+{"action":"layer.set","args":{"opacity":0.5372549019607843}}
+{"action":"group.create","args":{"name":"Color","members":[{"kind":"layer","id":2}]}}
+{"action":"mask.create","args":{"owner":{"kind":"layer","id":2},"source":"hide_all"}}
+{"action":"brush.set","args":{"color":"#FFFFFF","radius":18,"opacity":1,"stabilizer":0.5,"pressure_size":true,"pressure_opacity":true}}
+{"action":"canvas.stroke","args":{"tool":"brush","points":[{"x":18,"y":60,"pressure":0.2,"pen":true,"time":0},{"x":45,"y":30,"pressure":0.8,"pen":true,"time":15},{"x":75,"y":66,"pressure":1,"pen":true,"time":30},{"x":104,"y":38,"pressure":0.3,"pen":true,"time":45}]}}
+{"action":"mask.set","args":{"mask_id":1,"density":220,"feather_radius_px":3,"linked":false}}
+{"action":"mask.create","args":{"owner":{"kind":"group","id":1},"select":false}}
+{"action":"mask.fill","args":{"mask_id":2,"value":196}}
+{"action":"pipeline.run","args":{"atomic":true,"steps":[{"id":"copy","action":"group.duplicate","args":{"group_id":1}},{"id":"folder","action":"group.set","args":{"group_id":{"$ref":"copy#/result/group_id"},"name":"Copied color"}},{"id":"cel","action":"layer.rename","args":{"layer_id":{"$ref":"copy#/result/layer_ids/0"},"name":"Copied cel"}},{"id":"mask","action":"mask.fill","args":{"mask_id":{"$ref":"copy#/result/mask_ids/0"},"value":176}}]}}
+{"action":"mask.query","args":{}}
+{"action":"canvas.export","args":{"path":"target/example-output/mask-group-duplicate.png"}}
+{"action":"document.save","args":{"path":"target/example-output/mask-group-duplicate.mcp"}}
+{"action":"replay.export","args":{"path":"target/example-output/mask-group-duplicate.mcreplay"}}
+{"action":"replay.verify","args":{}}

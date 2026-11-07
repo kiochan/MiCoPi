@@ -13,9 +13,12 @@ border selects the raw mask thumbnail independently of the active raster row.*
 **Owner geometry and structural integration are incomplete.**
 [Document-wide geometry](mask-canvas-geometry.md) transforms all raw masks with
 the canvas, including hidden, disabled and unlinked masks. Mask-bearing documents
-still reject guarded owner movement/Free Transform, layer rotations, duplication,
-owner deletion, merge/flatten and transfer paths. `linked` is stored, editable
-metadata; it does not enable linked owner transforms yet. The full raster-mask
+support [single-layer owner copy/delete](mask-owner-editing.md),
+[group creation/movement](mask-group-editing.md), [subtree deletion](mask-group-delete.md)
+and [subtree duplication](mask-group-duplicate.md). Owner movement/Free Transform,
+layer rotations, ungrouping, batches, merge/flatten and transfer paths retain
+their guards. `linked` is stored, editable metadata; it does not enable linked
+owner transforms yet. The full raster-mask
 roadmap item remains unchecked. See [remaining boundaries](#current-boundaries)
 and the complete [implementation design](raster-masks-design.md).
 
@@ -226,7 +229,7 @@ properties on hidden or disabled masks.
 
 The following remain guarded with `mask_editing_pending` while mask items exist:
 owner Move/Free Transform and layer rotations,
-group/subtree duplication and ungrouping, owner transfer, batch layer edits,
+ungrouping, owner transfer, batch layer edits,
 merge/stamp/flatten and cut/paste. Their mutation plans/previews are guarded too.
 Mask-aware layer ordering is supported; the guard is not a promise that every
 structural action is disabled or complete. Selection operations, supported
@@ -247,8 +250,10 @@ masks, source properties and target rules through one compound Undo/outcome.
 existing owner, raw mask, target and selected/active raster ID, with shared
 source/candidate preflight and one structural Undo/outcome. [Group/subtree
 deletion](mask-group-delete.md) removes only consumed owner masks, with explicit
-target/selection fallback and one compound history edit. Linked/unlinked owner
-transforms, group/subtree copying/ungrouping, batch structure, Layer via
+target/selection fallback and one compound history edit. [Subtree duplication](mask-group-duplicate.md)
+creates fresh independent raw planes and maps owned targets/copied selection under
+one compound history/outcome. Linked/unlinked owner
+transforms, ungrouping, batch structure, Layer via
 Copy/Cut, complete merge/clipboard handling and clipping masks remain planned. The current native,
 host, transport and UI fixtures test their stated scopes; synthetic pen input
 does not establish physical tablet/driver compatibility. Final delivery evidence

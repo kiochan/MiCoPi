@@ -4,7 +4,7 @@ use crate::application::{Pointer, PointerPhase, ToolKind};
 use crate::desktop::canvas_geometry::mask_ui_tests::{click, fixture, label, Snapshot};
 use crate::engine::raster_masks::{PaintTarget, PlaneView};
 
-fn studio(populated: bool) -> Studio {
+pub(super) fn studio(populated: bool) -> Studio {
     let (mut app, _) = fixture(2);
     for color in ["#E5A4C4", "#243044"] {
         assert!(app.editor.core("layer.add", json!({})));
@@ -58,13 +58,13 @@ fn studio(populated: bool) -> Studio {
     app.editor.session.doc.compose();
     app
 }
-fn context(app: &Studio) -> Context {
+pub(super) fn context(app: &Studio) -> Context {
     let ctx = Context::default();
     theme::fonts(&ctx);
     theme::apply(&ctx, &app.editor.settings.ui);
     ctx
 }
-fn properties_frame(
+pub(super) fn properties_frame(
     app: &mut Studio,
     ctx: &Context,
     events: Vec<Event>,
@@ -89,14 +89,14 @@ fn properties_frame(
     app.editor.dispatch_layer_pending_ui(pending, Some(ctx));
     output
 }
-fn option(output: &FullOutput, text: &str) -> Pos2 {
+pub(super) fn option(output: &FullOutput, text: &str) -> Pos2 {
     output
         .shapes
         .iter()
         .find_map(|shape| label(&shape.shape, text))
         .unwrap()
 }
-fn rendered_labels(output: &FullOutput) -> Vec<String> {
+pub(super) fn rendered_labels(output: &FullOutput) -> Vec<String> {
     fn visit(shape: &Shape, labels: &mut Vec<String>) {
         match shape {
             Shape::Text(text) => labels.push(text.galley.text().to_owned()),
@@ -129,7 +129,7 @@ fn open_delete(app: &mut Studio, ctx: &Context, base: f64) -> Pos2 {
     output = properties_frame(app, ctx, vec![], base + 4., vec![]);
     option(&output, "Delete Group and Contents")
 }
-fn raw(app: &Studio, id: u64) -> Vec<u8> {
+pub(super) fn raw(app: &Studio, id: u64) -> Vec<u8> {
     let doc = &app.editor.session.doc;
     match doc.mask_plane(id).unwrap() {
         PlaneView::Uniform(value) => vec![value; doc.width * doc.height],
@@ -150,7 +150,7 @@ fn pointer(kind: ToolKind, phase: PointerPhase, time: u32, pressure: f32) -> Poi
         view_y: Some(40.),
     }
 }
-fn down(app: &mut Studio, kind: ToolKind, local: bool) -> usize {
+pub(super) fn down(app: &mut Studio, kind: ToolKind, local: bool) -> usize {
     let start = app
         .editor
         .session
@@ -169,7 +169,7 @@ fn down(app: &mut Studio, kind: ToolKind, local: bool) -> usize {
     app.editor.session.doc.compose();
     start
 }
-fn assert_contact(app: &Studio, kind: ToolKind, local: bool) {
+pub(super) fn assert_contact(app: &Studio, kind: ToolKind, local: bool) {
     assert!(app.editor.session.stroke.active());
     assert!(app.editor.session.pointer_checkpoint.is_some());
     assert_eq!(app.editor.input_owned, local);
@@ -180,7 +180,7 @@ fn assert_contact(app: &Studio, kind: ToolKind, local: bool) {
         local && kind == ToolKind::Hand
     );
 }
-fn samples(app: &mut Studio, start: usize) -> Vec<Value> {
+pub(super) fn samples(app: &mut Studio, start: usize) -> Vec<Value> {
     let journal = app.editor.session.replay_journal(false).unwrap();
     let events = journal
         .events(start, journal.entries.len() - start)
@@ -201,7 +201,7 @@ fn samples(app: &mut Studio, start: usize) -> Vec<Value> {
     );
     result
 }
-fn finish(app: &mut Studio, kind: ToolKind, start: usize) {
+pub(super) fn finish(app: &mut Studio, kind: ToolKind, start: usize) {
     app.editor
         .session
         .pointer(pointer(kind, PointerPhase::Move, 120, 0.9))
@@ -225,7 +225,7 @@ fn finish(app: &mut Studio, kind: ToolKind, start: usize) {
         true
     );
 }
-fn key(key: Key, modifiers: Modifiers) -> Vec<Event> {
+pub(super) fn key(key: Key, modifiers: Modifiers) -> Vec<Event> {
     [true, false]
         .into_iter()
         .map(|pressed| Event::Key {
@@ -237,7 +237,12 @@ fn key(key: Key, modifiers: Modifiers) -> Vec<Event> {
         })
         .collect()
 }
-fn draft_frame(app: &mut Studio, ctx: &Context, events: Vec<Event>, time: f64) -> FullOutput {
+pub(super) fn draft_frame(
+    app: &mut Studio,
+    ctx: &Context,
+    events: Vec<Event>,
+    time: f64,
+) -> FullOutput {
     crate::i18n::set_language(crate::i18n::Language::English);
     app.editor.blocked = app.editor.palette.is_some() || app.editor.command_form.is_some();
     app.editor.contact_draft_allowed = app.editor.contact_draft_modal();
@@ -596,11 +601,10 @@ fn separately_queued_delete_form_defers_a_lost_focus_layer_name_before_opening()
 }
 
 #[test]
-fn group_copy_ungroup_and_layer_batches_stay_guarded_after_subtree_delete_is_enabled() {
+fn group_ungroup_and_layer_batches_stay_guarded_after_subtree_delete_is_enabled() {
     let mut app = studio(true);
     let before = Snapshot::capture(&app.editor);
     for action in [
-        crate::application::Action::new("group.duplicate", json!({"group_id":1})),
         crate::application::Action::new("group.ungroup", json!({"group_id":1})),
         crate::application::Action::new(
             "layer.batch",

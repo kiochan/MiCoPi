@@ -194,6 +194,54 @@ The final 2026-11-06 GNU Release foundation desktop/CLI executables were 10,266,
 
 The mask-specific JSONL/MCP/GUI check passed, including four reviewed language captures. Separate runtime, workflow, linked-graph, replay, group, selected-merge and Pass Through GUI checks passed. Subsequent capture stabilization adds request/viewport correlation and retained callback acknowledgement; use the capture-aware checks below when validating current builds rather than treating file existence as completion.
 
+## Raster-mask group duplication checks
+
+Run `python scripts/smoke-mask-group-duplicate.py --cli <built-cli> --gui <built-desktop>`
+with matching staged DLLs. Use `--skip-gui` for JSONL/MCP/no-DLL CI checks. Its
+sixteen 7-by-5 independent fixtures copy nested Isolated/Pass Through subtrees,
+empty owners, hidden/disabled/unlinked masks and partial opacity. Ordered fresh
+IDs, raw samples, source filter lineage, targets, raster selection and all three
+allocators are checked against project storage and an independent integer
+composition reference. A branching empty tree distinguishes allocation BFS from
+storage and top-first public DFS. Empty copies also exercise exhausted unused
+raster/mask counters without large allocations.
+
+The smoke exercises one-publication history, new A8 tiles without unchanged-plane
+repetition, copied-mask independence, typed result bindings, inert workflow
+editing, failed atomic rollback, contacts and DLL-free outcomes. Its optional
+GUI phase captures the copied Layers state in English, Chinese, Japanese and
+Korean through the existing correlated capture checks. Engine, Session and
+compiled Layers regressions additionally cover preflight logical/graph budgets,
+renderer and journal failures, checkpoint-pinned history, menu/palette admission,
+dirty names and pending/recorded pressure samples. See
+[Mask group duplication](mask-group-duplicate.md) for the supported contract.
+
+All twenty focused desktop checks passed, including fifteen engine/Session
+cases and five actual Layers/palette interaction tests. Final complete library
+runs passed 834 desktop and 619 headless tests, with 9 existing ignored tests in
+each build. Serial fresh batches of eight retain the existing GNU TLS-index
+test-runner workaround; its cause remains unproven and this is not a shipping
+runtime fix. Workers remain below normal priority on at most two logical CPUs,
+with one Cargo job and one Rust test thread. The branching regression explicitly
+distinguishes forward storage DFS, top-first public DFS and fresh allocation BFS.
+
+The matching Release smoke passed all sixteen independent cases: 339 JSONL
+commands, 417 MCP commands, GUI parity, four reviewed native Layers captures and
+DLL-free archives. The transport fixtures include a visible dense raster mask
+with nondefault density/feather, source-mapped opacity 137, interleaved mask IDs,
+branching empty groups and a workflow preserving the copied mask target through
+array-only layer selection. Existing runtime, workflow and published-revision
+GUI smokes passed; mask editing, single-owner, hierarchy, deletion and unmasked
+group transport regressions also passed. Release desktop/CLI executables are
+10,631,680/4,406,784 bytes, increases of 16/15.5 KiB over the preceding revision
+correction; native DLLs and dependencies are unchanged.
+
+These are synthetic fixtures rather than physical tablet, latency or stress
+measurements. Native algorithms, callbacks, dependencies and file formats are
+unchanged; only intentional source rasters and owned raw planes are copied.
+Other incomplete mask boundaries remain explicit rather than being widened by
+this command.
+
 ## Action-result revision checks
 
 Run `python scripts/smoke-result-revisions.py --cli <built-cli> --gui <built-desktop>`

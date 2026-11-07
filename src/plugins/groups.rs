@@ -110,7 +110,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
     let mut merged_layer = None;
     // Cold structural result bookkeeping shares the final state response. Only
     // bounded metadata IDs are copied; raster/A8 buffers stay document-owned.
-    let removed_before = (op == GroupDelete).then(|| {
+    let structural_before = matches!(op, GroupDelete | GroupDuplicate).then(|| {
         (
             s.doc
                 .composition()
@@ -210,29 +210,55 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
     if let Some(id) = merged_layer {
         state["layer_id"] = json!(id);
     }
-    if let Some((groups, layers, masks)) = removed_before {
-        let remaining = |rows: &Value| -> BTreeSet<u64> {
-            rows.as_array()
+    if let Some((groups, layers, masks)) = structural_before {
+        if op == GroupDuplicate {
+            let copied = |rows: &Value, before: &[u64]| -> Vec<u64> {
+                rows.as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|row| row["id"].as_u64())
+                    .filter(|id| !before.contains(id))
+                    .collect()
+            };
+            state["source_group_id"] = json!(id);
+            // Public group rows follow DFS, while fresh group IDs are allocated
+            // in BFS order. Monotonic identities recover that promised order.
+            let mut group_ids = copied(&state["groups"]["groups"], &groups);
+            group_ids.sort_unstable();
+            state["group_ids"] = json!(group_ids);
+            state["layer_ids"] = json!(copied(&state["layers"], &layers));
+            state["mask_ids"] = json!(s
+                .doc
+                .mask_state()
+                .items
+                .iter()
+                .map(|mask| mask.id)
+                .filter(|id| !masks.contains(id))
+                .collect::<Vec<_>>());
+        } else {
+            let remaining = |rows: &Value| -> BTreeSet<u64> {
+                rows.as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|row| row["id"].as_u64())
+                    .collect()
+            };
+            let group_ids = remaining(&state["groups"]["groups"]);
+            let layer_ids = remaining(&state["layers"]);
+            let mask_ids: BTreeSet<_> = s.doc.mask_state().items.iter().map(|m| m.id).collect();
+            state["deleted_group_ids"] = json!(groups
                 .into_iter()
-                .flatten()
-                .filter_map(|row| row["id"].as_u64())
-                .collect()
-        };
-        let group_ids = remaining(&state["groups"]["groups"]);
-        let layer_ids = remaining(&state["layers"]);
-        let mask_ids: BTreeSet<_> = s.doc.mask_state().items.iter().map(|m| m.id).collect();
-        state["deleted_group_ids"] = json!(groups
-            .into_iter()
-            .filter(|id| !group_ids.contains(id))
-            .collect::<Vec<_>>());
-        state["deleted_layer_ids"] = json!(layers
-            .into_iter()
-            .filter(|id| !layer_ids.contains(id))
-            .collect::<Vec<_>>());
-        state["deleted_mask_ids"] = json!(masks
-            .into_iter()
-            .filter(|id| !mask_ids.contains(id))
-            .collect::<Vec<_>>());
+                .filter(|id| !group_ids.contains(id))
+                .collect::<Vec<_>>());
+            state["deleted_layer_ids"] = json!(layers
+                .into_iter()
+                .filter(|id| !layer_ids.contains(id))
+                .collect::<Vec<_>>());
+            state["deleted_mask_ids"] = json!(masks
+                .into_iter()
+                .filter(|id| !mask_ids.contains(id))
+                .collect::<Vec<_>>());
+        }
     }
     Ok(state)
 }

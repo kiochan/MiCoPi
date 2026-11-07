@@ -925,7 +925,6 @@ fn mask_group_projects_and_dll_free_outcomes_preserve_owners_while_other_group_e
         json!({"target":PaintTarget::LayerPixels}),
     );
     for (action, args) in [
-        ("group.duplicate", json!({"group_id":inner})),
         ("group.ungroup", json!({"group_id":wrapper})),
         ("group.merge", json!({"group_id":inner})),
         (

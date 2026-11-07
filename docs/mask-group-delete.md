@@ -4,8 +4,9 @@ The existing `group.delete` action supports mask-bearing documents. It removes
 the explicit group's complete subtree and every mask owned by a consumed group
 or raster, then publishes one structural Undo/revision/outcome. This extends
 [owner-preserving group creation/movement](mask-group-editing.md) and
-[single-layer owner editing](mask-owner-editing.md); it does not enable group
-duplication, ungrouping, baking or batch layer deletion.
+[single-layer owner editing](mask-owner-editing.md); group
+duplication has its [own contract](mask-group-duplicate.md). Ungrouping, baking
+and batch layer deletion remain separate work.
 
 ![A deleted subtree restored by Undo in the real Layers window](screenshots/mask-group-delete.png)
 
@@ -131,7 +132,7 @@ whole-image copy.
 
 ## Remaining work and validation scope
 
-Group/subtree duplication, ungrouping, layer batches, owner pixel Move/Free
+Ungrouping, layer batches, owner pixel Move/Free
 Transform and rotations, Layer via Copy/Cut, merges/stamp/flatten, clipboard
 mutations and group-mask Apply remain guarded where integration is incomplete.
 Clipping masks remain planned. The full [mask design](raster-masks-design.md) and

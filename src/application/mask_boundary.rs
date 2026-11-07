@@ -40,7 +40,6 @@ impl Session {
                     | LayerBatch
                     | GroupUngroup
                     | GroupUngroupParent
-                    | GroupDuplicate
                     | GroupMerge
                     | ClipboardCut
                     | ClipboardPaste

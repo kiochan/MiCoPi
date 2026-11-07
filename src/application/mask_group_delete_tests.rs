@@ -919,7 +919,6 @@ fn mask_group_delete_projects_and_dll_free_replay_keep_survivors_and_remaining_g
         json!({"target":PaintTarget::LayerPixels}),
     );
     for (action, args) in [
-        ("group.duplicate", json!({"group_id":survivor})),
         ("group.ungroup", json!({"group_id":survivor})),
         ("group.merge", json!({"group_id":survivor})),
         (

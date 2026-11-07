@@ -1,12 +1,116 @@
-//! Bounded mask ownership removal for a deleted group and its descendants.
+//! Bounded mask ownership staging for copied or deleted group subtrees.
 use super::*;
-use crate::engine::raster_masks::{MaskOwner, MaskState, PaintTarget};
+use crate::engine::raster_masks::{MaskOwner, MaskPlane, MaskState, PaintTarget, MAX_MASKS};
 
 pub(super) struct GroupMaskRemoval {
     pub state: MaskState,
     slots: Vec<usize>,
 }
+pub(super) struct GroupMaskCopy {
+    pub state: MaskState,
+    sources: Vec<(usize, u64)>,
+}
+/// Plan only bounded metadata. Candidate owners are validated by the caller's
+/// final group plan before the source samples are copied.
+pub(super) fn plan_mask_copy(
+    state: &MaskState,
+    layer_map: &[(u64, u64)],
+    group_map: &[(u64, u64)],
+    width: usize,
+    height: usize,
+) -> Result<GroupMaskCopy, String> {
+    let sources: Vec<_> = state
+        .items
+        .iter()
+        .enumerate()
+        .filter_map(|(slot, item)| {
+            let owner = match item.owner {
+                MaskOwner::Layer { id } => layer_map
+                    .iter()
+                    .find(|(from, _)| *from == id)
+                    .map(|(_, id)| MaskOwner::Layer { id: *id }),
+                MaskOwner::Group { id } => group_map
+                    .iter()
+                    .find(|(from, _)| *from == id)
+                    .map(|(_, id)| MaskOwner::Group { id: *id }),
+            };
+            owner.map(|owner| (slot, owner))
+        })
+        .collect();
+    if state.items.len() + sources.len() > MAX_MASKS {
+        return Err("Group copy exceeds the raster mask count limit".into());
+    }
+    let mut candidate = state.clone();
+    let mut copies = Vec::with_capacity(sources.len());
+    for (slot, owner) in sources {
+        let id = candidate.next_id.max(1);
+        if id > u32::MAX as u64 {
+            return Err("Raster mask identity limit reached".into());
+        }
+        let mut metadata = state.items[slot].clone();
+        if candidate.target == (PaintTarget::Mask { id: metadata.id }) {
+            candidate.target = PaintTarget::Mask { id };
+        }
+        metadata.id = id;
+        metadata.owner = owner;
+        candidate.items.push(metadata);
+        candidate.next_id = id + 1;
+        copies.push((slot, id));
+    }
+    candidate.validate_dimensions(width, height)?;
+    Ok(GroupMaskCopy {
+        state: candidate,
+        sources: copies,
+    })
+}
 impl Document {
+    pub(super) fn plan_group_mask_copy(
+        &self,
+        layer_map: &[(u64, u64)],
+        group_map: &[(u64, u64)],
+    ) -> Result<GroupMaskCopy, String> {
+        plan_mask_copy(
+            self.mask_state(),
+            layer_map,
+            group_map,
+            self.width,
+            self.height,
+        )
+    }
+    /// Only intentional copies allocate raw storage, after candidate compilation.
+    pub(super) fn stage_group_mask_copy(&self, edit: &GroupMaskCopy) -> Vec<MaskPlane> {
+        edit.sources
+            .iter()
+            .map(|(slot, id)| MaskPlane {
+                id: *id,
+                samples: self.mask_planes[*slot].samples.clone(),
+                content_revision: 0,
+            })
+            .collect()
+    }
+    pub(super) fn publish_group_mask_copy(
+        &mut self,
+        edit: GroupMaskCopy,
+        copies: Vec<MaskPlane>,
+    ) -> Option<MaskChange> {
+        debug_assert_eq!(copies.len(), edit.sources.len());
+        let current: Vec<_> =
+            (self.mask_planes.len()..self.mask_planes.len() + copies.len()).collect();
+        for plane in copies {
+            let id = plane.id;
+            self.mask_planes.push(plane);
+            self.mark_mask_plane(id);
+        }
+        self.raster_masks = edit.state;
+        self.mask_contact = None;
+        self.bump_mask_storage_epoch();
+        (!current.is_empty()).then(|| {
+            MaskChange::Structural(Arc::new(MaskStructuralChange {
+                current,
+                saved: Vec::new(),
+            }))
+        })
+    }
     /// Source storage/capabilities and the complete candidate composition are
     /// validated by the caller before any plane or raster buffer is removed.
     pub(super) fn plan_group_mask_removal(

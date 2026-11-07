@@ -5,7 +5,9 @@ support documents with layer/group raster masks. These operations change the
 hierarchy while retaining every existing owner and raw plane. They extend
 [single-layer owner editing](mask-owner-editing.md) and [mask canvas geometry](mask-canvas-geometry.md).
 [Subtree deletion](mask-group-delete.md) now removes consumed owners through its
-own compound history contract. Group/subtree copying, ungrouping and baking remain separate work.
+own compound history contract. [Subtree duplication](mask-group-duplicate.md) now
+copies descendant owners under fresh IDs and independent raw storage. Ungrouping
+and baking remain separate work.
 
 ![Wrapped masked owners in the actual native Layers window](screenshots/mask-group-editing.png)
 
@@ -146,7 +148,7 @@ existing buffers; raw masks and effect planes do not need new image-sized copies
 Existing composition, history, recording and display costs still apply. This
 adds no dependency, native callback or per-MOVE JSON/lookup/hierarchy traversal.
 
-Group/subtree duplication, ungrouping, batch layer edits,
+Ungrouping, batch layer edits,
 Layer via Copy/Cut, owner pixel Move/Free Transform and rotations, merges,
 flatten/stamp, clipboard mutations and group-mask Apply remain guarded on
 mask-bearing documents where incomplete. Clipping masks remain planned. The

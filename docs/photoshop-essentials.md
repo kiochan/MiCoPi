@@ -95,7 +95,8 @@ Acceptance: coordinate units, pivots, bounds, resampling and clipping are specif
 - [x] Add plain single-layer owner copy/delete with fresh copied mask IDs, exact raw/property/filter retention, explicit paint-target rules, one compound Undo/outcome, idle contact admission and schema-derived result bindings. See [Mask owner editing](mask-owner-editing.md).
 - [x] Add owner-preserving group creation, selected-raster grouping and hierarchy reparent/order on mask-bearing documents, with source/candidate admission, unchanged raw A8 planes/targets, one structural Undo/outcome and shared result-schema bindings. See [Mask group editing](mask-group-editing.md).
 - [x] Add mask-bearing group/subtree deletion, including empty masked groups, complete consumed owner removal, explicit target/selection fallback, shared result arrays and one compound Undo/outcome with rollback. See [Mask group deletion](mask-group-delete.md).
-- [ ] Complete owner linked/unlinked layer/mask Move/Free Transform, group/subtree copying/ungrouping and batch structural edits, Layer via Copy/Cut, merges/flatten/clipboard mutations and group-mask application before marking the full mask feature complete.
+- [x] Add mask-bearing group/subtree duplication, including empty groups and hidden/disabled/unlinked masks, with ordered fresh IDs, exact independent raw buffers, explicit target/selection mapping, required schema outputs and one compound Undo/outcome. See [Mask group duplication](mask-group-duplicate.md).
+- [ ] Complete owner linked/unlinked layer/mask Move/Free Transform, ungrouping and batch structural edits, Layer via Copy/Cut, merges/flatten/clipboard mutations and group-mask application before marking the full mask feature complete.
 - [ ] Add clipping masks and mask-aware image graph ports/composition.
 - [ ] Add multi-layer align/distribute/link.
 - [ ] Add solid/gradient fill layers; evaluate pattern fills alongside the pattern library.

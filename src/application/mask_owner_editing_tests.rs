@@ -847,7 +847,6 @@ fn mask_owner_projects_and_archives_roundtrip_and_other_edit_boundaries_stay_gua
         ("layer.via_copy", json!({})),
         ("layer.translate", json!({"dx":1,"dy":0})),
         ("layer.merge_selected", json!({"layer_ids":[2,3]})),
-        ("group.duplicate", json!({"group_id":1})),
         ("clipboard.paste", json!({})),
     ] {
         let before = Before::capture(&s);

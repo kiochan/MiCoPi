@@ -47,6 +47,8 @@ mod mask_canvas_geometry_tests;
 #[cfg(test)]
 mod mask_group_delete_tests;
 #[cfg(test)]
+mod mask_group_duplicate_tests;
+#[cfg(test)]
 mod mask_group_editing_tests;
 #[cfg(test)]
 mod mask_owner_editing_tests;

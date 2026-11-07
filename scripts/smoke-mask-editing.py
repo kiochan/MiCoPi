@@ -428,7 +428,6 @@ def boundary_cases():
         ('layer.merge_visible', {}), ('layer.flatten', {}), ('layer.stamp_visible', {}),
         ('layer.batch', dict(action='layer.set', layer_ids=[1, 2], args=dict(opacity=.5))),
         ('group.ungroup', dict(group_id=1)), ('group.ungroup_parent', {}),
-        ('group.duplicate', dict(group_id=1)),
         ('group.merge', dict(group_id=1)),
         ('clipboard.cut', {}), ('clipboard.paste', {}), ('clipboard.paste_in_place', {}),
     ]

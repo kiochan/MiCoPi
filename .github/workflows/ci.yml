@@ -64,3 +64,5 @@ jobs:
         run: python scripts/smoke-mask-groups.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify mask-bearing group deletion and compound outcome replay
         run: python scripts/smoke-mask-group-delete.py --skip-gui --cli target/release/micopi-cli.exe
+      - name: Verify mask-bearing subtree copies, identities and compound outcomes
+        run: python scripts/smoke-mask-group-duplicate.py --skip-gui --cli target/release/micopi-cli.exe

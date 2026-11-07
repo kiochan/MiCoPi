@@ -290,16 +290,6 @@ fn isolated_and_pass_through_group_masks_gate_the_completed_change_once() {
         .create_mask(MaskOwner::Group { id: group }, 128)
         .unwrap();
     assert_eq!(pixels(&mut isolated), vec![0x4000ff00]);
-    let before_copy = isolated.composition();
-    let history = isolated.history_bytes();
-    assert_eq!(
-        isolated.group_duplicate(group).unwrap_err(),
-        crate::engine::MASK_EDITING_PENDING
-    );
-    assert_eq!(isolated.composition(), before_copy);
-    assert_eq!(isolated.layers.len(), 2);
-    assert_eq!(isolated.history_bytes(), history);
-    assert_eq!(pixels(&mut isolated), vec![0x4000ff00]);
     let effective = isolated.effective_graph().unwrap();
     assert_eq!(
         effective
