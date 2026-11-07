@@ -1532,5 +1532,16 @@
   "Curves": "曲线",
   "Master RGB": "RGB 主曲线",
   "Control Points": "控制点",
-  "Interpolation": "插值"
+  "Interpolation": "插值",
+  "Channel": "通道",
+  "Linear": "线性",
+  "Smooth Curve": "平滑曲线",
+  "Output": "输出",
+  "Remove Point": "删除控制点",
+  "Reset Curve": "重置当前曲线",
+  "Reset All Curves": "重置全部曲线",
+  "Invalid Control Points": "控制点无效",
+  "Curve preview pauses while drawing.": "绘画时暂停曲线预览计算。",
+  "Curve Preview Unavailable": "曲线预览不可用",
+  "Click to add a point. Drag to move. Right-click to remove.": "点击添加控制点，拖动调整，右键删除。"
 }

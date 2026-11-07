@@ -5,6 +5,8 @@ use egui_snarl::{
     InPin, InPinId, NodeId, OutPin, OutPinId, Snarl,
 };
 use std::collections::BTreeMap;
+#[path = "curves_ui.rs"]
+pub(super) mod curves_ui;
 #[path = "groups_view.rs"]
 mod groups_view;
 #[path = "levels_ui.rs"]
@@ -561,6 +563,8 @@ struct NodeViewer<'a> {
     supported_blends: u32,
     mix_available: bool,
     levels_height: f32,
+    curves_height: f32,
+    contact_active: bool,
     actions: Vec<crate::application::Action>,
 }
 impl Default for NodeViewer<'_> {
@@ -577,6 +581,11 @@ impl Default for NodeViewer<'_> {
             supported_blends: 0xff,
             mix_available: false,
             levels_height: levels_ui::estimated_height(&crate::configuration::Appearance::default()),
+            curves_height: curves_ui::estimated_height(
+                &crate::configuration::Appearance::default(),
+                192.,
+            ),
+            contact_active: false,
             actions: vec![],
         }
     }
@@ -687,7 +696,9 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
         }
         let mut bounds = Rect::NOTHING;
         for (_, pos, node) in snarl.nodes_pos_ids() {
-            let height = if matches!(node.data, NodeKind::Levels { .. }) {
+            let height = if matches!(node.data, NodeKind::Curves { .. }) {
+                self.curves_height
+            } else if matches!(node.data, NodeKind::Levels { .. }) {
                 self.levels_height
             } else if self.linked && matches!(node.data, NodeKind::Layer { .. }) {
                 self.width * 1.4 + 24.
@@ -800,6 +811,12 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
                 );
                 return;
             };
+            if def.id=="compositing.curves" {
+                if let NodeKind::Curves {curves}=&mut snarl[id].data {
+                    curves_ui::edit(ui,Id::new(("curves-node",id,self.document.map_or(0,|d|d.identity))),curves,self.document.and_then(|d|d.renderer.as_deref()),self.contact_active);
+                    return;
+                }
+            }
             if def.id=="compositing.levels" {
                 if let NodeKind::Levels {parameters}=&mut snarl[id].data {
                     levels_ui::edit(ui,Id::new(("levels-node",id)),parameters);
@@ -1101,6 +1118,12 @@ impl Editor {
         let mut viewer = NodeViewer {
             definitions: Some(&self.plugin_nodes),
             levels_height: levels_ui::estimated_height(&self.settings.ui),
+            curves_height: curves_ui::estimated_height(
+                &self.settings.ui,
+                self.settings.ui.font_size * 12.,
+            ),
+            contact_active: self.session.stroke.active()
+                || self.session.pointer_checkpoint.is_some(),
             layers: self.session.doc.layers.len(),
             message: String::new(),
             width: self.settings.ui.font_size * 12.,

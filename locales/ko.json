@@ -1532,5 +1532,16 @@
   "Curves": "곡선",
   "Master RGB": "RGB 마스터",
   "Control Points": "제어점",
-  "Interpolation": "보간"
+  "Interpolation": "보간",
+  "Channel": "채널",
+  "Linear": "선형",
+  "Smooth Curve": "부드러운 곡선",
+  "Output": "출력",
+  "Remove Point": "제어점 삭제",
+  "Reset Curve": "현재 곡선 초기화",
+  "Reset All Curves": "모든 곡선 초기화",
+  "Invalid Control Points": "잘못된 제어점",
+  "Curve preview pauses while drawing.": "그리는 동안 곡선 미리 보기 계산을 중지합니다.",
+  "Curve Preview Unavailable": "곡선 미리 보기를 사용할 수 없음",
+  "Click to add a point. Drag to move. Right-click to remove.": "클릭하여 제어점을 추가하고 드래그하여 이동하며 오른쪽 클릭하여 삭제합니다."
 }

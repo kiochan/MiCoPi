@@ -1532,5 +1532,16 @@
   "Curves": "Curves",
   "Master RGB": "Master RGB",
   "Control Points": "Control Points",
-  "Interpolation": "Interpolation"
+  "Interpolation": "Interpolation",
+  "Channel": "Channel",
+  "Linear": "Linear",
+  "Smooth Curve": "Smooth Curve",
+  "Output": "Output",
+  "Remove Point": "Remove Point",
+  "Reset Curve": "Reset Curve",
+  "Reset All Curves": "Reset All Curves",
+  "Invalid Control Points": "Invalid Control Points",
+  "Curve preview pauses while drawing.": "Curve preview pauses while drawing.",
+  "Curve Preview Unavailable": "Curve Preview Unavailable",
+  "Click to add a point. Drag to move. Right-click to remove.": "Click to add a point. Drag to move. Right-click to remove."
 }

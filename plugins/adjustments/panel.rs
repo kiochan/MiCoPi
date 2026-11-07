@@ -248,9 +248,13 @@ impl Editor {
                     if let Some(definition)=self.plugin_nodes.get(&draft.value.node_type).filter(|definition|filter_definition(definition)) {
                         if curves_definition(definition) {
                             if let Some(curves)=&mut draft.value.curves {
-                                let mut value=crate::plugins::adjustments::curve_parameters(curves);
-                                super::schema::edit(ui,("adjustment-curves",id),&definition.parameters_schema,&mut value);
-                                if let Ok(next)=serde_json::from_value(value["curves"].clone()) {*curves=next;}
+                                if definition.id=="compositing.curves" {
+                                    super::nodes::curves_ui::edit(ui,Id::new(("adjustment-curves",self.session.doc.identity,id)),curves,self.session.doc.renderer.as_deref(),self.session.stroke.active() || self.session.pointer_checkpoint.is_some());
+                                } else {
+                                    let mut value=crate::plugins::adjustments::curve_parameters(curves);
+                                    super::schema::edit(ui,("adjustment-curves",id),&definition.parameters_schema,&mut value);
+                                    if let Ok(next)=serde_json::from_value(value["curves"].clone()) {*curves=next;}
+                                }
                             }
                         } else if levels_definition(definition) {
                             if let Some(levels)=&mut draft.value.levels {

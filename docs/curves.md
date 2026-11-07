@@ -3,11 +3,12 @@
 `compositing.curves` is a registered source effect for linked Layer Filters and
 free image graphs. It preserves source pixels and alpha while mapping encoded
 RGB. The same intent supports real affect-below Curves adjustment layers. Runtime
-validation awaits CI; dedicated curve/histogram controls and reviewed screenshots
-remain planned.
+validation awaits CI. Shared curve controls are implemented; histograms and
+reviewed screenshots remain planned.
 
 Insert **Curves** through a source node's **Insert Filter** menu or a free graph's
-node menu. The existing schema editor exposes the parameters. Editing changes
+node menu. Built-in nodes and adjustment properties share the curve editor;
+custom aliases retain their schema editor. Editing changes
 the local draft; Apply or enabled Live Preview dispatches `graph.set`. Live
 Preview pauses during a contact. Explicit prepared-color graph changes reject
 active contacts without ending them. Actual Composition stays read-only.
@@ -76,4 +77,35 @@ atomic rollback, project storage and DLL-free outcome replay use the existing
 adjustment contracts. Painting remains on the active raster. Hidden/bypassed
 Curves records still preflight native capability. See [Adjustment layers](adjustment-layers.md)
 for shared actions and the strict optional metadata tail. Session and independent
-transport references are authored and await CI; dedicated controls remain planned.
+transport references are authored and await CI; histograms remain planned.
+
+## Local curve controls
+
+Choose Master RGB, Red, Green or Blue, then Linear or Smooth Curve. Click empty
+plot space to add a control point, drag a point to move it, or right-click a point
+to remove it. Input movement clamps between adjacent inputs, retaining strict
+order; output stays within 0–255. Two points are the minimum and 32 the maximum.
+Use the Input/Output numeric fields for precision. Remove Point deletes the
+selected point; Reset Curve affects only the selected channel, while Reset All
+Curves restores all four channels. Channel/point selection is presentation state.
+
+The chart uses theme surfaces and accent colors. Plot dimensions, hit targets,
+point sizes and spacing derive from appearance metrics. Source-node fit accounts
+for the full editor height. Changes remain in the local draft; existing Apply,
+Cancel, conflict and live-preview rules decide document publication through shared
+commands. Plugin aliases keep their own schema editor and validation constraints.
+
+The line previews the selected channel's native byte table, not a second host
+interpolator or the final document composite. Unchanged frames reuse the table;
+active contacts pause native preparation. Missing/failed providers leave editable
+points with an explicit unavailable indication. Hidden plots do not prepare.
+A context-wide LRU retains at most 96 small editor/preview records across removed
+nodes and documents. It holds no images or native callbacks. Package/DLL activation
+still requires restart; preview keys separate document and provider identity.
+No document pixels, history, registry queries or per-MOVE serialization are added.
+
+Authored UI tests exercise actual click/drag/right-click/reset events, strict
+point bounds, cache reuse/contact pause/provider changes, bounded LRU eviction
+and four-language narrow/wide layouts with larger appearance metrics. Runtime,
+reviewed application captures and physical mouse/pen checks are pending CI/device
+validation; the existing workbench screenshots are not new curve-editor captures.

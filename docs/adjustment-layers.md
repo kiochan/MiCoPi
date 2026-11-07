@@ -126,8 +126,8 @@ Curves accepts the same master/R/G/B object as a [Curves source node](curves.md)
 using `parameters.curves`. Apply the master first and then each channel, preserving
 alpha; Normal opacity and owned A8 coverage mix the effect once over the backdrop.
 Root, Isolated and Pass Through follow the same scope as other adjustments.
-The inspector uses the existing schema editor; dedicated curve/histogram controls
-remain planned. Partial channel patches preserve other channels and interpolation;
+The built-in inspector shares the [local curve controls](curves.md#local-curve-controls);
+custom aliases retain their schema editor. Histograms remain planned. Partial channel patches preserve other channels and interpolation;
 a supplied `points` array replaces the complete point list. Point objects remain
 complete (`input` and `output`), with ordered-byte and provider validation.
 

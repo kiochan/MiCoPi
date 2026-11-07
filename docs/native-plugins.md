@@ -9,8 +9,8 @@ Native inventory reports `filters.curves_prepare` and `filters.curves_render`
 separately. [Curves source nodes](curves.md) use preparation and a complete optional
 24-byte `CurvesApiRender` tail. Preparation-only 16-byte tables stay valid; partial
 tails and missing advertised render callbacks reject. Source nodes and affect-below
-Curves adjustments share typed intent and prepared plans; dedicated curve/histogram
-controls remain planned.
+Curves adjustments share typed intent, prepared plans and local point controls;
+histogram controls remain planned.
 
 The fixed 272-byte `CurvesParameters` contains ABI version/size at 0/4,
 point count/interpolation at 8/12 and 32 inline `CurvePoint` pairs at 16. A point
