@@ -1566,5 +1566,7 @@
   "Nontransparent Pixels": "非透明像素",
   "Ignored Transparent Pixels": "已忽略的全透明像素",
   "Revision": "修订号",
-  "Histogram snapshots use published composite or raw layer pixels, not the local curve draft.": "直方图快照取自已应用的合成画面或图层原始像素，不包含本地曲线草稿。"
+  "Histogram snapshots use published composite or raw layer pixels, not the local curve draft.": "直方图快照取自已应用的合成画面或图层原始像素，不包含本地曲线草稿。",
+  "Reset Channel": "重置通道",
+  "Channels": "通道"
 }

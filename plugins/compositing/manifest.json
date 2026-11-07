@@ -53,11 +53,26 @@
           "renderer_mix": {
             "type": "boolean",
             "description": "The loaded compositor supports premultiplied backdrop mixing."
+          },
+          "renderer_levels": {
+            "type": "boolean",
+            "description": "The loaded compositor supports scalar Levels preparation/rendering."
+          },
+          "renderer_curves": {
+            "type": "boolean",
+            "description": "The loaded compositor supports Curves preparation/rendering."
+          },
+          "renderer_channel_levels": {
+            "type": "boolean",
+            "description": "The loaded compositor negotiated channel Levels preparation and three-table rendering."
           }
         },
         "required": [
           "available_blend_modes",
-          "renderer_mix"
+          "renderer_mix",
+          "renderer_levels",
+          "renderer_curves",
+          "renderer_channel_levels"
         ]
       }
     },
@@ -112,11 +127,26 @@
           "renderer_mix": {
             "type": "boolean",
             "description": "The loaded compositor supports premultiplied backdrop mixing."
+          },
+          "renderer_levels": {
+            "type": "boolean",
+            "description": "The loaded compositor supports scalar Levels preparation/rendering."
+          },
+          "renderer_curves": {
+            "type": "boolean",
+            "description": "The loaded compositor supports Curves preparation/rendering."
+          },
+          "renderer_channel_levels": {
+            "type": "boolean",
+            "description": "The loaded compositor negotiated channel Levels preparation and three-table rendering."
           }
         },
         "required": [
           "available_blend_modes",
-          "renderer_mix"
+          "renderer_mix",
+          "renderer_levels",
+          "renderer_curves",
+          "renderer_channel_levels"
         ]
       }
     },
@@ -588,6 +618,150 @@
                 "minimum": 0,
                 "maximum": 255,
                 "title": "Output White"
+              },
+              "channels": {
+                "type": "object",
+                "title": "Channels",
+                "properties": {
+                  "red": {
+                    "type": "object",
+                    "properties": {
+                      "input_black": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Input Black"
+                      },
+                      "input_white": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Input White"
+                      },
+                      "gamma": {
+                        "type": "number",
+                        "minimum": 0.1,
+                        "maximum": 10,
+                        "title": "Midtone Gamma"
+                      },
+                      "output_black": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Output Black"
+                      },
+                      "output_white": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Output White"
+                      }
+                    },
+                    "required": [
+                      "input_black",
+                      "input_white",
+                      "gamma",
+                      "output_black",
+                      "output_white"
+                    ],
+                    "additionalProperties": false,
+                    "title": "Red"
+                  },
+                  "green": {
+                    "type": "object",
+                    "properties": {
+                      "input_black": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Input Black"
+                      },
+                      "input_white": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Input White"
+                      },
+                      "gamma": {
+                        "type": "number",
+                        "minimum": 0.1,
+                        "maximum": 10,
+                        "title": "Midtone Gamma"
+                      },
+                      "output_black": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Output Black"
+                      },
+                      "output_white": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Output White"
+                      }
+                    },
+                    "required": [
+                      "input_black",
+                      "input_white",
+                      "gamma",
+                      "output_black",
+                      "output_white"
+                    ],
+                    "additionalProperties": false,
+                    "title": "Green"
+                  },
+                  "blue": {
+                    "type": "object",
+                    "properties": {
+                      "input_black": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Input Black"
+                      },
+                      "input_white": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Input White"
+                      },
+                      "gamma": {
+                        "type": "number",
+                        "minimum": 0.1,
+                        "maximum": 10,
+                        "title": "Midtone Gamma"
+                      },
+                      "output_black": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Output Black"
+                      },
+                      "output_white": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 255,
+                        "title": "Output White"
+                      }
+                    },
+                    "required": [
+                      "input_black",
+                      "input_white",
+                      "gamma",
+                      "output_black",
+                      "output_white"
+                    ],
+                    "additionalProperties": false,
+                    "title": "Blue"
+                  }
+                },
+                "required": [
+                  "red",
+                  "green",
+                  "blue"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [

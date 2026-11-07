@@ -4,7 +4,7 @@
 
 [Levels source nodes](docs/levels.md) now share linked/free graphs, cached native
 rendering, Undo, projects and verified outcomes. CI validation is pending;
-Source nodes and affect-below adjustment layers share dedicated input/output controls and owned-mask support.
+Source nodes and affect-below adjustment layers share Master/R/G/B input/output controls, cached native channel tables and owned-mask support. Channel integration tests await CI.
 
 [English](README.md) · [简体中文](README.zh.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
 

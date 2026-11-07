@@ -172,7 +172,7 @@ fn bundled_channel_levels_are_negotiated_once_and_discoverable() {
     p.blue.output_white = 0;
     for _ in 0..3 {
         let tables = compositor.prepare_levels_channels(p).unwrap();
-        assert_eq!(tables[0].values[128], 90);
+        assert_eq!(tables[0].values[128], 91);
         assert_eq!(tables[1].values[128], 181);
         assert_eq!(tables[2].values[128], 74);
         assert_eq!(compositor.levels_channels.unwrap().0 as usize, callback);

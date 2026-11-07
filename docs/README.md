@@ -10,7 +10,8 @@ cached native rendering.
 master/channel intent, dedicated local controls and bounded native rendering.
 
 The optional [Channel Levels native foundation](channel-levels.md) adds negotiated
-preparation/rendering; per-channel document and UI integration remain planned.
+preparation/rendering and shared source/adjustment channel controls; the new
+integration references await CI.
 
 The technical documentation is maintained in English. The project overview is also available in [Chinese](../README.zh.md), [Japanese](../README.ja.md) and [Korean](../README.ko.md).
 

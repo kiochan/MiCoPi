@@ -258,6 +258,19 @@ fn levels_pointer_moves_reuse_the_published_native_table() {
         preparations: Cell<usize>,
     }
     impl Renderer for Counted {
+        fn supports_mix(&self) -> bool {
+            self.native.supports_mix()
+        }
+        fn supports_levels_channels(&self) -> bool {
+            self.native.supports_levels_channels()
+        }
+        fn prepare_levels_channels(
+            &self,
+            p: &abi::LevelsChannelsParameters,
+        ) -> Result<[abi::CompositeLut; 3], String> {
+            self.preparations.set(self.preparations.get() + 1);
+            self.native.prepare_levels_channels(p)
+        }
         fn supports_levels(&self) -> bool {
             self.native.supports_levels()
         }
@@ -294,43 +307,69 @@ fn levels_pointer_moves_reuse_the_published_native_table() {
             self.native.render_prepared(n, l, m, t, w, h, o)
         }
     }
-    let mut s = fixture();
-    let renderer = Arc::new(Counted {
-        native: s.doc.renderer.clone().unwrap(),
-        preparations: Cell::new(0),
-    });
-    s.doc.renderer = Some(renderer.clone());
-    call(&mut s, "graph.set", json!({"graph":graph(true)}));
-    assert_eq!(renderer.preparations.get(), 1);
-    let p = Pointer {
-        phase: PointerPhase::Down,
-        x: 1.5,
-        y: 0.5,
-        pressure: 1.,
-        time: 1,
-        pen: false,
-        eraser: false,
-        tool_override: None,
-        view_x: None,
-        view_y: None,
-    };
-    s.pointer(p).unwrap();
-    s.doc.compose();
-    for time in 2..16 {
-        s.pointer(Pointer {
-            phase: PointerPhase::Move,
-            time,
-            ..p
-        })
-        .unwrap();
-        s.doc.compose();
+    for channels in [false, true] {
+        for adjustment in [false, true] {
+            let mut s = fixture();
+            let renderer = Arc::new(Counted {
+                native: s.doc.renderer.clone().unwrap(),
+                preparations: Cell::new(0),
+            });
+            s.doc.renderer = Some(renderer.clone());
+            let mut g = graph(true);
+            if channels {
+                if let NodeKind::Levels { parameters } = &mut g.nodes[1].data {
+                    parameters.channels.red.gamma = 2.;
+                }
+            }
+            if adjustment {
+                let NodeKind::Levels { parameters } = &g.nodes[1].data else {
+                    unreachable!()
+                };
+                call(
+                    &mut s,
+                    "adjustment.create",
+                    json!({"node_type":"compositing.levels","index":1,"parameters":{"parameters":parameters}}),
+                );
+            } else {
+                call(&mut s, "graph.set", json!({"graph":g}));
+            }
+            let prepared = renderer.preparations.get();
+            assert!(prepared >= 1);
+            if !adjustment {
+                assert_eq!(prepared, 1);
+            }
+
+            let p = Pointer {
+                phase: PointerPhase::Down,
+                x: 1.5,
+                y: 0.5,
+                pressure: 1.,
+                time: 1,
+                pen: false,
+                eraser: false,
+                tool_override: None,
+                view_x: None,
+                view_y: None,
+            };
+            s.pointer(p).unwrap();
+            s.doc.compose();
+            for time in 2..16 {
+                s.pointer(Pointer {
+                    phase: PointerPhase::Move,
+                    time,
+                    ..p
+                })
+                .unwrap();
+                s.doc.compose();
+            }
+            s.pointer(Pointer {
+                phase: PointerPhase::Up,
+                time: 16,
+                ..p
+            })
+            .unwrap();
+            s.doc.compose();
+            assert_eq!(renderer.preparations.get(), prepared);
+        }
     }
-    s.pointer(Pointer {
-        phase: PointerPhase::Up,
-        time: 16,
-        ..p
-    })
-    .unwrap();
-    s.doc.compose();
-    assert_eq!(renderer.preparations.get(), 1);
 }

@@ -120,7 +120,7 @@ impl PreparedLevelsPlan {
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
-pub struct Levels {
+pub struct LevelsRange {
     #[serde(deserialize_with = "byte")]
     pub input_black: u8,
     #[serde(deserialize_with = "byte")]
@@ -143,7 +143,7 @@ pub(super) fn byte<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<
         })?;
     Ok(number as u8)
 }
-impl Default for Levels {
+impl Default for LevelsRange {
     fn default() -> Self {
         Self {
             input_black: 0,
@@ -154,7 +154,7 @@ impl Default for Levels {
         }
     }
 }
-impl Levels {
+impl LevelsRange {
     pub fn schema() -> serde_json::Value {
         serde_json::json!({"type":"object","properties":{
             "input_black":{"type":"integer","minimum":0,"maximum":255},
@@ -196,6 +196,131 @@ impl Levels {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct LevelsChannels {
+    pub red: LevelsRange,
+    pub green: LevelsRange,
+    pub blue: LevelsRange,
+}
+impl LevelsChannels {
+    pub fn is_identity(&self) -> bool {
+        *self == Self::default()
+    }
+    pub fn schema() -> serde_json::Value {
+        serde_json::json!({"type":"object","properties":{
+            "red":LevelsRange::schema(),"green":LevelsRange::schema(),"blue":LevelsRange::schema()},
+            "required":["red","green","blue"],"additionalProperties":false})
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct Levels {
+    #[serde(deserialize_with = "byte")]
+    pub input_black: u8,
+    #[serde(deserialize_with = "byte")]
+    pub input_white: u8,
+    pub gamma: f64,
+    #[serde(deserialize_with = "byte")]
+    pub output_black: u8,
+    #[serde(deserialize_with = "byte")]
+    pub output_white: u8,
+    #[serde(skip_serializing_if = "LevelsChannels::is_identity")]
+    pub channels: LevelsChannels,
+}
+impl Default for Levels {
+    fn default() -> Self {
+        Self {
+            input_black: 0,
+            input_white: 255,
+            gamma: 1.,
+            output_black: 0,
+            output_white: 255,
+            channels: LevelsChannels::default(),
+        }
+    }
+}
+impl Levels {
+    pub fn master(self) -> LevelsRange {
+        LevelsRange {
+            input_black: self.input_black,
+            input_white: self.input_white,
+            gamma: self.gamma,
+            output_black: self.output_black,
+            output_white: self.output_white,
+        }
+    }
+    pub fn set_master(&mut self, range: LevelsRange) {
+        self.input_black = range.input_black;
+        self.input_white = range.input_white;
+        self.gamma = range.gamma;
+        self.output_black = range.output_black;
+        self.output_white = range.output_white;
+    }
+    pub fn schema() -> serde_json::Value {
+        let mut schema = LevelsRange::schema();
+        schema["properties"]["channels"] = LevelsChannels::schema();
+        schema
+    }
+    pub fn table_count(self) -> usize {
+        if self.channels.is_identity() {
+            1
+        } else {
+            3
+        }
+    }
+    pub fn validate(self) -> Result<(), String> {
+        for range in [
+            self.master(),
+            self.channels.red,
+            self.channels.green,
+            self.channels.blue,
+        ] {
+            range.validate()?;
+        }
+        Ok(())
+    }
+    /// Scalar ABI parameters describe only the retained legacy master range.
+    pub fn parameters(self) -> abi::LevelsParameters {
+        self.master().parameters()
+    }
+    pub fn channel_parameters(self) -> abi::LevelsChannelsParameters {
+        abi::LevelsChannelsParameters {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::LevelsChannelsParameters>() as u32,
+            master: self.parameters(),
+            red: self.channels.red.parameters(),
+            green: self.channels.green.parameters(),
+            blue: self.channels.blue.parameters(),
+        }
+    }
+    pub fn prepare(self, renderer: &dyn Renderer) -> Result<abi::CompositeLut, String> {
+        self.validate()?;
+        if !self.channels.is_identity() {
+            return Err("Channel Levels requires three prepared tables".into());
+        }
+        self.master().prepare(renderer)
+    }
+    pub fn prepare_color(
+        self,
+        renderer: &dyn Renderer,
+        tables: &mut Vec<abi::CompositeLut>,
+    ) -> Result<(), String> {
+        self.validate()?;
+        if self.channels.is_identity() {
+            tables.push(self.prepare(renderer)?);
+        } else {
+            if !renderer.supports_levels_channels() {
+                return Err("The compositor does not support channel Levels rendering".into());
+            }
+            tables
+                .extend_from_slice(&renderer.prepare_levels_channels(&self.channel_parameters())?);
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -206,6 +331,15 @@ mod tests {
         fail_at: Cell<Option<usize>>,
     }
     impl Renderer for Provider {
+        fn supports_levels_channels(&self) -> bool {
+            true
+        }
+        fn prepare_levels_channels(
+            &self,
+            p: &abi::LevelsChannelsParameters,
+        ) -> Result<[abi::CompositeLut; 3], String> {
+            self.prepare_levels(&p.master).map(|table| [table; 3])
+        }
         fn supports_curves(&self) -> bool {
             true
         }
@@ -234,6 +368,58 @@ mod tests {
             _: &mut abi::Pixels,
         ) -> Result<(), String> {
             Err("unexpected legacy render".into())
+        }
+    }
+    #[test]
+    fn channel_levels_cache_reuses_offsets_and_rolls_back_failed_preparation() {
+        let provider = Arc::new(Provider::default());
+        let mut channels = Levels::default();
+        channels.channels.red.gamma = 2.;
+        let mut intents = vec![
+            ColorIntent::Levels(channels),
+            ColorIntent::Levels(Levels::default()),
+        ];
+        let mut plan = PreparedLevelsPlan::new_color(provider.clone(), &intents).unwrap();
+        assert_eq!(provider.calls.get(), 2);
+        assert_eq!(plan.tables().len(), 4);
+        let pointer = plan.tables().as_ptr();
+        plan.rebuild_color(provider.clone(), &intents).unwrap();
+        assert_eq!(provider.calls.get(), 2);
+        assert_eq!(plan.tables().as_ptr(), pointer);
+        intents[1] = ColorIntent::Levels(Levels {
+            gamma: 3.,
+            ..Default::default()
+        });
+        plan.rebuild_color(provider.clone(), &intents).unwrap();
+        assert_eq!(provider.calls.get(), 3);
+        assert_eq!(plan.tables()[0].values, [1; 256]);
+        assert_eq!(plan.tables()[3].values, [3; 256]);
+        let pointer = plan.tables().as_ptr();
+        provider.fail_at.set(Some(4));
+        intents[0] = ColorIntent::Levels(Levels {
+            channels: LevelsChannels::default(),
+            ..channels
+        });
+        assert!(plan.rebuild_color(provider.clone(), &intents).is_err());
+        assert_eq!(plan.tables().as_ptr(), pointer);
+        assert_eq!(plan.tables().len(), 4);
+        provider.fail_at.set(None);
+        plan.rebuild_color(provider, &intents).unwrap();
+        assert_eq!(plan.tables().len(), 2);
+        assert_eq!(plan.tables()[1].values, [3; 256]);
+        assert!(channels.prepare(&LegacyRangeOnly).is_err());
+    }
+    struct LegacyRangeOnly;
+    impl Renderer for LegacyRangeOnly {
+        fn render(
+            &self,
+            _: &[abi::CompositeNode],
+            _: &[abi::CompositeLayer],
+            _: u32,
+            _: u32,
+            _: &mut abi::Pixels,
+        ) -> Result<(), String> {
+            panic!("Unsupported channels must not render")
         }
     }
     #[test]

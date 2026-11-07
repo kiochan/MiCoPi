@@ -347,6 +347,15 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 pub trait Renderer {
+    fn supports_levels_channels(&self) -> bool {
+        false
+    }
+    fn prepare_levels_channels(
+        &self,
+        _parameters: &abi::LevelsChannelsParameters,
+    ) -> Result<[abi::CompositeLut; 3], String> {
+        Err("The compositor does not support channel Levels preparation".into())
+    }
     fn supports_curves(&self) -> bool {
         false
     }
@@ -458,6 +467,9 @@ impl Graph {
             .iter()
             .any(|n| matches!(n.data, NodeKind::Curves { .. }))
     }
+    pub fn has_channel_levels(&self) -> bool {
+        self.nodes.iter().any(|n|matches!(n.data,NodeKind::Levels {parameters} if !parameters.channels.is_identity()))
+    }
     pub fn has_prepared_color(&self) -> bool {
         self.has_levels() || self.has_curves()
     }
@@ -465,7 +477,7 @@ impl Graph {
         self.nodes[..index]
             .iter()
             .map(|n| match n.data {
-                NodeKind::Levels { .. } => 1,
+                NodeKind::Levels { parameters } => parameters.table_count() as u32,
                 NodeKind::Curves { .. } => 3,
                 _ => 0,
             })
@@ -594,7 +606,7 @@ impl Graph {
             .nodes
             .iter()
             .map(|n| match n.data {
-                NodeKind::Levels { .. } => 1,
+                NodeKind::Levels { parameters } => parameters.table_count(),
                 NodeKind::Curves { .. } => 3,
                 _ => 0,
             })
@@ -748,8 +760,12 @@ impl Graph {
                         mode: filter as u32,
                         amount,
                     },
-                    NodeKind::Levels { .. } => abi::CompositeNode {
-                        kind: 9,
+                    NodeKind::Levels { parameters } => abi::CompositeNode {
+                        kind: if parameters.channels.is_identity() {
+                            9
+                        } else {
+                            10
+                        },
                         a: input(0),
                         b: 0,
                         mode: self.table_index(i),

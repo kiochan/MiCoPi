@@ -80,8 +80,8 @@ Exact/Sampled, source, counts and revision identify the observation. Hover the
 counts to inspect ignored transparent pixels.
 
 One bounded shared snapshot serves the inspector, the Levels histogram band and
-the Curves plot background. Curves displays the selected R/G/B channel, or the RGB
-aggregate for Master RGB. Bars normalize to that channel's highest count; narrow
+the Curves plot background. Both editors display the selected R/G/B channel, or
+the RGB aggregate for Master RGB. Bars normalize to that channel's highest count; narrow
 plots group adjacent bins by their maximum, without changing the native counts.
 The aggregate is not a luminance histogram.
 

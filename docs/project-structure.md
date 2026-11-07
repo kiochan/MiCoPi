@@ -5,7 +5,10 @@ master/R/G/B preparation. `plugins/compositing/src/levels.rs` owns the fixed-tab
 algorithm; channel rendering reuses the native three-table evaluator.
 `src/plugins/native_levels.rs` owns startup negotiation, cached capabilities and
 argument/header validation. Dedicated native/host fixtures accompany the modules.
-This is a [prerequisite](channel-levels.md), not document/UI integration.
+The [channel contract](channel-levels.md) now feeds typed `LevelsRange` and optional
+serialized `LevelsChannels` intent in `src/engine/levels.rs`. Graph compilation,
+capability checks and shared prepared plans retain variable-width slot ownership;
+source/adjustment UI edits local ranges and dispatches existing shared actions.
 
 `plugins/compositing/src/histogram.rs` owns bounded immutable pixel statistics.
 `src/plugins/native_histogram.rs` negotiates/caches its optional ABI and validates

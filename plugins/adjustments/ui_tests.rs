@@ -5,6 +5,56 @@ use crate::desktop::tests::studio;
 use crate::engine::{document::Composition, raster_masks::PaintTarget};
 use crate::platform::windows::desktop_bridge::{PenPhase, PenSample};
 
+#[test]
+fn applying_an_identity_levels_draft_clears_existing_channel_effects() {
+    let mut app = app();
+    let ctx = context(&app);
+    let size = vec2(700., 1400.);
+    let original = app.editor.session.doc.composite.clone();
+    let id = app
+        .editor
+        .session
+        .apply(crate::application::Action::new(
+            "adjustment.create",
+            json!({"node_type":"compositing.levels","index":2,
+        "parameters":{"parameters":{"channels":{"red":{"output_white":128}}}}}),
+        ))
+        .unwrap()["result"]["adjustment_id"]
+        .as_u64()
+        .unwrap();
+    let affected = app.editor.session.doc.composite.clone();
+    assert_ne!(affected, original);
+    app.editor.focus_adjustment_ui(&ctx, Some(id));
+    warm(&mut app, &ctx, size);
+    let source = app.editor.session.doc.adjustment(id).unwrap().clone();
+    let mut value = source.clone();
+    value.levels = Some(crate::engine::levels::Levels::default());
+    let draft = Draft {
+        source,
+        value,
+        revision: app.editor.session.revision,
+        error: String::new(),
+    };
+    ctx.data_mut(|d| d.insert_temp(draft_key(app.editor.session.doc.identity, id), draft));
+    frame(&mut app, &ctx, size, vec![], 4.);
+    let (apply, enabled) = control(&ctx, &app, "adjustment-apply", id);
+    assert!(enabled);
+    click(&mut app, &ctx, size, apply.center(), 5.);
+    assert_eq!(app.editor.session.doc.composite, original);
+    assert_eq!(
+        app.editor
+            .session
+            .doc
+            .adjustment(id)
+            .unwrap()
+            .levels
+            .unwrap(),
+        crate::engine::levels::Levels::default()
+    );
+    assert!(app.editor.core("history.undo", json!({})));
+    assert_eq!(app.editor.session.doc.composite, affected);
+}
+
 fn app() -> Studio {
     let mut app = studio();
     app.editor.settings.ui.language = crate::i18n::Language::English;

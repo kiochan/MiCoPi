@@ -417,6 +417,21 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
                         "{} / {}",
                         parameters.output_black, parameters.output_white
                     ));
+                    if !parameters.channels.is_identity() {
+                        for (title, range) in [
+                            ("Red", parameters.channels.red),
+                            ("Green", parameters.channels.green),
+                            ("Blue", parameters.channels.blue),
+                        ] {
+                            ui.label(format!(
+                                "{}: {} / {:.2} / {}",
+                                crate::i18n::translated_for(Some("compositing"), title),
+                                range.input_black,
+                                range.gamma,
+                                range.input_white
+                            ));
+                        }
+                    }
                 }
                 NodeKind::Blend { mode, opacity } => {
                     ui.label(tr(mode.title()));

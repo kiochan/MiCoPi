@@ -1,6 +1,6 @@
 """Check true affect-below adjustments with independent tiny transport references.
 
-Six 5x3 cases verify alpha-preserving Mix, Levels, stack/group scope, real selection A8,
+Eight 5x3 cases verify alpha-preserving Mix, master/channel Levels, stack/group scope, real selection A8,
 metadata-only source preservation, Undo, project persistence and DLL-free replay.
 No GUI, benchmark workload or physical tablet claim is involved.
 """
@@ -26,6 +26,20 @@ WIDTH, HEIGHT, AREA = 5, 3, 15
 FILTER = dict(node_type='compositing.filter', parameters=dict(filter='invert', amount=1))
 LEVELS = dict(node_type='compositing.levels', parameters=dict(parameters=dict(
     input_black=0, input_white=255, gamma=2, output_black=0, output_white=255)))
+
+CHANNEL_LEVELS = copy.deepcopy(LEVELS)
+CHANNEL_LEVELS['parameters']['parameters']['channels'] = {
+    name: dict(input_black=0, input_white=255, gamma=1, output_black=0, output_white=255)
+    for name in ['red', 'green', 'blue']}
+CHANNEL_LEVELS['parameters']['parameters']['channels']['red']['output_white'] = 128
+CHANNEL_LEVELS['parameters']['parameters']['channels']['green'].update(input_black=64, input_white=192)
+CHANNEL_LEVELS['parameters']['parameters']['channels']['blue'].update(output_black=255, output_white=0)
+
+
+def definition(name):
+    return {'curves-channels': CURVES, 'levels-master': LEVELS,
+            'levels-channels': CHANNEL_LEVELS}.get(name, FILTER)
+
 
 IDENTITY_CURVE = dict(interpolation='linear', points=[dict(input=0, output=0), dict(input=255, output=255)])
 CURVES = dict(node_type='compositing.curves', parameters=dict(curves=dict(
@@ -69,7 +83,7 @@ def write_fixture(path, model):
 
 def scenarios(seed, output):
     result = []
-    for name in ['middle-root', 'top-aggregate', 'isolated', 'pass-through', 'selection-snapshot', 'levels-master', 'curves-channels']:
+    for name in ['middle-root', 'top-aggregate', 'isolated', 'pass-through', 'selection-snapshot', 'levels-master', 'curves-channels', 'levels-channels']:
         model = dict(active=0, composition=copy.deepcopy(seed['composition']), rasters=[
             [(a << 24) | 0x402010 for _ in range(HEIGHT) for a in [0, 1, 73, 128, 255]],
             [0xff1122ee if i % 2 == 0 else 0x001122ee for i in range(AREA)]])
@@ -106,6 +120,17 @@ def reference(case, final=False):
                 result |= math.floor(math.sqrt(((pixel >> shift) & 255)*255)+0.5) << shift
             return result
         return [curve(editing.over(a, b)) for a, b in zip(lower, upper)]
+    if name == 'levels-channels':
+        def channel_levels(pixel):
+            if not pixel >> 24:
+                return pixel
+            master = [math.floor(math.sqrt(((pixel >> shift) & 255)/255)*255+0.5)
+                      for shift in [16, 8, 0]]
+            red = math.floor(master[0]*128/255+0.5)
+            green = math.floor(min(1, max(0, (master[1]-64)/128))*255+0.5)
+            blue = 255-master[2]
+            return (pixel & 0xff000000) | red << 16 | green << 8 | blue
+        return [channel_levels(editing.over(a, b)) for a, b in zip(lower, upper)]
     if name == 'curves-channels':
         def master(value):
             return math.floor((value/2 if value <= 128 else 64+(value-128)*191/127)+0.5)
@@ -138,12 +163,12 @@ def commands(output, prefix, cases):
                 compositing='pass_through' if key == 'pass-through' else 'isolated', opacity=137/255)
         add(key+'-before', 'canvas.state')
         add(key+'-before-png', 'canvas.snapshot')
-        properties = copy.deepcopy(CURVES if key == 'curves-channels' else LEVELS if key == 'levels-master' else FILTER)
+        properties = copy.deepcopy(definition(key))
         properties.update(name='Ink tone')
         if key in ['isolated', 'pass-through']:
             properties.update(parent_id=1, index=1)
         else:
-            properties['index'] = 2 if key in ['top-aggregate', 'levels-master', 'curves-channels'] else 1
+            properties['index'] = 2 if key in ['top-aggregate', 'levels-master', 'curves-channels', 'levels-channels'] else 1
         if key in ['middle-root', 'selection-snapshot']:
             properties['opacity'] = 128/255
         if key == 'selection-snapshot':
@@ -193,8 +218,8 @@ def validate(values, plan, output, prefix, cases):
         assert len(after['layers']) == 2 and after['selected_layer_ids'] == before['selected_layer_ids']
         assert after['active_layer'] == before['active_layer'] and after['selection'] == before['selection']
         item = at(key+'-get')
-        definition = CURVES if key == 'curves-channels' else LEVELS if key == 'levels-master' else FILTER
-        assert item['id'] == 1 and item['node_type'] == definition['node_type'] and item['parameters'] == definition['parameters']
+        effect = definition(key)
+        assert item['id'] == 1 and item['node_type'] == effect['node_type'] and item['parameters'] == effect['parameters']
         assert item['provider_available'] and at(key+'-query')['items'][0]['id'] == 1
         expected = reference(case)
         assert pixels(base64.b64decode(at(key+'-created-png')['data'])) == (WIDTH, HEIGHT, rgba(expected)), key
@@ -206,7 +231,7 @@ def validate(values, plan, output, prefix, cases):
         png = base64.b64decode(at(key+'-png')['data'])
         assert pixels(png) == (WIDTH, HEIGHT, rgba(final)), key
         assert pixels(base64.b64decode(at(key+'-reopened-png')['data'])) == pixels(png), key
-        assert at(key+'-reopened')['parameters'] == definition['parameters'] and at(key+'-verify')['valid']
+        assert at(key+'-reopened')['parameters'] == effect['parameters'] and at(key+'-verify')['valid']
         saved = foundation.read_project(output/f'{prefix}-{key}.mcp')
         assert (saved['width'], saved['height'], saved['active']) == (WIDTH, HEIGHT, 0)
         assert len(saved['rasters']) == 2
@@ -215,14 +240,14 @@ def validate(values, plan, output, prefix, cases):
         tree = saved['composition']['groups']
         assert tree['version'] == 3 and len(tree['adjustments']) == 1
         adjustment = tree['adjustments'][0]
-        assert adjustment['node_type'] == definition['node_type']
+        assert adjustment['node_type'] == effect['node_type']
         if key == 'curves-channels':
             assert adjustment['curves'] == CURVES['parameters']['curves']
             assert adjustment['filter'] == 'invert' and adjustment['amount'] == 0
             assert 'levels' not in adjustment
-        elif key == 'levels-master':
+        elif key in ['levels-master', 'levels-channels']:
             assert 'curves' not in adjustment
-            assert adjustment['levels'] == LEVELS['parameters']['parameters']
+            assert adjustment['levels'] == effect['parameters']['parameters']
             assert adjustment['filter'] == 'invert' and adjustment['amount'] == 0
         else:
             assert adjustment['filter'] == 'invert' and adjustment['amount'] == 1

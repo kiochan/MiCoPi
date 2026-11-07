@@ -1,8 +1,8 @@
 # Levels Source Nodes
 
-The separate [channel Levels native foundation](channel-levels.md) adds optional
-plugin preparation/rendering. Per-channel document/UI integration remains planned;
-the document operation below still uses five scalar values.
+[Channel Levels](channel-levels.md) now extends source nodes and affect-below
+adjustments with optional Red/Green/Blue ranges after the legacy master range.
+Its source integration, tests and shared controls await CI validation.
 
 The registered `compositing.levels` image node applies a master encoded-RGB
 curve independently to R, G and B while preserving alpha. It works in linked
@@ -12,7 +12,8 @@ true affect-below Levels adjustment layers use the same typed intent and control
 Right-click a layer or source effect in Layer Filters, choose **Insert Filter →
 Levels**, and edit its Input Levels and Output Levels controls. The numeric
 fields support dragging, the grayscale bars show the input/output ranges and
-Reset Levels restores the identity curve. Controls edit the local draft only.
+Choose Master RGB, Red, Green or Blue; Reset Channel restores only that range,
+and Reset Levels restores all four. Controls edit the local draft only.
 Plugin aliases with custom schemas retain the generic schema editor.
 Changes remain in the graph
 draft until Apply or explicitly enabled Live Preview. Live Preview pauses during
@@ -29,6 +30,16 @@ unchanged. Actual Composition shows the generated Levels node read-only.
 | `gamma` | finite 0.1–10 | 1 |
 | `output_black` | integer 0–255 | 0 |
 | `output_white` | integer 0–255 | 255 |
+
+Optional `channels` contains complete `red`, `green` and `blue` objects with the
+same five fields. Each final table maps a master-rounded byte through that
+channel's rounded table. Scalar intent still uses its original one-table path.
+Adjustment patches may change a subset of channel fields: the first patch starts
+from identity, later patches preserve neighbors. Send complete identity channel
+ranges to clear prior channel effects; omission in a partial patch retains them.
+Built-in Apply sends explicit identity channels after Reset Levels. Source graph
+replacement instead serializes the complete intent, omitting identity channels.
+Custom aliases continue obeying their own provider schema.
 
 Gamma above 1 brightens midtones. Reversed output endpoints invert the curve.
 The operation clamps input normalization, raises it to `1/gamma`, maps output
@@ -56,7 +67,7 @@ For example, a node in a `graph.set` payload uses:
 Connect its single image input and output through normal graph edges. Plugin
 catalogs expose its schema/defaults; command forms, nodes, MCP and headless use
 the same `graph.set` validation and execution. `graph.read` and `graph.catalog`
-report `renderer_levels`. All declared Levels parameters and capabilities are
+report `renderer_levels` and `renderer_channel_levels`. All declared Levels parameters and capabilities are
 validated, including disconnected nodes and disabled graphs.
 
 ## Rendering, persistence and limits
@@ -68,7 +79,10 @@ these tables without per-pixel power calculations, per-MOVE registry lookup or
 table preparation. Source effects follow layer branches through structural edits;
 previews and supported merge paths use the corresponding prepared graph.
 
-Projects serialize only the five parameters. Undo/Redo rebuilds derived plans;
+Projects serialize the five master parameters and optional nonidentity `channels`.
+Identity channel ranges are omitted, retaining old five-field bytes and one-table
+rendering. Nonidentity channels use three native tables with master-then-channel
+byte rounding. Older scalar-only readers reject the tail. Undo/Redo rebuilds derived plans;
 verified outcome replay restores recorded pixels without executing DLL code.
 Legacy scalar Filter IDs/arithmetic and old default recording bytes are retained.
 Older strict readers reject the new node kind rather than silently dropping it.
@@ -84,9 +98,9 @@ validation remain separate.
 The shared `adjustment.create/set/get` path also supports `compositing.levels`,
 owned masks, Normal effect strength, groups, Undo and verified outcomes. See
 [Adjustment layers](adjustment-layers.md) for placement and partial parameter patches.
-Per-channel Levels controls remain planned. Shared
-[histogram controls](histograms.md) display a manually refreshed, cached RGB
-aggregate band with explicit composite/raw scope and exactness; the snapshot is
+Shared channel controls select the edited range and the corresponding cached
+[histogram](histograms.md) bins (RGB aggregate for Master). Source/exactness remain
+explicit; the snapshot is
 not the local Levels draft or the effect input. Bounded queries also serve automation;
 [Curves](curves.md) supplies separate master/R/G/B source and adjustment intent. See [Native contracts](native-plugins.md),
 [Node editor](node-editor.md) and [Roadmap](../ROADMAP.md).

@@ -125,7 +125,7 @@ pub enum ColorIntent {
 impl ColorIntent {
     pub fn table_count(&self) -> usize {
         match self {
-            Self::Levels(_) => 1,
+            Self::Levels(p) => p.table_count(),
             Self::Curves(_) => 3,
         }
     }
@@ -141,7 +141,7 @@ impl ColorIntent {
         tables: &mut Vec<abi::CompositeLut>,
     ) -> Result<(), String> {
         match self {
-            Self::Levels(p) => tables.push(p.prepare(renderer)?),
+            Self::Levels(p) => p.prepare_color(renderer, tables)?,
             Self::Curves(p) => tables.extend_from_slice(&p.prepare(renderer)?),
         }
         Ok(())

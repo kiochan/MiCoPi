@@ -1566,5 +1566,7 @@
   "Nontransparent Pixels": "非透明ピクセル",
   "Ignored Transparent Pixels": "除外した完全透明ピクセル",
   "Revision": "リビジョン",
-  "Histogram snapshots use published composite or raw layer pixels, not the local curve draft.": "ヒストグラムは適用済みの合成画像またはレイヤーの生ピクセルを参照し、ローカルのカーブ下書きは含みません。"
+  "Histogram snapshots use published composite or raw layer pixels, not the local curve draft.": "ヒストグラムは適用済みの合成画像またはレイヤーの生ピクセルを参照し、ローカルのカーブ下書きは含みません。",
+  "Reset Channel": "チャンネルをリセット",
+  "Channels": "チャンネル"
 }

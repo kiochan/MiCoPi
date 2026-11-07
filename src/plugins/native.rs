@@ -958,6 +958,15 @@ impl crate::engine::graph::Renderer for NativePlugin {
             .map(|values| abi::CompositeLut { values })
             .map_err(|e| e.to_string())
     }
+    fn supports_levels_channels(&self) -> bool {
+        NativePlugin::supports_levels_channels(self)
+    }
+    fn prepare_levels_channels(
+        &self,
+        parameters: &abi::LevelsChannelsParameters,
+    ) -> Result<[abi::CompositeLut; 3], String> {
+        NativePlugin::prepare_levels_channels(self, *parameters).map_err(|e| e.to_string())
+    }
     fn supports_levels(&self) -> bool {
         self.supports_levels_preparation() && self.supports_levels_rendering()
     }

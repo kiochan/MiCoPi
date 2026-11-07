@@ -1,9 +1,9 @@
 # Channel Levels native foundation
 
-This increment adds a negotiated **native prerequisite**, not a new document
-operation. Existing Levels source nodes and adjustment layers still use their
-five scalar parameters. Per-channel document intent, schemas, controls,
-Undo/project integration and verified outcomes remain planned.
+The optional native foundation now supports channel Levels source nodes and
+adjustment layers through shared Session actions, schemas, local controls and
+verified persistence. Integration and runtime references are implemented in source
+and await CI; reviewed screenshots and measurements remain open.
 
 ## Optional ABI
 
@@ -39,7 +39,7 @@ green_final[x] = green_table[master_table[x]]
 blue_final[x]  = blue_table[master_table[x]]
 ```
 
-For example, master gamma 2 and red output white 128 map input 128 to 90;
+For example, master gamma 2 and red output white 128 map input 128 to 91;
 reversing those operations would give 128. This specifies MiCoPi behavior without
 claiming Photoshop or color-management parity. Reversed output ranges work.
 
@@ -57,8 +57,14 @@ late-channel failure/alias/capacity/header checks, alpha/legacy render tests and
 host decoder/adapter/DLL discovery tests run through existing CI targets. No
 local runtime test or measurement is claimed. Bounds are not latency measurements.
 
-Next, preserve old five-field serialization by omitting absent channel intent,
-preflight disabled/disconnected declarations, cache three tables without per-MOVE
-work, and retain atomic history, projects, replay and source/adjustment parity.
+Document integration omits identity channel intent to preserve old five-field
+serialization. Nonidentity intent uses three tables; scalar intent retains one.
+The shared cache handles variable-width offsets, unchanged slots and failed
+rebuild rollback. Capability checks include disabled/disconnected nodes and hidden
+adjustments. Source/adjustment, contact, atomic failure, mask, project, UI reset
+and DLL-free replay references are authored, alongside eight tiny transport cases.
+These checks await CI; the feature checklist is not complete from source alone.
+The tiny [automation example](../examples/automation/channel-levels.jsonl) creates
+a partial-channel adjustment through the shared action contract.
 Existing [Levels](levels.md), [Curves](curves.md) and [histogram](histograms.md)
 contracts remain separate.

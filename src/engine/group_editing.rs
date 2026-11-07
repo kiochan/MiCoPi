@@ -32,6 +32,15 @@ impl Document {
         {
             return Err("The compositor does not support Levels rendering".into());
         }
+        if require
+            && graph.has_channel_levels()
+            && self
+                .renderer
+                .as_ref()
+                .is_none_or(|r| !r.supports_levels_channels())
+        {
+            return Err("The compositor does not support channel Levels rendering".into());
+        }
         Ok(())
     }
     pub(super) fn prepare_levels_cache(
@@ -45,6 +54,7 @@ impl Document {
         }
         let Some(renderer) = self.renderer.as_ref().filter(|r| {
             (!graph.has_levels() || r.supports_levels())
+                && (!graph.has_channel_levels() || r.supports_levels_channels())
                 && (!graph.has_curves() || r.supports_curves())
         }) else {
             return Ok(None);
@@ -229,6 +239,19 @@ impl Document {
             && self.renderer.as_ref().is_none_or(|r| !r.supports_levels())
         {
             return Err("The compositor does not support Levels adjustments".into());
+        }
+        if require
+            && groups.is_some_and(|tree| {
+                tree.adjustments
+                    .iter()
+                    .any(|a| a.levels.is_some_and(|p| !p.channels.is_identity()))
+            })
+            && self
+                .renderer
+                .as_ref()
+                .is_none_or(|r| !r.supports_levels_channels())
+        {
+            return Err("The compositor does not support channel Levels adjustments".into());
         }
         self.ensure_levels_capability(graph, require)?;
         if require {

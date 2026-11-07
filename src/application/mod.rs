@@ -13,6 +13,8 @@ mod brush_presets_tests;
 #[cfg(test)]
 mod brush_tip_tests;
 pub(crate) mod canvas_geometry;
+#[cfg(test)]
+mod channel_levels_tests;
 pub mod codec;
 pub(crate) mod creation;
 #[cfg(test)]

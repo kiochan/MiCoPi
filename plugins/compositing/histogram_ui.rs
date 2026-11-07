@@ -208,7 +208,7 @@ pub(crate) fn paint(ui: &Ui, rect: Rect, snapshot: &Snapshot, channel: usize) {
     }
     ui.painter().add(egui::Shape::mesh(mesh));
 }
-pub(crate) fn band(ui: &mut Ui, snapshot: &Snapshot) {
+pub(crate) fn band(ui: &mut Ui, snapshot: &Snapshot, channel: usize) {
     label(ui, snapshot);
     let (rect, _) = ui.allocate_exact_size(
         vec2(
@@ -218,7 +218,7 @@ pub(crate) fn band(ui: &mut Ui, snapshot: &Snapshot) {
         Sense::hover(),
     );
     if ui.is_rect_visible(rect) {
-        paint(ui, rect, snapshot, 3);
+        paint(ui, rect, snapshot, channel);
     }
 }
 pub(crate) fn label(ui: &mut Ui, snapshot: &Snapshot) {

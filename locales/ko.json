@@ -1566,5 +1566,7 @@
   "Nontransparent Pixels": "알파가 0이 아닌 픽셀",
   "Ignored Transparent Pixels": "제외된 완전 투명 픽셀",
   "Revision": "리비전",
-  "Histogram snapshots use published composite or raw layer pixels, not the local curve draft.": "히스토그램은 적용된 합성 이미지 또는 원본 레이어 픽셀을 사용하며 로컬 곡선 초안은 포함하지 않습니다."
+  "Histogram snapshots use published composite or raw layer pixels, not the local curve draft.": "히스토그램은 적용된 합성 이미지 또는 원본 레이어 픽셀을 사용하며 로컬 곡선 초안은 포함하지 않습니다.",
+  "Reset Channel": "채널 초기화",
+  "Channels": "채널"
 }

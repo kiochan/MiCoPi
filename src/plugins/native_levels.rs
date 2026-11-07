@@ -146,8 +146,10 @@ impl NativePlugin {
             return Err("Levels table limit exceeded".into());
         }
         let render = if nodes.iter().any(|n| n.kind == 10) {
-            self.curves_render
-                .ok_or("The compositor does not support Curves rendering")?
+            self.levels_channels
+                .map(|api| api.1)
+                .or(self.curves_render)
+                .ok_or("The compositor does not support channel-table rendering")?
         } else {
             self.levels_render
                 .ok_or("The compositor does not support Levels rendering")?

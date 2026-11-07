@@ -106,7 +106,8 @@ Engine validation independently bounds finite amounts: Invert/Grayscale use
 0–1, the other three filters use −1–1. Projects store validated definitions,
 not callbacks, executable schemas or per-pixel JSON actions.
 
-Levels accepts the same five parameters as a [Levels source node](levels.md),
+Levels accepts the same five master parameters and optional R/G/B ranges as a
+[Levels source node](levels.md),
 but operates on the accumulated image below the adjustment. Partial nested
 parameter patches merge with the selected provider's defaults/current values;
 changing providers resets to that provider's complete defaults. Its dedicated

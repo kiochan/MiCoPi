@@ -40,7 +40,7 @@ pub(crate) fn schema(op: Operation) -> Value {
             "filter":{"type":"string","enum":Filter::ALL},
             "amount":{"type":"number","minimum":-1,"maximum":1}},"additionalProperties":false});
         let mut levels = Levels::schema();
-        levels.as_object_mut().unwrap().remove("required");
+        partial_objects(&mut levels);
         properties["parameters"]["properties"]["parameters"] = levels;
         let mut curves = Curves::schema();
         partial_objects(&mut curves);
@@ -161,6 +161,17 @@ fn resolve_parameters(
     let mut value = base
         .filter(|old| old.node_type == id)
         .map_or(def.defaults.clone(), item_parameters);
+    // Optional channel intent starts from identity when first patched. Keep
+    // old aliases unchanged; their provider schema still rejects this tail.
+    if patch["parameters"]["channels"].is_object()
+        && value["parameters"].is_object()
+        && value["parameters"].get("channels").is_none()
+        && def.parameters_schema["properties"]["parameters"]["properties"]
+            .get("channels")
+            .is_some()
+    {
+        value["parameters"]["channels"] = json!(crate::engine::levels::LevelsChannels::default());
+    }
     if patch.is_object() {
         merge_patch(&mut value, patch);
     }

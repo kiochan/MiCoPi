@@ -15,7 +15,15 @@ fn draft_key(document: u64, id: u64) -> Id {
     Id::new(("adjustment-draft", document, id))
 }
 fn parameters(value: &Adjustment) -> Value {
-    crate::plugins::adjustments::item_parameters(value)
+    let mut result = crate::plugins::adjustments::item_parameters(value);
+    // Apply is a partial action patch. Send explicit identity channels when
+    // resetting a built-in draft so omitted defaults cannot retain old values.
+    if value.node_type == "compositing.levels" {
+        if let Some(levels) = value.levels {
+            result["parameters"]["channels"] = json!(levels.channels);
+        }
+    }
+    result
 }
 fn filter_definition(def: &Resolved) -> bool {
     matches!(&def.binding,Binding::Image{operation,..} if operation=="filter" || operation=="levels" || operation=="curves")

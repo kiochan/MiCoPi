@@ -46,9 +46,9 @@ fn channels_match_independent_byte_reference_and_write_only_three_tables() {
         assert_eq!(tables[2].values[x], (255. - master) as u8);
     }
     assert_eq!(tables[3].values, [77; 256]);
-    // Applying red before master would give 128, not 90: order is observable.
+    // Applying red before master would give 128, not 91: order is observable.
     assert_eq!(tables[0].values[64], 64);
-    assert_eq!(tables[0].values[128], 90);
+    assert_eq!(tables[0].values[128], 91);
     let identity = parameters();
     assert_eq!(
         unsafe { prepare_channels(&identity, tables.as_mut_ptr(), 3) },

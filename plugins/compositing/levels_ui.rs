@@ -10,7 +10,9 @@ pub(crate) fn estimated_height(a: &crate::configuration::Appearance) -> f32 {
         + 4. * a.control_height
         + 4. * a.section_spacing
         + 9. * a.font_size
-        + 2. * a.control_height
+        + 4. * a.control_height
+        + 3. * a.font_size
+        + 4. * a.item_spacing
 }
 fn ramp(ui: &mut Ui, black: u8, white: u8) {
     let height = (ui.spacing().interact_size.y * 0.35).max(4.);
@@ -49,33 +51,85 @@ pub(crate) fn edit_with_histogram(
     let before = *value;
     ui.push_id(id, |ui| {
         ui.style_mut().wrap_mode = Some(TextWrapMode::Wrap);
+        let channel_key = id.with("levels-channel");
+        let mut channel = ui
+            .data_mut(|d| *d.get_temp_mut_or_default::<usize>(channel_key))
+            .min(3);
+        ui.label(text("Channel"));
+        ComboBox::from_id_salt("levels-channel")
+            .width(ui.available_width())
+            .truncate()
+            .selected_text(text(["Master RGB", "Red", "Green", "Blue"][channel]))
+            .show_ui(ui, |ui| {
+                for (index, title) in ["Master RGB", "Red", "Green", "Blue"]
+                    .into_iter()
+                    .enumerate()
+                {
+                    let response = ui.selectable_value(&mut channel, index, text(title));
+                    #[cfg(test)]
+                    ui.data_mut(|d| {
+                        d.insert_temp(id.with(("levels-channel-option", index)), response.rect)
+                    });
+                    #[cfg(not(test))]
+                    let _ = response;
+                }
+            });
+        ui.data_mut(|d| d.insert_temp(channel_key, channel));
         if let Some(snapshot) = histogram {
-            super::histogram_ui::band(ui, snapshot);
+            super::histogram_ui::band(ui, snapshot, [3, 0, 1, 2][channel]);
         }
+
+        let mut range = match channel {
+            0 => value.master(),
+            1 => value.channels.red,
+            2 => value.channels.green,
+            _ => value.channels.blue,
+        };
         ui.strong(text("Input Levels"));
         ramp(ui, 0, 255);
-        byte(ui, "Input Black", &mut value.input_black);
+        byte(ui, "Input Black", &mut range.input_black);
         ui.label(text("Midtone Gamma"));
         ui.add_sized(
             [ui.available_width(), ui.spacing().interact_size.y],
-            DragValue::new(&mut value.gamma)
+            DragValue::new(&mut range.gamma)
                 .range(0.1..=10.)
                 .speed(0.01)
                 .max_decimals(2),
         );
-        byte(ui, "Input White", &mut value.input_white);
+        byte(ui, "Input White", &mut range.input_white);
         ui.add_space(ui.spacing().item_spacing.y);
         ui.strong(text("Output Levels"));
-        ramp(ui, value.output_black, value.output_white);
-        byte(ui, "Output Black", &mut value.output_black);
-        byte(ui, "Output White", &mut value.output_white);
-        if value.input_black >= value.input_white {
+        ramp(ui, range.output_black, range.output_white);
+        byte(ui, "Output Black", &mut range.output_black);
+        byte(ui, "Output White", &mut range.output_white);
+        if range.input_black >= range.input_white {
             ui.add(
                 Label::new(
                     text("Input white must exceed input black.").color(ui.visuals().warn_fg_color),
                 )
                 .wrap(),
             );
+        }
+        match channel {
+            0 => value.set_master(range),
+            1 => value.channels.red = range,
+            2 => value.channels.green = range,
+            _ => value.channels.blue = range,
+        }
+        let reset_channel = ui.add_enabled(
+            range != crate::engine::levels::LevelsRange::default(),
+            Button::new(text("Reset Channel")),
+        );
+        #[cfg(test)]
+        ui.data_mut(|d| d.insert_temp(id.with("levels-reset-channel"), reset_channel.rect));
+        if reset_channel.clicked() {
+            let identity = crate::engine::levels::LevelsRange::default();
+            match channel {
+                0 => value.set_master(identity),
+                1 => value.channels.red = identity,
+                2 => value.channels.green = identity,
+                _ => value.channels.blue = identity,
+            }
         }
         let reset = ui.add_enabled(
             *value != Levels::default(),
@@ -93,6 +147,49 @@ pub(crate) fn edit_with_histogram(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn channel_reset_preserves_master_and_other_channels_then_all_reset_clears_intent() {
+        let ctx = Context::default();
+        let id = Id::new("levels-test");
+        ctx.data_mut(|d| d.insert_temp(id.with("levels-channel"), 1usize));
+        let mut value = Levels {
+            gamma: 2.,
+            ..Default::default()
+        };
+        value.channels.red.gamma = 3.;
+        value.channels.green.gamma = 4.;
+        frame(&ctx, &mut value, 240., vec![]);
+        frame(&ctx, &mut value, 240., vec![]);
+        for key in ["levels-reset-channel", "levels-reset"] {
+            let point = ctx
+                .data_mut(|d| d.get_temp::<Rect>(id.with(key)))
+                .unwrap()
+                .center();
+            for pressed in [true, false] {
+                frame(
+                    &ctx,
+                    &mut value,
+                    240.,
+                    vec![
+                        Event::PointerMoved(point),
+                        Event::PointerButton {
+                            pos: point,
+                            button: PointerButton::Primary,
+                            pressed,
+                            modifiers: Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+            if key == "levels-reset-channel" {
+                assert_eq!(value.gamma, 2.);
+                assert_eq!(value.channels.red.gamma, 1.);
+                assert_eq!(value.channels.green.gamma, 4.);
+            } else {
+                assert_eq!(value, Levels::default());
+            }
+        }
+    }
     fn frame(ctx: &Context, p: &mut Levels, width: f32, events: Vec<Event>) -> FullOutput {
         ctx.run(
             RawInput {

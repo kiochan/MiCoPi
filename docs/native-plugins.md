@@ -111,7 +111,9 @@ The shared engine `Renderer` contract exposes `supports_levels`, `prepare_levels
 and `render_prepared`. Its legacy defaults reject LUT plans explicitly. The native
 adapter checks mask, Mix and blend-mode availability before the synchronous call,
 and delegates plans without LUTs to the existing renderer path. Typed engine
-Levels intent serializes only the five parameters; derived tables remain separate.
+Levels intent retains five master parameters and omits identity channel ranges;
+nonidentity channels negotiate the optional Levels tail and use three tables.
+Derived tables remain separate. Channel Levels does not require Curves preparation.
 
 `PreparedLevelsPlan` holds one renderer and at most 64 intent/table pairs. A stable
 provider and unchanged ordered intent list reuse table storage without native

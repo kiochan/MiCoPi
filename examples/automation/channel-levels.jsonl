@@ -1,0 +1,5 @@
+{"action":"canvas.new","args":{"width":16,"height":12}}
+{"action":"layer.fill_color","args":{"color":"#4080C0"}}
+{"action":"adjustment.create","args":{"node_type":"compositing.levels","index":1,"parameters":{"parameters":{"gamma":2,"channels":{"red":{"output_white":128},"blue":{"output_black":255,"output_white":0}}}}}}
+{"action":"adjustment.get","args":{"adjustment_id":1}}
+{"action":"canvas.state","args":{}}
