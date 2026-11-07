@@ -130,6 +130,13 @@ pub enum Operation {
     Render,
     SelectTool,
     Parameters,
+    BrushPresetsQuery,
+    BrushPresetUpsert,
+    BrushPresetDelete,
+    BrushPresetApply,
+    BrushPresetsImport,
+    BrushPresetsExport,
+    BrushPresetsReload,
     Pointer,
     Stroke,
     Undo,
@@ -222,6 +229,7 @@ impl Operation {
         matches!(
             self,
             Self::State
+                | Self::BrushPresetApply
                 | Self::AdjustmentCreate
                 | Self::AdjustmentSet
                 | Self::AdjustmentMove
@@ -296,6 +304,12 @@ impl Operation {
             || matches!(
                 self,
                 Self::DuplicateLayer
+                    | Self::BrushPresetUpsert
+                    | Self::BrushPresetDelete
+                    | Self::BrushPresetApply
+                    | Self::BrushPresetsImport
+                    | Self::BrushPresetsExport
+                    | Self::BrushPresetsReload
                     | Self::AdjustmentCreate
                     | Self::AdjustmentSet
                     | Self::AdjustmentMove
@@ -351,6 +365,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self.is_brush_preset() {
+            return crate::plugins::brush_presets::schema(self);
+        }
         if matches!(self, Self::ArrangeLayers | Self::ArrangeLayersPlan) {
             return crate::plugins::layer_arrangement::schema(self);
         }
@@ -543,7 +560,7 @@ impl Operation {
                 vec!["path"],
             ),
             Self::SettingsWrite => (
-                json!({"path":{"type":"string","minLength":1},"ui":{"type":"object"},"keybindings":{"type":"object"},"painting":{"type":"object"},"selection":{"type":"object"},"movement":{"type":"object"},"new_canvas":{"type":"object"},"plugins":{"type":"object"},"document":{"type":"object"}}),
+                json!({"path":{"type":"string","minLength":1},"ui":{"type":"object"},"keybindings":{"type":"object"},"painting":{"type":"object"},"brush_presets":{"type":"object"},"selection":{"type":"object"},"movement":{"type":"object"},"new_canvas":{"type":"object"},"plugins":{"type":"object"},"document":{"type":"object"}}),
                 vec!["path"],
             ),
             Self::SelectTool => (json!({"tool":{"type":"string"}}), vec!["tool"]),
@@ -621,6 +638,7 @@ impl Operation {
         matches!(
             self,
             Self::NodeCatalog
+                | Self::BrushPresetsQuery
                 | Self::AdjustmentCatalog
                 | Self::AdjustmentQuery
                 | Self::AdjustmentRead
@@ -680,6 +698,18 @@ impl Operation {
                 | Self::MaskToSelection
                 | Self::MaskSnapshot
                 | Self::MaskApply
+        )
+    }
+    pub(crate) fn is_brush_preset(self) -> bool {
+        matches!(
+            self,
+            Self::BrushPresetsQuery
+                | Self::BrushPresetUpsert
+                | Self::BrushPresetDelete
+                | Self::BrushPresetApply
+                | Self::BrushPresetsImport
+                | Self::BrushPresetsExport
+                | Self::BrushPresetsReload
         )
     }
     pub(crate) fn is_adjustment(self) -> bool {

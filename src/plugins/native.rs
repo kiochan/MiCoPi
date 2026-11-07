@@ -688,6 +688,35 @@ impl NativePlugin {
         self.tool_options
             .is_some_and(|(_, features)| features & abi::TOOL_OPTION_STROKE_OPACITY != 0)
     }
+    fn validate_flow_parameters(
+        &self,
+        p: &crate::application::Parameters,
+    ) -> Result<(), ActionError> {
+        if (p.opacity_mode == crate::application::OpacityMode::Stroke || p.flow != 1.)
+            && !self.supports_stroke_opacity()
+        {
+            return Err(ActionError::new(
+                "tool_options_unsupported",
+                "Tool DLL does not support Flow or stroke opacity",
+            ));
+        }
+        Ok(())
+    }
+    /// Intrinsic scalar option admission. Current selection, alpha locks and
+    /// A8 targets remain contact-start checks, rather than library availability.
+    pub(crate) fn validate_preset_parameters(
+        &self,
+        p: &crate::application::Parameters,
+    ) -> Result<(), ActionError> {
+        self.validate_flow_parameters(p)?;
+        if self.tool_options.is_none() && (p.spacing != 0.11 || p.minimum_opacity != 0.) {
+            return Err(ActionError::new(
+                "tool_options_unsupported",
+                "Tool DLL does not support custom spacing or pressure opacity floor",
+            ));
+        }
+        Ok(())
+    }
     #[cfg(test)]
     pub(crate) fn replace_tool_options_features_for_test(&mut self, features: u32) -> Option<u32> {
         self.tool_options
@@ -3115,14 +3144,7 @@ impl ToolInstance {
         if painting {
             let stroke_opacity =
                 session.parameters.opacity_mode == crate::application::OpacityMode::Stroke;
-            if (stroke_opacity || session.parameters.flow != 1.)
-                && !self.plugin.supports_stroke_opacity()
-            {
-                return Err(ActionError::new(
-                    "tool_options_unsupported",
-                    "Tool DLL does not support Flow or stroke opacity",
-                ));
-            }
+            self.plugin.validate_flow_parameters(&session.parameters)?;
             if a8_target
                 && self
                     .plugin
@@ -3234,15 +3256,14 @@ impl ToolInstance {
                         "Tool rejected stroke options",
                     ));
                 }
-            } else if locked || p.spacing != 0.11 || p.minimum_opacity != 0. {
-                return Err(ActionError::new(
-                    "tool_options_unsupported",
-                    if locked {
-                        "Tool DLL does not support alpha-locked painting"
-                    } else {
-                        "Tool DLL does not support custom spacing or pressure opacity floor"
-                    },
-                ));
+            } else {
+                if locked {
+                    return Err(ActionError::new(
+                        "tool_options_unsupported",
+                        "Tool DLL does not support alpha-locked painting",
+                    ));
+                }
+                self.plugin.validate_preset_parameters(p)?;
             }
             self.stroke_opacity = stroke_opacity;
         } else {

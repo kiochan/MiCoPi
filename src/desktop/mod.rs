@@ -339,6 +339,9 @@ impl Editor {
             geometry: None,
         };
         editor.session.settings_path = Some(editor.settings.path.clone());
+        if let Err(error) = editor.session.load_profile_presets(&editor.settings) {
+            editor.status = error.to_string();
+        }
         editor
             .session
             .apply_selection_defaults(editor.settings.selection);
@@ -520,6 +523,12 @@ impl Editor {
         }
     }
     fn save_settings(&mut self) -> Result<(), String> {
+        self.settings.brush_presets = self.session.preset_library().clone();
+        self.save_settings_document()
+    }
+    /// The settings editor may intentionally replace the typed library. Other
+    /// preference saves first synchronize its current Session-owned snapshot.
+    fn save_settings_document(&mut self) -> Result<(), String> {
         let encoded: serde_json::Value =
             serde_json::from_str(&self.settings.encode()?).map_err(|e| e.to_string())?;
         self.session
@@ -1026,6 +1035,56 @@ impl Studio {
                     self.preferences.category = preferences::Category::All;
                 }
                 Some("settings.close") if self.settings_open => self.cancel_settings(),
+                Some("brush.preset.applied") => {
+                    if effect["document_identity"].as_u64()
+                        == Some(self.editor.session.doc.identity)
+                        && effect["value"].as_str()
+                            == Some(self.editor.session.selected_tool.as_str())
+                        && !self.editor.session.stroke.active()
+                        && self.editor.session.pointer_checkpoint.is_none()
+                    {
+                        self.editor.area_mode = 0;
+                        self.editor.area_drag = None;
+                        self.editor.movement_gesture = None;
+                        self.editor.selection_gesture = None;
+                        self.editor.input_owned = false;
+                        self.editor.pen_active = false;
+                        self.editor.panning = None;
+                        self.editor.sync_from_session();
+                    }
+                }
+                Some("brush.presets.changed") => {
+                    if effect["value"]
+                        .as_str()
+                        .is_some_and(|path| PathBuf::from(path) == self.editor.settings.path)
+                    {
+                        match Settings::load(self.editor.settings.path.clone()) {
+                            Ok(latest) => {
+                                self.editor.settings.rebase_original(&latest);
+                                self.editor.settings.brush_presets =
+                                    self.editor.session.preset_library().clone();
+                                if let Some(before) = &mut self.settings_before {
+                                    before.rebase_original(&latest);
+                                    before.brush_presets =
+                                        self.editor.session.preset_library().clone();
+                                }
+                                if self.settings_open {
+                                    match serde_json::from_str::<serde_json::Value>(&self.preferences.json) {
+                                        Ok(mut document) if document.is_object()=> {
+                                            if let Ok(library)=crate::configuration::brush_presets::canonical_value(self.editor.session.preset_library()) {
+                                                document["brush_presets"]=library;
+                                                if let Ok(text)=serde_json::to_string_pretty(&document) {self.preferences.json=text+"\n";}
+                                            }
+                                        }
+                                        _=>self.editor.status="Preset library updated; the invalid settings JSON draft was kept".into(),
+                                    }
+                                }
+                                ctx.request_repaint();
+                            }
+                            Err(error) => self.editor.status = error,
+                        }
+                    }
+                }
                 Some("settings.reload") => {
                     if effect["value"]
                         .as_str()
@@ -1033,6 +1092,14 @@ impl Studio {
                     {
                         match Settings::load(self.editor.settings.path.clone()) {
                             Ok(settings) => {
+                                let painting_changed =
+                                    self.editor.settings.painting != settings.painting;
+                                if let Err(error) =
+                                    self.editor.session.load_profile_presets(&settings)
+                                {
+                                    self.editor.status = error.to_string();
+                                    continue;
+                                }
                                 if self.settings_open {
                                     self.settings_before = Some(settings.clone());
                                     self.preferences.selection_before = Some(settings.selection);
@@ -1053,7 +1120,9 @@ impl Studio {
                                 self.editor
                                     .session
                                     .apply_movement_defaults(settings.movement);
-                                settings.painting.apply(&mut self.editor.session.parameters);
+                                if painting_changed {
+                                    settings.painting.apply(&mut self.editor.session.parameters);
+                                }
                                 self.editor.sync_from_session();
                                 self.editor.settings = settings;
                                 self.editor.register_commands();

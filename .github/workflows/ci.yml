@@ -81,6 +81,8 @@ jobs:
         run: python scripts/smoke-owner-affine.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify capped stroke opacity, independent Flow and outcome replay
         run: python scripts/smoke-stroke-opacity.py --skip-gui --cli target/release/micopi-cli.exe
+      - name: Verify cached user brush presets, profile files and resolved outcomes
+        run: python scripts/smoke-brush-presets.py --cli target/release/micopi-cli.exe
       - name: Verify single-layer mask ownership and outcome replay
         run: python scripts/smoke-mask-owners.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify mask-preserving group creation and hierarchy moves

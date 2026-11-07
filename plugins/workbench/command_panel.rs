@@ -220,6 +220,10 @@ impl Editor {
             .register_action_owners(&self.session.registry.owners);
     }
     pub(super) fn begin_plugin_command(&mut self, action: &str) {
+        self.begin_plugin_command_with_args(action, json!({}));
+    }
+    /// Capture explicit selectors for a reviewable form without executing them.
+    pub(super) fn begin_plugin_command_with_args(&mut self, action: &str, initial: Value) {
         let policy = self.session.registry.command_contact_policy(action);
         if !policy.preserves_contact() {
             self.discard_command_sync();
@@ -281,6 +285,11 @@ impl Editor {
                 {
                     args[key] = schema::default_value(s);
                 }
+            }
+        }
+        if let Some(initial) = initial.as_object() {
+            for (key, value) in initial {
+                args[key] = value.clone();
             }
         }
         self.command_form = Some(CommandForm {
@@ -484,5 +493,142 @@ impl Editor {
             self.command_form = Some(form);
         }
         self.release_command_sync();
+    }
+}
+
+#[cfg(test)]
+mod brush_preset_form_tests {
+    use super::*;
+    #[test]
+    fn brush_presets_export_form_prefills_captured_explicit_ids_and_token_without_execution() {
+        let mut app = crate::desktop::tests::studio();
+        let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+            "target/test-output/brush-presets/prefill/{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&directory).unwrap();
+        let mut settings = crate::configuration::Settings::decode(
+            r#"{"version":1}"#,
+            directory.join("settings.json"),
+        )
+        .unwrap();
+        let p = crate::configuration::brush_presets::PresetParameters::capture(
+            &crate::application::Parameters::default(),
+        )
+        .unwrap();
+        for name in ["One", "Two"] {
+            settings
+                .brush_presets
+                .insert(name.into(), "painting".into(), "brush".into(), p.clone())
+                .unwrap();
+        }
+        settings.save().unwrap();
+        app.editor.settings = settings;
+        app.editor.settings.ui.language = crate::i18n::Language::English;
+        crate::i18n::set_language(crate::i18n::Language::English);
+        app.editor.session = crate::application::Session::new(
+            crate::plugins::Registry::load(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        app.editor.session.runtime = "desktop";
+        app.editor.session.settings_path = Some(app.editor.settings.path.clone());
+        app.editor
+            .session
+            .load_profile_presets(&app.editor.settings)
+            .unwrap();
+        app.editor.register_commands();
+        assert!(app.editor.core("canvas.new", json!({"width":1,"height":1})));
+        app.editor.sync_from_session();
+        let token = app.editor.session.preset_library_token();
+        let before = app.editor.session.state();
+        let target = directory.join("captured.json");
+        if target.exists() {
+            std::fs::remove_file(&target).unwrap();
+        }
+        app.editor.begin_plugin_command_with_args(
+            "brush.presets.export",
+            json!({"preset_ids":[2,1],"expected_library_token":token}),
+        );
+        let form = app.editor.command_form.as_mut().unwrap();
+        assert_eq!(form.args["preset_ids"], json!([2, 1]));
+        assert_eq!(form.args["expected_library_token"], token);
+        assert_eq!(form.args["path"], "");
+        assert_eq!(app.editor.session.state(), before);
+        assert!(!target.exists());
+        // The ordinary path field is edited before the actual shared Run button.
+        app.editor.command_form.as_mut().unwrap().args["path"] = json!(target);
+        let ctx = Context::default();
+        theme::fonts(&ctx);
+        theme::apply(&ctx, &app.editor.settings.ui);
+        let mut output = None;
+        for n in 0..3 {
+            output = Some(ctx.run(
+                RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1280., 1000.))),
+                    time: Some(n as f64 / 10.),
+                    focused: true,
+                    ..Default::default()
+                },
+                |ctx| app.editor.plugin_command_window(ctx),
+            ));
+        }
+        fn run_button(shape: &Shape) -> Option<Pos2> {
+            match shape {
+                Shape::Text(text) if text.galley.text() == "Run Command" => {
+                    Some(text.pos + text.galley.size() * 0.5)
+                }
+                Shape::Vec(shapes) => shapes.iter().find_map(run_button),
+                _ => None,
+            }
+        }
+        let position = output
+            .unwrap()
+            .shapes
+            .iter()
+            .find_map(|shape| run_button(&shape.shape))
+            .unwrap();
+        for (n, pressed) in [true, false].into_iter().enumerate() {
+            let _ = ctx.run(
+                RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1280., 1000.))),
+                    time: Some(1. + n as f64 / 10.),
+                    focused: true,
+                    events: vec![
+                        Event::PointerMoved(position),
+                        Event::PointerButton {
+                            pos: position,
+                            button: PointerButton::Primary,
+                            pressed,
+                            modifiers: Modifiers::NONE,
+                        },
+                    ],
+                    ..Default::default()
+                },
+                |ctx| app.editor.plugin_command_window(ctx),
+            );
+        }
+        let bundle = crate::configuration::brush_presets::BrushPresetBundle::decode(
+            &std::fs::read_to_string(&target).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            bundle.items.iter().map(|item| item.id).collect::<Vec<_>>(),
+            vec![2, 1]
+        );
+        assert_eq!(
+            bundle
+                .items
+                .iter()
+                .map(|item| item.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["Two", "One"]
+        );
+        assert_eq!(app.editor.session.preset_library_token(), token);
+        let mut expected = before;
+        expected["revision"] = json!(expected["revision"].as_u64().unwrap() + 1);
+        assert_eq!(app.editor.session.state(), expected);
     }
 }

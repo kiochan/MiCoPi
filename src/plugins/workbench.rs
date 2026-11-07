@@ -62,6 +62,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 "ui",
                 "keybindings",
                 "painting",
+                "brush_presets",
                 "selection",
                 "plugins",
                 "movement",
@@ -75,14 +76,19 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             }
             let updated = crate::configuration::Settings::decode(&value.to_string(), path.clone())
                 .map_err(|e| ActionError::new("settings", e))?;
+            let active = s
+                .settings_path
+                .as_ref()
+                .is_none_or(|current| current == &path);
+            if active {
+                s.validate_profile_presets(&updated)?;
+            }
             updated
                 .save()
                 .map_err(|e| ActionError::new("settings", e))?;
             let selection_changed = s.selection_defaults != updated.selection;
-            if s.settings_path
-                .as_ref()
-                .is_none_or(|active| active == &path)
-            {
+            if active {
+                s.load_profile_presets(&updated)?;
                 s.apply_selection_defaults(updated.selection);
                 s.apply_movement_defaults(updated.movement);
             }

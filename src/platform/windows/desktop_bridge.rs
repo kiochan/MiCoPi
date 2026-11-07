@@ -247,6 +247,17 @@ impl Native {
     pub fn dialog(&self, save: bool, png: bool) -> Option<PathBuf> {
         unsafe { file_dialog(self.hwnd, save, png) }
     }
+    pub fn preset_dialog(&self, save: bool) -> Option<PathBuf> {
+        unsafe {
+            super::file_dialog_custom(
+                self.hwnd,
+                save,
+                "My Brushes.json",
+                "MiCoPi brush presets\0*.json\0All files\0*.*\0\0",
+                "json",
+            )
+        }
+    }
     pub fn replay_dialog(&self, save: bool, frames: bool) -> Option<PathBuf> {
         unsafe {
             super::file_dialog_custom(

@@ -1,6 +1,8 @@
 //! Feature-owned presentation adapter; document changes use shared actions.
 use super::panels::{parameter, section};
 use super::*;
+#[path = "presets.rs"]
+mod presets;
 pub(super) const OPACITY_MODES: [crate::application::OpacityMode; 2] = [
     crate::application::OpacityMode::Dab,
     crate::application::OpacityMode::Stroke,
@@ -120,6 +122,7 @@ impl Editor {
                 }
             });
         }
+        self.user_brush_presets_ui(ui);
         section(ui, "Brush Tip", a.section_spacing);
         let mut diameter = self.radius * 2.;
         parameter(ui, "Size", &mut diameter, 1.0..=400., " px", false, true);

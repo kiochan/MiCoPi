@@ -4,6 +4,9 @@ mod adjustment_boundary;
 #[cfg(test)]
 mod adjustment_tests;
 mod atomic;
+mod brush_presets;
+#[cfg(test)]
+mod brush_presets_tests;
 pub(crate) mod canvas_geometry;
 pub mod codec;
 pub(crate) mod creation;

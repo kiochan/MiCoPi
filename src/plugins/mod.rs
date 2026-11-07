@@ -28,6 +28,7 @@ pub fn panel_key(id: &str) -> u32 {
 
 pub(crate) mod adjustments;
 pub(crate) mod affine;
+pub(crate) mod brush_presets;
 pub(crate) mod clipboard;
 mod compositing;
 mod document;
@@ -61,6 +62,10 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        BrushPresetsQuery | BrushPresetUpsert | BrushPresetDelete | BrushPresetApply
+        | BrushPresetsImport | BrushPresetsExport | BrushPresetsReload => {
+            brush_presets::execute(session, op, args)
+        }
         ArrangeLayers | ArrangeLayersPlan => layer_arrangement::execute(session, op, args),
         AdjustmentCatalog | AdjustmentQuery | AdjustmentRead | AdjustmentCreate | AdjustmentSet
         | AdjustmentMove | AdjustmentDelete | AdjustmentInspect => {

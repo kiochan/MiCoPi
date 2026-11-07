@@ -3,6 +3,7 @@ use crate::{platform::replace_file, ui::keymap::Keymap};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
+pub mod brush_presets;
 mod canvas;
 pub use canvas::{CanvasPreset, NewCanvasPreferences};
 
@@ -224,6 +225,7 @@ pub struct Settings {
     pub ui: Appearance,
     pub keys: Keymap,
     pub painting: PaintingPreferences,
+    pub brush_presets: brush_presets::BrushPresetLibrary,
     pub selection: crate::application::SelectionSampling,
     pub plugins: PluginPreferences,
     pub movement: crate::application::MovementPreferences,
@@ -237,6 +239,7 @@ impl Settings {
             ui: Appearance::default(),
             keys: Keymap::default(),
             painting: PaintingPreferences::default(),
+            brush_presets: Default::default(),
             selection: Default::default(),
             plugins: PluginPreferences::default(),
             movement: Default::default(),
@@ -277,6 +280,11 @@ impl Settings {
         let painting: PaintingPreferences =
             serde_json::from_value(painting_value).map_err(|e| e.to_string())?;
         painting.validate()?;
+        let brush_presets = original
+            .get("brush_presets")
+            .map(brush_presets::BrushPresetLibrary::decode_value)
+            .transpose()?
+            .unwrap_or_default();
         let plugins: PluginPreferences =
             serde_json::from_value(original.get("plugins").cloned().unwrap_or(json!({})))
                 .map_err(|e| e.to_string())?;
@@ -298,6 +306,7 @@ impl Settings {
             ui,
             keys,
             painting,
+            brush_presets,
             selection,
             plugins,
             movement,
@@ -309,10 +318,19 @@ impl Settings {
     pub fn has_painting_preferences(&self) -> bool {
         self.original.get("painting").is_some()
     }
-    pub fn encode(&self) -> Result<String, String> {
+    /// Adopt the latest unknown-root payload without replacing explicit typed
+    /// preferences, keybindings, cached preset data or this profile's path.
+    pub(crate) fn rebase_original(&mut self, latest: &Settings) {
+        self.original = latest.original.clone();
+    }
+    /// Build the validated editable document without imposing a file byte cap.
+    /// A decoded near-limit profile can grow when typed defaults are included;
+    /// editors must retain it so the artist can reduce it before saving.
+    pub(crate) fn editor_document(&self) -> Result<Value, String> {
         self.ui.validate()?;
         self.keys.validate()?;
         self.painting.validate()?;
+        self.brush_presets.validate()?;
         self.plugins.validate()?;
         self.movement.validate()?;
         self.new_canvas.validate()?;
@@ -322,12 +340,23 @@ impl Settings {
         value["new_canvas"] = serde_json::to_value(&self.new_canvas).map_err(|e| e.to_string())?;
         value["selection"] = serde_json::to_value(self.selection).map_err(|e| e.to_string())?;
         value["painting"] = serde_json::to_value(&self.painting).map_err(|e| e.to_string())?;
+        if !self.brush_presets.is_default() || self.original.get("brush_presets").is_some() {
+            value["brush_presets"] = brush_presets::canonical_value(&self.brush_presets)?;
+        }
         value["plugins"] = serde_json::to_value(&self.plugins).map_err(|e| e.to_string())?;
         value["ui"] = serde_json::to_value(&self.ui).map_err(|e| e.to_string())?;
         value["keybindings"] = serde_json::from_str::<Value>(&self.keys.encode())
             .map_err(|e| e.to_string())?["keybindings"]
             .clone();
-        Ok(serde_json::to_string_pretty(&value).map_err(|e| e.to_string())? + "\n")
+        Ok(value)
+    }
+    pub fn encode(&self) -> Result<String, String> {
+        let value = self.editor_document()?;
+        let text = serde_json::to_string_pretty(&value).map_err(|e| e.to_string())? + "\n";
+        if text.len() > 1024 * 1024 {
+            return Err("settings.json exceeds 1 MB".into());
+        }
+        Ok(text)
     }
     pub fn save(&self) -> Result<(), String> {
         atomic_write(&self.path, &self.encode()?)

@@ -280,6 +280,8 @@ pub struct Session {
     pub selection_defaults: super::SelectionSampling,
     pub movement_defaults: super::MovementPreferences,
     pub settings_path: Option<PathBuf>,
+    pub(crate) brush_presets: crate::configuration::brush_presets::BrushPresetLibrary,
+    pub(crate) preset_library_token: u64,
     pub ui_effects: VecDeque<Value>,
     pub(crate) presentation_captures: super::presentation_captures::Captures,
     pub(crate) stroke: crate::plugins::tools::StrokeEngine,
@@ -345,6 +347,8 @@ impl Session {
             selection_defaults: Default::default(),
             movement_defaults: Default::default(),
             settings_path: None,
+            brush_presets: Default::default(),
+            preset_library_token: 1,
             clipboard: None,
             system_clipboard: None,
             system_clipboard_event: None,
@@ -687,6 +691,9 @@ impl Session {
         validate(&definition.schema(), &action.args)?;
         if let Some(op) = definition.operation {
             validate(&op.schema(), &action.args)?;
+            if op.is_brush_preset() {
+                crate::plugins::brush_presets::validate_literal(op, &action.args)?;
+            }
             if matches!(op, Operation::ArrangeLayers | Operation::ArrangeLayersPlan) {
                 crate::plugins::layer_arrangement::validate_literal(&action.args)?;
             }

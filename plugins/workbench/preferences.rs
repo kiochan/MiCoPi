@@ -338,6 +338,15 @@ fn normalize(a: &mut Appearance) {
     a.title_height = a.title_height.max(a.control_height + 6.);
     a.section_spacing = a.section_spacing.max(a.item_spacing);
 }
+/// Preserve a complete editable snapshot even when its canonical file would
+/// exceed the save ceiling. Validation and the byte cap still apply on Save.
+fn settings_editor_json(settings: &Settings) -> Result<String, String> {
+    settings.encode().or_else(|_| {
+        serde_json::to_string_pretty(&settings.editor_document()?)
+            .map(|text| text + "\n")
+            .map_err(|e| e.to_string())
+    })
+}
 impl Studio {
     pub(super) fn open_settings(&mut self, category: Option<Category>) {
         if !self.settings_open || self.settings_before.is_none() {
@@ -346,8 +355,14 @@ impl Studio {
             self.preferences.painting_before =
                 Some(PaintingPreferences::from(&self.editor.session.parameters));
             self.settings_before = Some(self.editor.settings.clone());
-            self.preferences.json = self.editor.settings.encode().unwrap_or_default();
             self.preferences.message.clear();
+            match settings_editor_json(&self.editor.settings) {
+                Ok(text) => self.preferences.json = text,
+                Err(error) => {
+                    self.preferences.message = error.clone();
+                    self.editor.status = error;
+                }
+            }
         }
         self.editor.palette = None;
         self.preferences.focus = true;
@@ -399,10 +414,20 @@ impl Studio {
         }
         let mut prefs = std::mem::take(&mut self.preferences);
         let mut draft = self.editor.settings.clone();
-        let mut document: serde_json::Value =
-            serde_json::from_str(&draft.encode().unwrap()).unwrap();
-        let defaults: serde_json::Value =
-            serde_json::from_str(&Settings::defaults(PathBuf::new()).encode().unwrap()).unwrap();
+        let documents = draft.editor_document().and_then(|document| {
+            Settings::defaults(PathBuf::new())
+                .editor_document()
+                .map(|defaults| (document, defaults))
+        });
+        let (mut document, defaults) = match documents {
+            Ok(documents) => documents,
+            Err(error) => {
+                prefs.message = error.clone();
+                self.editor.status = error;
+                self.preferences = prefs;
+                return;
+            }
+        };
         let mut open = true;
         let mut save = false;
         let mut cancel = false;
@@ -441,7 +466,10 @@ impl Studio {
                     }
                     if ui.selectable_label(prefs.json_mode,tr( "{} JSON")).clicked() {
                         if !prefs.json_mode {
-                            prefs.json = draft.encode().unwrap_or_default();
+                            match settings_editor_json(&draft) {
+                                Ok(text)=>prefs.json=text,
+                                Err(error)=>prefs.message=error,
+                            }
                         }
                         prefs.json_mode = true;
                     }
@@ -628,7 +656,7 @@ impl Studio {
             self.reset_layout(size.x - 48. - self.editor.settings.ui.outer_padding * 3.);
         }
         if save {
-            match self.editor.save_settings() {
+            match self.editor.save_settings_document() {
                 Ok(()) => {
                     self.settings_before = Some(self.editor.settings.clone());
                     prefs.selection_before = Some(self.editor.session.selection_sampling());
@@ -1340,6 +1368,90 @@ mod tests {
         }
         app.cancel_settings();
         assert_eq!(app.editor.settings.ui.panel_padding, baseline);
+    }
+    #[test]
+    fn near_limit_profile_remains_editable_and_failed_save_preserves_the_file() {
+        fn frame(app: &mut Studio, ctx: &Context, events: Vec<Event>, time: f64) -> FullOutput {
+            ctx.run(
+                RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1360., 920.))),
+                    events,
+                    time: Some(time),
+                    focused: true,
+                    ..Default::default()
+                },
+                |ctx| app.settings_window(ctx),
+            )
+        }
+        fn text_center(shape: &Shape, label: &str) -> Option<Pos2> {
+            match shape {
+                Shape::Text(text) if text.galley.text() == label => {
+                    Some(text.pos + text.galley.size() * 0.5)
+                }
+                Shape::Vec(shapes) => shapes.iter().find_map(|shape| text_center(shape, label)),
+                _ => None,
+            }
+        }
+        let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+            "target/test-output/brush-presets/settings-editor-limit/{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("settings.json");
+        let notes = "x".repeat(1024 * 1024 - 64);
+        let raw = serde_json::json!({"artist_notes":notes}).to_string();
+        assert!(raw.len() < 1024 * 1024);
+        std::fs::write(&path, &raw).unwrap();
+        let mut app = crate::desktop::tests::studio();
+        app.editor.settings = Settings::decode(&raw, path.clone()).unwrap();
+        assert!(app.editor.settings.encode().unwrap_err().contains("1 MB"));
+        app.editor.session.settings_path = Some(path.clone());
+        app.open_settings(None);
+        let editable: serde_json::Value = serde_json::from_str(&app.preferences.json).unwrap();
+        assert_eq!(editable["artist_notes"], notes);
+        let ctx = Context::default();
+        crate::i18n::set_language(crate::i18n::Language::English);
+        theme::fonts(&ctx);
+        theme::apply(&ctx, &app.editor.settings.ui);
+        let mut output = frame(&mut app, &ctx, vec![], 0.);
+        for step in 1..3 {
+            output = frame(&mut app, &ctx, vec![], step as f64 / 10.);
+        }
+        let save = output
+            .shapes
+            .iter()
+            .find_map(|shape| text_center(&shape.shape, "Save Settings"))
+            .unwrap();
+        for (step, pressed) in [true, false].into_iter().enumerate() {
+            frame(
+                &mut app,
+                &ctx,
+                vec![
+                    Event::PointerMoved(save),
+                    Event::PointerButton {
+                        pos: save,
+                        button: PointerButton::Primary,
+                        pressed,
+                        modifiers: Modifiers::NONE,
+                    },
+                ],
+                1. + step as f64 / 10.,
+            );
+        }
+        assert!(app.preferences.message.starts_with("Save failed:"));
+        assert!(app.preferences.message.contains("1 MB"));
+        assert_eq!(std::fs::read(&path).unwrap(), raw.as_bytes());
+        app.preferences.json_mode = true;
+        frame(&mut app, &ctx, vec![], 2.);
+        assert!(app.settings_open);
+        let editable: serde_json::Value = serde_json::from_str(&app.preferences.json).unwrap();
+        assert_eq!(editable["artist_notes"], notes);
+        assert!(Settings::decode(&app.preferences.json, path.clone())
+            .err()
+            .unwrap()
+            .contains("1 MB"));
+        assert_eq!(std::fs::read(&path).unwrap(), raw.as_bytes());
+        app.cancel_settings();
     }
 }
 fn defaults_ui(defaults: &serde_json::Value) -> Appearance {
