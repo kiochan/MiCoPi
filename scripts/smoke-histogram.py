@@ -8,6 +8,7 @@ import importlib.util
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +18,7 @@ spec.loader.exec_module(geometry)
 editing, Plan = geometry.editing, geometry.Plan
 
 
-def commands():
+def commands(*, negative=False):
     p = Plan()
     p.add('nodes', 'node.catalog')
     p.add('new', 'canvas.new', width=4, height=4)
@@ -30,8 +31,9 @@ def commands():
     p.add('locked-raw', 'histogram.query', source='layer', layer_id=1.0, max_samples=65536.0)
     p.add('empty-composite', 'histogram.query')
     p.add('invalid-before', 'canvas.state')
-    p.add('no-id', 'histogram.query', error='histogram_source', source='layer')
-    p.add('wrong-scope', 'histogram.query', error='histogram_source', layer_id=1)
+    if negative:
+        p.add('no-id', 'histogram.query', error='histogram_source', source='layer')
+        p.add('wrong-scope', 'histogram.query', error='histogram_source', layer_id=1)
     p.add('invalid-after', 'canvas.state')
     p.add('workflow', 'workflow.set', graph=dict(version=1, nodes=[dict(
         id=1, type='action.histogram.query', position=[0, 0],
@@ -67,6 +69,27 @@ def validate(values, plan):
     return histograms
 
 
+def negative_jsonl(cli, flags, output):
+    # Batch execution intentionally stops at its first rejection. Exercise each
+    # negative separately; MCP below also checks state after both rejections.
+    for name, args in [('no-id', dict(source='layer')), ('wrong-scope', dict(layer_id=1))]:
+        rows = [dict(action='canvas.new', args=dict(width=4, height=4)),
+                dict(action='layer.fill_color', args=dict(color='#204060')),
+                dict(action='canvas.state', args={}),
+                dict(action='histogram.query', args=args),
+                dict(action='canvas.state', args={})]
+        path = output/(name+'.jsonl')
+        path.write_text('\n'.join(json.dumps(row) for row in rows)+'\n', encoding='utf-8')
+        run = subprocess.run([str(cli), 'run', str(path), *flags], capture_output=True,
+                             text=True, encoding='utf-8', timeout=60)
+        path.with_suffix('.responses.jsonl').write_text(run.stdout, encoding='utf-8')
+        replies = [json.loads(line) for line in run.stdout.splitlines()]
+        assert run.returncode != 0 and 'batch_failed' in run.stderr, (name, run.stderr)
+        assert len(replies) == 4 and all(row['ok'] for row in replies[:3]), (name, replies)
+        assert replies[3]['ok'] is False and replies[3]['error']['code'] == 'histogram_source', (name, replies[3])
+        assert replies[3]['revision'] == replies[2]['data']['result']['revision'], (name, replies)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cli', default='target/build/x86_64-pc-windows-gnu/release/micopi-cli.exe')
@@ -81,7 +104,9 @@ def main():
     flags = ['--plugins', str(plugins), '--config-dir', str(profile)]
     plan = commands()
     batch = validate(geometry.run_jsonl(cli, flags, plan, output/'histogram.jsonl'), plan)
-    mcp = validate(editing.run_mcp(cli, flags, plan, require_masks=False), plan)
+    negative_plan = commands(negative=True)
+    mcp = validate(editing.run_mcp(cli, flags, negative_plan, require_masks=False), negative_plan)
+    negative_jsonl(cli, flags, output)
     assert batch == mcp
     print('Histogram: independent exact/sampled bins, locked raw scope, read-only state and JSONL/MCP/node contracts passed.')
     print(output)
