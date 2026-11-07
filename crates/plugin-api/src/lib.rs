@@ -653,6 +653,56 @@ pub struct CompositorApiMaskEffects {
 }
 pub type CompositorEntry = unsafe extern "C" fn() -> *const CompositorApi;
 
+/// Independent bounded Curves preparation. Existing compositor/Levels tables
+/// and symbol contracts are unchanged; this prepares one channel at a time.
+pub const CURVES_SYMBOL: &[u8] = b"micopi_curves_v1\0";
+pub const CURVES_MAX_POINTS: usize = 32;
+pub const CURVES_LINEAR: u32 = 0;
+pub const CURVES_SMOOTH: u32 = 1;
+#[repr(C)]
+#[derive(Clone, Copy, Default, Debug)]
+pub struct CurvePoint {
+    pub input: u32,
+    pub output: u32,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct CurvesParameters {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub count: u32,
+    pub interpolation: u32,
+    pub points: [CurvePoint; CURVES_MAX_POINTS],
+}
+/// 2..32 strictly input-ordered byte points; clamp outside endpoint inputs.
+/// Modes: linear=0, shape-preserving Hermite=1 with endpoint secant tangents.
+/// Writes exactly 256 bytes on success; invalid/overlapping spans do not write.
+/// No allocation, retained pointer or document mutation.
+pub type CurvesPrepareFn = unsafe extern "C" fn(*const CurvesParameters, *mut u8, usize) -> i32;
+#[repr(C)]
+pub struct CurvesApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub prepare: Option<CurvesPrepareFn>,
+}
+pub type CurvesEntry = unsafe extern "C" fn() -> *const CurvesApi;
+
+#[cfg(test)]
+mod curves_layout_tests {
+    use super::*;
+    #[test]
+    fn independent_curves_api_has_stable_x64_layout() {
+        assert_eq!(std::mem::size_of::<CurvePoint>(), 8);
+        assert_eq!(std::mem::size_of::<CurvesParameters>(), 272);
+        assert_eq!(std::mem::offset_of!(CurvesParameters, count), 8);
+        assert_eq!(std::mem::offset_of!(CurvesParameters, interpolation), 12);
+        assert_eq!(std::mem::offset_of!(CurvesParameters, points), 16);
+        assert_eq!(std::mem::size_of::<CurvesApi>(), 16);
+        assert_eq!(std::mem::offset_of!(CurvesApi, prepare), 8);
+        assert_eq!(CURVES_SYMBOL, b"micopi_curves_v1\0");
+    }
+}
+
 /// Optional cold Levels preparation. This does not change compositor tables.
 pub const LEVELS_SYMBOL: &[u8] = b"micopi_levels_v1\0";
 #[repr(C)]

@@ -1,5 +1,12 @@
 # Project Structure and Ownership
 
+`plugins/compositing/src/curves.rs` owns bounded cold channel-curve interpolation
+and the independent optional Curves export. `src/plugins/native_curves.rs`
+negotiates/caches that export, validates host arguments and publishes only
+successful byte tables. SDK Rust/C layouts live in `crates/plugin-api/` with
+compile-only C/C++ fixtures under `tests/fixtures/`. This prerequisite does not
+register Curves nodes or adjustment effects; those integrations remain planned.
+
 `src/plugins/native_levels.rs` negotiates and caches optional native Levels
 preparation, validates host arguments and publishes successful byte tables.
 It also admits borrowed prepared-table rendering through the shared renderer.

@@ -9,6 +9,13 @@ extern "C" {
 #endif
 
 ABI_ASSERT(sizeof(void *) == 8, "The supported native SDK target is x64");
+ABI_ASSERT(sizeof(MicopiCurvePoint) == 8, "Curves point pair");
+ABI_ASSERT(sizeof(MicopiCurvesParameters) == 272, "Bounded Curves parameters");
+ABI_ASSERT(offsetof(MicopiCurvesParameters, count) == 8, "Curves count offset");
+ABI_ASSERT(offsetof(MicopiCurvesParameters, interpolation) == 12, "Curves mode offset");
+ABI_ASSERT(offsetof(MicopiCurvesParameters, points) == 16, "Curves points offset");
+ABI_ASSERT(sizeof(MicopiCurvesApi) == 16, "Independent Curves API");
+ABI_ASSERT(offsetof(MicopiCurvesApi, prepare) == 8, "Curves preparation callback");
 ABI_ASSERT(sizeof(MicopiLevelsParameters) == 32, "Levels preparation parameters");
 ABI_ASSERT(offsetof(MicopiLevelsParameters, gamma) == 24, "Levels gamma offset");
 ABI_ASSERT(sizeof(MicopiLevelsApi) == 16, "Independent Levels API");

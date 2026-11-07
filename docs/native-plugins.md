@@ -1,5 +1,45 @@
 # Native DLL Plugins and ABI v1
 
+## Curves preparation prerequisite
+
+The bundled compositor exports optional `micopi_curves_v1`. The loader resolves
+it once, validates the 16-byte `CurvesApi` header/callback and caches preparation.
+Missing symbols are compatible; malformed advertised tables reject loading.
+Native inventory reports only `filters.curves_prepare`. This is an algorithm
+prerequisite, **not a registered document effect**: Curves nodes, adjustment
+layers, public parameter schemas, channel controls and histograms remain planned.
+No document or recording format changes in this increment.
+
+The fixed 272-byte `CurvesParameters` contains ABI version/size at 0/4,
+point count/interpolation at 8/12 and 32 inline `CurvePoint` pairs at 16. A point
+is two unsigned 32-bit byte values (input/output); 2–32 used points require strictly
+increasing inputs. Unused slots are ignored. Mode 0 linearly interpolates; mode 1
+uses shape-preserving cubic Hermite interpolation. Interior tangents use the
+weighted harmonic construction documented in the
+[SciPy mathematical reference](https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.PchipInterpolator.html);
+MiCoPi uses endpoint secants rather than that reference's endpoint scheme.
+Turning/flat tangents are zero, each segment remains within its output endpoints,
+and inputs beyond the first/last knot clamp to the corresponding endpoint output.
+Nonmonotonic output curves are supported. Round positive values half-up to bytes.
+This is independently implemented from the mathematical definition; no SciPy or
+PhotoCraft source or runtime dependency is used. It does not promise Photoshop
+curve parity or color-space conversion.
+
+Preparation writes exactly 256 bytes into caller storage, leaving extra capacity
+unchanged. Null, short, invalid, unsorted, duplicate and overlapping inputs reject
+without writes. Read a short common header before accessing a complete parameter
+record. Larger compatible records/tables retain prefix behavior. The host validates
+the domain before invoking native code and keeps failed callback output private.
+All scratch arrays are fixed-size stack storage; the compiler scans each knot and
+byte once. No pixels, heap allocation, registry lookup or retained pointers are
+involved. Channel LUT application and document integration are separate steps;
+the drawing hot path does not invoke this compiler.
+
+Rust/C11/C++17 layout fixtures, native exact/independent curve witnesses,
+uneven spacing, dense turning/flat curves, rejection/no-write tests and host
+decoder/adapter/bundled discovery regressions are authored. Runtime execution
+awaits CI; no latency or hardware claims follow from source review.
+
 ## Levels preparation prerequisite
 
 The bundled compositor exports optional `micopi_levels_v1`, with a 16-byte

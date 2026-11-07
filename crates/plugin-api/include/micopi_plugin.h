@@ -317,6 +317,25 @@ typedef struct {
     MicopiMaskEffectsReserveFn reserve_mask_effects;
 } MicopiCompositorApiMaskEffects;
 const MicopiCompositorApi *micopi_compositor_v1(void);
+/* Independent cold Curves preparation. count=2..32 strictly input-ordered byte
+   points; unused slots ignored. interpolation=0 linear, 1 shape-preserving
+   Hermite with endpoint secants. Constant outside endpoint inputs. Exactly 256
+   output bytes; invalid/null/overlapping spans reject before writes. No heap
+   allocation or retained pointers; no document mutation or renderer capability. */
+#define MICOPI_CURVES_MAX_POINTS 32
+#define MICOPI_CURVES_LINEAR 0
+#define MICOPI_CURVES_SMOOTH 1
+typedef struct { uint32_t input, output; } MicopiCurvePoint;
+typedef struct {
+    uint32_t abi_version, struct_size, count, interpolation;
+    MicopiCurvePoint points[MICOPI_CURVES_MAX_POINTS];
+} MicopiCurvesParameters;
+typedef int32_t (*MicopiCurvesPrepareFn)(const MicopiCurvesParameters *, uint8_t *, size_t);
+typedef struct {
+    uint32_t abi_version, struct_size;
+    MicopiCurvesPrepareFn prepare;
+} MicopiCurvesApi;
+const MicopiCurvesApi *micopi_curves_v1(void);
 /* Independent cold Levels preparation. Byte endpoints, input white > black,
    finite gamma 0.1..10. Writes exactly 256 bytes; rejects invalid or overlapping
    spans without writes. No allocation or retained pointers. */

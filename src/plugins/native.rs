@@ -1,4 +1,6 @@
 //! Versioned native-code plugin loader and synchronous host capabilities.
+#[path = "native_curves.rs"]
+mod curves;
 #[path = "native_levels.rs"]
 mod levels;
 use super::PixelAccess;
@@ -608,6 +610,7 @@ pub struct NativePlugin {
     compositor_effects: Option<MaskEffectsTable>,
     levels_prepare: Option<abi::LevelsPrepareFn>,
     levels_render: Option<abi::LevelsRenderFn>,
+    curves_prepare: Option<abi::CurvesPrepareFn>,
     mask_effect_instance: std::sync::Mutex<Option<MaskEffectInstance>>,
     _module: Module,
 }
@@ -854,6 +857,7 @@ impl NativePlugin {
             None => (None, None),
         };
         let tools = unsafe { module.tool_api()? };
+        let curves_prepare = unsafe { module.curves_api()? };
         let (levels_prepare, levels_render) = match unsafe { module.levels_api()? } {
             Some((prepare, render)) => (Some(prepare), render),
             None => (None, None),
@@ -921,6 +925,7 @@ impl NativePlugin {
                 compositor_effects,
                 levels_prepare,
                 levels_render,
+                curves_prepare,
                 mask_effect_instance: Default::default(),
                 _module: module,
             }),
