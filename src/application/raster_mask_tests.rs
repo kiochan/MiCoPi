@@ -23,6 +23,59 @@ fn samples(s: &Session, id: u64) -> Vec<u8> {
         PlaneView::Dense(data) => data.to_vec(),
     }
 }
+
+#[test]
+fn replay_only_profile_rejects_renderer_required_projects_before_missing_provider_nodes() {
+    let (mut source, _) = masked(3, 2);
+    let project = output("renderer-required.mcp");
+    call(&mut source, "document.save", json!({"path":project}));
+    let expected = call(&mut source, "canvas.snapshot", json!({}))["data"].clone();
+    let archive = output("renderer-required.mcreplay");
+    call(&mut source, "replay.export", json!({"path":archive}));
+    let root = output("replay-only-plugins");
+    std::fs::create_dir_all(&root).unwrap();
+    for name in ["core", "replay"] {
+        let target = root.join(name);
+        std::fs::create_dir_all(&target).unwrap();
+        std::fs::copy(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("plugins")
+                .join(name)
+                .join("manifest.json"),
+            target.join("manifest.json"),
+        )
+        .unwrap();
+    }
+    let registry = crate::plugins::Registry::load(&root).unwrap();
+    assert!(registry.renderer().is_none());
+    assert!(!registry.nodes.contains_key("compositing.layer"));
+    let mut replay = Session::new(registry).unwrap();
+    call(&mut replay, "canvas.new", json!({"width":7,"height":5}));
+    let before = replay.state();
+    let identity = replay.doc.identity;
+    let history = replay.doc.history_bytes();
+    let file = replay.file.clone();
+    let source_file = replay.source_file.clone();
+    let error = replay
+        .apply(Action::new("document.open", json!({"path":project})))
+        .unwrap_err();
+    assert_eq!(error.code, "renderer_missing");
+    assert_eq!(replay.state(), before);
+    assert_eq!(replay.doc.identity, identity);
+    assert_eq!(replay.doc.history_bytes(), history);
+    assert_eq!(replay.file, file);
+    assert_eq!(replay.source_file, source_file);
+    call(&mut replay, "replay.load", json!({"path":archive}));
+    assert_eq!(
+        call(&mut replay, "replay.verify", json!({"source":"loaded"}))["valid"],
+        true
+    );
+    assert_eq!(
+        call(&mut replay, "replay.snapshot", json!({"source":"loaded"}))["data"],
+        expected
+    );
+    assert!(replay.doc.renderer.is_none());
+}
 fn masked(width: usize, height: usize) -> (Session, u64) {
     let mut s = session();
     call(&mut s, "canvas.new", json!({"width":width,"height":height}));

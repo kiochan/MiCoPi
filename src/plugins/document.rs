@@ -76,6 +76,13 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             let mut doc = codec::open(&path)?;
             let journal = crate::application::replay::read_embedded(&mut doc)?;
             doc.renderer = s.registry.renderer();
+            // Preserve renderer admission before optional provider schema lookup.
+            if doc.requires_renderer() && doc.renderer.is_none() {
+                return Err(ActionError::new(
+                    "renderer_missing",
+                    "Project requires the compositing DLL",
+                ));
+            }
             s.registry.validate_image_nodes(&doc.graph)?;
             super::adjustments::validate_document(&s.registry, &doc)?;
             doc.refresh_renderer_plan()
@@ -87,12 +94,6 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                     doc.workflow = graph.clone();
                     doc.dirty = true;
                 }
-            }
-            if doc.requires_renderer() && doc.renderer.is_none() {
-                return Err(ActionError::new(
-                    "renderer_missing",
-                    "Project requires the compositing DLL",
-                ));
             }
             s.finish_stroke();
             s.doc = doc;
