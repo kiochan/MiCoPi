@@ -361,7 +361,20 @@ fn owner_transform_open_cancel_and_natural_pen_packets_preserve_brush_and_hand_c
                 if !queued {
                     app.editor.transform.as_mut().unwrap().params.translate_x = 1.;
                 }
-                let out = frame(&mut app, &ctx, vec2(1360., 920.), vec![], 7.);
+                // egui measures a newly opened Window before painting its
+                // controls. Exercise each sizing frame without losing input.
+                let mut out = frame(&mut app, &ctx, vec2(1360., 920.), vec![], 7.);
+                for n in 1..3 {
+                    out = frame(
+                        &mut app,
+                        &ctx,
+                        vec2(1360., 920.),
+                        vec![],
+                        7. + n as f64 / 100.,
+                    );
+                    admitted.assert_same(&app.editor);
+                    assert_eq!(samples(&mut app), transcript);
+                }
                 let apply = out
                     .shapes
                     .iter()
@@ -574,7 +587,16 @@ fn owner_transform_perspective_is_disabled_and_preview_failure_does_not_disable_
     let ctx = warm(&mut app);
     app.editor.open_transform();
     app.editor.transform.as_mut().unwrap().params.translate_x = 1.;
-    let out = window(&mut app, &ctx, vec2(1360., 920.), vec![], 6.);
+    let mut out = window(&mut app, &ctx, vec2(1360., 920.), vec![], 6.);
+    for n in 1..3 {
+        out = window(
+            &mut app,
+            &ctx,
+            vec2(1360., 920.),
+            vec![],
+            6. + n as f64 / 100.,
+        );
+    }
     let perspective = out
         .shapes
         .iter()
@@ -604,7 +626,16 @@ fn owner_transform_perspective_is_disabled_and_preview_failure_does_not_disable_
     let legacy_ctx = warm(&mut legacy);
     legacy.editor.open_transform();
     assert!(!legacy.editor.guarded_transform_modal());
-    let out = window(&mut legacy, &legacy_ctx, vec2(1360., 920.), vec![], 6.);
+    let mut out = window(&mut legacy, &legacy_ctx, vec2(1360., 920.), vec![], 6.);
+    for n in 1..3 {
+        out = window(
+            &mut legacy,
+            &legacy_ctx,
+            vec2(1360., 920.),
+            vec![],
+            6. + n as f64 / 100.,
+        );
+    }
     let p = out
         .shapes
         .iter()
