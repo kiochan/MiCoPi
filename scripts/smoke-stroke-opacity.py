@@ -105,6 +105,19 @@ def cases(seed):
     return rows
 
 
+def write_fixture(path, model):
+    if model['masks']:
+        geometry.write_model(path, model)
+        return
+    # MICOPI04 explicitly opts into nondefault raw-mask storage. Unmasked
+    # fixtures retain the legacy project envelope rather than forging that opt-in.
+    metadata = json.dumps(model['composition'], separators=(',', ':'), ensure_ascii=False).encode()
+    data = bytearray(b'MICOPI03'+struct.pack('<IIII', WIDTH, HEIGHT, len(model['rasters']), model['active']))
+    for properties, raster in zip(model['composition']['layers'], model['rasters']):
+        data += bytes([int(properties[0]), properties[1]])+struct.pack('<'+'I'*AREA, *raster)
+    path.write_bytes(data+struct.pack('<I', len(metadata))+metadata+struct.pack('<Q', 0))
+
+
 def caps(case):
     if not case.get('pressure_opacity'):
         return [Fraction(2, 5) if p > 0 else Fraction(0) for p in case['pressures']]
@@ -362,7 +375,7 @@ def main():
     scenarios = cases(foundation.read_project(output/'seed.mcp'))
     for case in scenarios:
         case['path'] = output/(case['name']+'.mcp')
-        geometry.write_model(case['path'], case['model'])
+        write_fixture(case['path'], case['model'])
     baseline = None
     for prefix, runner in [('jsonl', lambda p: geometry.run_jsonl(cli, flags, p, output/'stroke-opacity.jsonl')),
                            ('mcp', lambda p: editing.run_mcp(cli, flags, p))]:

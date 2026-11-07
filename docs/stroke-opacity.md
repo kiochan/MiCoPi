@@ -144,8 +144,9 @@ pressure ramps/floors, selection-once rounding, alpha lock, old prefixes,
 original/current spans, rollback, chunk continuity, presets, searchable Settings
 and English/CJK layouts. The transport smoke uses tiny 7×5 fixtures through
 JSONL/MCP and optional owned-GUI attachment, projects and DLL-free replay.
-Validation of this feature is pending CI; this guide does not claim a completed
-run, new screenshots or physical-tablet compatibility.
+Desktop/headless/native regressions passed CI for `927702b`; corrected transport
+validation remains pending as explained below. No new screenshots or
+physical-tablet compatibility are claimed.
 
 ```powershell
 python scripts/smoke-stroke-opacity.py --cli <built-cli> --gui <built-desktop>
@@ -155,5 +156,27 @@ Stage matching hosts and DLLs. `--skip-gui` runs the transport subset. The autho
 native benchmark uses 64×64 synthetic RGBA/A8 fixtures and 41 samples per contact,
 reporting timing and coverage reuse independently from full Session work. Its
 native timing excludes fixture setup, Undo capture, Session validation, journaling,
-GUI and tablet input. No benchmark result or speedup is asserted here. Follow
+GUI and tablet input. The recorded probe below has that limited scope. Follow
 [Development](development.md) and the repository's local resource limits.
+
+### Recorded synthetic contact probe
+
+[CI for `927702b`](https://github.com/kiochan/MiCoPi/actions/runs/42381092545)
+ran the Release native probe on its hosted Windows x64 worker:
+
+| Plane | Mode / Flow | Median per contact | p95 per contact | Retained coverage samples |
+| --- | --- | --- | --- | --- |
+| RGBA | Dab / 1 | 121.3 microseconds | 132.0 microseconds | 0 bytes |
+| RGBA | Stroke / 0.25 | 158.1 microseconds | 169.1 microseconds | 8192 bytes |
+| A8 | Dab / 1 | 65.7 microseconds | 76.1 microseconds | 0 bytes |
+| A8 | Stroke / 0.25 | 95.5 microseconds | 107.0 microseconds | 8192 bytes |
+
+Each row uses Opacity 0.4, radius 6, stabilizer 0.35 and 41 synthetic samples on
+64x64 pixels: one discarded warm-up plus 21 measured contacts. Each Stroke case
+allocated one coverage tile and reused it; indexing/vector metadata is separate.
+Different Flow and compositing semantics make these separate workloads, not a
+controlled overhead comparison. The exclusions above still apply; these are
+native contact timings, not tablet latency or a universal performance promise.
+The same run passed desktop/headless/native regressions, but its stroke transport
+smoke stopped on an incorrectly encoded unmasked project fixture. Full corrected
+transport validation remains pending separately from this measured probe.
