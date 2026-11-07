@@ -175,6 +175,15 @@ impl Document {
         }
         self.owner_geometry_pairs(ids)
     }
+    /// Read-only owner admission for cold plans during an existing contact.
+    /// No contact is completed and no raster/effective plane is materialized.
+    pub(crate) fn inspect_owner_moves(
+        &self,
+        ids: &[u64],
+    ) -> Result<Vec<(u64, Option<u64>)>, String> {
+        self.validate_owner_transform_source()?;
+        self.owner_geometry_pairs(ids)
+    }
 
     /// Pair/lock/budget validation after the caller's immutable source checks.
     /// Contact admission belongs to the operation, not read-only planning.

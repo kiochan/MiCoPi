@@ -34,6 +34,7 @@ mod document;
 pub(crate) mod export;
 mod geometry;
 pub(crate) mod groups;
+pub(crate) mod layer_arrangement;
 pub(crate) mod layer_batch;
 pub(crate) mod layer_links;
 mod layer_transfer;
@@ -60,6 +61,7 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        ArrangeLayers | ArrangeLayersPlan => layer_arrangement::execute(session, op, args),
         AdjustmentCatalog | AdjustmentQuery | AdjustmentRead | AdjustmentCreate | AdjustmentSet
         | AdjustmentMove | AdjustmentDelete | AdjustmentInspect => {
             adjustments::execute(session, op, args)

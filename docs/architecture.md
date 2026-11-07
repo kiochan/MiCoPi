@@ -82,6 +82,8 @@ The plugin registry validates package metadata and compatibility before native l
 
 Window activation is forwarded to winit. `WM_NCACTIVATE` uses `lParam=-1` to preserve activation handling while suppressing native non-client repaint; see [Microsoft's message contract](https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-ncactivate).
 
+Layer arrangement uses explicit raster IDs and raw positive-alpha bounds. Contact-safe plans resolve integer offsets without copying frames; idle execution stages changed RGBA/linked-A8 owners before one existing raw history group. Standalone event context derives from the captured handler result rather than rescanning moved pixels. See [Layer arrangement](layer-arrangement.md).
+
 ## Verification
 
 Multiple selected layers use bounded stable IDs in sparse composition metadata, with the active painting layer always included. Desktop gestures and automation share `layer.selection.set`; ordinary painting stays active-layer only. `layer.batch` validates explicit targets, dispatches the existing handlers under one document transaction and wraps their metadata/tile/structural edits into one reversible history group. It publishes one revision and verified outcome without running batch work on pointer MOVE. See [Layer Editing](layer-editing.md#multiple-selected-layers-and-explicit-batches).

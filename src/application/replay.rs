@@ -133,6 +133,7 @@ impl Session {
         op: Option<Operation>,
         success: bool,
         error: Option<String>,
+        result: Option<&Value>,
     ) -> Result<(), ActionError> {
         if self.atomic_depth != 0 {
             return Ok(());
@@ -164,6 +165,13 @@ impl Session {
             )
         {
             self.transform_event.take()
+        } else if success && op == Some(Operation::ArrangeLayers) {
+            result.map(|result| {
+                serde_json::json!({"arrangement":{
+                    "mode":result["mode"],"reference":result["reference"],
+                    "reference_bounds":result["reference_bounds"],"targets":result["targets"]
+                }})
+            })
         } else if success && matches!(op, Some(Operation::MovePixels | Operation::Nudge)) {
             Some(
                 serde_json::json!({"movement":crate::plugins::movement::context(self,op.unwrap(),args)}),

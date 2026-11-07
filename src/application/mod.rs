@@ -7,6 +7,8 @@ mod atomic;
 pub(crate) mod canvas_geometry;
 pub mod codec;
 pub(crate) mod creation;
+#[cfg(test)]
+mod layer_arrangement_tests;
 mod mask_boundary;
 pub mod pipeline;
 pub(crate) mod png_io;

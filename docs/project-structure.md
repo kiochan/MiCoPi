@@ -57,6 +57,8 @@ The `engine` directory contains shared document structures and the image graph m
 
 ## Document execution modules
 
+`src/plugins/layer_arrangement.rs` owns cold arrangement planning and dispatch. It reuses native bounds/integer samplers and engine owner-history groups; `plugins/layers/arrangement.rs` owns the feature UI. Shared action schemas, revision guards and replay context remain in `src/application/`.
+
 | Path | Responsibility |
 | --- | --- |
 | `src/application/session.rs` | Single document owner, validation and execution boundaries |

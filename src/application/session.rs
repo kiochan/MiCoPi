@@ -595,6 +595,7 @@ impl Session {
                             op,
                             !failed,
                             failed.then(|| value["error"].to_string()),
+                            Some(&value),
                         ) {
                             if let Some(saved) = checkpoint.take() {
                                 saved.restore(self);
@@ -606,6 +607,7 @@ impl Session {
                                     op,
                                     false,
                                     Some(error.to_string()),
+                                    None,
                                 )?;
                                 self.record(EventKind::Action {
                                     action: id.clone(),
@@ -645,7 +647,7 @@ impl Session {
                         saved.restore(self);
                     }
                     if recording {
-                        self.replay_action(&id, &event_args, op, false, Some(e.to_string()))?;
+                        self.replay_action(&id, &event_args, op, false, Some(e.to_string()), None)?;
                     }
                     self.record(EventKind::Action {
                         action: id,
@@ -685,6 +687,9 @@ impl Session {
         validate(&definition.schema(), &action.args)?;
         if let Some(op) = definition.operation {
             validate(&op.schema(), &action.args)?;
+            if matches!(op, Operation::ArrangeLayers | Operation::ArrangeLayersPlan) {
+                crate::plugins::layer_arrangement::validate_literal(&action.args)?;
+            }
             if op.is_adjustment() {
                 crate::plugins::adjustments::validate_literal(&self.registry, op, &action.args)?;
             }

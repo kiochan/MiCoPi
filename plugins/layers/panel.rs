@@ -4,6 +4,9 @@ use crate::engine::document::LayerColor;
 use serde_json::{json, Value};
 use std::{hash::Hasher, sync::Arc};
 
+#[path = "arrangement.rs"]
+mod arrangement;
+
 #[path = "groups.rs"]
 mod groups;
 #[path = "links.rs"]
@@ -365,6 +368,7 @@ impl Editor {
             active_contact || self.input_owned || self.drawing || self.panning.is_some();
         let defer_names = self.command_palette_open()
             || self.guarded_command_form()
+            || ctx.is_some_and(|ctx| self.arrangement_menu_open(ctx))
             || local_input && ctx.is_some_and(|ctx| self.focused_adjustment_ui(ctx).is_some())
             || (local_input
                 && (guarded_pending.is_some()
@@ -1028,6 +1032,9 @@ impl Editor {
         let mut pending = Vec::new();
         let focus = self.focused_group_ui(ui.ctx());
         let inspection = focus.is_some() || self.focused_adjustment_ui(ui.ctx()).is_some();
+        if inspection {
+            self.dismiss_arrangement_ui(ui.ctx());
+        }
         let targets = self.session.doc.selected_layer_ids();
         let target_indices: Vec<_> = targets
             .iter()
@@ -1063,6 +1070,9 @@ impl Editor {
             }
             self.group_toolbar_ui(ui, &mut pending);
             self.adjustment_create_menu_ui(ui, &mut pending);
+            if !inspection {
+                self.layer_arrangement_ui(ui, &mut pending);
+            }
             ui.add_enabled_ui(!inspection, |ui| {
                 ui.menu_button(tr("···"), |ui| {
                     if let Some(action) = self.layer_menu(ui, self.session.doc.active) {

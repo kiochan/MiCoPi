@@ -95,6 +95,7 @@ impl Operation {
         matches!(
             self,
             Self::DocumentResolution
+                | Self::ArrangeLayers
                 | Self::AdjustmentCreate
                 | Self::AdjustmentSet
                 | Self::AdjustmentMove

@@ -152,6 +152,8 @@ pub enum Operation {
     SelectLayer,
     LayerProperties,
     LayerQuery,
+    ArrangeLayers,
+    ArrangeLayersPlan,
     LayerLinks,
     LayerLinksQuery,
     MaskQuery,
@@ -252,6 +254,7 @@ impl Operation {
                 | Self::DeleteLayer
                 | Self::SelectLayer
                 | Self::LayerProperties
+                | Self::ArrangeLayers
                 | Self::LayerLinks
                 | Self::LayerSelection
                 | Self::LayerBatch
@@ -298,6 +301,7 @@ impl Operation {
                     | Self::AdjustmentMove
                     | Self::AdjustmentDelete
                     | Self::AdjustmentInspect
+                    | Self::ArrangeLayers
                     | Self::DeleteLayer
                     | Self::LayerLinks
                     | Self::LayerBatch
@@ -347,6 +351,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if matches!(self, Self::ArrangeLayers | Self::ArrangeLayersPlan) {
+            return crate::plugins::layer_arrangement::schema(self);
+        }
         if self.is_adjustment() {
             return crate::plugins::adjustments::schema(self);
         }
@@ -633,6 +640,7 @@ impl Operation {
                 | Self::ContextRead
                 | Self::State
                 | Self::LayerQuery
+                | Self::ArrangeLayersPlan
                 | Self::LayerLinksQuery
                 | Self::GroupQuery
                 | Self::MaskQuery

@@ -63,6 +63,8 @@ jobs:
         run: python scripts/smoke-runtime.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify non-raster adjustment stacks, masks and outcome replay
         run: python scripts/smoke-adjustments.py --cli target/release/micopi-cli.exe
+      - name: Verify exact raster alignment, distribution and linked-mask outcomes
+        run: python scripts/smoke-layer-arrangement.py --cli target/release/micopi-cli.exe
       - name: Verify published result revisions and historical reports
         run: python scripts/smoke-result-revisions.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify raster-mask storage, composition and outcome replay

@@ -92,7 +92,7 @@ fn control(
         galley,
         visuals.text_color(),
     );
-    response.on_hover_text(format!("{}\n{}", localize(full_title), localize("Links apply to Move and nudges. Painting stays on the active layer. Linked Free Transform is not available yet.")))
+    response.on_hover_text(format!("{}\n{}", localize(full_title), localize("Linked layers share whole-layer Move and affine Free Transform. Painting stays on the active layer.")))
 }
 
 impl Editor {

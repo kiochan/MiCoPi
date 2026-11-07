@@ -2047,6 +2047,338 @@
         ],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "layer.arrange.plan",
+      "title": "Plan Layer Alignment and Distribution",
+      "operation": "arrange_layers_plan",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "linked_mask_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "left",
+              "horizontal_center",
+              "right",
+              "top",
+              "vertical_center",
+              "bottom",
+              "distribute_horizontal_centers",
+              "distribute_vertical_centers"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "enum": [
+              "targets",
+              "canvas"
+            ]
+          },
+          "reference_bounds": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4096
+            }
+          },
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "properties": {
+                "layer_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "mask_ids": {
+                  "type": "array",
+                  "maxItems": 1,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "bounds": {
+                  "type": "array",
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 4096
+                  }
+                },
+                "dx": {
+                  "type": "integer",
+                  "minimum": -4096,
+                  "maximum": 4096
+                },
+                "dy": {
+                  "type": "integer",
+                  "minimum": -4096,
+                  "maximum": 4096
+                },
+                "moved_bounds": {
+                  "type": "array",
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "items": {
+                    "type": "integer",
+                    "minimum": -4096,
+                    "maximum": 8192
+                  }
+                }
+              },
+              "required": [
+                "layer_id",
+                "mask_ids",
+                "bounds",
+                "dx",
+                "dy",
+                "moved_bounds"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "changed": {
+            "type": "boolean"
+          },
+          "contact_active": {
+            "type": "boolean"
+          },
+          "can_apply": {
+            "type": "boolean"
+          },
+          "staged_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 201326592,
+            "description": "Conservative full-target RGBA/A8 staging ceiling, including no-op targets."
+          },
+          "staging_limit_bytes": {
+            "type": "integer",
+            "enum": [
+              201326592
+            ]
+          }
+        },
+        "required": [
+          "revision",
+          "document_identity",
+          "layer_ids",
+          "linked_mask_ids",
+          "mode",
+          "reference",
+          "reference_bounds",
+          "targets",
+          "changed",
+          "contact_active",
+          "can_apply",
+          "staged_bytes",
+          "staging_limit_bytes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.arrange",
+      "title": "Align or Distribute Layers",
+      "operation": "arrange_layers",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "linked_mask_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "left",
+              "horizontal_center",
+              "right",
+              "top",
+              "vertical_center",
+              "bottom",
+              "distribute_horizontal_centers",
+              "distribute_vertical_centers"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "enum": [
+              "targets",
+              "canvas"
+            ]
+          },
+          "reference_bounds": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4096
+            }
+          },
+          "targets": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "properties": {
+                "layer_id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "mask_ids": {
+                  "type": "array",
+                  "maxItems": 1,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "bounds": {
+                  "type": "array",
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 4096
+                  }
+                },
+                "dx": {
+                  "type": "integer",
+                  "minimum": -4096,
+                  "maximum": 4096
+                },
+                "dy": {
+                  "type": "integer",
+                  "minimum": -4096,
+                  "maximum": 4096
+                },
+                "moved_bounds": {
+                  "type": "array",
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "items": {
+                    "type": "integer",
+                    "minimum": -4096,
+                    "maximum": 8192
+                  }
+                }
+              },
+              "required": [
+                "layer_id",
+                "mask_ids",
+                "bounds",
+                "dx",
+                "dy",
+                "moved_bounds"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "changed": {
+            "type": "boolean"
+          },
+          "contact_active": {
+            "type": "boolean"
+          },
+          "can_apply": {
+            "type": "boolean"
+          },
+          "staged_bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 201326592,
+            "description": "Conservative full-target RGBA/A8 staging ceiling, including no-op targets."
+          },
+          "staging_limit_bytes": {
+            "type": "integer",
+            "enum": [
+              201326592
+            ]
+          }
+        },
+        "required": [
+          "revision",
+          "document_identity",
+          "layer_ids",
+          "linked_mask_ids",
+          "mode",
+          "reference",
+          "reference_bounds",
+          "targets",
+          "changed",
+          "contact_active",
+          "can_apply",
+          "staged_bytes",
+          "staging_limit_bytes"
+        ],
+        "additionalProperties": false
+      }
     }
   ],
   "states": [
