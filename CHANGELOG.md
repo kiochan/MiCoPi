@@ -116,6 +116,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Documentation and contribution workflow
 
+- Prioritize illustration workflows in the roadmap and Photoshop-common plan: reliable blending/masks, linked multi-layer movement/transforms, ordered adjustment layers, brush quality and bounded native Liquify. Retain text, complex photography and layered interchange as later backlog work; specify shared execution, undo/replay and performance gates without marking planned features available.
+
 - Require concise completed/in-progress/next plan checklists in milestone reports, with actual validation and commit details when available; record this maintainer convention in the agent guide.
 
 - Add the phased Photoshop-common editing plan and current capability/gap matrix, using PhotoCraft's public feature documentation as a functional reference while retaining MiCoPi's architecture and independent implementations.

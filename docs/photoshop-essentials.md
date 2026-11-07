@@ -25,6 +25,24 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 
 ## Execution order
 
+The next slices prioritize illustration work. P1–P8 remain stable backlog labels;
+they do not require finishing text or photographic interchange before improving
+painting. Shared admission, ownership, history and performance gates apply to
+every slice.
+
+| Priority | Next usable slice | Dependency and delivery boundary |
+| --- | --- | --- |
+| 1 | Blend and mask behavior artists can trust | Build on the delivered 26 color blend modes. Dissolve remains pending with its separate spatial coverage contract; finish bounded linked/unlinked owner movement before broader mask transforms. |
+| 2 | Linked multi-layer editing | Persist explicit stable-ID link sets; deliver linked Move before linked Free Transform, then align/distribute. Painting continues to target the active layer. |
+| 3 | Non-destructive adjustment layers | Define ordered affect-below composition, group/mask scope and transparent-pixel behavior before adding the first practical adjustment controls. |
+| 4 | Brush quality and presets | Prioritize flow, sampled/textured tips, deterministic dynamics, preset editing and responsive stabilization, with measured contact and cache costs. |
+| 5 | Liquify for illustration corrections | Start with one bounded native deformation tool, reversible previews and deterministic mesh/stroke input; retain one undo and verified outcome per committed edit. |
+
+Editable text, complex photographic processing and layered interchange stay in
+the backlog below for later delivery. Small file/workspace fixes can proceed
+independently when they unblock painting; no pending item is removed or marked
+complete by this priority change.
+
 ### P1 — Everyday layer consolidation
 
 - [x] Merge Down with explicit visibility, blend/filter and transparency-lock behavior.
@@ -98,7 +116,7 @@ Acceptance: coordinate units, pivots, bounds, resampling and clipping are specif
 - [x] Add mask-bearing group/subtree duplication, including empty groups and hidden/disabled/unlinked masks, with ordered fresh IDs, exact independent raw buffers, explicit target/selection mapping, required schema outputs and one compound Undo/outcome. See [Mask group duplication](mask-group-duplicate.md).
 - [ ] Complete owner linked/unlinked layer/mask Move/Free Transform, ungrouping and batch structural edits, Layer via Copy/Cut, merges/flatten/clipboard mutations and group-mask application before marking the full mask feature complete.
 - [ ] Add clipping masks and mask-aware image graph ports/composition.
-- [ ] Add multi-layer align/distribute/link.
+- [ ] Add multi-layer align/distribute and persistent stable-ID link sets, with explicit linked Move/Free Transform targets, lock/mask admission and one undo/revision/outcome per committed edit. Keep the active painting layer distinct from selection and linked membership; never silently widen a brush stroke.
 - [ ] Add solid/gradient fill layers; evaluate pattern fills alongside the pattern library.
 
 Acceptance: group/mask changes have explicit schema and persistence versions; old projects still load; partial invalid graphs fail safely. Implemented selected-only merge reports placement and globally hidden targets, preserves unselected storage and surviving filters, rejects protected targets before rendering and restores consumed hidden content on Undo. Its projected forest may change outside-backdrop/interleaved-stack appearance; the plan does not promise equality to the original full composite. The public raster-mask subset shares pressure/stabilization, native effects, bounded storage, Undo and verified outcomes. Full mask acceptance still requires every structural/geometry/transfer rule in the design; clipping masks remain planned. Raw-alpha Apply retains source filters and layer properties and explicitly documents its 8-bit rounding behavior.
@@ -109,17 +127,18 @@ Acceptance: group/mask changes have explicit schema and persistence versions; ol
 - [ ] Add Hue/Saturation, brightness/contrast, exposure/gamma, vibrance and color balance.
 - [ ] Add grayscale/black-and-white, threshold/posterize and gradient map.
 - [ ] Add Gaussian blur, sharpen/unsharp mask, noise and a small practical pixelate set.
-- [ ] Expose adjustments as non-destructive plugin nodes and explicit direct pixel operations.
+- [ ] Expose adjustments as non-destructive plugin nodes, real ordered adjustment layers that affect content below them, and explicit direct pixel operations. Define group/isolation/Pass Through and mask scope, opacity/blending, persistence and shared action/state schemas before publication; retain source pixels and one undo/outcome for stack or parameter edits.
 - [ ] Add live reversible filter previews, selection/mask support and repeat-last-filter.
 - [ ] Evaluate common layer effects: outline, shadow, glow and color/gradient overlay.
+- [ ] Add native plugin Liquify with bounded deterministic mesh/stroke deformation, explicit interpolation/frame clipping, reversible cached previews and apply/cancel. Commit one undo/revision/verified outcome, restore without executing the plugin, and gate delivery on rollback, transparent-edge references, brush latency and peak-memory measurements.
 
-Acceptance: parameter units/ranges and alpha/color behavior are documented; deterministic reference images cover transparent and edge pixels; large kernels use bounded working memory; preview cancellation preserves source pixels; no filter runs while merely editing a workflow.
+Acceptance: parameter units/ranges and alpha/color behavior are documented; deterministic reference images cover transparent and edge pixels; large kernels use bounded working memory; preview cancellation preserves source pixels; no filter runs while merely editing a workflow. Adjustment layers participate in ordered image composition with explicit affect-below boundaries, group gates and masks. Liquify stages immutable-source results under bounded mesh, sample and preview-cache limits; it does not add whole-image copies or workflow execution to individual pen MOVE calls.
 
 ### P6 — Illustrator painting tools
 
-- [ ] Add brush flow, sampled/textured tips, tip shape/rotation and deterministic spacing/size/opacity/color dynamics.
+- [ ] Prioritize brush flow, sampled/textured tips, accurate tip shape/rotation feedback and deterministic spacing/size/opacity/color dynamics through cached native tools.
 - [ ] Add brush preset editing/import/export within a bounded, versioned MiCoPi format.
-- [ ] Add straight-line/angle-assisted strokes, symmetry and useful smoothing modes.
+- [ ] Add straight-line/angle-assisted strokes, symmetry and configurable smoothing/stabilization modes with explicit latency and pressure-continuity behavior.
 - [ ] Add clone stamp and measured blur/sharpen/smudge tools through native plugins.
 - [ ] Surface tilt/rotation/device capability data with explicit unsupported-device fallbacks.
 - [ ] Evaluate external brush/palette/pattern formats individually with compatibility fixtures.
@@ -127,6 +146,10 @@ Acceptance: parameter units/ranges and alpha/color behavior are documented; dete
 Acceptance: seeded dynamics replay exactly; cursor previews match configured tips; legacy typed-tool prefixes remain readable; benchmark pen input, commit cost, allocations and preset/texture cache bounds. Physical driver support needs named hardware evidence.
 
 ### P7 — Text, shapes and layout aids
+
+Editable text and the larger path/vector model follow the painting-priority
+slices above. Guides and view aids may ship independently when they improve the
+drawing workflow.
 
 - [ ] Add editable point/paragraph text with font, size, color, alignment, line spacing and CJK rendering.
 - [ ] Add rectangle, ellipse, polygon and line tools with fill/stroke controls.
@@ -137,6 +160,10 @@ Acceptance: seeded dynamics replay exactly; cursor previews match configured tip
 Acceptance: text/shape content remains independent of UI language; fonts and fallback behavior are explicit; snapping units and zoom/DPI transforms agree across viewports; text/vector rasterization is isolated behind a documented plugin or rendering contract.
 
 ### P8 — Files, export and practical workspace
+
+Complex layered interchange and photographic color-management expansion follow
+the painting-priority slices. Keep their compatibility and malformed-input gates
+visible; ordinary save/export reliability remains part of daily painting.
 
 - [ ] Add explicit JPEG/WebP export with quality, scale, alpha/background policy and preview.
 - [ ] Evaluate TIFF and OpenRaster layered interchange with read/write limits and round-trip fixtures.

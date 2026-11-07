@@ -32,6 +32,16 @@ Current boundaries include one document per Session, in-process native plugins, 
 
 M2, M3 and M4 can progress independently after their foundation requirements are met. Every new editing feature must support actions, schemas, undo, recording and headless execution when introduced; AI integration is not deferred to a later rewrite.
 
+Within that foundation, the next editing slices prioritize anime/manga painting:
+reliable blend/mask behavior, linked multi-layer Move/Free Transform,
+non-destructive affect-below adjustment layers, brush flow/tips/dynamics/presets
+and stabilization, then bounded Liquify corrections. The 26 color blend modes
+are delivered; deterministic Dissolve remains pending in the
+[editing checklist](docs/photoshop-essentials.md#p4--layer-organization-and-masks).
+Editable text, complex photographic features and layered interchange remain
+later backlog work. P1–P8 identify areas of that checklist rather than a strict
+requirement to finish every earlier area first.
+
 The next plugin increment should build on the existing registry: an authoring kit and conformance runner, clearer package diagnostics and upgrade guidance. Locale edits already hot-reload; package activation, contribution changes and DLL replacement still require restart. Do not present runtime DLL unloading or a plugin marketplace as available. Reliability measurement and selection contracts remain priorities alongside plugin authoring.
 
 The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essentials.md) breaks the PhotoCraft-inspired functional work into P1–P8 increments. Follow its dependency order and acceptance checks while preserving the architecture and reliability gates above; unchecked entries remain planned work.
@@ -80,6 +90,9 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 - [x] Add mask-bearing Group Delete with complete descendant owner removal, original-order result-ID arrays, explicit target/selection fallback, one compound Undo/revision/outcome and exact failure recovery. Retain unrelated raw buffers/filter semantics, compact A8 damage and checkpoint-isolated resurrection; see [Mask group deletion](docs/mask-group-delete.md).
 - [x] Add mask-bearing Group Duplicate with fresh breadth-first group, depth-first raster and source-ordered mask IDs; exact independent raw storage, mapped paint targets, explicit empty/nonempty selection and one compound Undo/revision/outcome. Preflight complete source/candidate limits before copying and preserve exact failure/checkpoint rollback; see [Mask group duplication](docs/mask-group-duplicate.md).
 - [ ] Complete owner linked/unlinked layer/mask Move/Free Transform, ungrouping, structural batches, Layer via Copy/Cut, every merge/flatten/clipboard boundary and group-mask application. The full raster-mask feature remains unchecked until this matrix, public contracts and delivery gates pass. See [Raster Masks Design](docs/raster-masks-design.md).
+- [ ] Add persistent explicit stable-ID layer link sets, linked Move followed by linked Free Transform, and align/distribute. Preflight every target's locks, masks and storage before one undo/revision/outcome; keep painting on the distinct active layer and preserve unselected/unlinked buffers.
+- [ ] Add non-destructive ordered adjustment layers that affect content below them within explicit group/isolation/Pass Through and mask scope, alongside plugin nodes and direct pixel adjustments. Preserve source pixels, define opacity/blending and transparent-edge behavior, and share persistence, actions, undo and verified outcomes.
+- [ ] Add bounded native plugin Liquify with deterministic mesh/stroke deformation, immutable-source sampling, reversible cached previews and apply/cancel. Require explicit clipping/interpolation, one undo/revision/outcome, exact failure recovery, plugin-independent replay and measured contact latency/memory before delivery.
 - [x] Make implemented structural/multi-layer edits undoable with buffer ownership and explicit batch undo groups, separately from atomic failure rollback.
 - [x] Add bounded selection persistence, native shape/combine commands, PS selection shortcuts and drawing/action output clipping.
 - [x] Add direct rectangle/ellipse marquee and freehand/polygonal lasso gestures, reversible previews and connected-fill selection traversal.
@@ -118,7 +131,7 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 ## M4 — Brush and tablet refinement
 
 - [x] Add configurable dab spacing, minimum pressure opacity and inline pressure curve controls through the typed painting path.
-- [ ] Add flow, textured tips and richer brush dynamics through tool plugins, with accurate size/shape cursor previews.
+- [ ] Prioritize flow, sampled/textured tips, deterministic tip/size/opacity/color dynamics and bounded versioned brush preset editing/import/export through tool plugins, with accurate size/shape cursor previews. Refine configurable smoothing/stabilization with measured latency, pressure continuity and cache bounds.
 - [ ] Surface tilt, rotation and device capabilities where the backend supports them, with explicit fallbacks for other devices and headless input.
 - [ ] Build a Windows Ink device/driver test matrix covering hover, fast movement, focus changes, DPI, capture loss and interrupted contact.
 - [ ] Profile before adding SIMD, parallel tile work or GPU painting. Preserve a lightweight CPU/headless path and document any rendering differences.
@@ -146,6 +159,13 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 **Acceptance:** selected replay ranges export without changing the artwork, cancellation leaves the source recording intact, and the portable package works from a fresh profile. Format upgrades preserve supported old projects and recordings. Published performance claims include workload, build and hardware context.
 
 ## Deliberately deferred
+
+Editable text/path expansion, complex photographic processing and layered
+PSD/TIFF/OpenRaster interchange remain visible later requirements in the
+[editing checklist](docs/photoshop-essentials.md). They follow the current
+painting, linked-layer, adjustment-layer and brush priorities rather than being
+removed from scope. Ordinary file integrity and save/export fixes remain daily
+workflow requirements.
 
 Cloud accounts, mandatory online AI, real-time collaboration, a plugin marketplace, a general scripting runtime and full Photoshop compatibility are not near-term commitments. macOS/Linux support and untrusted-plugin sandboxing require separate platform and execution designs. These may be explored after the Windows editing foundation is dependable and their costs are measured.
 
