@@ -1402,5 +1402,14 @@
   "Raster mask": "ラスターマスク",
   "Mask only; layer pixels stay fixed.": "マスクのみを移動し、レイヤーピクセルは固定します。",
   "Unlinked mask stays fixed.": "リンクしていないマスクは固定します。",
-  "Exposed mask areas reveal the layer.": "マスクの空いた領域にはレイヤーの内容が表示されます。"
+  "Exposed mask areas reveal the layer.": "マスクの空いた領域にはレイヤーの内容が表示されます。",
+  "Link Selected": "選択レイヤーをリンク",
+  "Unlink Selected": "選択レイヤーのリンクを解除",
+  "Linked for movement": "一緒に移動するリンク済みレイヤー",
+  "{} linked layers move together.": "{} 枚のリンク済みレイヤーを一緒に移動します。",
+  "Painting stays on the active layer.": "描画はアクティブレイヤーのみに反映されます。",
+  "Links apply to Move and nudges. Painting stays on the active layer. Linked Free Transform is not available yet.": "リンクは移動と矢印キーによる微調整に適用されます。描画はアクティブレイヤーのみが対象で、リンクした自由変形にはまだ対応していません。",
+  "Inspect Layer Links": "レイヤーリンクを確認",
+  "Link or Unlink Layers": "レイヤーをリンク／解除",
+  "Persistent raster layer links": "レイヤーリンクの状態"
 }

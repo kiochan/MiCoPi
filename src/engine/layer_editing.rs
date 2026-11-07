@@ -43,7 +43,7 @@ impl Document {
             }
             graph.compile(ids.len())?;
         }
-        let metadata: Vec<_> = ids
+        let mut metadata: Vec<_> = ids
             .iter()
             .map(|id| {
                 let source = copies
@@ -55,6 +55,7 @@ impl Document {
                 m
             })
             .collect();
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         self.prepare_group_plan(
             &graph,
             groups.as_ref(),
@@ -70,12 +71,13 @@ impl Document {
         if selected.len() >= self.layers.len() {
             return Err("The final layer cannot be deleted".into());
         }
-        let metadata: Vec<_> = self
+        let mut metadata: Vec<_> = self
             .layer_metadata
             .iter()
             .filter(|m| !selected.contains(&m.id))
             .cloned()
             .collect();
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         self.reindexed_graph(&metadata, None)?
             .compile(metadata.len())?;
         Ok(())
@@ -210,8 +212,10 @@ impl Document {
                 pixel_locked: staged.is_none() && self.pixel_locked(index),
                 position_locked: staged.is_none() && self.position_locked(index),
                 color_label: self.color_label(index),
+                links: None,
             },
         );
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let graph =
             self.reindexed_graph(&metadata, Some((self.layer_id(index), self.next_layer_id)))?;
         let mut groups = self.groups.clone();
@@ -325,6 +329,7 @@ impl Document {
                 ..Default::default()
             },
         );
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let graph = self.reindexed_graph(&metadata, None)?;
         let mut groups = self.groups.clone();
         if let Some(tree) = &mut groups {
@@ -401,6 +406,7 @@ impl Document {
         let mut metadata = self.layer_metadata.clone();
         let moved = metadata.remove(index);
         metadata.insert(to, moved);
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let graph = self.reindexed_graph(&metadata, None)?;
         let modes: Vec<_> = metadata
             .iter()
@@ -451,6 +457,7 @@ impl Document {
         }
         let mut metadata = self.layer_metadata.clone();
         metadata.remove(index);
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let graph = self.reindexed_graph(&metadata, None)?;
         let mut groups = self.groups.clone();
         if let Some(tree) = &mut groups {

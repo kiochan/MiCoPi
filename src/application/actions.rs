@@ -152,6 +152,8 @@ pub enum Operation {
     SelectLayer,
     LayerProperties,
     LayerQuery,
+    LayerLinks,
+    LayerLinksQuery,
     MaskQuery,
     MaskCreate,
     MaskDelete,
@@ -238,6 +240,7 @@ impl Operation {
                 | Self::DeleteLayer
                 | Self::SelectLayer
                 | Self::LayerProperties
+                | Self::LayerLinks
                 | Self::LayerSelection
                 | Self::LayerBatch
                 | Self::MergeDown
@@ -279,6 +282,7 @@ impl Operation {
                 self,
                 Self::DuplicateLayer
                     | Self::DeleteLayer
+                    | Self::LayerLinks
                     | Self::LayerBatch
                     | Self::GroupCreate
                     | Self::GroupCreateSelected
@@ -545,6 +549,10 @@ impl Operation {
                 json!({"index":{"type":"integer","minimum":0,"maximum":15},"layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},"visible":{"type":"boolean"},"alpha_locked":{"type":"boolean"},"pixel_locked":{"type":"boolean"},"position_locked":{"type":"boolean"},"color_label":{"type":"string","enum":["none","red","orange","yellow","green","blue","violet","gray"]},"opacity":{"type":"number","minimum":0,"maximum":1},"blend_mode":{"type":"string","enum":crate::engine::graph::BlendMode::ALL}}),
                 vec![],
             ),
+            Self::LayerLinks => (
+                json!({"layer_ids":{"type":"array","minItems":1,"maxItems":16,"items":{"type":"integer","minimum":1,"maximum":4294967295u64},"description":"Explicit raster IDs, independent of active painting or multi-selection."},"linked":{"type":"boolean","description":"Link at least two layers, joining their existing link sets, or unlink the explicit layers and retain other members."}}),
+                vec!["layer_ids", "linked"],
+            ),
             Self::Pick => (json!({"x":number,"y":number}), vec!["x", "y"]),
             Self::View => (
                 json!({"zoom":{"type":"number","minimum":0.02,"maximum":32},"pan_x":{"type":"number","minimum":-1000000,"maximum":1000000},"pan_y":{"type":"number","minimum":-1000000,"maximum":1000000},"fit":{"type":"boolean"}}),
@@ -571,6 +579,10 @@ impl Operation {
             ),
             _ => (json!({}), vec![]),
         };
+        let mut props = props;
+        if matches!(self, Self::MovePixels | Self::Nudge) {
+            props["layer_ids"] = crate::plugins::layer_links::ids_schema();
+        }
         json!({"type":"object","properties":props,"required":required,"additionalProperties":false})
     }
     pub fn read_only(self) -> bool {
@@ -593,6 +605,7 @@ impl Operation {
                 | Self::ContextRead
                 | Self::State
                 | Self::LayerQuery
+                | Self::LayerLinksQuery
                 | Self::GroupQuery
                 | Self::MaskQuery
                 | Self::MaskSnapshot

@@ -64,7 +64,7 @@ pub(crate) fn execute(s: &Session, args: &Value) -> Result<Value, ActionError> {
     Ok(
         json!({"total":s.doc.layers.len(),"matched":layers.len(),"layers":layers,
         "revision":s.revision,"drawing":s.is_drawing(),
-        "selected_layer_ids":s.doc.selected_layer_ids(),"active_layer_id":s.doc.layer_id(s.doc.active)}),
+        "selected_layer_ids":s.doc.selected_layer_ids(),"active_layer_id":s.doc.layer_id(s.doc.active),"layer_links":s.doc.layer_link_sets()}),
     )
 }
 pub(crate) fn schema() -> Value {

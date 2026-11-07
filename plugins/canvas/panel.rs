@@ -206,7 +206,7 @@ impl Editor {
         middle: bool,
         mods: Modifiers,
     ) -> bool {
-        if self.masked_movement_input(held, middle) {
+        if self.guarded_movement_input(held, middle) {
             return self.movement_start(self.document_position(p));
         }
         self.push_gui_parameters();
@@ -379,17 +379,17 @@ impl Editor {
                 .any(|s| matches!(s.phase, PenPhase::Down | PenPhase::Move | PenPhase::Up));
         for packet in packets.iter().copied() {
             let p = pos2(packet.x, packet.y) / ctx.pixels_per_point();
-            let masked_move_down = matches!(packet.phase, PenPhase::Down)
+            let guarded_move_down = matches!(packet.phase, PenPhase::Down)
                 && !self.blocked
                 && on_canvas(p)
-                && self.masked_movement_input(held, false);
-            if !matches!(packet.phase, PenPhase::Cancel | PenPhase::Leave) && !masked_move_down {
+                && self.guarded_movement_input(held, false);
+            if !matches!(packet.phase, PenPhase::Cancel | PenPhase::Leave) && !guarded_move_down {
                 self.pen_hover = Some(p);
                 self.pen_eraser = packet.eraser;
             }
             match packet.phase {
                 PenPhase::Down if !self.blocked && on_canvas(p) => {
-                    if masked_move_down {
+                    if guarded_move_down {
                         if self.pointer_down(
                             p,
                             packet.pressure,
@@ -419,12 +419,12 @@ impl Editor {
                     self.selection_move(self.document_position(p), mods.shift);
                 }
                 PenPhase::Up if self.pen_active => {
-                    let masked_outline = self.masked_movement_pending();
+                    let guarded_outline = self.guarded_movement_pending();
                     self.move_pointer(p, self.pressure, packet.time, true, mods.shift);
                     self.movement_release();
                     self.area_up();
                     self.selection_release();
-                    if !self.polygon_pending() && !masked_outline {
+                    if !self.polygon_pending() && !guarded_outline {
                         self.finish_stroke();
                     }
                     self.pen_active = false;
@@ -453,9 +453,9 @@ impl Editor {
                         ..
                     } if button == PointerButton::Primary || button == PointerButton::Middle => {
                         if pressed && !self.blocked && on_canvas(pos) {
-                            let masked_move =
-                                self.masked_movement_input(held, button == PointerButton::Middle);
-                            if !masked_move {
+                            let guarded_move =
+                                self.guarded_movement_input(held, button == PointerButton::Middle);
+                            if !guarded_move {
                                 self.pen_eraser = false;
                             }
                             let admitted = self.pointer_down(
@@ -467,11 +467,11 @@ impl Editor {
                                 button == PointerButton::Middle,
                                 mods,
                             );
-                            if masked_move && admitted {
+                            if guarded_move && admitted {
                                 self.pen_eraser = false;
                             }
                         } else if !pressed {
-                            let masked_outline = self.masked_movement_pending();
+                            let guarded_outline = self.guarded_movement_pending();
                             let finish_owned =
                                 self.input_owned || self.session.pointer_checkpoint.is_none();
                             if self.movement_gesture.is_some() {
@@ -486,7 +486,7 @@ impl Editor {
                                 self.move_pointer(pos, 1., time, false, mods.shift);
                                 self.area_up();
                             }
-                            if !self.polygon_pending() && finish_owned && !masked_outline {
+                            if !self.polygon_pending() && finish_owned && !guarded_outline {
                                 self.finish_stroke();
                             }
                         }

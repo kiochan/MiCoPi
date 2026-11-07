@@ -392,9 +392,9 @@ impl Editor {
         self.settings.keys.ui_hint(id).unwrap_or_default()
     }
     fn finish_stroke(&mut self) {
-        // A masked Move outline was admitted at idle and owns no native
+        // A guarded Move outline was admitted at idle and owns no native
         // contact. A later external stream must survive local cancellation.
-        if !self.masked_movement_pending() {
+        if !self.guarded_movement_pending() {
             self.session.finish_stroke();
         }
         self.clear_local_contact();

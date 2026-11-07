@@ -34,8 +34,10 @@ pub(crate) mod export;
 mod geometry;
 pub(crate) mod groups;
 pub(crate) mod layer_batch;
+pub(crate) mod layer_links;
 mod layer_transfer;
 mod layers;
+mod linked_movement;
 mod mask_geometry;
 pub(crate) mod movement;
 mod owner_movement;
@@ -68,6 +70,8 @@ pub(crate) fn execute(
         | GroupSelectLayers => groups::execute(session, op, args),
         LayerQuery => crate::application::layer_query::execute(session, &args),
         LayerBatch => layer_batch::execute(session, args),
+        LayerLinks => layer_links::execute(session, args),
+        LayerLinksQuery => Ok(layer_links::query(session)),
         Export | Render | ExportPlan | ExportPreview | ExportDialog => {
             export::execute(session, op, args)
         }

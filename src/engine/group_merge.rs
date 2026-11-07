@@ -171,7 +171,7 @@ impl Document {
             return Err("Group merge exceeds the document pixel limit".into());
         }
         let insert = new_ids.iter().position(|id| *id == raster_id).unwrap();
-        let metadata: Vec<_> = new_ids
+        let mut metadata: Vec<_> = new_ids
             .iter()
             .map(|id| {
                 if *id == raster_id {
@@ -185,6 +185,7 @@ impl Document {
                 }
             })
             .collect();
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let modes: Vec<_> = new_ids
             .iter()
             .map(|id| {
@@ -251,7 +252,7 @@ impl Document {
         tree.roots.push(GroupItem::layer(retained.id));
         let new_ids = tree.layer_ids()?;
         let insert = new_ids.len() - 1;
-        let metadata: Vec<_> = new_ids
+        let mut metadata: Vec<_> = new_ids
             .iter()
             .map(|id| {
                 if *id == retained.id {
@@ -265,6 +266,7 @@ impl Document {
                 }
             })
             .collect();
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let modes: Vec<_> = new_ids
             .iter()
             .map(|id| {

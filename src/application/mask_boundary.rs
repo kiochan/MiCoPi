@@ -11,6 +11,11 @@ impl Session {
         operation: Option<Operation>,
         args: &Value,
     ) -> Result<(), ActionError> {
+        if matches!(operation, Some(Operation::MovePixels | Operation::Nudge))
+            && args.get("layer_ids").is_some()
+        {
+            return crate::plugins::movement::admit_linked(self, args);
+        }
         if !self.doc.has_raster_masks() {
             return Ok(());
         }

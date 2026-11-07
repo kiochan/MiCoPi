@@ -86,6 +86,8 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/engine/canvas_editing.rs` | Staged geometry, shared transform validation/publication and borrowed-source preview composition |
 | `src/plugins/owner_movement.rs`, `src/engine/owner_movement.rs`, `src/application/owner_movement_tests.rs`, `scripts/smoke-owner-movement.py` | Whole-domain integer destination/source admission, borrowed one-owner native staging, raw-only compound history and cross-client reference/rollback checks |
 | `plugins/canvas/movement.rs`, `plugins/canvas/movement_mask_ui_tests.rs` | Contact-safe masked outline gestures, stable destination capture, localized owner/link feedback and actual mouse/pen/nudge regressions |
+| `src/engine/layer_links.rs`, `src/plugins/layer_links.rs`, `src/plugins/linked_movement.rs` | Strict persistent raster relationships, structural projection, shared action/state contracts and explicit-set staging/grouped history |
+| `plugins/layers/links.rs`, `plugins/canvas/linked_movement_ui_tests.rs`, `src/application/linked_movement_tests.rs` | Link controls, captured linked Move/nudge targets, active-only painting and shared input/workflow/rollback/persistence regressions |
 | `plugins/painting/src/a8_sampler.rs`, `src/plugins/native_a8_sampler_tests.rs` | Optional borrowed dense/uniform A8 reframe/permutation/sampling ABI, native validation and host negotiation checks |
 | `src/application/canvas_geometry.rs`, `src/application/image_size.rs` | Shared frame/unit plans, separate raster/selection/raw-A8 costs, contact state and sampler capability |
 | `src/plugins/mask_geometry.rs` | Cached borrowed native A8 staging, complete ordered mask bundles and idle geometry admission |

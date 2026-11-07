@@ -100,6 +100,24 @@ pub struct LayerMetadata {
     pub position_locked: bool,
     #[serde(default, skip_serializing_if = "LayerColor::is_none")]
     pub color_label: LayerColor,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub links: Option<LayerLinks>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LayerLinks {
+    pub version: u32,
+    pub layer_ids: Vec<u64>,
+}
+impl LayerMetadata {
+    fn memory_bytes(&self) -> usize {
+        self.name.len()
+            + std::mem::size_of::<Self>()
+            + self
+                .links
+                .as_ref()
+                .map_or(0, |links| links.layer_ids.len() * 8)
+    }
 }
 impl Composition {
     pub fn validate_layer_metadata(&self) -> Result<(), String> {
@@ -151,6 +169,7 @@ impl Composition {
         {
             return Err("Invalid layer identities or names".into());
         }
+        validate_layer_links(&self.layer_metadata)?;
         if let Some(tree) = &self.groups {
             if !self.graph.linked {
                 return Err("Groups require linked layer-filter composition".into());
@@ -679,7 +698,7 @@ impl Document {
                 + before
                     .layer_metadata
                     .iter()
-                    .map(|m| m.name.len() + std::mem::size_of::<LayerMetadata>())
+                    .map(LayerMetadata::memory_bytes)
                     .sum::<usize>()
                 + 64,
             composition: Some(before),
@@ -1366,7 +1385,7 @@ impl Document {
                 + state
                     .layer_metadata
                     .iter()
-                    .map(|m| m.name.len() + std::mem::size_of::<LayerMetadata>())
+                    .map(LayerMetadata::memory_bytes)
                     .sum::<usize>()
                 + 64;
         } else if let Some(change) = &mut e.mask_change {
@@ -1450,6 +1469,7 @@ impl Document {
                 ..Default::default()
             },
         );
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let graph = self.reindexed_graph(&metadata, None)?;
         if self.next_layer_id > u32::MAX as u64 {
             return Err("Layer identity limit reached".into());
@@ -1830,10 +1850,13 @@ mod group_editing;
 mod group_merge;
 #[path = "layer_editing.rs"]
 mod layer_editing;
+#[path = "layer_links.rs"]
+mod layer_links;
 #[path = "layer_merge.rs"]
 mod layer_merge;
 #[path = "layer_selection.rs"]
 mod layer_selection;
+use layer_links::{project_layer_links, validate_layer_links};
 #[path = "mask_apply.rs"]
 mod mask_apply;
 #[path = "mask_composition.rs"]
@@ -1850,6 +1873,7 @@ mod mask_owner_editing;
 mod mix;
 #[path = "owner_movement.rs"]
 mod owner_movement;
+pub(crate) use owner_movement::OWNER_MOVE_STAGING_LIMIT;
 #[path = "raster_mask_editing.rs"]
 mod raster_mask_editing;
 #[path = "raster_mask_project.rs"]

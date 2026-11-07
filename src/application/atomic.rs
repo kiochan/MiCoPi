@@ -143,6 +143,7 @@ impl Operation {
                 | Self::StampVisible
                 | Self::SelectLayer
                 | Self::LayerProperties
+                | Self::LayerLinks
                 | Self::LayerSelection
                 | Self::LayerBatch
                 | Self::GroupCreate

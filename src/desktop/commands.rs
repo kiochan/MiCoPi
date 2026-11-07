@@ -60,7 +60,7 @@ impl Editor {
         match action {
             Action::OpenPalette
             | Action::UiCommand(10140 | 10144 | 10145 | 10166..=10174 | 10200) => true,
-            Action::UiCommand(10176..=10183) if self.session.doc.has_raster_masks() => true,
+            Action::UiCommand(10176..=10183) if self.movement_contact_guarded() => true,
             Action::UiCommand(id) => self.settings.keys.plugin_action(id).is_some_and(|id| {
                 self.session
                     .registry
@@ -709,7 +709,19 @@ impl Studio {
                         }
                         10176..=10183 => {
                             let i = id - 10176;
-                            self.editor.core("canvas.nudge",serde_json::json!({"direction":(["left","right","up","down"][(i%4) as usize]),"large":i>=4}));
+                            let mut args = serde_json::json!({"direction":(["left","right","up","down"][(i%4) as usize]),"large":i>=4});
+                            match self.editor.linked_movement_ids() {
+                                Ok(Some(ids)) => {
+                                    args["layer_ids"] = serde_json::json!(ids);
+                                    args["target"] = serde_json::json!("layer");
+                                }
+                                Ok(None) => {}
+                                Err(error) => {
+                                    self.editor.status = error.to_string();
+                                    continue;
+                                }
+                            }
+                            self.editor.core("canvas.nudge", args);
                             self.editor.sync_from_session();
                         }
                         10174 => self.editor.open_trim_canvas(),

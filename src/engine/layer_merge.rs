@@ -190,6 +190,7 @@ impl Document {
             modes.insert(insert, BlendMode::Normal);
             (insert, indices)
         };
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let ids: Vec<_> = metadata.iter().map(|m| m.id).collect();
         let old_ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
         let baked = if operation == MergeLayers::Stamp {

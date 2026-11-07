@@ -1,0 +1,24 @@
+{"action":"canvas.new","args":{"width":160,"height":120}}
+{"action":"layer.rename","args":{"name":"Paper"}}
+{"action":"layer.fill_color","args":{"color":"#F5EDF5"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Ink cel"}}
+{"action":"layer.fill_color","args":{"color":"#68538F"}}
+{"action":"mask.create","args":{"owner":{"kind":"layer","id":2},"select":false}}
+{"action":"mask.fill","args":{"mask_id":1,"value":192}}
+{"action":"layer.add","args":{}}
+{"action":"layer.rename","args":{"name":"Highlight"}}
+{"action":"layer.fill_color","args":{"color":"#E8B2CD"}}
+{"action":"layer.set","args":{"opacity":0.4}}
+{"action":"layer.links.set","args":{"layer_ids":[3,2],"linked":true}}
+{"action":"layer.links.query","args":{}}
+{"action":"canvas.move","args":{"layer_ids":[2,3],"dx":12,"dy":-6}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}
+{"action":"canvas.nudge","args":{"layer_ids":[2,3],"direction":"down","large":true}}
+{"action":"layer.links.set","args":{"layer_ids":[3],"linked":false}}
+{"action":"layer.links.query","args":{}}
+{"action":"canvas.export","args":{"path":"target/example-output/layer-links.png"}}
+{"action":"document.save","args":{"path":"target/example-output/layer-links.mcp"}}
+{"action":"replay.export","args":{"path":"target/example-output/layer-links.mcreplay"}}
+{"action":"replay.verify","args":{}}

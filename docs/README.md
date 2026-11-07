@@ -30,6 +30,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Painting Tools](painting-tools.md) | Pressure controls, connected fill, gradient gestures and performance limits |
 | [Command Contact Admission](command-contact-admission.md) | Private cached frontend policy, shared execution, argument-form synchronization fences and native/local input continuity |
 | [Raster Owner Movement](raster-owner-movement.md) | Linked layer/mask integer Move, independent stable-mask targets, outline admission, compound history and exact clipping/fill rules |
+| [Layer Links](layer-links.md) | Persistent raster sets, explicit multi-owner Move/nudge, active-only painting, grouped history and shared action/state nodes |
 | [Atomic Operations](atomic-operations.md) | Rollback, plugin capabilities, contact commits and compact event storage |
 | [Verified Replay](replay.md) | Event journal, integrity checks, time-lapse preview and frame export |
 | [Project Structure](project-structure.md) | Directory responsibilities, generated files and Git boundaries |

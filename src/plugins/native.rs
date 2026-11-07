@@ -3564,6 +3564,14 @@ pub(crate) fn require_movement(s: &Session, pixels: bool, selection: bool) -> Re
 }
 
 pub(crate) fn move_pixels(s: &Session, o: &abi::Move) -> Result<Vec<u32>, String> {
+    move_layer_pixels(s, s.doc.active, o)
+}
+/// Cold immutable-source sampling without changing active or selected targets.
+pub(crate) fn move_layer_pixels(
+    s: &Session,
+    index: usize,
+    o: &abi::Move,
+) -> Result<Vec<u32>, String> {
     let kernel = s
         .registry
         .native_plugins
@@ -3571,7 +3579,12 @@ pub(crate) fn move_pixels(s: &Session, o: &abi::Move) -> Result<Vec<u32>, String
         .and_then(|p| p.movement)
         .and_then(|a| a.pixels)
         .ok_or("Painting DLL does not support integer movement")?;
-    let pixels = &s.doc.layers[s.doc.active].pixels;
+    let pixels = &s
+        .doc
+        .layers
+        .get(index)
+        .ok_or("Layer does not exist")?
+        .pixels;
     let source = abi::Pixels {
         data: pixels.as_ptr() as *mut u32,
         len: pixels.len(),
@@ -3834,5 +3847,15 @@ impl NativePlugin {
         api: Option<abi::A8SamplerApi>,
     ) -> Option<abi::A8SamplerApi> {
         std::mem::replace(&mut self.a8_sampler, api)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn replace_movement_pixels_for_test(
+        &mut self,
+        pixels: Option<abi::MovePixelsFn>,
+    ) -> Option<abi::MovePixelsFn> {
+        self.movement
+            .as_mut()
+            .and_then(|api| std::mem::replace(&mut api.pixels, pixels))
     }
 }

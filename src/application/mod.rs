@@ -99,6 +99,8 @@ pub use movement_preferences::{MoveTarget, MovementPreferences};
 #[cfg(test)]
 mod affine_tests;
 #[cfg(test)]
+mod linked_movement_tests;
+#[cfg(test)]
 mod movement_tests;
 #[cfg(test)]
 mod owner_movement_tests;

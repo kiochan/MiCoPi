@@ -1402,5 +1402,14 @@
   "Raster mask": "Raster mask",
   "Mask only; layer pixels stay fixed.": "Mask only; layer pixels stay fixed.",
   "Unlinked mask stays fixed.": "Unlinked mask stays fixed.",
-  "Exposed mask areas reveal the layer.": "Exposed mask areas reveal the layer."
+  "Exposed mask areas reveal the layer.": "Exposed mask areas reveal the layer.",
+  "Link Selected": "Link Selected",
+  "Unlink Selected": "Unlink Selected",
+  "Linked for movement": "Linked for movement",
+  "{} linked layers move together.": "{} linked layers move together.",
+  "Painting stays on the active layer.": "Painting stays on the active layer.",
+  "Links apply to Move and nudges. Painting stays on the active layer. Linked Free Transform is not available yet.": "Links apply to Move and nudges. Painting stays on the active layer. Linked Free Transform is not available yet.",
+  "Inspect Layer Links": "Inspect Layer Links",
+  "Link or Unlink Layers": "Link or Unlink Layers",
+  "Persistent raster layer links": "Persistent raster layer links"
 }

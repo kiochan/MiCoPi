@@ -1402,5 +1402,14 @@
   "Raster mask": "栅格蒙版",
   "Mask only; layer pixels stay fixed.": "仅移动蒙版，图层像素保持不动。",
   "Unlinked mask stays fixed.": "未链接的蒙版保持不动。",
-  "Exposed mask areas reveal the layer.": "蒙版空出的区域会显示图层内容。"
+  "Exposed mask areas reveal the layer.": "蒙版空出的区域会显示图层内容。",
+  "Link Selected": "链接所选图层",
+  "Unlink Selected": "取消链接所选图层",
+  "Linked for movement": "已链接，可一起移动",
+  "{} linked layers move together.": "{} 个链接图层将一起移动。",
+  "Painting stays on the active layer.": "绘画仍只作用于活动图层。",
+  "Links apply to Move and nudges. Painting stays on the active layer. Linked Free Transform is not available yet.": "链接用于一起移动和微移图层。绘画仍只作用于活动图层，暂不支持联动自由变换。",
+  "Inspect Layer Links": "查看图层链接",
+  "Link or Unlink Layers": "链接或取消链接图层",
+  "Persistent raster layer links": "图层链接状态"
 }

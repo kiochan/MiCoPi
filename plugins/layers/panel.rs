@@ -6,6 +6,8 @@ use std::{hash::Hasher, sync::Arc};
 
 #[path = "groups.rs"]
 mod groups;
+#[path = "links.rs"]
+mod links;
 #[path = "masks.rs"]
 mod masks;
 #[path = "merge_selected.rs"]
@@ -1054,6 +1056,7 @@ impl Editor {
                 ui.weak(tr(format!("{} / 16", self.session.doc.layers.len())));
             });
         });
+        self.layer_link_controls_ui(ui, &mut pending, focus.is_none());
         let a = self.settings.ui.clone();
         if !self.group_properties_ui(ui, &mut pending) {
             let index = self.session.doc.active;
@@ -1550,7 +1553,13 @@ impl Editor {
                 (properties.pixels, '\u{e899}', "Pixel Locked"),
                 (properties.position, '\u{e89f}', "Position Locked"),
             ];
-            let badge_count = badges.iter().filter(|(enabled, _, _)| *enabled).count();
+            let linked = self
+                .session
+                .doc
+                .linked_layer_ids(self.session.doc.layer_id(index))
+                .is_ok_and(|ids| ids.len() > 1);
+            let badge_count =
+                badges.iter().filter(|(enabled, _, _)| *enabled).count() + usize::from(linked);
             let badge_width = a.small_font_size + a.item_spacing;
             let badge_left = (text_right - badge_count as f32 * badge_width).max(text_left);
             layer_text(
@@ -1588,7 +1597,21 @@ impl Editor {
                         colors.muted,
                     );
             }
+            if linked {
+                let rect = Rect::from_min_size(
+                    pos2(
+                        text_right - badge_width,
+                        r.bottom() - a.item_spacing - detail_height,
+                    ),
+                    vec2(badge_width, detail_height),
+                );
+                links::chain(ui.painter(), rect.center(), a.small_font_size, colors.muted);
+            }
             let mut hint = format!("{}\n{}", name, localize(properties.color.title()));
+            if linked {
+                hint.push('\n');
+                hint.push_str(&localize("Linked for movement"));
+            }
             for (_, _, title) in badges.iter().filter(|(enabled, _, _)| *enabled) {
                 hint.push('\n');
                 hint.push_str(&localize(*title));

@@ -376,3 +376,319 @@ fn owner_move_preflight_checks_complete_raw_storage_effect_capabilities_and_budg
     assert_eq!(doc.layers[0].pixels.len(), 1);
     assert!(doc.undo.is_empty());
 }
+
+#[test]
+fn owner_moves_explicit_nonactive_pairs_share_one_raw_history_group() {
+    let mut doc = fixture();
+    doc.try_add_layer().unwrap();
+    doc.set_layer_links(&[1, 2], true).unwrap();
+    doc.set_layer_selection(&[2, 3], Some(3)).unwrap();
+    doc.set_mask_target(PaintTarget::Mask { id: 2 }).unwrap();
+    doc.undo.clear();
+    doc.redo.clear();
+    doc.replay_tiles.clear();
+    doc.replay_mask_tiles.clear();
+    let before = doc.composition();
+    let original: Vec<_> = doc
+        .layers
+        .iter()
+        .map(|layer| layer.pixels.clone())
+        .collect();
+    let original_raw = [raw(&doc, 1), raw(&doc, 3)];
+    let untouched = doc.layers[2].pixels.as_ptr();
+    assert_eq!(
+        doc.validate_owner_moves(&[2, 1]).unwrap(),
+        vec![(2, Some(3)), (1, Some(1))]
+    );
+    assert!(doc.validate_owner_move(Some(2), Some(3)).is_err());
+    let output_a = vec![0xff123456; 6];
+    let output_b = vec![0xffabcdef; 6];
+    assert!(doc
+        .apply_owner_moves(vec![
+            (2, output_b.clone(), Some((3, SamplePlane::Uniform(255)))),
+            (
+                1,
+                output_a.clone(),
+                Some((1, SamplePlane::Dense(vec![255, 255, 255, 1, 12, 23])))
+            ),
+        ])
+        .unwrap());
+    assert_eq!(doc.composition(), before);
+    assert_eq!(doc.layers[0].pixels, output_a);
+    assert_eq!(doc.layers[1].pixels, output_b);
+    assert_eq!(doc.layers[2].pixels.as_ptr(), untouched);
+    let group = doc.undo[0].group.as_ref().unwrap();
+    assert_eq!(doc.undo.len(), 1);
+    assert_eq!(group.edits.len(), 2);
+    assert_eq!(
+        group
+            .edits
+            .iter()
+            .map(|edit| edit.layer)
+            .collect::<Vec<_>>(),
+        vec![1, 0]
+    );
+    assert!(group
+        .edits
+        .iter()
+        .all(|edit| edit.composition.is_none() && edit.layer_change.is_none()));
+    assert_eq!(doc.history_bytes(), (6 * 4 + 6) * 2 + 2 * 8 + 64);
+    assert_eq!(
+        doc.replay_tiles.iter().copied().collect::<Vec<_>>(),
+        vec![(0, 0), (1, 0)]
+    );
+    assert_eq!(
+        doc.replay_mask_tiles.iter().copied().collect::<Vec<_>>(),
+        vec![(1, 0), (3, 0)]
+    );
+    assert_eq!(raw(&doc, 2), vec![213; 6]);
+    doc.undo();
+    assert_eq!(doc.composition(), before);
+    assert_eq!(
+        doc.layers
+            .iter()
+            .map(|layer| layer.pixels.clone())
+            .collect::<Vec<_>>(),
+        original
+    );
+    assert_eq!(raw(&doc, 1), original_raw[0]);
+    assert_eq!(raw(&doc, 3), original_raw[1]);
+    doc.redo();
+    assert_eq!(doc.layers[0].pixels, output_a);
+    assert_eq!(doc.layers[1].pixels, output_b);
+    assert_eq!(doc.composition(), before);
+}
+
+#[test]
+fn owner_moves_stage_all_pairs_before_late_lock_alpha_or_sample_failure() {
+    let mut doc = fixture();
+    let original = doc.composition();
+    let rgba: Vec<_> = doc
+        .layers
+        .iter()
+        .map(|layer| layer.pixels.clone())
+        .collect();
+    let bytes = [raw(&doc, 1), raw(&doc, 3)];
+    let epoch = doc.mask_storage_epoch;
+    let invalids = [
+        (vec![0; 5], SamplePlane::Uniform(255)),
+        (vec![0; 6], SamplePlane::Dense(vec![0; 5])),
+    ];
+    for (pixels, mask) in invalids {
+        assert!(doc
+            .apply_owner_moves(vec![
+                (1, vec![0xff222222; 6], Some((1, SamplePlane::Uniform(255)))),
+                (2, pixels, Some((3, mask))),
+            ])
+            .is_err());
+    }
+    doc.layer_metadata[1].alpha_locked = true;
+    assert!(doc
+        .apply_owner_moves(vec![
+            (1, vec![0xff222222; 6], Some((1, SamplePlane::Uniform(255)))),
+            (2, vec![0; 6], Some((3, SamplePlane::Uniform(255)))),
+        ])
+        .unwrap_err()
+        .contains("transparency"));
+    doc.layer_metadata[1].alpha_locked = false;
+    doc.layer_metadata[1].pixel_locked = true;
+    assert!(doc
+        .validate_owner_moves(&[1, 2])
+        .unwrap_err()
+        .contains("pixels"));
+    doc.layer_metadata[1].pixel_locked = false;
+    doc.layer_metadata[1].position_locked = true;
+    assert!(doc
+        .validate_owner_moves(&[1, 2])
+        .unwrap_err()
+        .contains("position"));
+    doc.layer_metadata[1].position_locked = false;
+    assert_eq!(doc.composition(), original);
+    assert_eq!(
+        doc.layers
+            .iter()
+            .map(|layer| layer.pixels.clone())
+            .collect::<Vec<_>>(),
+        rgba
+    );
+    assert_eq!(raw(&doc, 1), bytes[0]);
+    assert_eq!(raw(&doc, 3), bytes[1]);
+    assert_eq!(doc.mask_storage_epoch, epoch);
+    assert!(doc.undo.is_empty());
+    assert!(doc.history_group.is_none());
+    assert!(doc.replay_tiles.is_empty());
+    assert!(doc.replay_mask_tiles.is_empty());
+    assert!(!doc.dirty);
+}
+
+#[test]
+fn owner_moves_exact_pairs_do_not_expand_links_or_move_unlinked_masks() {
+    let mut doc = fixture();
+    doc.set_layer_links(&[1, 2], true).unwrap();
+    doc.raster_masks.items[0].linked = false;
+    doc.undo.clear();
+    doc.replay_mask_tiles.clear();
+    assert_eq!(doc.validate_owner_moves(&[1]).unwrap(), vec![(1, None)]);
+    let fixed_raw = pointer(&doc, 1);
+    let fixed_layer = doc.layers[1].pixels.as_ptr();
+    assert!(doc
+        .apply_owner_moves(vec![(1, vec![0xff556677; 6], None)])
+        .unwrap());
+    assert_eq!(pointer(&doc, 1), fixed_raw);
+    assert_eq!(doc.layers[1].pixels.as_ptr(), fixed_layer);
+    assert!(doc.replay_mask_tiles.is_empty());
+    for outputs in [
+        vec![(2, vec![0; 6], None)],
+        vec![(2, vec![0; 6], Some((1, SamplePlane::Uniform(255))))],
+        vec![(1, vec![0; 6], Some((1, SamplePlane::Uniform(255))))],
+    ] {
+        assert!(doc.apply_owner_moves(outputs).is_err());
+    }
+    assert_eq!(doc.undo.len(), 1);
+    assert_eq!(doc.linked_layer_ids(1).unwrap(), vec![1, 2]);
+}
+
+#[test]
+fn owner_moves_equal_children_skip_storage_and_all_equal_skips_history() {
+    let mut doc = fixture();
+    doc.mask_planes[0].samples = SamplePlane::Uniform(91);
+    let epoch = doc.mask_storage_epoch;
+    let output = |doc: &Document| {
+        vec![
+            (
+                1,
+                doc.layers[0].pixels.clone(),
+                Some((1, SamplePlane::Dense(vec![91; 6]))),
+            ),
+            (
+                2,
+                doc.layers[1].pixels.clone(),
+                Some((3, doc.mask_planes[2].samples.clone())),
+            ),
+        ]
+    };
+    assert!(!doc.apply_owner_moves(output(&doc)).unwrap());
+    assert!(doc.undo.is_empty());
+    assert_eq!(doc.mask_storage_epoch, epoch);
+    assert!(matches!(doc.mask_plane(1).unwrap(), PlaneView::Uniform(91)));
+    let mut changed = output(&doc);
+    changed[1].1[0] = 0xff112233;
+    assert!(doc.apply_owner_moves(changed).unwrap());
+    let group = doc.undo[0].group.as_ref().unwrap();
+    assert_eq!(group.edits.len(), 1);
+    assert_eq!(group.edits[0].layer, 1);
+    assert!(group.edits[0].mask_change.is_none());
+    assert_eq!(doc.mask_storage_epoch, epoch);
+    assert!(doc.replay_mask_tiles.is_empty());
+}
+
+#[test]
+fn owner_moves_reject_invalid_ids_hidden_owners_contacts_and_nested_groups() {
+    let mut doc = fixture();
+    for ids in [
+        vec![],
+        vec![1, 1],
+        vec![99],
+        vec![0],
+        vec![u32::MAX as u64 + 1],
+    ] {
+        assert!(doc.validate_owner_moves(&ids).is_err());
+    }
+    doc.group_set(1, None, Some(false), None, None, None)
+        .unwrap();
+    assert!(doc
+        .validate_owner_moves(&[1, 2])
+        .unwrap_err()
+        .contains("visible"));
+    doc.group_set(1, None, Some(true), None, None, None)
+        .unwrap();
+    doc.undo.clear();
+    doc.begin_plugin_stroke();
+    assert!(doc
+        .validate_owner_moves(&[1, 2])
+        .unwrap_err()
+        .contains("contact"));
+    assert!(doc.stroke.is_some());
+    doc.finish();
+    doc.begin_history_group().unwrap();
+    assert!(doc
+        .apply_owner_moves(vec![(1, vec![0; 6], Some((1, SamplePlane::Uniform(255))))])
+        .is_err());
+    assert!(doc.history_group.is_some());
+    doc.end_history_group().unwrap();
+    assert!(doc.undo.is_empty());
+}
+
+#[test]
+fn owner_moves_staging_budget_is_checked_without_image_allocations() {
+    let mut doc = Document::new(1, 1);
+    assert_eq!(doc.owner_move_staging_bytes(2, 1).unwrap(), 9);
+    assert!(doc.owner_move_staging_bytes(0, 0).is_err());
+    assert!(doc.owner_move_staging_bytes(17, 0).is_err());
+    assert!(doc.owner_move_staging_bytes(1, 2).is_err());
+    doc.width = 4096;
+    doc.height = 4096;
+    assert_eq!(
+        doc.owner_move_staging_bytes(3, 0).unwrap(),
+        OWNER_MOVE_STAGING_LIMIT
+    );
+    assert!(doc
+        .owner_move_staging_bytes(3, 1)
+        .unwrap_err()
+        .contains("192 MiB"));
+    assert!(doc.owner_move_staging_bytes(4, 0).is_err());
+    doc.width = usize::MAX;
+    assert!(doc
+        .owner_move_staging_bytes(1, 0)
+        .unwrap_err()
+        .contains("overflows"));
+    assert_eq!(doc.layers[0].pixels.len(), 1);
+}
+
+#[test]
+fn owner_moves_grouped_saved_mask_planes_remain_isolated_from_pinned_redo() {
+    let mut doc = fixture();
+    let moved = [vec![12, 22, 32, 42, 52, 62], vec![17, 27, 37, 47, 57, 67]];
+    doc.apply_owner_moves(vec![
+        (
+            1,
+            doc.layers[0].pixels.clone(),
+            Some((1, SamplePlane::Dense(moved[0].clone()))),
+        ),
+        (
+            2,
+            doc.layers[1].pixels.clone(),
+            Some((3, SamplePlane::Dense(moved[1].clone()))),
+        ),
+    ])
+    .unwrap();
+    doc.undo();
+    let checkpoint = doc.checkpoint_history();
+    let saved = checkpoint.redo[0].group.as_ref().unwrap();
+    let pinned: Vec<_> = saved
+        .edits
+        .iter()
+        .map(|edit| {
+            let Some(MaskChange::Replace { saved, .. }) = &edit.mask_change else {
+                panic!("Expected saved raw mask")
+            };
+            saved.clone()
+        })
+        .collect();
+    doc.redo();
+    doc.apply_owner_moves(vec![
+        (
+            1,
+            doc.layers[0].pixels.clone(),
+            Some((1, SamplePlane::Uniform(0))),
+        ),
+        (
+            2,
+            doc.layers[1].pixels.clone(),
+            Some((3, SamplePlane::Uniform(255))),
+        ),
+    ])
+    .unwrap();
+    assert_eq!(pinned[0].samples, SamplePlane::Dense(moved[0].clone()));
+    assert_eq!(pinned[1].samples, SamplePlane::Dense(moved[1].clone()));
+}

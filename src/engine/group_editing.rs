@@ -107,6 +107,7 @@ impl Document {
                 ..Default::default()
             },
         );
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let modes: Vec<_> = metadata
             .iter()
             .map(|m| {
@@ -163,6 +164,7 @@ impl Document {
         masks: &super::super::raster_masks::MaskState,
         require: bool,
     ) -> Result<GroupPlan, String> {
+        validate_layer_links(metadata)?;
         if require {
             self.ensure_blend_modes(graph, groups, modes)?;
             self.ensure_mix_capability(graph, groups)?;
@@ -288,10 +290,11 @@ impl Document {
         if order.len() != self.layers.len() {
             return Err("Tree must retain every raster".into());
         }
-        let metadata: Vec<_> = order
+        let mut metadata: Vec<_> = order
             .iter()
             .map(|i| self.layer_metadata[*i].clone())
             .collect();
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let modes: Vec<_> = order.iter().map(|i| self.layers[*i].mode).collect();
         let opacities: Vec<_> = order.iter().map(|i| self.layers[*i].opacity).collect();
         let groups = (!tree.groups.is_empty()).then_some(tree);
@@ -525,12 +528,13 @@ impl Document {
         }
         tree.groups.retain(|g| !descendants.contains(&g.id));
         let groups = (!tree.groups.is_empty()).then_some(tree);
-        let metadata: Vec<_> = self
+        let mut metadata: Vec<_> = self
             .layer_metadata
             .iter()
             .filter(|m| !removed_ids.contains(&m.id))
             .cloned()
             .collect();
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let modes: Vec<_> = metadata
             .iter()
             .map(|m| self.layers[self.layer_index(m.id).unwrap()].mode)
@@ -672,7 +676,7 @@ impl Document {
             .unwrap();
         siblings.insert(position + 1, GroupItem::group(copy));
         let ids = tree.layer_ids()?;
-        let metadata: Vec<_> = ids
+        let mut metadata: Vec<_> = ids
             .iter()
             .map(|id| {
                 let source = layer_map
@@ -684,6 +688,7 @@ impl Document {
                 m
             })
             .collect();
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let modes: Vec<_> = ids
             .iter()
             .map(|id| {
@@ -808,10 +813,11 @@ impl Document {
         if self.has_groups() {
             self.commit_tree(tree, self.next_group_id)
         } else {
-            let metadata: Vec<_> = ids
+            let mut metadata: Vec<_> = ids
                 .iter()
                 .map(|id| self.layer_metadata[self.layer_index(*id).unwrap()].clone())
                 .collect();
+            project_layer_links(&self.layer_metadata, &mut metadata)?;
             let graph = self.reindexed_graph(&metadata, None)?;
             let modes: Vec<_> = ids
                 .iter()
@@ -861,6 +867,7 @@ impl Document {
         }
     }
     pub fn preflight_layer_order(&self, ids: &[u64]) -> Result<(), String> {
+        validate_layer_links(&self.layer_metadata)?;
         if ids.len() != self.layers.len()
             || ids
                 .iter()
@@ -874,10 +881,11 @@ impl Document {
                 .has_groups()
                 .then(|| self.tree().reordered(ids))
                 .transpose()?;
-            let metadata: Vec<_> = ids
+            let mut metadata: Vec<_> = ids
                 .iter()
                 .map(|id| self.layer_metadata[self.layer_index(*id).unwrap()].clone())
                 .collect();
+            project_layer_links(&self.layer_metadata, &mut metadata)?;
             let modes: Vec<_> = ids
                 .iter()
                 .map(|id| self.layers[self.layer_index(*id).unwrap()].mode)

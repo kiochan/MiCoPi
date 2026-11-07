@@ -37,6 +37,7 @@ New-Item -ItemType Directory -Force target/example-output | Out-Null
 | [raster-masks.jsonl](automation/raster-masks.jsonl) | Dynamic mask IDs, layer/group coverage, pressure/stabilized A8 painting, density/feather, raw inspection, selection conversion, projects and verified replay |
 | [mask-geometry.jsonl](automation/mask-geometry.jsonl) | Pressure-painted layer/group masks, read-only frame costs, atomic plan bindings, document rotations, image sampling, crop and verified project/PNG/replay output |
 | [mask-owner-movement.jsonl](automation/mask-owner-movement.jsonl) | Linked layer/mask movement, independent stable-ID raw-mask Move/nudge and selection outlines, with compound Undo and verified project/PNG/replay output |
+| [layer-links.jsonl](automation/layer-links.jsonl) | Persistent raster link/unlink, explicit multi-layer Move/nudge with owned linked masks, compound Undo and verified project/PNG/replay output |
 | [mask-owners.jsonl](automation/mask-owners.jsonl) | Independent masked-layer copying, typed fresh layer/mask ID bindings, owner deletion, compound undo and verified project/PNG/replay output |
 | [mask-groups.jsonl](automation/mask-groups.jsonl) | Group creation and hierarchy moves retaining layer/group masks, explicit targets and reversible project/PNG/replay outcomes |
 | [mask-group-delete.jsonl](automation/mask-group-delete.jsonl) | Masked subtree deletion, Undo/Redo, retained ancestor masks and deleted-ID bindings after restoration, with verified project/PNG/replay output |

@@ -204,7 +204,7 @@ impl Document {
             return Err("Selected merge exceeds the document pixel limit".into());
         }
         let insert = new_ids.iter().position(|id| *id == retained.id).unwrap();
-        let metadata: Vec<_> = new_ids
+        let mut metadata: Vec<_> = new_ids
             .iter()
             .map(|id| {
                 if *id == retained.id {
@@ -218,6 +218,7 @@ impl Document {
                 }
             })
             .collect();
+        project_layer_links(&self.layer_metadata, &mut metadata)?;
         let modes: Vec<_> = new_ids
             .iter()
             .map(|id| {

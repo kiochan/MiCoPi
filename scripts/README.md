@@ -18,6 +18,7 @@ Run these tools from the repository root. Downloaded toolchains, builds, capture
 | smoke-mask-editing.py | Verify eleven public mask actions, native density/feather and typed painting, workflow bindings, guarded edits and raw/verified replay across JSONL/MCP/GUI; optional four-language captures |
 | smoke-mask-geometry.py | Compare document framing, rotations/flips, image sampling and Trim against independent raw-mask references across JSONL/MCP/GUI, with undo, legacy capability rejection and DLL-free replay |
 | smoke-owner-movement.py | Compare linked raster/mask Move, independent stable-ID mask Move/nudge, selection outlines and compound Undo against exact raw/composition references across JSONL/MCP/GUI; capture four-language narrow/wide controls |
+| smoke-linked-movement.py | Verify persistent layer links, exact multi-owner raster/mask Move, one Undo, contact/rollback guards and DLL-free outcomes through JSONL/MCP and optional GUI attachment |
 | smoke-mask-owners.py | Compare single-layer mask copies/deletions, independent storage, ID bindings, targets, grouped composition, undo, rollback and DLL-free replay across JSONL/MCP/GUI |
 | smoke-mask-groups.py | Compare mask-preserving group creation/reparenting, raw ownership, explicit targets, composition, undo, rollback and DLL-free replay across JSONL/MCP/GUI |
 | smoke-mask-group-delete.py | Verify nested/empty group deletion, independent masks, result-array bindings, compound Undo, rollback and DLL-free outcomes across JSONL/MCP/GUI |

@@ -7,7 +7,8 @@ the exact integer sampling; the host owns admission, history and verified outcom
 
 This is a bounded owner-movement subset. Group-mask movement, selected-pixel
 movement on mask-bearing documents and owner Free Transform remain guarded.
-It does not implement linked multi-layer editing or off-canvas storage.
+Persistent [layer links](layer-links.md) extend whole-layer movement to explicitly
+captured raster sets. Off-canvas storage remains unavailable.
 
 ## Choose the domain explicitly
 

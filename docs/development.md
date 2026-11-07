@@ -821,3 +821,25 @@ contact, staging and compatibility boundaries. These are tiny deterministic
 correctness fixtures, not physical-tablet or large-image latency measurements.
 The wider owner Free Transform, selected-pixel/group-mask and structural mask
 matrix remains open.
+
+## Layer link checks
+
+The CI workflow runs complete desktop/headless regressions and
+`scripts/smoke-linked-movement.py --skip-gui` after building matching native DLLs
+and hosts. The smoke uses four tiny 7×5 independent raw-coordinate/composition
+cases, metadata link/union/unlink, Undo/Redo, projects, contact/lock/atomic guards
+and DLL-free outcome restoration through JSONL/MCP. Its optional `--gui` path adds
+one owned attachment session for parity, without generating documentation images.
+
+Engine tests cover reciprocal membership rejection, structural projection,
+bounded multi-owner staging and raw grouped history. Session tests cover shared
+schemas/state/node bindings, explicit subset semantics, late native failure,
+pressure-stream admission, journal recovery and projects. UI tests exercise
+actual Link/Unlink controls, linked outline/nudge capture, stale source changes,
+active-only painting and four-language narrow/wide layout. Authored coverage is
+distinct from passing execution; track the exact pushed commit's CI result.
+
+See [Layer Links](layer-links.md) for the 192 MiB output-staging ceiling and
+remaining linked Free Transform boundary. No whole-suite local rerun or large
+stress workload is required for each small source edit. Manual screenshot review
+and physical tablet evidence remain separate from automated CI.

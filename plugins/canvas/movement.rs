@@ -29,21 +29,45 @@ pub(super) struct Gesture {
     delta: [i32; 2],
     bounds: [usize; 4],
     destination: MoveDestination,
-    masked_owner: bool,
+    layer_ids: Option<Vec<u64>>,
+    guarded_contact: bool,
 }
 impl Editor {
-    pub(super) fn masked_movement_pending(&self) -> bool {
+    pub(super) fn guarded_movement_pending(&self) -> bool {
         self.movement_gesture
             .as_ref()
-            .is_some_and(|gesture| gesture.masked_owner)
+            .is_some_and(|gesture| gesture.guarded_contact)
     }
-    pub(super) fn masked_movement_input(
+    pub(super) fn linked_movement_ids(
+        &self,
+    ) -> Result<Option<Vec<u64>>, crate::application::ActionError> {
+        match crate::plugins::movement::destination(
+            &self.session,
+            self.session.movement_options().target,
+            None,
+        )? {
+            MoveDestination::Layer { layer_id, .. } => {
+                let ids = self
+                    .session
+                    .doc
+                    .linked_layer_ids(layer_id)
+                    .map_err(|error| crate::application::ActionError::new("layer_links", error))?;
+                Ok((ids.len() > 1).then_some(ids))
+            }
+            _ => Ok(None),
+        }
+    }
+    pub(super) fn movement_contact_guarded(&self) -> bool {
+        self.session.doc.has_raster_masks()
+            || self.linked_movement_ids().map_or(true, |ids| ids.is_some())
+    }
+    pub(super) fn guarded_movement_input(
         &self,
         held: crate::ui::keymap::InputState,
         middle: bool,
     ) -> bool {
         self.area_mode == 8
-            && self.session.doc.has_raster_masks()
+            && self.movement_contact_guarded()
             && !middle
             && !held.pan
             && !held.zoom
@@ -57,14 +81,28 @@ impl Editor {
         true
     }
     pub(super) fn movement_start(&mut self, q: Pos2) -> bool {
-        // Masked owner edits must reach shared admission while the original
-        // Brush/Hand contact is still active. Retain unmasked legacy cleanup.
-        if !self.session.doc.has_raster_masks() {
+        let layer_ids = match self.linked_movement_ids() {
+            Ok(ids) => ids,
+            Err(error) => {
+                self.status = error.to_string();
+                return false;
+            }
+        };
+        let guarded_contact = self.session.doc.has_raster_masks() || layer_ids.is_some();
+        // Linked and masked edits reach shared admission with the original
+        // Brush/Hand stream intact. Retain ordinary single-layer cleanup.
+        if !guarded_contact {
             self.finish_stroke();
         }
         if !q.is_finite() {
             self.status = "Invalid movement position".into();
             return false;
+        }
+        if let Some(ids) = &layer_ids {
+            if let Err(error) = crate::plugins::movement::preview_linked(&self.session, ids) {
+                self.status = error.to_string();
+                return false;
+            }
         }
         match crate::plugins::movement::preview(
             &self.session,
@@ -79,7 +117,8 @@ impl Editor {
                     delta: [0, 0],
                     bounds: preview.bounds,
                     destination: preview.destination,
-                    masked_owner: self.session.doc.has_raster_masks(),
+                    layer_ids,
+                    guarded_contact,
                 });
                 self.input_owned = true;
                 true
@@ -123,10 +162,12 @@ impl Editor {
         if g.delta == [0, 0] {
             return;
         }
-        let mut action = crate::application::Action::new(
-            "canvas.move",
-            g.destination.action_args(g.delta[0], g.delta[1]),
-        );
+        let args = if let Some(ids) = g.layer_ids {
+            serde_json::json!({"target":"layer","layer_ids":ids,"dx":g.delta[0],"dy":g.delta[1]})
+        } else {
+            g.destination.action_args(g.delta[0], g.delta[1])
+        };
+        let mut action = crate::application::Action::new("canvas.move", args);
         action.expected_revision = Some(g.source.1);
         match self.session.apply(action) {
             Ok(_) => self.sync_from_session(),
@@ -198,6 +239,13 @@ impl Editor {
                     let feedback = name.map_or_else(|| localize(title).into_owned(),
                         |name| format!("{}: {}", localize(title), name));
                     ui.add(Label::new(RichText::new(feedback).weak()).wrap());
+                    if let MoveDestination::Layer { layer_id, .. } = destination {
+                        if let Ok(ids) = self.session.doc.linked_layer_ids(layer_id) {
+                            if ids.len() > 1 {
+                                ui.add(Label::new(tr(format!("{} linked layers move together.", ids.len())).weak()).wrap());
+                            }
+                        }
+                    }
                     if matches!(destination, MoveDestination::RasterMask { .. }) {
                         ui.add(Label::new(tr("Mask only; layer pixels stay fixed.").weak()).wrap());
                     } else if let MoveDestination::Layer { layer_id, linked_mask_id: None } = destination {

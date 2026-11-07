@@ -6,6 +6,9 @@ use crate::engine::raster_masks::PaintTarget;
 use crate::platform::windows::desktop_bridge::{PenPhase, PenSample};
 use serde_json::{json, Value};
 
+#[path = "linked_movement_ui_tests.rs"]
+mod layer_links;
+
 fn raw(app: &Studio, id: u64) -> Vec<u8> {
     let doc = &app.editor.session.doc;
     let plane = doc.mask_plane(id).unwrap();
@@ -433,7 +436,7 @@ fn masked_move_outline_cancel_and_release_never_end_a_later_external_native_cont
         let p = app.editor.image_rect.center();
         pen(&mut app, &ctx, PenPhase::Down, p, 3000);
         pen(&mut app, &ctx, PenPhase::Move, p + vec2(8., 4.), 3100);
-        assert!(app.editor.masked_movement_pending());
+        assert!(app.editor.guarded_movement_pending());
         let start = app
             .editor
             .session
@@ -523,7 +526,7 @@ fn temporary_hand_takeover(native: bool, outline: bool) {
             );
         }
     }
-    assert_eq!(app.editor.masked_movement_pending(), outline);
+    assert_eq!(app.editor.guarded_movement_pending(), outline);
     let original = raw(&app, 1);
     let start = app
         .editor

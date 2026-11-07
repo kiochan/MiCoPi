@@ -1,10 +1,15 @@
 //! Atomic integer movement; native kernels own pixel/coverage math.
+pub(crate) use super::linked_movement::admit as admit_linked;
 pub(crate) use super::owner_movement::{admit_masked, validate_literal};
 #[cfg(feature = "desktop")]
 pub(crate) use super::owner_movement::{destination, preview, MoveDestination};
 use crate::application::{ActionError, ActionResult, MoveTarget, Operation, Session};
 use micopi_plugin_api as abi;
 use serde_json::{json, Value};
+#[cfg(feature = "desktop")]
+pub(crate) fn preview_linked(s: &Session, ids: &[u64]) -> Result<(), ActionError> {
+    super::linked_movement::preflight(s, ids).map(|_| ())
+}
 pub(crate) fn resolved_target(s: &Session, target: MoveTarget) -> MoveTarget {
     if target == MoveTarget::Auto {
         if s.doc.selection().current.is_some() {
@@ -74,6 +79,9 @@ fn options(s: &Session, op: Operation, args: &Value) -> abi::Move {
     }
 }
 pub(crate) fn context(s: &Session, op: Operation, args: &Value) -> Value {
+    if args.get("layer_ids").is_some() {
+        return super::linked_movement::context(s, op, args);
+    }
     if s.doc.has_raster_masks() || args.get("mask_id").is_some() {
         return super::owner_movement::context(s, op, args);
     }
@@ -111,6 +119,9 @@ fn run(s: &mut Session, op: Operation, args: &Value) -> Result<(), String> {
 }
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     validate_literal(&args)?;
+    if args.get("layer_ids").is_some() {
+        return super::linked_movement::execute(s, op, &args);
+    }
     if s.doc.has_raster_masks() || args.get("mask_id").is_some() {
         return super::owner_movement::execute(s, op, &args);
     }

@@ -47,6 +47,7 @@ fn pending() -> ActionError {
 
 /// A stable mask selector overrides preferences, but never an explicit other domain.
 pub(crate) fn validate_literal(args: &Value) -> Result<(), ActionError> {
+    super::linked_movement::validate(args)?;
     if let Some(id) = args.get("mask_id") {
         if super::bounded_integer(id).is_none_or(|id| id == 0) {
             return Err(ActionError::new(
@@ -243,7 +244,7 @@ pub(crate) fn preview(
     })
 }
 
-fn offsets(s: &Session, op: Operation, args: &Value) -> (i32, i32) {
+pub(super) fn offsets(s: &Session, op: Operation, args: &Value) -> (i32, i32) {
     if op == Operation::Nudge {
         let options = s.movement_options();
         let step = if args["large"] == true {
@@ -266,7 +267,7 @@ fn offsets(s: &Session, op: Operation, args: &Value) -> (i32, i32) {
 }
 
 /// Sample exactly one borrowed raw plane through the existing stateless native table.
-fn stage_mask(s: &Session, id: u64, dx: i32, dy: i32) -> Result<SamplePlane, String> {
+pub(super) fn stage_mask(s: &Session, id: u64, dx: i32, dy: i32) -> Result<SamplePlane, String> {
     let plugin = s
         .registry
         .native_plugins

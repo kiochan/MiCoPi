@@ -2,6 +2,8 @@
 use super::*;
 use crate::engine::raster_masks::{MaskOwner, MaskPlane, SamplePlane};
 
+pub(crate) const OWNER_MOVE_STAGING_LIMIT: usize = 192 * 1024 * 1024;
+
 struct OwnerMove {
     layer: Option<usize>,
     mask: Option<usize>,
@@ -48,6 +50,15 @@ impl Document {
         mask_id: Option<u64>,
     ) -> Result<OwnerMove, String> {
         self.validate_owner_move_source()?;
+        self.owner_move_target_plan(layer_id, mask_id, true)
+    }
+
+    fn owner_move_target_plan(
+        &self,
+        layer_id: Option<u64>,
+        mask_id: Option<u64>,
+        require_active: bool,
+    ) -> Result<OwnerMove, String> {
         if layer_id.is_none() && mask_id.is_none() {
             return Err("Owner movement requires a raster layer or raster mask".into());
         }
@@ -62,7 +73,7 @@ impl Document {
             .transpose()?;
         let (layer, owner) = if let Some(id) = layer_id {
             let index = self.layer_index(id).ok_or("Layer does not exist")?;
-            if index != self.active {
+            if require_active && index != self.active {
                 return Err("Whole-layer movement requires the active raster layer".into());
             }
             if self.pixel_locked(index) {
@@ -117,6 +128,110 @@ impl Document {
         self.owner_move_plan(layer_id, mask_id).map(|_| ())
     }
 
+    /// Dense worst-case output storage, checked before native staging. Source
+    /// uniform A8 storage does not reduce the possible dense output cost.
+    pub(crate) fn owner_move_staging_bytes(
+        &self,
+        layer_count: usize,
+        mask_count: usize,
+    ) -> Result<usize, String> {
+        if !(1..=MAX_LAYERS).contains(&layer_count) || mask_count > layer_count {
+            return Err("Owner movement requires between one and sixteen raster outputs".into());
+        }
+        let bytes = self
+            .width
+            .checked_mul(self.height)
+            .and_then(|area| {
+                layer_count
+                    .checked_mul(4)
+                    .and_then(|rgba| rgba.checked_add(mask_count))
+                    .and_then(|channels| area.checked_mul(channels))
+            })
+            .ok_or("Owner movement staging size overflows")?;
+        if bytes > OWNER_MOVE_STAGING_LIMIT {
+            return Err("Owner movement staging exceeds the 192 MiB limit".into());
+        }
+        Ok(bytes)
+    }
+
+    /// Resolve explicit raster identities in caller order. This never expands
+    /// links, changes the active layer or temporarily changes paint targets.
+    pub(crate) fn validate_owner_moves(
+        &self,
+        ids: &[u64],
+    ) -> Result<Vec<(u64, Option<u64>)>, String> {
+        self.validate_owner_move_source()?;
+        if self.history_group.is_some() {
+            return Err("Finish the current layer history group before moving owners".into());
+        }
+        if ids.is_empty()
+            || ids.len() > MAX_LAYERS
+            || ids
+                .iter()
+                .enumerate()
+                .any(|(i, id)| self.layer_index(*id).is_none() || ids[..i].contains(id))
+        {
+            return Err("Owner movement requires one to sixteen unique existing raster IDs".into());
+        }
+        let mut pairs = Vec::with_capacity(ids.len());
+        for id in ids {
+            let mask = self
+                .raster_masks
+                .items
+                .iter()
+                .find(|item| item.linked && item.owner == (MaskOwner::Layer { id: *id }))
+                .map(|item| item.id);
+            self.owner_move_target_plan(Some(*id), mask, false)?;
+            pairs.push((*id, mask));
+        }
+        self.owner_move_staging_bytes(
+            pairs.len(),
+            pairs.iter().filter(|(_, mask)| mask.is_some()).count(),
+        )?;
+        Ok(pairs)
+    }
+
+    /// Stage and validate every owner before publishing any raw child edit.
+    /// Each child retains its own raster tile namespace and one optional A8
+    /// replacement; the existing history group exposes a single Undo step.
+    pub(crate) fn apply_owner_moves(
+        &mut self,
+        outputs: Vec<(u64, Vec<u32>, Option<(u64, SamplePlane)>)>,
+    ) -> Result<bool, String> {
+        let ids: Vec<_> = outputs.iter().map(|(id, _, _)| *id).collect();
+        let pairs = self.validate_owner_moves(&ids)?;
+        let mut plans = Vec::with_capacity(outputs.len());
+        for ((id, pixels, mask), (_, expected_mask)) in outputs.iter().zip(&pairs) {
+            if mask.as_ref().map(|(id, _)| id) != expected_mask.as_ref() {
+                return Err("Layer movement requires only its owned linked raster mask".into());
+            }
+            let plan = self.owner_move_target_plan(Some(*id), *expected_mask, false)?;
+            self.validate_layer_transform_pixels(plan.layer.unwrap(), pixels)?;
+            if let Some((_, samples)) = mask {
+                samples.validate(self.width * self.height)?;
+            }
+            let pixels_changed = *pixels != self.layers[plan.layer.unwrap()].pixels;
+            let mask_changed = mask.as_ref().is_some_and(|(_, samples)| {
+                !same_samples(samples, &self.mask_planes[plan.mask.unwrap()].samples)
+            });
+            plans.push((plan, pixels_changed, mask_changed));
+        }
+        if plans.iter().all(|(_, rgba, mask)| !*rgba && !*mask) {
+            return Ok(false);
+        }
+        self.begin_history_group()?;
+        for ((_, pixels, mask), (plan, pixels_changed, mask_changed)) in
+            outputs.into_iter().zip(plans)
+        {
+            if pixels_changed || mask_changed {
+                self.publish_owner_move(plan, Some(pixels), mask, pixels_changed, mask_changed);
+            }
+        }
+        self.end_history_group()
+            .expect("Owner movement opened its history group");
+        Ok(true)
+    }
+
     /// Publish fully staged RGBA/A8 under one raw-storage history edit. Selections,
     /// paint target, owner metadata and repeat recipe are deliberately untouched.
     pub(crate) fn apply_owner_move(
@@ -144,6 +259,18 @@ impl Document {
         if !pixels_changed && !mask_changed {
             return Ok(false);
         }
+        self.publish_owner_move(plan, pixels, mask, pixels_changed, mask_changed);
+        Ok(true)
+    }
+
+    fn publish_owner_move(
+        &mut self,
+        plan: OwnerMove,
+        pixels: Option<Vec<u32>>,
+        mask: Option<(u64, SamplePlane)>,
+        pixels_changed: bool,
+        mask_changed: bool,
+    ) {
         // All fallible admission and staging checks precede publication. This
         // edit owns only changed raster tiles and the one replaced raw plane.
         self.stroke = Some(Edit {
@@ -188,7 +315,6 @@ impl Document {
             self.invalidate();
         }
         self.finish();
-        Ok(true)
     }
 }
 

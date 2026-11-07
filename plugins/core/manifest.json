@@ -122,6 +122,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -138,7 +147,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -836,6 +846,20 @@
               "limits"
             ],
             "additionalProperties": false
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -846,7 +870,8 @@
           "parameters",
           "layers",
           "selected_layer_ids",
-          "groups"
+          "groups",
+          "layer_links"
         ]
       }
     },
@@ -1301,6 +1326,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -1317,7 +1351,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -1440,6 +1475,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -1449,7 +1498,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -2113,6 +2163,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -2129,7 +2188,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -2252,6 +2312,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -2261,7 +2335,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -2384,6 +2459,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -2400,7 +2484,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -2523,6 +2608,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -2532,7 +2631,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -2655,6 +2755,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -2671,7 +2780,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -2794,6 +2904,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -2803,7 +2927,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -3870,6 +3995,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -3886,7 +4020,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -4142,6 +4277,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -4151,7 +4300,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -4274,6 +4424,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -4290,7 +4449,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -4546,6 +4706,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -4555,7 +4729,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -5028,6 +5203,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -5044,7 +5228,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -5057,6 +5242,20 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -5066,7 +5265,8 @@
           "active_layer",
           "revision",
           "drawing",
-          "group_id"
+          "group_id",
+          "layer_links"
         ]
       }
     },
@@ -5187,6 +5387,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -5203,7 +5412,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -5216,6 +5426,20 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -5225,7 +5449,8 @@
           "active_layer",
           "revision",
           "drawing",
-          "group_id"
+          "group_id",
+          "layer_links"
         ]
       }
     },
@@ -5346,6 +5571,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -5362,7 +5596,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -5375,6 +5610,20 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -5383,7 +5632,8 @@
           "layers",
           "active_layer",
           "revision",
-          "drawing"
+          "drawing",
+          "layer_links"
         ]
       }
     },
@@ -5504,6 +5754,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -5520,7 +5779,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -5533,6 +5793,20 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -5541,7 +5815,8 @@
           "layers",
           "active_layer",
           "revision",
-          "drawing"
+          "drawing",
+          "layer_links"
         ]
       }
     },
@@ -5662,6 +5937,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -5678,7 +5962,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -5691,6 +5976,20 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -5699,7 +5998,8 @@
           "layers",
           "active_layer",
           "revision",
-          "drawing"
+          "drawing",
+          "layer_links"
         ]
       }
     },
@@ -5820,6 +6120,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -5836,7 +6145,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -5849,6 +6159,20 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -5857,7 +6181,8 @@
           "layers",
           "active_layer",
           "revision",
-          "drawing"
+          "drawing",
+          "layer_links"
         ]
       }
     },
@@ -5874,18 +6199,36 @@
             "maximum": 4294967295
           },
           "deleted_group_ids": {
-            "type": "array", "minItems": 1, "maxItems": 16,
-            "items": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
             "description": "Consumed group IDs in original group-record order, including the requested group."
           },
           "deleted_layer_ids": {
-            "type": "array", "minItems": 0, "maxItems": 15,
-            "items": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 15,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
             "description": "Consumed raster IDs in original storage order; empty for an empty subtree."
           },
           "deleted_mask_ids": {
-            "type": "array", "minItems": 0, "maxItems": 32,
-            "items": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 32,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
             "description": "Consumed raster/group owner-mask IDs in original mask-metadata order."
           },
           "groups": {
@@ -5993,6 +6336,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -6009,7 +6361,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -6022,6 +6375,20 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -6034,7 +6401,8 @@
           "group_id",
           "deleted_group_ids",
           "deleted_layer_ids",
-          "deleted_mask_ids"
+          "deleted_mask_ids",
+          "layer_links"
         ]
       }
     },
@@ -6194,6 +6562,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -6210,7 +6587,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -6223,6 +6601,20 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -6236,7 +6628,8 @@
           "layers",
           "active_layer",
           "revision",
-          "drawing"
+          "drawing",
+          "layer_links"
         ]
       }
     },
@@ -6358,6 +6751,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -6374,7 +6776,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -6393,6 +6796,20 @@
             "minimum": 1,
             "maximum": 4294967295,
             "description": "Fresh raster identity replacing the consumed source group at its sibling position."
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -6402,7 +6819,8 @@
           "active_layer",
           "revision",
           "drawing",
-          "layer_id"
+          "layer_id",
+          "layer_links"
         ]
       }
     },
@@ -6523,6 +6941,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -6539,7 +6966,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -6552,6 +6980,20 @@
           },
           "drawing": {
             "type": "boolean"
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -6560,7 +7002,8 @@
           "layers",
           "active_layer",
           "revision",
-          "drawing"
+          "drawing",
+          "layer_links"
         ]
       }
     },
@@ -6672,6 +7115,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -6688,7 +7140,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -6714,6 +7167,20 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 4294967295
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -6723,7 +7190,8 @@
           "revision",
           "drawing",
           "selected_layer_ids",
-          "active_layer_id"
+          "active_layer_id",
+          "layer_links"
         ],
         "additionalProperties": false
       }
@@ -7386,6 +7854,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -7402,7 +7879,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -7525,6 +8003,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -7534,7 +8026,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -7657,6 +8150,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -7673,7 +8175,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -7796,6 +8299,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -7805,7 +8322,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -8337,6 +8855,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -8353,7 +8880,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -8476,6 +9004,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -8485,7 +9027,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -8608,6 +9151,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -8624,7 +9176,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -8747,6 +9300,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -8756,7 +9323,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -8879,6 +9447,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -8895,7 +9472,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -9018,6 +9596,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -9027,7 +9619,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -9150,6 +9743,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -9166,7 +9768,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -9289,6 +9892,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -9298,7 +9915,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -9421,6 +10039,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -9437,7 +10064,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -9560,6 +10188,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -9569,7 +10211,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -9692,6 +10335,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -9708,7 +10360,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -9831,6 +10484,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -9840,7 +10507,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -9963,6 +10631,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -9979,7 +10656,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -10102,6 +10780,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -10111,7 +10803,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -10234,6 +10927,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -10250,7 +10952,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -10373,6 +11076,20 @@
               "minimum": 1,
               "maximum": 4294967295
             }
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -10382,7 +11099,8 @@
           "dirty",
           "parameters",
           "layers",
-          "selected_layer_ids"
+          "selected_layer_ids",
+          "layer_links"
         ]
       }
     },
@@ -11187,6 +11905,15 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 4294967295
+                },
+                "linked_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
                 }
               },
               "required": [
@@ -11203,7 +11930,8 @@
                 "active",
                 "selected",
                 "effective_visible",
-                "parent_id"
+                "parent_id",
+                "linked_layer_ids"
               ],
               "additionalProperties": false
             }
@@ -11229,6 +11957,20 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 4294967295
+          },
+          "layer_links": {
+            "type": "array",
+            "maxItems": 8,
+            "items": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "minItems": 2
+            }
           }
         },
         "required": [
@@ -11238,7 +11980,8 @@
           "revision",
           "drawing",
           "selected_layer_ids",
-          "active_layer_id"
+          "active_layer_id",
+          "layer_links"
         ],
         "additionalProperties": false
       }
