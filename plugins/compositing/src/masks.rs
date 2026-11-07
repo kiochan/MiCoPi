@@ -31,6 +31,32 @@ pub(super) unsafe extern "C" fn render_masked(
     height: u32,
     output: *mut abi::Pixels,
 ) -> i32 {
+    render_plan(
+        nodes,
+        count,
+        layers,
+        layer_count,
+        masks,
+        mask_count,
+        width,
+        height,
+        output,
+        &[],
+    )
+}
+
+pub(super) unsafe fn render_plan(
+    nodes: *const abi::CompositeNode,
+    count: usize,
+    layers: *const abi::CompositeLayer,
+    layer_count: usize,
+    masks: *const abi::CompositeMask,
+    mask_count: usize,
+    width: u32,
+    height: u32,
+    output: *mut abi::Pixels,
+    luts: &[abi::CompositeLut],
+) -> i32 {
     if output.is_null()
         || !aligned(output)
         || layers.is_null()
@@ -142,6 +168,7 @@ pub(super) unsafe extern "C" fn render_masked(
                 6 => (n.a as usize) < mask_count && n.b == 0 && n.mode == 0 && n.amount == 0.,
                 7 => image(n.a) && mask(n.b) && n.mode == 0 && valid_opacity(),
                 8 => image(n.a) && image(n.b) && mask(n.mode) && valid_opacity(),
+                9 => image(n.a) && n.b == 0 && (n.mode as usize) < luts.len() && n.amount == 1.,
                 _ => false,
             };
         if !valid {
@@ -213,6 +240,10 @@ pub(super) unsafe extern "C" fn render_masked(
                         values[n.a as usize],
                         values[n.b as usize],
                         weight(n.amount, values[n.mode as usize]),
+                    ),
+                    9 => super::levels::apply_lut(
+                        &luts[n.mode as usize].values,
+                        values[n.a as usize],
                     ),
                     _ => unreachable!(),
                 };

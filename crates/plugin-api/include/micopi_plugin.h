@@ -331,6 +331,15 @@ typedef struct {
     MicopiLevelsPrepareFn prepare;
 } MicopiLevelsApi;
 const MicopiLevelsApi *micopi_levels_v1(void);
+/* Complete optional 24-byte Levels tail. Kind 9: image a, LUT index mode,
+   b=0, amount=1. At most 64 borrowed LUTs; preserve all alpha bytes. Legacy
+   compositor entry points continue rejecting kind 9. */
+typedef struct { uint8_t values[256]; } MicopiCompositeLut;
+typedef int32_t (*MicopiLevelsRenderFn)(
+    const MicopiCompositeNode *, size_t, const MicopiCompositeLayer *, size_t,
+    const MicopiCompositeMask *, size_t, const MicopiCompositeLut *, size_t,
+    uint32_t, uint32_t, MicopiPixels *);
+typedef struct { MicopiLevelsApi base; MicopiLevelsRenderFn render; } MicopiLevelsApiRender;
 /* Independent optional exact geometry table, with immutable source and disjoint
    output. Local origins are zero; dimensions/stride are bounded to 4096.
    Kinds: 0 CW, 1 CCW, 2 half turn, 3 flip horizontal, 4 flip vertical.

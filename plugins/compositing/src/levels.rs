@@ -45,14 +45,63 @@ unsafe extern "C" fn prepare(
     std::ptr::copy_nonoverlapping(table.0.as_ptr(), output, 256);
     abi::OK
 }
-static API: abi::LevelsApi = abi::LevelsApi {
-    abi_version: 1,
-    struct_size: std::mem::size_of::<abi::LevelsApi>() as u32,
-    prepare: Some(prepare),
+unsafe extern "C" fn render(
+    nodes: *const abi::CompositeNode,
+    count: usize,
+    layers: *const abi::CompositeLayer,
+    layer_count: usize,
+    masks: *const abi::CompositeMask,
+    mask_count: usize,
+    luts: *const abi::CompositeLut,
+    lut_count: usize,
+    width: u32,
+    height: u32,
+    output: *mut abi::Pixels,
+) -> i32 {
+    if output.is_null() || lut_count > 64 || (lut_count != 0 && luts.is_null()) {
+        return abi::ERROR;
+    }
+    let out = std::ptr::read_unaligned(output);
+    if lut_count != 0 {
+        let Some(source) = super::span(luts, lut_count) else {
+            return abi::ERROR;
+        };
+        let Some(destination) = super::span(out.data, out.len) else {
+            return abi::ERROR;
+        };
+        if super::overlaps(source, destination) {
+            return abi::ERROR;
+        }
+    }
+    let luts = if lut_count == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(luts, lut_count)
+    };
+    super::masks::render_plan(
+        nodes,
+        count,
+        layers,
+        layer_count,
+        masks,
+        mask_count,
+        width,
+        height,
+        output,
+        luts,
+    )
+}
+static API: abi::LevelsApiRender = abi::LevelsApiRender {
+    base: abi::LevelsApi {
+        abi_version: 1,
+        struct_size: std::mem::size_of::<abi::LevelsApiRender>() as u32,
+        prepare: Some(prepare),
+    },
+    render: Some(render),
 };
 #[no_mangle]
 pub extern "C" fn micopi_levels_v1() -> *const abi::LevelsApi {
-    &API
+    &API.base
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -105,19 +154,187 @@ impl Levels {
 impl Prepared {
     /// Apply independently to encoded RGB; alpha and transparent words survive.
     pub fn pixel(&self, pixel: u32) -> u32 {
-        if pixel >> 24 == 0 {
-            return pixel;
-        }
-        (pixel & 0xff00_0000)
-            | (u32::from(self.0[((pixel >> 16) & 255) as usize]) << 16)
-            | (u32::from(self.0[((pixel >> 8) & 255) as usize]) << 8)
-            | u32::from(self.0[(pixel & 255) as usize])
+        apply_lut(&self.0, pixel)
     }
+}
+pub(super) fn apply_lut(table: &[u8; 256], pixel: u32) -> u32 {
+    if pixel >> 24 == 0 {
+        return pixel;
+    }
+    (pixel & 0xff00_0000)
+        | (u32::from(table[((pixel >> 16) & 255) as usize]) << 16)
+        | (u32::from(table[((pixel >> 8) & 255) as usize]) << 8)
+        | u32::from(table[(pixel & 255) as usize])
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn instruction(kind: u32, a: u32, b: u32, mode: u32, amount: f32) -> abi::CompositeNode {
+        abi::CompositeNode {
+            kind,
+            a,
+            b,
+            mode,
+            amount,
+        }
+    }
+    #[test]
+    fn levels_render_preserves_mask_alpha_and_padding_and_rejects_legacy_entry() {
+        let source = [0x804080ff];
+        let layers = [abi::CompositeLayer {
+            data: source.as_ptr(),
+            len: 1,
+            opacity: 255,
+            visible: 1,
+            mode: 0,
+        }];
+        let masks = [abi::CompositeMask {
+            data: std::ptr::null(),
+            len: 0,
+            stride: 0,
+            constant: 128,
+        }];
+        let luts = [abi::CompositeLut {
+            values: std::array::from_fn(|i| 255 - i as u8),
+        }];
+        let nodes = [
+            instruction(0, 0, 0, 0, 1.),
+            instruction(6, 0, 0, 0, 0.),
+            instruction(7, 0, 1, 0, 1.),
+            instruction(9, 2, 0, 0, 1.),
+            instruction(3, 3, 0, 0, 1.),
+        ];
+        let mut result = [0x12345678; 2];
+        let mut out = abi::Pixels {
+            data: result.as_mut_ptr(),
+            len: 2,
+            width: 1,
+            height: 1,
+            stride: 2,
+            origin_x: 0,
+            origin_y: 0,
+        };
+        unsafe {
+            assert_eq!(
+                super::super::masks::render_masked(
+                    nodes.as_ptr(),
+                    5,
+                    layers.as_ptr(),
+                    1,
+                    masks.as_ptr(),
+                    1,
+                    1,
+                    1,
+                    &mut out
+                ),
+                abi::ERROR
+            );
+            assert_eq!(result, [0x12345678; 2]);
+            assert_eq!(
+                render(
+                    nodes.as_ptr(),
+                    5,
+                    layers.as_ptr(),
+                    1,
+                    masks.as_ptr(),
+                    1,
+                    luts.as_ptr(),
+                    1,
+                    1,
+                    1,
+                    &mut out
+                ),
+                abi::OK
+            );
+        }
+        assert_eq!(result, [0x40bf7f00, 0x12345678]);
+        assert_eq!(source, [0x804080ff]);
+    }
+    #[test]
+    fn levels_render_preflights_unused_invalid_nodes_and_aliases_before_writes() {
+        let source = [0xff123456];
+        let layers = [abi::CompositeLayer {
+            data: source.as_ptr(),
+            len: 1,
+            opacity: 255,
+            visible: 1,
+            mode: 0,
+        }];
+        let mut luts = [abi::CompositeLut {
+            values: std::array::from_fn(|i| i as u8),
+        }];
+        let mut nodes = [
+            instruction(0, 0, 0, 0, 1.),
+            instruction(9, 0, 0, 1, 1.),
+            instruction(3, 0, 0, 0, 1.),
+        ];
+        let mut result = [0x12345678];
+        let mut out = abi::Pixels {
+            data: result.as_mut_ptr(),
+            len: 1,
+            width: 1,
+            height: 1,
+            stride: 1,
+            origin_x: 0,
+            origin_y: 0,
+        };
+        unsafe {
+            assert_eq!(
+                render(
+                    nodes.as_ptr(),
+                    3,
+                    layers.as_ptr(),
+                    1,
+                    std::ptr::null(),
+                    0,
+                    luts.as_ptr(),
+                    1,
+                    1,
+                    1,
+                    &mut out
+                ),
+                abi::ERROR
+            );
+            assert_eq!(result, [0x12345678]);
+            nodes[1].mode = 0;
+            assert_eq!(
+                render(
+                    nodes.as_ptr(),
+                    3,
+                    layers.as_ptr(),
+                    1,
+                    std::ptr::null(),
+                    0,
+                    std::ptr::null(),
+                    0,
+                    1,
+                    1,
+                    &mut out
+                ),
+                abi::ERROR
+            );
+            assert_eq!(result, [0x12345678]);
+            out.data = luts.as_mut_ptr().cast();
+            assert_eq!(
+                render(
+                    nodes.as_ptr(),
+                    3,
+                    layers.as_ptr(),
+                    1,
+                    std::ptr::null(),
+                    0,
+                    luts.as_ptr(),
+                    1,
+                    1,
+                    1,
+                    &mut out
+                ),
+                abi::ERROR
+            );
+        }
+        assert_eq!(luts[0].values, std::array::from_fn(|i| i as u8));
+    }
     #[test]
     fn preparation_abi_rejects_invalid_spans_without_writing_and_preserves_padding() {
         let mut p = abi::LevelsParameters {

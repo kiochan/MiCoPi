@@ -15,7 +15,9 @@ unsafe fn decode(pointer: *const abi::LevelsApi) -> Result<abi::LevelsPrepareFn,
         .ok_or_else(|| "Missing Levels preparation callback".into())
 }
 impl Module {
-    pub(super) unsafe fn levels_api(&self) -> Result<Option<abi::LevelsPrepareFn>, String> {
+    pub(super) unsafe fn levels_api(
+        &self,
+    ) -> Result<Option<(abi::LevelsPrepareFn, Option<abi::LevelsRenderFn>)>, String> {
         #[cfg(windows)]
         {
             let address = GetProcAddress(self.handle as *mut c_void, abi::LEVELS_SYMBOL.as_ptr());
@@ -23,13 +25,30 @@ impl Module {
                 return Ok(None);
             }
             let entry = std::mem::transmute::<*mut c_void, abi::LevelsEntry>(address);
-            decode(entry()).map(Some)
+            let pointer = entry();
+            Ok(Some((decode(pointer)?, decode_render(pointer)?)))
         }
         #[cfg(not(windows))]
         {
             Ok(None)
         }
     }
+}
+unsafe fn decode_render(
+    pointer: *const abi::LevelsApi,
+) -> Result<Option<abi::LevelsRenderFn>, String> {
+    decode(pointer)?;
+    let header = std::ptr::read_unaligned(pointer.cast::<abi::Header>());
+    if header.struct_size == std::mem::size_of::<abi::LevelsApi>() as u32 {
+        return Ok(None);
+    }
+    if header.struct_size < std::mem::size_of::<abi::LevelsApiRender>() as u32 {
+        return Err("Incomplete Levels rendering tail".into());
+    }
+    std::ptr::read_unaligned(pointer.cast::<abi::LevelsApiRender>())
+        .render
+        .map(Some)
+        .ok_or_else(|| "Missing Levels rendering callback".into())
 }
 fn prepare(
     callback: Option<abi::LevelsPrepareFn>,
@@ -65,6 +84,9 @@ fn prepare(
     Ok(output)
 }
 impl NativePlugin {
+    pub(crate) fn supports_levels_rendering(&self) -> bool {
+        self.levels_render.is_some()
+    }
     pub(crate) fn supports_levels_preparation(&self) -> bool {
         self.levels_prepare.is_some()
     }
@@ -79,6 +101,30 @@ impl NativePlugin {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn levels_render_decoder_retains_preparation_only_and_rejects_partial_tails() {
+        unsafe {
+            let old = abi::LevelsApi {
+                abi_version: 1,
+                struct_size: 16,
+                prepare: Some(identity),
+            };
+            assert!(decode_render(&old).unwrap().is_none());
+            let partial = abi::LevelsApi {
+                struct_size: 20,
+                ..old
+            };
+            assert!(decode_render(&partial).is_err());
+            let incomplete = abi::LevelsApiRender {
+                base: abi::LevelsApi {
+                    struct_size: 24,
+                    ..partial
+                },
+                render: None,
+            };
+            assert!(decode_render(&incomplete.base).is_err());
+        }
+    }
     fn parameters() -> abi::LevelsParameters {
         abi::LevelsParameters {
             abi_version: 0,
@@ -161,6 +207,7 @@ mod tests {
         .unwrap();
         let compositor = &registry.native_plugins["compositing"];
         assert!(compositor.supports_levels_preparation());
+        assert!(compositor.supports_levels_rendering());
         assert!(!registry.native_plugins["painting"].supports_levels_preparation());
         assert_eq!(
             compositor.prepare_levels(parameters()).unwrap(),

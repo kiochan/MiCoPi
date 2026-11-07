@@ -607,6 +607,7 @@ pub struct NativePlugin {
     compositor_masked: Option<abi::CompositeRenderMaskedFn>,
     compositor_effects: Option<MaskEffectsTable>,
     levels_prepare: Option<abi::LevelsPrepareFn>,
+    levels_render: Option<abi::LevelsRenderFn>,
     mask_effect_instance: std::sync::Mutex<Option<MaskEffectInstance>>,
     _module: Module,
 }
@@ -853,7 +854,10 @@ impl NativePlugin {
             None => (None, None),
         };
         let tools = unsafe { module.tool_api()? };
-        let levels_prepare = unsafe { module.levels_api()? };
+        let (levels_prepare, levels_render) = match unsafe { module.levels_api()? } {
+            Some((prepare, render)) => (Some(prepare), render),
+            None => (None, None),
+        };
         let tool_options = unsafe { module.tool_options_api()? };
         let (selection_mix, selection_color, selection_edges, selection_transfer) =
             match unsafe { module.selection_api()? } {
@@ -916,6 +920,7 @@ impl NativePlugin {
                 compositor_masked,
                 compositor_effects,
                 levels_prepare,
+                levels_render,
                 mask_effect_instance: Default::default(),
                 _module: module,
             }),

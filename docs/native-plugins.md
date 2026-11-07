@@ -2,14 +2,15 @@
 
 ## Levels preparation prerequisite
 
-The bundled compositor exports optional `micopi_levels_v1`, a separate 16-byte
-`LevelsApi` with ABI version 1 and a synchronous `prepare` callback. This is a
+The bundled compositor exports optional `micopi_levels_v1`, with a 16-byte
+`LevelsApi` prefix and a complete 24-byte `LevelsApiRender` tail. ABI version 1
+provides synchronous `prepare` and optional `render` callbacks. This is a
 native prerequisite; the host does not yet register a Levels document effect.
 The loader caches the optional callback and rejects malformed advertised tables.
-Native inventory reports `filters.levels_prepare` separately from rendering
-capabilities. The host adapter validates endpoints/gamma and keeps unsuccessful
+Native inventory reports `filters.levels_prepare` and `filters.levels_render`
+separately. The host adapter validates endpoints/gamma and keeps unsuccessful
 callback output private. Discovery performs no per-contact or per-MOVE lookup.
-Existing compositor tables and instruction IDs remain unchanged.
+Existing compositor tables and legacy instruction IDs remain unchanged.
 
 `LevelsParameters` is 32 bytes: version/size at offsets 0/4, unsigned input black,
 input white, output black and output white at 8/12/16/20, and double gamma at 24.
@@ -19,8 +20,19 @@ output endpoints and rounds half-up. Reversed output endpoints are supported.
 The caller supplies at least 256 writable bytes. Success writes exactly the
 first 256 bytes; invalid arguments or overlapping parameter/output spans reject
 before writes. No buffers or pointers are retained. Prepared tables require no
-per-pixel power calculation. Rendering integration and public nodes/adjustments
-remain planned; ABI and native runtime checks await CI.
+per-pixel power calculation.
+
+The optional render callback at offset 16 receives the usual nodes, layers and
+raw/effective mask descriptors plus a borrowed LUT array/count before frame
+dimensions and output. Each `CompositeLut` is exactly 256 bytes; at most 64 tables
+(16 KiB) may be supplied. Kind 9 reads prior image slot `a`, uses LUT index
+`mode`, and requires `b=0, amount=1`. It preserves alpha while mapping encoded
+RGB channels. All instructions, including unused ones, are checked before writes;
+output must not overlap LUT storage, and output row padding remains intact.
+Legacy render callbacks reject kind 9. Preparation-only 16-byte tables remain
+supported; partial rendering tails and missing advertised callbacks reject.
+Document plan caching and public nodes/adjustments remain planned; ABI and native
+runtime checks await CI.
 
 ## Loading and compatibility
 

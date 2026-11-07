@@ -676,6 +676,32 @@ pub struct LevelsApi {
     pub prepare: Option<LevelsPrepareFn>,
 }
 pub type LevelsEntry = unsafe extern "C" fn() -> *const LevelsApi;
+/// Kind 9 consumes prior image slot a and LUT index mode; b=0, amount=1.
+/// Tables are borrowed only for the render call, at most 64 (16 KiB).
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct CompositeLut {
+    pub values: [u8; 256],
+}
+pub type LevelsRenderFn = unsafe extern "C" fn(
+    *const CompositeNode,
+    usize,
+    *const CompositeLayer,
+    usize,
+    *const CompositeMask,
+    usize,
+    *const CompositeLut,
+    usize,
+    u32,
+    u32,
+    *mut Pixels,
+) -> i32;
+/// Optional complete 24-byte tail. Preparation-only 16-byte tables stay valid.
+#[repr(C)]
+pub struct LevelsApiRender {
+    pub base: LevelsApi,
+    pub render: Option<LevelsRenderFn>,
+}
 
 #[cfg(test)]
 mod levels_layout_tests {
@@ -685,6 +711,9 @@ mod levels_layout_tests {
         assert_eq!(std::mem::size_of::<LevelsParameters>(), 32);
         assert_eq!(std::mem::offset_of!(LevelsParameters, gamma), 24);
         assert_eq!(std::mem::size_of::<LevelsApi>(), 16);
+        assert_eq!(std::mem::size_of::<CompositeLut>(), 256);
+        assert_eq!(std::mem::size_of::<LevelsApiRender>(), 24);
+        assert_eq!(std::mem::offset_of!(LevelsApiRender, render), 16);
         assert_eq!(std::mem::offset_of!(LevelsApi, prepare), 8);
         assert_eq!(LEVELS_SYMBOL, b"micopi_levels_v1\0");
     }

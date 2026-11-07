@@ -88,6 +88,7 @@ fn stub(api: Option<abi::A8SamplerApi>) -> NativePlugin {
         compositor_masked: None,
         compositor_effects: None,
         levels_prepare: None,
+        levels_render: None,
         mask_effect_instance: Default::default(),
         _module: Module { handle: 0 },
     }
