@@ -51,6 +51,11 @@ Registry inventory also reports these capabilities per native plugin. Discovery
 is cold; it is not repeated for each pointer sample. `brush.set` retains its
 compact parameter-result convention.
 
+The valid 1% spacing boundary is serialized as decimal `0.01`, including public
+state, settings and recording. Only that `f32` boundary is canonicalized; other
+wire values and default omission stay unchanged. Raw action/settings values
+below `0.01` still reject before conversion.
+
 Registered actions and schema-derived nodes share these parameters through
 desktop command forms, JSONL, MCP and headless Sessions. Editing a workflow never
 executes a stroke. See the [runnable example](../examples/automation/stroke-opacity.jsonl).

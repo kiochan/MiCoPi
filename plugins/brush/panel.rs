@@ -163,7 +163,10 @@ impl Editor {
         let mut spacing = self.session.parameters.spacing;
         parameter(ui, "Dab Spacing", &mut spacing, 0.01..=2., "%", true, false);
         if spacing != self.session.parameters.spacing {
-            self.core("brush.set", serde_json::json!({"spacing":spacing}));
+            self.core(
+                "brush.set",
+                serde_json::json!({"spacing":crate::application::spacing_json(spacing)}),
+            );
         }
         ui.collapsing(tr("Pressure Dynamics"), |ui| {
             ui.checkbox(&mut self.workspace.dynamics.size, tr("Pressure Size"));

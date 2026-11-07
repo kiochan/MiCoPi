@@ -139,6 +139,7 @@ impl Appearance {
 pub struct PaintingPreferences {
     pub flow: f32,
     pub opacity_mode: crate::application::OpacityMode,
+    #[serde(serialize_with = "crate::application::serialize_spacing")]
     pub spacing: f32,
     pub minimum_opacity: f32,
     pub stabilizer: f32,
@@ -267,9 +268,14 @@ impl Settings {
             serde_json::from_value(original.get("ui").cloned().unwrap_or(json!({})))
                 .map_err(|e| e.to_string())?;
         ui.validate()?;
+        let painting_value = original.get("painting").cloned().unwrap_or(json!({}));
+        crate::plugins::validate(
+            &crate::application::Operation::Parameters.schema(),
+            &painting_value,
+        )
+        .map_err(|e| format!("painting: {e}"))?;
         let painting: PaintingPreferences =
-            serde_json::from_value(original.get("painting").cloned().unwrap_or(json!({})))
-                .map_err(|e| e.to_string())?;
+            serde_json::from_value(painting_value).map_err(|e| e.to_string())?;
         painting.validate()?;
         let plugins: PluginPreferences =
             serde_json::from_value(original.get("plugins").cloned().unwrap_or(json!({})))

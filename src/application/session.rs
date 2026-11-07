@@ -40,7 +40,11 @@ pub struct Parameters {
     pub pressure_opacity: bool,
     pub pressure_gamma: f32,
     pub minimum_radius: f32,
-    #[serde(default = "default_spacing", skip_serializing_if = "legacy_spacing")]
+    #[serde(
+        default = "default_spacing",
+        skip_serializing_if = "legacy_spacing",
+        serialize_with = "serialize_spacing"
+    )]
     pub spacing: f32,
     #[serde(default, skip_serializing_if = "zero_opacity")]
     pub minimum_opacity: f32,
@@ -57,6 +61,25 @@ fn full_flow(value: &f32) -> bool {
 }
 fn default_spacing() -> f32 {
     0.11
+}
+// The f32 representation of 1% widens below its decimal schema minimum.
+// Canonicalize only this boundary; preserve every other existing wire value.
+pub(crate) fn serialize_spacing<S: serde::Serializer>(
+    value: &f32,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    if *value == 0.01_f32 {
+        serializer.serialize_f64(0.01)
+    } else {
+        serializer.serialize_f32(*value)
+    }
+}
+pub(crate) fn spacing_json(value: f32) -> Value {
+    if value == 0.01_f32 {
+        json!(0.01)
+    } else {
+        json!(value)
+    }
 }
 fn legacy_spacing(value: &f32) -> bool {
     *value == default_spacing()
@@ -348,7 +371,7 @@ impl Session {
     }
     pub(crate) fn parameter_state(&self) -> Value {
         let mut parameters = json!(self.parameters);
-        parameters["spacing"] = json!(self.parameters.spacing);
+        parameters["spacing"] = spacing_json(self.parameters.spacing);
         parameters["minimum_opacity"] = json!(self.parameters.minimum_opacity);
         parameters["flow"] = json!(self.parameters.flow);
         parameters["opacity_mode"] = json!(self.parameters.opacity_mode);

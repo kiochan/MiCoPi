@@ -18,6 +18,7 @@ pub use actions::{Action, ActionError, ActionResult, Operation};
 pub use session::{
     parse_color, OpacityMode, Parameters, Pointer, PointerPhase, Session, ToolKind, View,
 };
+pub(crate) use session::{serialize_spacing, spacing_json};
 #[cfg(test)]
 mod tests;
 
