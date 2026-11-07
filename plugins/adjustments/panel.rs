@@ -211,7 +211,7 @@ impl Editor {
                         if let Some((minimum,maximum))=amount_range(definition,draft.value.filter) {
                             panels::parameter(ui,"Amount",&mut draft.value.amount,minimum..=maximum,"%",true,false);
                         }
-                        valid=crate::plugins::validate(&definition.parameters_schema,&parameters(&draft.value));
+                        valid=crate::plugins::validate(&definition.parameters_schema,&parameters(&draft.value)).map_err(|error|error.message);
                     }else {valid=Err("The registered adjustment filter is unavailable".into());}
                     let mut opacity=draft.value.opacity as f32/255.;
                     panels::parameter(ui,"Opacity",&mut opacity,0. ..=1.,"%",true,false);

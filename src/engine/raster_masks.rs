@@ -177,6 +177,17 @@ impl MaskState {
         self.validate_owners(layer_ids, group_ids)?;
         self.validate_dimensions(width, height)
     }
+    pub fn validate_with_adjustments(
+        &self,
+        width: usize,
+        height: usize,
+        layer_ids: &[u64],
+        group_ids: &[u64],
+        adjustment_ids: &[u64],
+    ) -> Result<(), String> {
+        self.validate_owners_with_adjustments(layer_ids, group_ids, adjustment_ids)?;
+        self.validate_dimensions(width, height)
+    }
 }
 
 /// Raw samples are never serialized as composition JSON or shared for mutation.
@@ -191,17 +202,6 @@ impl SamplePlane {
             return Err("Invalid raster mask sample count".into());
         }
         Ok(())
-    }
-    pub fn validate_with_adjustments(
-        &self,
-        width: usize,
-        height: usize,
-        layer_ids: &[u64],
-        group_ids: &[u64],
-        adjustment_ids: &[u64],
-    ) -> Result<(), String> {
-        self.validate_owners_with_adjustments(layer_ids, group_ids, adjustment_ids)?;
-        self.validate_dimensions(width, height)
     }
     pub(crate) fn memory_bytes(&self) -> usize {
         match self {
