@@ -34,6 +34,12 @@ supported; partial rendering tails and missing advertised callbacks reject.
 Document plan caching and public nodes/adjustments remain planned; ABI and native
 runtime checks await CI.
 
+The shared engine `Renderer` contract exposes `supports_levels`, `prepare_levels`
+and `render_prepared`. Its legacy defaults reject LUT plans explicitly. The native
+adapter checks mask, Mix and blend-mode availability before the synchronous call,
+and delegates plans without LUTs to the existing renderer path. Typed engine
+Levels intent serializes only the five parameters; derived tables remain separate.
+
 ## Loading and compatibility
 
 MiCoPi loads library DLLs declared by plugin manifests and merges their describe JSON contributions at startup. The host does not link plugin crates. Independent plugins may register actions, tools, public state, nodes and button panels.

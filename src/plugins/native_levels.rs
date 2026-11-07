@@ -84,6 +84,58 @@ fn prepare(
     Ok(output)
 }
 impl NativePlugin {
+    pub(super) fn render_levels_plan(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        luts: &[abi::CompositeLut],
+        width: u32,
+        height: u32,
+        output: &mut abi::Pixels,
+    ) -> Result<(), String> {
+        use crate::engine::graph::Renderer;
+        if luts.is_empty() && nodes.iter().all(|n| n.kind != 9) {
+            return self.render_masked(nodes, layers, masks, width, height, output);
+        }
+        if luts.len() > 64 {
+            return Err("Levels table limit exceeded".into());
+        }
+        let render = self
+            .levels_render
+            .ok_or("The compositor does not support Levels rendering")?;
+        if nodes.iter().any(|n| n.kind == 4) && !self.supports_transparent()
+            || nodes.iter().any(|n| n.kind == 5) && !self.supports_mix()
+            || (!masks.is_empty() || nodes.iter().any(|n| (6..=8).contains(&n.kind)))
+                && !self.supports_masks()
+            || layers.iter().any(|l| !self.supports_blend_mode(l.mode))
+            || nodes
+                .iter()
+                .any(|n| n.kind == 2 && !self.supports_blend_mode(n.mode))
+        {
+            return Err("The compositor does not support the prepared plan capabilities".into());
+        }
+        let status = unsafe {
+            render(
+                nodes.as_ptr(),
+                nodes.len(),
+                layers.as_ptr(),
+                layers.len(),
+                masks.as_ptr(),
+                masks.len(),
+                luts.as_ptr(),
+                luts.len(),
+                width,
+                height,
+                output,
+            )
+        };
+        if status == abi::OK {
+            Ok(())
+        } else {
+            Err(format!("Levels compositor execution failed: {status}"))
+        }
+    }
     pub(crate) fn supports_levels_rendering(&self) -> bool {
         self.levels_render.is_some()
     }

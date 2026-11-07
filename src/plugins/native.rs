@@ -929,6 +929,29 @@ impl NativePlugin {
     }
 }
 impl crate::engine::graph::Renderer for NativePlugin {
+    fn supports_levels(&self) -> bool {
+        self.supports_levels_preparation() && self.supports_levels_rendering()
+    }
+    fn prepare_levels(
+        &self,
+        parameters: &abi::LevelsParameters,
+    ) -> Result<abi::CompositeLut, String> {
+        NativePlugin::prepare_levels(self, *parameters)
+            .map(|values| abi::CompositeLut { values })
+            .map_err(|error| error.to_string())
+    }
+    fn render_prepared(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        luts: &[abi::CompositeLut],
+        width: u32,
+        height: u32,
+        output: &mut abi::Pixels,
+    ) -> Result<(), String> {
+        self.render_levels_plan(nodes, layers, masks, luts, width, height, output)
+    }
     fn supports_mask_effects(&self) -> bool {
         self.compositor_effects.is_some()
     }

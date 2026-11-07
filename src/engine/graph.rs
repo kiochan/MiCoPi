@@ -341,6 +341,31 @@ fn is_false(value: &bool) -> bool {
     !*value
 }
 pub trait Renderer {
+    fn supports_levels(&self) -> bool {
+        false
+    }
+    fn prepare_levels(
+        &self,
+        _parameters: &abi::LevelsParameters,
+    ) -> Result<abi::CompositeLut, String> {
+        Err("The compositor does not support Levels preparation".into())
+    }
+    /// Borrow prepared tables without modifying or retaining the document plan.
+    fn render_prepared(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        luts: &[abi::CompositeLut],
+        width: u32,
+        height: u32,
+        output: &mut abi::Pixels,
+    ) -> Result<(), String> {
+        if !luts.is_empty() || nodes.iter().any(|n| n.kind == 9) {
+            return Err("The compositor does not support Levels rendering".into());
+        }
+        self.render_masked(nodes, layers, masks, width, height, output)
+    }
     fn supports_mask_effects(&self) -> bool {
         false
     }

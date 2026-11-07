@@ -4,6 +4,10 @@
 preparation, validates host arguments and publishes successful byte tables.
 Rendering and document effects remain separate integration work.
 
+`src/engine/levels.rs` owns typed five-field Levels intent and cold preparation
+through the shared Renderer contract. Derived LUTs are borrowed render inputs,
+not serialized intent. Document plan caching and effect registration remain pending.
+
 The repository separates executable source, plugin packages, examples, documentation and local output. Paths that participate in the runtime contract remain stable; documentation and examples are grouped for navigation.
 
 ```text
