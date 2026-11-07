@@ -6,6 +6,26 @@ use super::{
 use serde_json::json;
 
 #[test]
+fn standalone_atomic_native_edits_publish_one_outer_revision() {
+    let mut s = session();
+    for (id, args) in [
+        ("native.checkerboard", json!({"cell":2})),
+        ("native.invert", json!({})),
+    ] {
+        let revision = s.revision;
+        let entries = s.journal.as_ref().unwrap().entries.len();
+        call(&mut s, id, args);
+        assert_eq!(s.revision, revision + 1, "{id}");
+        assert_eq!(
+            s.journal.as_ref().unwrap().entries.len(),
+            entries + 1,
+            "{id}"
+        );
+        check(&mut s);
+    }
+}
+
+#[test]
 fn hue_saturation_uses_native_pixels_one_undo_selection_and_verified_outcome() {
     let mut s = session();
     call(&mut s, "layer.fill_color", json!({"color":"#ff000080"}));
@@ -104,14 +124,22 @@ fn pixel_locks_invalid_parameters_and_live_contacts_reject_without_dispatch() {
     assert!(s.stroke.active());
     assert_eq!(s.revision, revision);
     assert_eq!(s.native_instances.len(), instances);
-    assert_eq!(s.journal.as_ref().unwrap().entries.len(), events);
+    assert!(s.journal.as_ref().unwrap().entries.len() > events);
+    assert!(!s.journal.as_ref().unwrap().entries.last().unwrap().success);
     assert_eq!(s.doc.layers[0].pixels, pixels);
     s.pointer(Pointer {
-        phase: PointerPhase::Up,
+        phase: PointerPhase::Move,
         time: 2,
         ..pointer
     })
     .unwrap();
+    s.pointer(Pointer {
+        phase: PointerPhase::Up,
+        time: 3,
+        ..pointer
+    })
+    .unwrap();
+    check(&mut s);
 }
 
 #[test]
@@ -126,6 +154,19 @@ fn direct_color_edit_retains_owned_raw_mask_and_explicit_paint_target() {
         .as_u64()
         .unwrap();
     call(&mut s, "mask.fill", json!({"mask_id":mask,"value":91}));
+    let masked_target = s.doc.composition();
+    assert_eq!(
+        s.apply(Action::new("layer.hue_saturation", json!({"hue":120})))
+            .unwrap_err()
+            .code,
+        "mask_target_pending"
+    );
+    assert_eq!(s.doc.composition(), masked_target);
+    call(
+        &mut s,
+        "mask.target",
+        json!({"target":{"kind":"layer_pixels"}}),
+    );
     let before = s.doc.composition();
     let samples = (0..96)
         .map(|i| s.doc.mask_plane(mask).unwrap().sample(i))

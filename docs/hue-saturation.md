@@ -35,12 +35,15 @@ processing or exact Photoshop algorithm equivalence is implied.
 The host applies current pixel-selection coverage once, enforces pixel locks and
 transparency locks, and retains document/history ownership. Position locks permit
 this color-only edit. Linked layers and multi-selection do not expand its scope;
-owned A8 masks remain separate and unchanged. The operation changes raw raster
+owned A8 masks remain separate and unchanged. Select Pixels before running this
+command when an A8 painting target is active; the host rejects that target rather
+than redirecting a color operation implicitly. The operation changes raw raster
 pixels before source filters, composition masks and ancestor gates.
 
 The action declares `pixel_access=pixels`, `document_atomic=true` and
 `requires_idle=true`. Active pen or pan contacts reject before native instance
-dispatch without finishing or flushing input. The same admission applies to
+dispatch without finishing input. Recording may flush pending raw sample chunks and
+append the failed-action event while the native contact remains active. The same admission applies to
 headless/MCP callers; the frontend preserves input until shared admission runs.
 Existing native actions keep their legacy contact policy unless they opt in.
 

@@ -502,8 +502,8 @@ impl Session {
             self.remaining_actions -= 1;
             let read_only = self.registry.actions[&id].is_read_only();
             if op.is_none() {
-                // Admission precedes recording boundaries and checkpoint work;
-                // an idle-only DLL action must not flush pending input samples.
+                // Keep native admission before checkpoint/instance work. The
+                // outer recording boundary may flush samples without ending input.
                 crate::plugins::native::admit_contact(self, &id)?;
             }
             self.validate_adjustment_boundary(op, &args)?;
@@ -552,6 +552,7 @@ impl Session {
                 None
             };
             let scoped_atomic = atomic_group || (checkpoint.is_some() && op.is_none());
+            let native_revision_start = (scoped_atomic && op.is_none()).then_some(self.revision);
             if read_only {
                 self.read_depth += 1;
             }
@@ -589,6 +590,13 @@ impl Session {
                                 .cloned()
                                 .unwrap_or_else(|| json!([]))
                         };
+                    }
+                    if !failed {
+                        if let Some(revision) = native_revision_start {
+                            // Atomic native actions own one outer revision. Host
+                            // loans/child calls may advance it provisionally.
+                            self.revision = revision;
+                        }
                     }
                     if !read_only
                         && !self.doc.history_group_active()
