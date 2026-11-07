@@ -184,10 +184,13 @@ def negatives(plan, output, case):
         ('canvas.move', dict(target='selection', dx=1, dy=0)),
         ('canvas.move', dict(mask_id=4, dx=1, dy=0)),
         ('canvas.move', dict(dx=1, dy=0)),
-        ('canvas.transform', dict(target='layer', translate_x=1)),
-        ('canvas.transform.plan', dict(target='layer', translate_x=1)),
+        # Whole-layer affine is supported; selected-pixel affine on a masked
+        # document remains outside the owner-transform contract.
+        ('canvas.transform', dict(target='selection', translate_x=1)),
+        ('canvas.transform.plan', dict(target='selection', translate_x=1)),
     ]):
         add(f'pending-{index}', action, error='mask_editing_pending', **args)
+    add('supported-affine-plan', 'canvas.transform.plan', target='layer', translate_x=1, method='nearest')
     add('negative-after', 'canvas.state')
     add('negative-after-png', 'canvas.snapshot')
     add('invalid-prefix', 'pipeline.run', error='invalid_arguments', steps=[
@@ -232,6 +235,10 @@ def negatives(plan, output, case):
 def validate_negatives(values, plan, output, case):
     at = lambda key: plan.at(values, key)
     baseline = editing.document_state(at('negative-before'))
+    affine = at('supported-affine-plan')
+    active_id = case['model']['composition']['layer_metadata'][case['model']['active']]['id']
+    assert affine['target'] == 'layers' and affine['layer_ids'] == [active_id]
+    assert affine['matrix'] == [1, 0, 1, 0, 1, 0]
     for key in ['negative-after', 'invalid-after', 'atomic-after']:
         assert editing.document_state(at(key)) == baseline, key
     assert at('negative-png')['data'] == at('negative-after-png')['data']
