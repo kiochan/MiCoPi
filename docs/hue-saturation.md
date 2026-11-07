@@ -1,5 +1,9 @@
 # Direct Hue/Saturation editing
 
+The separate [native composition prerequisite](native-hsl.md) now defines optional
+HSL render/observation callbacks and cached negotiation. Document node/adjustment
+integration remains planned; this direct command retains its existing semantics.
+
 `layer.hue_saturation` is a native DLL action over the **active raster layer**.
 It is available through command search and its parameter form, configurable
 bindings, schema-derived action/workflow nodes, pipelines, JSONL and MCP. This

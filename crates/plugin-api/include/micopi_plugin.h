@@ -511,6 +511,25 @@ typedef struct {
 } MicopiProjectiveApi;
 const MicopiProjectiveApi *micopi_projective_v1(void);
 
+/* Optional independent HSL plan API. Kind 11 uses a=image input, b=0,
+   mode=parameter index, amount=1. Fixed-stride finite parameter records;
+   hue is [-180,180] degrees; saturation/lightness are [-100,100] percent.
+   All declarations validate before writes. Both callbacks are mandatory. */
+#define MICOPI_HSL_MAX_PARAMETERS 64
+typedef struct { double hue, saturation, lightness; } MicopiHslParameters;
+typedef int32_t (*MicopiHslRenderFn)(const MicopiCompositeNode *, size_t,
+    const MicopiCompositeLayer *, size_t, const MicopiCompositeMask *, size_t,
+    const MicopiCompositeLut *, size_t, const MicopiHslParameters *, size_t,
+    uint32_t, uint32_t, MicopiPixels *);
+typedef int32_t (*MicopiHslHistogramFn)(const MicopiHistogramRequest *,
+    const MicopiCompositeNode *, size_t, const MicopiCompositeLayer *, size_t,
+    const MicopiCompositeMask *, size_t, const MicopiCompositeLut *, size_t,
+    const MicopiHslParameters *, size_t, MicopiHistogramResult *);
+typedef struct { uint32_t abi_version, struct_size;
+    MicopiHslRenderFn render; MicopiHslHistogramFn histogram;
+} MicopiHslApi;
+const MicopiHslApi *micopi_hsl_v1(void);
+
 #ifdef __cplusplus
 }
 #endif

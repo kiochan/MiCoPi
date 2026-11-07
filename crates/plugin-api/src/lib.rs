@@ -8,6 +8,8 @@
 //! Every exported callback must catch its own unwinding panics. Native plugins are
 //! trusted code in the host process, not a sandbox.
 use std::ffi::c_void;
+mod hsl;
+pub use hsl::*;
 pub const ABI_VERSION: u32 = 1;
 pub const ENTRY_SYMBOL: &[u8] = b"micopi_plugin_v1\0";
 pub const OK: i32 = 0;

@@ -4,7 +4,7 @@ use micopi_plugin_api as abi;
 #[path = "histogram_cost.rs"]
 mod cost;
 #[path = "histogram_plan.rs"]
-mod plan;
+pub(super) mod plan;
 unsafe extern "C" fn sample(
     request: *const abi::HistogramRequest,
     data: *const u32,

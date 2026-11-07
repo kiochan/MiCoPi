@@ -5,6 +5,9 @@ mod blend_tests;
 mod blends;
 mod curves;
 mod histogram;
+mod hsl;
+#[path = "../../native-paint/src/hsl_math.rs"]
+mod hsl_math;
 mod levels;
 mod mask_effects;
 #[cfg(test)]

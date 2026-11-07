@@ -271,3 +271,10 @@ int main(void) {
         && affine_sampler_ext.bounds == a8_affine_bounds
         && affine_entry_callback == a8_affine_entry ? 0 : 1;
 }
+
+ABI_ASSERT(sizeof(MicopiHslParameters) == 24, "HSL parameter stride");
+ABI_ASSERT(offsetof(MicopiHslParameters, saturation) == 8, "HSL saturation offset");
+ABI_ASSERT(offsetof(MicopiHslParameters, lightness) == 16, "HSL lightness offset");
+ABI_ASSERT(sizeof(MicopiHslApi) == 24, "Independent HSL API");
+ABI_ASSERT(offsetof(MicopiHslApi, render) == 8, "HSL render callback");
+ABI_ASSERT(offsetof(MicopiHslApi, histogram) == 16, "HSL observation callback");

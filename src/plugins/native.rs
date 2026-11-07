@@ -3,6 +3,8 @@
 mod curves;
 #[path = "native_histogram.rs"]
 mod histogram;
+#[path = "native_hsl.rs"]
+mod hsl;
 #[path = "native_levels.rs"]
 mod levels;
 use super::PixelAccess;
@@ -617,6 +619,7 @@ pub struct NativePlugin {
     curves_render: Option<abi::LevelsRenderFn>,
     histogram: Option<abi::HistogramFn>,
     histogram_plan: Option<abi::HistogramPlanFn>,
+    hsl: Option<(abi::HslRenderFn, abi::HslHistogramFn)>,
     mask_effect_instance: std::sync::Mutex<Option<MaskEffectInstance>>,
     _module: Module,
 }
@@ -863,6 +866,7 @@ impl NativePlugin {
             None => (None, None),
         };
         let tools = unsafe { module.tool_api()? };
+        let hsl = unsafe { module.hsl_api()? };
         let (histogram, histogram_plan) = match unsafe { module.histogram_api()? } {
             Some((sample, plan)) => (Some(sample), plan),
             None => (None, None),
@@ -944,6 +948,7 @@ impl NativePlugin {
                 curves_render,
                 histogram,
                 histogram_plan,
+                hsl,
                 mask_effect_instance: Default::default(),
                 _module: module,
             }),

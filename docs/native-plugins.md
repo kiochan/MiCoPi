@@ -1,5 +1,10 @@
 # Native DLL Plugins and ABI v1
 
+The independent [HSL plan prerequisite](native-hsl.md) adds an optional complete
+24-byte API, fixed-stride binary64 intent, render/observation callbacks and cached
+startup discovery. Existing tables keep rejecting HSL instructions; typed document
+node/adjustment integration and runtime verification remain pending.
+
 ## Histogram analysis
 
 The optional complete 24-byte [prepared-plan tail](histogram-plan.md) extends the

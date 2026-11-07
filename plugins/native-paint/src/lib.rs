@@ -5,6 +5,7 @@ use std::ffi::c_void;
 mod area;
 mod area_action;
 mod fill_mask;
+mod hsl_math;
 mod hue_saturation;
 mod spatial;
 #[derive(Default)]
@@ -164,7 +165,7 @@ unsafe fn run(
     let cell = args["cell"].as_f64().unwrap_or(16.).clamp(1., 256.) as usize;
     let mut kernel = Kernel {
         hue_saturation: if handler == "hue_saturation" {
-            Some(hue_saturation::Parameters::parse(&args)?)
+            Some(hue_saturation::parse(&args)?)
         } else {
             None
         },
