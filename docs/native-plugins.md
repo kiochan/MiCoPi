@@ -40,6 +40,15 @@ adapter checks mask, Mix and blend-mode availability before the synchronous call
 and delegates plans without LUTs to the existing renderer path. Typed engine
 Levels intent serializes only the five parameters; derived tables remain separate.
 
+`PreparedLevelsPlan` holds one renderer and at most 64 intent/table pairs. A stable
+provider and unchanged ordered intent list reuse table storage without native
+calls or allocation. Rebuild validates all intents first, prepares changed slots
+in private storage and replaces the cache only on complete success. A different
+renderer prepares every slot. Rendering borrows the cached tables. Steady LUT
+storage is at most 16 KiB; rebuilding may temporarily retain another 16 KiB,
+plus bounded intent/vector metadata. This cache is not yet installed in document
+graphs; no per-MOVE preparation or frame-sized buffer is introduced.
+
 ## Loading and compatibility
 
 MiCoPi loads library DLLs declared by plugin manifests and merges their describe JSON contributions at startup. The host does not link plugin crates. Independent plugins may register actions, tools, public state, nodes and button panels.

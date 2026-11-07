@@ -2,6 +2,78 @@
 use super::graph::Renderer;
 use micopi_plugin_api as abi;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+
+/// Cold, bounded rendering cache. A failed rebuild preserves the previous plan.
+/// Holding the renderer also holds the DLL while its callbacks may be used.
+pub struct PreparedLevelsPlan {
+    provider: Arc<dyn Renderer>,
+    intents: Vec<Levels>,
+    tables: Vec<abi::CompositeLut>,
+}
+impl PreparedLevelsPlan {
+    pub fn new(provider: Arc<dyn Renderer>, intents: &[Levels]) -> Result<Self, String> {
+        Self::validate(intents)?;
+        let tables = intents
+            .iter()
+            .map(|intent| intent.prepare(provider.as_ref()))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Self {
+            provider,
+            intents: intents.to_vec(),
+            tables,
+        })
+    }
+    fn validate(intents: &[Levels]) -> Result<(), String> {
+        if intents.len() > 64 {
+            return Err("Levels table limit exceeded".into());
+        }
+        for intent in intents {
+            intent.validate()?;
+        }
+        Ok(())
+    }
+    /// Same provider and ordered intent list: no allocation or native calls.
+    /// Changed slots prepare into private storage before publishing the cache.
+    pub fn rebuild(
+        &mut self,
+        provider: Arc<dyn Renderer>,
+        intents: &[Levels],
+    ) -> Result<(), String> {
+        Self::validate(intents)?;
+        let same_provider = Arc::ptr_eq(&self.provider, &provider);
+        if same_provider && self.intents == intents {
+            return Ok(());
+        }
+        let mut tables = Vec::with_capacity(intents.len());
+        for (slot, intent) in intents.iter().enumerate() {
+            tables.push(if same_provider && self.intents.get(slot) == Some(intent) {
+                self.tables[slot]
+            } else {
+                intent.prepare(provider.as_ref())?
+            });
+        }
+        self.provider = provider;
+        self.intents = intents.to_vec();
+        self.tables = tables;
+        Ok(())
+    }
+    pub fn tables(&self) -> &[abi::CompositeLut] {
+        &self.tables
+    }
+    pub fn render(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        width: u32,
+        height: u32,
+        output: &mut abi::Pixels,
+    ) -> Result<(), String> {
+        self.provider
+            .render_prepared(nodes, layers, masks, &self.tables, width, height, output)
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -59,6 +131,93 @@ impl Levels {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::Cell;
+    #[derive(Default)]
+    struct Provider {
+        calls: Cell<usize>,
+        fail_at: Cell<Option<usize>>,
+    }
+    impl Renderer for Provider {
+        fn supports_levels(&self) -> bool {
+            true
+        }
+        fn prepare_levels(&self, _: &abi::LevelsParameters) -> Result<abi::CompositeLut, String> {
+            let call = self.calls.get() + 1;
+            self.calls.set(call);
+            if self.fail_at.get() == Some(call) {
+                return Err("injected prepare failure".into());
+            }
+            Ok(abi::CompositeLut {
+                values: [call as u8; 256],
+            })
+        }
+        fn render(
+            &self,
+            _: &[abi::CompositeNode],
+            _: &[abi::CompositeLayer],
+            _: u32,
+            _: u32,
+            _: &mut abi::Pixels,
+        ) -> Result<(), String> {
+            Err("unexpected legacy render".into())
+        }
+    }
+    #[test]
+    fn cache_reuses_unchanged_slots_and_publishes_only_complete_rebuilds() {
+        let provider = Arc::new(Provider::default());
+        let mut intents = [
+            Levels::default(),
+            Levels {
+                gamma: 2.,
+                ..Default::default()
+            },
+        ];
+        let mut plan = PreparedLevelsPlan::new(provider.clone(), &intents).unwrap();
+        assert_eq!(provider.calls.get(), 2);
+        let pointer = plan.tables().as_ptr();
+        for _ in 0..32 {
+            plan.rebuild(provider.clone(), &intents).unwrap();
+        }
+        assert_eq!(provider.calls.get(), 2);
+        assert_eq!(plan.tables().as_ptr(), pointer);
+        intents[1].gamma = 3.;
+        plan.rebuild(provider.clone(), &intents).unwrap();
+        assert_eq!(provider.calls.get(), 3);
+        assert_eq!(plan.tables()[0].values, [1; 256]);
+        assert_eq!(plan.tables()[1].values, [3; 256]);
+        let pointer = plan.tables().as_ptr();
+        intents[0].gamma = 4.;
+        intents[1].gamma = 5.;
+        provider.fail_at.set(Some(5));
+        assert!(plan.rebuild(provider.clone(), &intents).is_err());
+        assert_eq!(provider.calls.get(), 5);
+        assert_eq!(plan.tables().as_ptr(), pointer);
+        assert_eq!(plan.tables()[0].values, [1; 256]);
+        assert_eq!(plan.tables()[1].values, [3; 256]);
+        provider.fail_at.set(None);
+        let replacement = Arc::new(Provider::default());
+        plan.rebuild(replacement.clone(), &intents).unwrap();
+        assert_eq!(replacement.calls.get(), 2);
+        assert_eq!(plan.tables()[1].values, [2; 256]);
+    }
+    #[test]
+    fn cache_preflights_every_intent_and_table_limit_before_native_preparation() {
+        let provider = Arc::new(Provider::default());
+        assert!(PreparedLevelsPlan::new(provider.clone(), &[Levels::default(); 65]).is_err());
+        assert_eq!(provider.calls.get(), 0);
+        let mut plan = PreparedLevelsPlan::new(provider.clone(), &[Levels::default()]).unwrap();
+        let bad = [
+            Levels::default(),
+            Levels {
+                gamma: f64::NAN,
+                ..Default::default()
+            },
+        ];
+        assert!(plan.rebuild(provider.clone(), &bad).is_err());
+        assert_eq!(provider.calls.get(), 1);
+        assert_eq!(plan.tables().len(), 1);
+        assert_eq!(plan.tables()[0].values, [1; 256]);
+    }
     #[test]
     fn prepared_levels_table_is_reused_by_shared_renderer_with_exact_alpha() {
         let registry = crate::plugins::Registry::load(
