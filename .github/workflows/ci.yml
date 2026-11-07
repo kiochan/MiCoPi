@@ -50,7 +50,7 @@ jobs:
       - name: Test
         run: cargo test --locked
       - name: Test native SDK and pixel kernels
-        run: cargo test --lib --locked -p micopi-plugin-api -p micopi-painting-tools -p micopi-compositing
+        run: cargo test --lib --locked -p micopi-plugin-api -p micopi-native-paint -p micopi-painting-tools -p micopi-compositing
       - name: Measure bounded native contact cost and coverage reuse
         run: cargo test --release --lib --locked -p micopi-painting-tools bounded_stroke_cost -- --ignored --nocapture --test-threads=1
       - name: Measure bounded analytic tip contact and candidate work
@@ -69,6 +69,8 @@ jobs:
         run: python scripts/smoke-adjustments.py --cli target/release/micopi-cli.exe
       - name: Verify bounded read-only histograms across JSONL and MCP
         run: python scripts/smoke-histogram.py --cli target/release/micopi-cli.exe
+      - name: Verify native Hue Saturation selection and workflow outcomes
+        run: python scripts/smoke-hue-saturation.py --cli target/release/micopi-cli.exe
       - name: Verify exact raster alignment, distribution and linked-mask outcomes
         run: python scripts/smoke-layer-arrangement.py --cli target/release/micopi-cli.exe
       - name: Verify published result revisions and historical reports

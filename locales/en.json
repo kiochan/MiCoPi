@@ -1590,5 +1590,9 @@
   "Source declarations include disabled effects; masks and ancestor gates are excluded.": "Source declarations include disabled effects; masks and ancestor gates are excluded.",
   "Actual Composition includes generated masks and group strength.": "Actual Composition includes generated masks and group strength.",
   "Snapshots use published data; local drafts are not sampled.": "Snapshots use published data; local drafts are not sampled.",
-  "Node": "Node"
+  "Node": "Node",
+  "Hue/Saturation: Active Layer": "Hue/Saturation: Active Layer",
+  "Hue Shift": "Hue Shift",
+  "Saturation Adjustment": "Saturation Adjustment",
+  "Lightness Adjustment": "Lightness Adjustment"
 }

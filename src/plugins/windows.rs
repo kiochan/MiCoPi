@@ -25,7 +25,7 @@ pub fn commands(panel: &PanelDefinition) -> Vec<ActionDefinition> {
         } else { json!({"type":"object","additionalProperties":false}) };
         let title=match *operation {"show"=>"Show Window","hide"=>"Hide Window","focus"=>"Focus Window","float"=>"Float Window","dock_left"=>"Dock Left","dock_right"=>"Dock Right","dock_top"=>"Dock Top","dock_bottom"=>"Dock Bottom","minimize"=>"Minimize Window","maximize"=>"Maximize Window","restore"=>"Restore Window",_=>"Group as Tabs"};
         ActionDefinition { id:format!("window.{}.{}",panel.id,operation), title:format!("{title}: {}",panel.title), operation:None,native:None,pixel_access:None,
-            steps:vec![Action::new("window.command",args)], input_schema:Some(schema),read_only:false,document_atomic:false,output_schema:None }
+            steps:vec![Action::new("window.command",args)], input_schema:Some(schema),read_only:false,document_atomic:false,requires_idle:false,output_schema:None }
     }).collect();
     for (operation, title) in [
         ("float", "Float Panel Group"),

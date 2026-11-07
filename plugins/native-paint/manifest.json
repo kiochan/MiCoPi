@@ -15,6 +15,7 @@
     "layer.translate": "geometry",
     "layer.fill": "pixels",
     "layer.gradient": "pixels",
-    "layer.fill_color": "pixels"
+    "layer.fill_color": "pixels",
+    "layer.hue_saturation": "pixels"
   }
 }

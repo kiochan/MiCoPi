@@ -158,6 +158,8 @@ mod png_density_tests;
 
 #[cfg(test)]
 mod export_tests;
+#[cfg(test)]
+mod hue_saturation_tests;
 pub(crate) mod image_size;
 pub(crate) mod output_size;
 #[cfg(test)]

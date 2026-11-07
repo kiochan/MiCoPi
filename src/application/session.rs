@@ -501,6 +501,11 @@ impl Session {
             }
             self.remaining_actions -= 1;
             let read_only = self.registry.actions[&id].is_read_only();
+            if op.is_none() {
+                // Admission precedes recording boundaries and checkpoint work;
+                // an idle-only DLL action must not flush pending input samples.
+                crate::plugins::native::admit_contact(self, &id)?;
+            }
             self.validate_adjustment_boundary(op, &args)?;
             self.validate_mask_boundary(op, &args)?;
             let recording = !read_only

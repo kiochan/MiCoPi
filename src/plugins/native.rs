@@ -1276,7 +1276,19 @@ impl Instance {
         Ok(value)
     }
 }
+pub(crate) fn admit_contact(session: &Session, action: &str) -> Result<(), ActionError> {
+    if session.registry.actions[action].requires_idle
+        && (session.stroke.active() || session.pointer_checkpoint.is_some())
+    {
+        return Err(ActionError::new(
+            "stroke_active",
+            "Finish the current contact before running this native action",
+        ));
+    }
+    Ok(())
+}
 pub(crate) fn execute(session: &mut Session, action: &str, args: Value) -> ActionResult {
+    admit_contact(session, action)?;
     let access = session.registry.actions[action].effective_pixel_access();
     access.require(&session.doc, session.doc.active)?;
     if access != PixelAccess::None && session.doc.has_adjustments() {

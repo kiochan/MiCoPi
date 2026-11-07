@@ -1590,5 +1590,9 @@
   "Source declarations include disabled effects; masks and ancestor gates are excluded.": "源定义包含已禁用的效果，不含蒙版和上级图层组的合成控制。",
   "Actual Composition includes generated masks and group strength.": "实际合成包含生成的蒙版与图层组效果强度。",
   "Snapshots use published data; local drafts are not sampled.": "快照读取已应用的数据，不采样尚未应用的草稿。",
-  "Node": "节点"
+  "Node": "节点",
+  "Hue/Saturation: Active Layer": "色相／饱和度：当前图层",
+  "Hue Shift": "色相偏移",
+  "Saturation Adjustment": "饱和度调整",
+  "Lightness Adjustment": "明度调整"
 }

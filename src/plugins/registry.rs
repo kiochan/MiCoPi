@@ -130,6 +130,9 @@ pub struct ActionDefinition {
     pub read_only: bool,
     #[serde(default)]
     pub document_atomic: bool,
+    /// Native actions may require an idle Session before any instance dispatch.
+    #[serde(default)]
+    pub requires_idle: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pixel_access: Option<PixelAccess>,
     #[serde(default)]

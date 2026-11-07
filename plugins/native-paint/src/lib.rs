@@ -5,6 +5,7 @@ use std::ffi::c_void;
 mod area;
 mod area_action;
 mod fill_mask;
+mod hue_saturation;
 mod spatial;
 #[derive(Default)]
 struct Instance {
@@ -25,6 +26,7 @@ struct Kernel {
     checkerboard: bool,
     cell: usize,
     spatial: Option<spatial::Spatial>,
+    hue_saturation: Option<hue_saturation::Parameters>,
 }
 unsafe extern "C" fn transform(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 {
     if user.is_null() || buffer.is_null() {
@@ -41,6 +43,12 @@ unsafe extern "C" fn transform(user: *mut c_void, buffer: *mut abi::Pixels) -> i
         return abi::ERROR;
     }
     let pixels = std::slice::from_raw_parts_mut(buffer.data, buffer.len);
+    if let Some(parameters) = kernel.hue_saturation {
+        for pixel in pixels {
+            *pixel = parameters.apply(*pixel);
+        }
+        return abi::OK;
+    }
     if let Some(operation) = kernel.spatial {
         spatial::apply(
             pixels,
@@ -103,6 +111,7 @@ unsafe fn run(
         "fill",
         "gradient",
         "fill_color",
+        "hue_saturation",
     ]
     .contains(&handler)
     {
@@ -154,6 +163,11 @@ unsafe fn run(
     };
     let cell = args["cell"].as_f64().unwrap_or(16.).clamp(1., 256.) as usize;
     let mut kernel = Kernel {
+        hue_saturation: if handler == "hue_saturation" {
+            Some(hue_saturation::Parameters::parse(&args)?)
+        } else {
+            None
+        },
         spatial: match handler {
             "flip_horizontal" => Some(spatial::Spatial::FlipHorizontal),
             "flip_vertical" => Some(spatial::Spatial::FlipVertical),

@@ -1,5 +1,11 @@
 # Project Structure and Ownership
 
+`plugins/native-paint/src/hue_saturation.rs` owns scalar direct HSL pixel math.
+Its DLL contribution declares schemas, pixel access, atomic support and idle-only
+admission. The host registry/native dispatcher owns the optional `requires_idle`
+contract, and `src/plugins/command_contact.rs` propagates frontend admission
+through declared command wrappers. No document or UI types enter the DLL.
+
 `plugins/compositing/src/histogram_plan.rs` owns bounded prepared-plan observations
 through an optional SDK tail. It shares grid selection with raw histogram sampling
 and instruction evaluation with `masks.rs`; it never allocates an image buffer.

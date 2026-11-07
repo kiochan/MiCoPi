@@ -163,6 +163,8 @@ fn summarize<'a>(
     } else if definition.native.is_some() {
         Summary::leaf(if definition.is_read_only() {
             CommandContactPolicy::Observe
+        } else if definition.requires_idle {
+            CommandContactPolicy::SharedAdmission
         } else {
             CommandContactPolicy::LegacyCleanup
         })
@@ -257,6 +259,31 @@ mod tests {
         .into_iter()
         .map(|definition| (definition.id.clone(), definition))
         .collect()
+    }
+
+    #[test]
+    fn native_idle_requirement_preserves_frontend_contact_and_macro_admission() {
+        let mut actions = actions();
+        let mut idle = native("idle_native", false);
+        idle.requires_idle = true;
+        put(&mut actions, idle);
+        put(
+            &mut actions,
+            declared("idle_macro", &["read", "idle_native", "legacy"]),
+        );
+        let cache = Cache::build(&actions);
+        assert_eq!(
+            cache.get("idle_native"),
+            CommandContactPolicy::SharedAdmission
+        );
+        assert_eq!(
+            cache.get("idle_macro"),
+            CommandContactPolicy::SharedAdmission
+        );
+        assert_eq!(
+            cache.get("native_mutable"),
+            CommandContactPolicy::LegacyCleanup
+        );
     }
     fn put(actions: &mut BTreeMap<String, ActionDefinition>, definition: ActionDefinition) {
         actions.insert(definition.id.clone(), definition);

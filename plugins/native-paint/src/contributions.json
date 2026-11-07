@@ -300,6 +300,73 @@
         ],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "layer.hue_saturation",
+      "title": "Hue/Saturation: Active Layer",
+      "native": "hue_saturation",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "hue": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "default": 0,
+            "description": "Hue shift in degrees.",
+            "title": "Hue Shift"
+          },
+          "saturation": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100,
+            "default": 0,
+            "description": "Relative HSL saturation adjustment; grays remain achromatic.",
+            "title": "Saturation Adjustment"
+          },
+          "lightness": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100,
+            "default": 0,
+            "description": "HSL lightness adjustment toward black or white.",
+            "title": "Lightness Adjustment"
+          }
+        }
+      },
+      "document_atomic": true,
+      "requires_idle": true,
+      "pixel_access": "pixels",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "implementation",
+          "calls",
+          "width",
+          "height"
+        ],
+        "properties": {
+          "implementation": {
+            "type": "string"
+          },
+          "calls": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          }
+        },
+        "additionalProperties": false
+      }
     }
   ],
   "panels": [

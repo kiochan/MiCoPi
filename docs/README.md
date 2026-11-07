@@ -1,5 +1,9 @@
 # Documentation
 
+[Direct Hue/Saturation](hue-saturation.md) describes the native active-raster
+command, selection/lock/idle admission and shared workflow/MCP/headless path.
+Runtime verification is pending; non-destructive HSL integration remains planned.
+
 See [Histograms](histograms.md) for bounded native color queries through Session,
 nodes and MCP, with shared manual chart overlays and explicit Source/Actual node
 input/output selection. Backend runtime CI passed; new picker tests remain pending.

@@ -2,6 +2,14 @@
 
 All package types use the same manifest, dependency resolver and registry. Tools, actions, state providers, nodes and windows retain their specific execution interfaces. Typed brush/compositor callbacks remain separate from JSON orchestration.
 
+Native action contributions may declare `requires_idle: true`. Session rejects
+active drawing/panning contacts before native instance dispatch, and shared
+frontend admission preserves the contact until that check runs. The default is
+false for compatibility. This is independent of read-only, pixel-access and
+atomic capabilities; it does not make arbitrary DLL effects reversible. Built-in
+operation contributions keep their operation-specific admission. The
+[direct Hue/Saturation action](hue-saturation.md) uses this contract.
+
 ## Package identity and compatibility
 
 Native pixel access is part of action registration: optional `pixel_access` and package `action_access` overlays classify `none`, `pixels` or `geometry` access to existing layers. The shared registry validates ownership/conflicts and publishes effective native access. Old DLLs can be annotated through manifests; tables and binary descriptors need no change. See [Layer pixel access](native-plugins.md#layer-pixel-access) for conservative defaults and host enforcement.

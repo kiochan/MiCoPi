@@ -1590,5 +1590,9 @@
   "Source declarations include disabled effects; masks and ancestor gates are excluded.": "ソース定義には無効な効果も含みます。マスクと上位グループの合成制御は含みません。",
   "Actual Composition includes generated masks and group strength.": "実際の合成には生成されたマスクとグループの効果量を含みます。",
   "Snapshots use published data; local drafts are not sampled.": "スナップショットは適用済みデータを使います。未適用の編集は含みません。",
-  "Node": "ノード"
+  "Node": "ノード",
+  "Hue/Saturation: Active Layer": "色相・彩度：現在のレイヤー",
+  "Hue Shift": "色相の移動",
+  "Saturation Adjustment": "彩度の調整",
+  "Lightness Adjustment": "明度の調整"
 }

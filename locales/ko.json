@@ -1590,5 +1590,9 @@
   "Source declarations include disabled effects; masks and ancestor gates are excluded.": "소스 정의에는 비활성 효과도 포함됩니다. 마스크와 상위 그룹의 합성 제어는 제외됩니다.",
   "Actual Composition includes generated masks and group strength.": "실제 합성에는 생성된 마스크와 그룹 효과 강도가 포함됩니다.",
   "Snapshots use published data; local drafts are not sampled.": "스냅샷은 적용된 데이터를 사용합니다. 적용 전 편집 내용은 샘플링하지 않습니다.",
-  "Node": "노드"
+  "Node": "노드",
+  "Hue/Saturation: Active Layer": "색조／채도: 현재 레이어",
+  "Hue Shift": "색조 이동",
+  "Saturation Adjustment": "채도 조정",
+  "Lightness Adjustment": "명도 조정"
 }

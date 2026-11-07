@@ -1,0 +1,6 @@
+{"action":"canvas.new","args":{"width":16,"height":16}}
+{"action":"layer.fill_color","args":{"color":"#ff000080"}}
+{"action":"layer.hue_saturation","args":{"hue":120,"saturation":0,"lightness":0}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}
+{"action":"replay.verify","args":{}}
