@@ -216,6 +216,7 @@ impl Editor {
         ScrollArea::vertical().id_salt(("adjustment-properties",self.session.doc.identity,id))
             .max_height((ui.available_height()-a.control_height*7.-a.section_spacing).max(a.control_height*3.))
             .auto_shrink([false,true]).show(ui,|ui|{
+                if draft.value.curves.is_some() || draft.value.levels.is_some() {super::nodes::histogram_ui::controls(ui,&mut self.session);}
                 ui.add_enabled_ui(!stale,|ui|{
                     let _name=ui.add(TextEdit::singleline(&mut draft.value.name).id(Id::new(("adjustment-name",self.session.doc.identity,id))).char_limit(120).desired_width(f32::INFINITY).hint_text(crate::i18n::text("Adjustment Name")));
                     #[cfg(test)] ui.data_mut(|data|data.insert_temp(Id::new(("adjustment-name",self.session.doc.identity,id)),_name.rect));
@@ -249,7 +250,8 @@ impl Editor {
                         if curves_definition(definition) {
                             if let Some(curves)=&mut draft.value.curves {
                                 if definition.id=="compositing.curves" {
-                                    super::nodes::curves_ui::edit(ui,Id::new(("adjustment-curves",self.session.doc.identity,id)),curves,self.session.doc.renderer.as_deref(),self.session.stroke.active() || self.session.pointer_checkpoint.is_some());
+                                    let histogram=super::nodes::histogram_ui::cached(ui.ctx(),&self.session);
+                                    super::nodes::curves_ui::edit_with_histogram(ui,Id::new(("adjustment-curves",self.session.doc.identity,id)),curves,self.session.doc.renderer.as_deref(),self.session.stroke.active() || self.session.pointer_checkpoint.is_some(),histogram.as_deref());
                                 } else {
                                     let mut value=crate::plugins::adjustments::curve_parameters(curves);
                                     super::schema::edit(ui,("adjustment-curves",id),&definition.parameters_schema,&mut value);
@@ -259,7 +261,8 @@ impl Editor {
                         } else if levels_definition(definition) {
                             if let Some(levels)=&mut draft.value.levels {
                                 if definition.id=="compositing.levels" {
-                                    super::nodes::levels_ui::edit(ui,Id::new(("adjustment-levels",id)),levels);
+                                    let histogram=super::nodes::histogram_ui::cached(ui.ctx(),&self.session);
+                                    super::nodes::levels_ui::edit_with_histogram(ui,Id::new(("adjustment-levels",id)),levels,histogram.as_deref());
                                 }else{
                                     let mut value=crate::plugins::adjustments::level_parameters(*levels);
                                     super::schema::edit(ui,("adjustment-levels",id),&definition.parameters_schema,&mut value);

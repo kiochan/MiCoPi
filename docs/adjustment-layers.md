@@ -127,7 +127,9 @@ using `parameters.curves`. Apply the master first and then each channel, preserv
 alpha; Normal opacity and owned A8 coverage mix the effect once over the backdrop.
 Root, Isolated and Pass Through follow the same scope as other adjustments.
 The built-in inspector shares the [local curve controls](curves.md#local-curve-controls);
-custom aliases retain their schema editor. Histograms remain planned. Partial channel patches preserve other channels and interpolation;
+custom aliases retain their schema editor. Shared manual [histogram controls](histograms.md)
+show explicit published composite/raw snapshots and hide stale/contact overlays;
+they do not sample local drafts or arbitrary adjustment inputs. Partial channel patches preserve other channels and interpolation;
 a supplied `points` array replaces the complete point list. Point objects remain
 complete (`input` and `output`), with ordered-byte and provider validation.
 

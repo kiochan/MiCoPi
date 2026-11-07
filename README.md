@@ -1,6 +1,6 @@
 # MiCoPi
 
-[Curves source nodes](docs/curves.md) add master/R/G/B control points and cached native rendering to linked/free graphs, Undo, projects and verified outcomes. CI is pending; Curves adjustment layers share those contracts; shared point controls support dragging and numeric edits; [histogram queries](docs/histograms.md) expose bounded composite/raw statistics; plot overlays remain planned.
+[Curves source nodes](docs/curves.md) add master/R/G/B control points and cached native rendering to linked/free graphs, Undo, projects and verified outcomes. CI is pending; Curves adjustment layers share those contracts; shared point controls support dragging and numeric edits; [histogram queries](docs/histograms.md) expose bounded composite/raw statistics; shared manually refreshed charts now show explicit published composite/raw scope in Levels/Curves editors. UI validation and per-node/input statistics remain pending.
 
 [Levels source nodes](docs/levels.md) now share linked/free graphs, cached native
 rendering, Undo, projects and verified outcomes. CI validation is pending;

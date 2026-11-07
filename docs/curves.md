@@ -4,10 +4,12 @@
 free image graphs. It preserves source pixels and alpha while mapping encoded
 RGB. The same intent supports real affect-below Curves adjustment layers. Runtime
 validation awaits CI. Shared curve controls and histogram queries are implemented;
-plot overlays and reviewed screenshots remain planned.
+manual cached histogram overlays are implemented in source; reviewed screenshots
+remain planned.
 
 Bounded [histogram queries](histograms.md) are available through shared commands;
-plot overlays and per-node/input scope remain a subsequent UI/renderer increment.
+manual overlays share explicit composite/raw snapshots. Per-node/input scope
+remains planned; published snapshots do not represent the local curve draft.
 
 Insert **Curves** through a source node's **Insert Filter** menu or a free graph's
 node menu. Built-in nodes and adjustment properties share the curve editor;
@@ -80,7 +82,8 @@ atomic rollback, project storage and DLL-free outcome replay use the existing
 adjustment contracts. Painting remains on the active raster. Hidden/bypassed
 Curves records still preflight native capability. See [Adjustment layers](adjustment-layers.md)
 for shared actions and the strict optional metadata tail. Session and independent
-transport references are authored and await CI; histograms remain planned.
+transport references are authored and await complete CI verification. Shared
+manual histogram controls are described in [Histograms](histograms.md).
 
 ## Local curve controls
 
@@ -93,8 +96,9 @@ selected point; Reset Curve affects only the selected channel, while Reset All
 Curves restores all four channels. Channel/point selection is presentation state.
 
 The chart uses theme surfaces and accent colors. Plot dimensions, hit targets,
-point sizes and spacing derive from appearance metrics. Source-node fit accounts
-for the full editor height. Changes remain in the local draft; existing Apply,
+point sizes and spacing derive from appearance metrics. Source-node fit measures wrapping with the current font and translation, including
+the optional histogram caption, only when fitting the graph. Narrow/wide and
+large-metric height assertions remain in place. Changes remain in the local draft; existing Apply,
 Cancel, conflict and live-preview rules decide document publication through shared
 commands. Plugin aliases keep their own schema editor and validation constraints.
 

@@ -145,20 +145,100 @@ fn update_preview(state: &mut State, curve: &Curve, renderer: Option<&dyn Render
         table,
     });
 }
-pub(crate) fn estimated_height(a: &crate::configuration::Appearance, width: f32) -> f32 {
+/// Fallback for standalone viewer fixtures without initialized UI fonts.
+pub(crate) fn fallback_height(a: &crate::configuration::Appearance, width: f32) -> f32 {
     width.min(a.control_height * 8.)
-        + 4. * (1.5 * a.font_size + a.control_height + 2. * a.item_spacing)
-        + 3. * a.control_height
-        + 12. * a.font_size
-        + 10. * a.item_spacing
+        + 12. * a.control_height
+        + 24. * a.font_size
+        + 24. * a.item_spacing
+}
+/// Measure wrapping with the actual font and current catalog. Only graph Fit
+/// needs this budget; normal frames do not run the text-layout preparation.
+pub(crate) fn estimated_height(ui: &Ui, width: f32) -> f32 {
+    let width = width.max(1.);
+    let spacing = ui.spacing();
+    let body = TextStyle::Body.resolve(ui.style());
+    let button = TextStyle::Button.resolve(ui.style());
+    let measure = |message: &str, font: FontId, available: f32| {
+        ui.painter()
+            .layout(message.to_owned(), font, Color32::WHITE, available.max(1.))
+            .size()
+            .y
+    };
+    let label = |message: &str| {
+        measure(
+            &crate::i18n::translated_for(Some("compositing"), message),
+            body.clone(),
+            width,
+        )
+    };
+    let line = measure("255", body.clone(), f32::INFINITY);
+    let control = spacing
+        .interact_size
+        .y
+        .max(measure("255", button.clone(), f32::INFINITY) + 2. * spacing.button_padding.y);
+    let labels = ["Channel", "Interpolation", "Input", "Output"]
+        .iter()
+        .map(|s| label(s))
+        .sum::<f32>();
+    let count = measure(
+        &format!(
+            "{} 32/32",
+            crate::i18n::translated_for(Some("compositing"), "Control Points")
+        ),
+        body.clone(),
+        width,
+    );
+    let status = [
+        "Invalid Control Points",
+        "Curve preview pauses while drawing.",
+        "Curve Preview Unavailable",
+    ]
+    .iter()
+    .map(|s| label(s))
+    .fold(0., f32::max);
+    let buttons = ["Remove Point", "Reset Curve", "Reset All Curves"]
+        .iter()
+        .map(|s| {
+            let title = crate::i18n::translated_for(Some("compositing"), s);
+            control.max(
+                measure(
+                    &title,
+                    button.clone(),
+                    width - 2. * spacing.button_padding.x,
+                ) + 2. * spacing.button_padding.y,
+            )
+        })
+        .sum::<f32>();
+    (width.min(spacing.interact_size.y * 8.)
+        + 4. * control
+        + labels
+        + count
+        + status
+        + buttons
+        + line
+        + label("Click to add a point. Drag to move. Right-click to remove.")
+        + 20. * spacing.item_spacing.y)
+        .ceil()
 }
 
+#[cfg(test)]
 pub(crate) fn edit(
     ui: &mut Ui,
     id: Id,
     value: &mut Curves,
     renderer: Option<&dyn Renderer>,
     paused: bool,
+) -> bool {
+    edit_with_histogram(ui, id, value, renderer, paused, None)
+}
+pub(crate) fn edit_with_histogram(
+    ui: &mut Ui,
+    id: Id,
+    value: &mut Curves,
+    renderer: Option<&dyn Renderer>,
+    paused: bool,
+    histogram: Option<&super::histogram_ui::Snapshot>,
 ) -> bool {
     let id = ui.make_persistent_id(id);
     let cache_id = Id::new("micopi.curve-editors.v1");
@@ -283,6 +363,9 @@ pub(crate) fn edit(
                 ui.visuals().widgets.inactive.corner_radius,
                 ui.visuals().extreme_bg_color,
             );
+            if let Some(snapshot) = histogram {
+                super::histogram_ui::paint(ui, plot, snapshot, [3, 0, 1, 2][state.channel]);
+            }
             for step in 0..=4 {
                 let t = step as f32 / 4.;
                 painter.line_segment(
@@ -344,6 +427,9 @@ pub(crate) fn edit(
                     );
                 }
             }
+        }
+        if let Some(snapshot) = histogram {
+            super::histogram_ui::label(ui, snapshot);
         }
         ui.weak(format!(
             "{} {}/32",
@@ -726,7 +812,15 @@ mod tests {
                             CentralPanel::default().show(ctx, |ui| {
                                 let bounds = ui.max_rect();
                                 let response = ui.scope(|ui| {
-                                    edit(ui, Id::new("curve-layout"), &mut value, None, false);
+                                    let snapshot = super::super::histogram_ui::test_snapshot();
+                                    edit_with_histogram(
+                                        ui,
+                                        Id::new("curve-layout"),
+                                        &mut value,
+                                        None,
+                                        false,
+                                        Some(&snapshot),
+                                    );
                                 });
                                 let actual = response.response.rect;
                                 assert!(
@@ -735,10 +829,10 @@ mod tests {
                                     "{language:?}/{width}/{large}: {actual:?}"
                                 );
                                 assert!(
-                                    actual.height() <= estimated_height(&a, bounds.width()),
+                                    actual.height() <= estimated_height(ui, bounds.width()),
                                     "{language:?}/{width}/{large}: {} vs {}",
                                     actual.height(),
-                                    estimated_height(&a, bounds.width())
+                                    estimated_height(ui, bounds.width())
                                 );
                             });
                         },

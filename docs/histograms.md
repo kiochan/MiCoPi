@@ -3,7 +3,8 @@
 `histogram.query` exposes encoded-byte color frequencies through the shared
 Session, command search, schema-derived workflow nodes, JSONL and MCP. It uses
 the optional native compositor histogram capability. This source increment
-awaits CI; chart overlays and per-node/input histograms remain planned.
+awaits complete CI verification; shared artist-facing charts are implemented in
+source. Per-node/input histograms remain planned.
 
 ```json
 {"action":"histogram.query","args":{"source":"composite","max_samples":65536}}
@@ -67,4 +68,39 @@ padding, transparency, thin grids, bounds, aliasing, malformed providers, locked
 raw scope, contact rejection and unchanged document/history/events. The tiny
 `scripts/smoke-histogram.py` compares JSONL/MCP and node discovery without a GUI or
 stress workload. These runtime checks await CI. Sampling bounds are not latency
-measurements; visual histogram feedback remains a subsequent UI increment.
+measurements; reviewed visual captures and physical-device checks remain separate.
+
+## Artist-facing inspection
+
+Expand **Histogram** above the image graph or in built-in Levels/Curves adjustment
+properties. Choose **Visible Composite** or **Raw Active Layer**, set Maximum
+Samples, then click **Refresh Histogram**. The raw-layer choice captures the
+current raster's explicit stable ID; it does not expand links or selected layers.
+Exact/Sampled, source, counts and revision identify the observation. Hover the
+counts to inspect ignored transparent pixels.
+
+One bounded shared snapshot serves the inspector, the Levels histogram band and
+the Curves plot background. Curves displays the selected R/G/B channel, or the RGB
+aggregate for Master RGB. Bars normalize to that channel's highest count; narrow
+plots group adjacent bins by their maximum, without changing the native counts.
+The aggregate is not a luminance histogram.
+
+Refreshing dispatches the same registered `histogram.query` action. Idle frames,
+curve drags and pointer samples never refresh automatically. A changed revision,
+source, budget, document or raw active raster invalidates the chart; refresh is
+explicit. During a contact, Refresh is disabled and cached plot overlays are
+hidden without closing or flushing the contact. The inspector may retain labeled
+old metadata with a refresh warning. Capability failure is explicit.
+
+Snapshots describe the published composite or raw pixels, **not a local curve
+or Levels draft**, nor the arbitrary input below that effect. Source/exactness
+captions remain visible; hover for full source ID, count and revision. A graph
+Apply/Live Preview invalidates the previous snapshot. Per-node/input scope is a
+separate planned renderer contract, not inferred from node placement.
+
+The snapshot uses four fixed 256-bin arrays behind one shared `Arc`, with no
+retained image copy. Source and budget are temporary inspection controls, not
+persisted painting defaults. UI tests cover actual refresh clicks, unchanged
+revision/history/outcomes, shared idle cache identity, invalidation, contact
+preservation and four-language narrow/wide/large-metric layouts. These new tests
+await CI; no new screenshots or tablet measurements are claimed.

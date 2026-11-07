@@ -9,7 +9,8 @@ pub(crate) fn estimated_height(a: &crate::configuration::Appearance) -> f32 {
     5. * (a.control_height + 1.5 * a.font_size + 3. * a.item_spacing)
         + 4. * a.control_height
         + 4. * a.section_spacing
-        + 6. * a.font_size
+        + 9. * a.font_size
+        + 2. * a.control_height
 }
 fn ramp(ui: &mut Ui, black: u8, white: u8) {
     let height = (ui.spacing().interact_size.y * 0.35).max(4.);
@@ -35,10 +36,22 @@ fn byte(ui: &mut Ui, title: &str, value: &mut u8) {
         DragValue::new(value).range(0..=255),
     );
 }
+#[cfg(test)]
 pub(crate) fn edit(ui: &mut Ui, id: Id, value: &mut Levels) -> bool {
+    edit_with_histogram(ui, id, value, None)
+}
+pub(crate) fn edit_with_histogram(
+    ui: &mut Ui,
+    id: Id,
+    value: &mut Levels,
+    histogram: Option<&super::histogram_ui::Snapshot>,
+) -> bool {
     let before = *value;
     ui.push_id(id, |ui| {
         ui.style_mut().wrap_mode = Some(TextWrapMode::Wrap);
+        if let Some(snapshot) = histogram {
+            super::histogram_ui::band(ui, snapshot);
+        }
         ui.strong(text("Input Levels"));
         ramp(ui, 0, 255);
         byte(ui, "Input Black", &mut value.input_black);
@@ -159,8 +172,15 @@ mod tests {
                                     let right = ui.max_rect().right();
                                     // CentralPanel sets its minimum to the whole
                                     // viewport. Measure the editor child scope.
-                                    let response =
-                                        ui.scope(|ui| edit(ui, Id::new("levels-test"), &mut value));
+                                    let response = ui.scope(|ui| {
+                                        let snapshot = super::super::histogram_ui::test_snapshot();
+                                        edit_with_histogram(
+                                            ui,
+                                            Id::new("levels-test"),
+                                            &mut value,
+                                            Some(&snapshot),
+                                        )
+                                    });
                                     let rect = response.response.rect;
                                     assert!(
                                         rect.left() >= left - 1. && rect.right() <= right + 1.,

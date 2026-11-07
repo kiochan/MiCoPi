@@ -5,7 +5,9 @@
 complete results. `src/plugins/histogram.rs` owns the shared read-only action,
 source/argument validation and published snapshot schema; document ownership and
 recording remain in Session. The manifest registers its generated workflow node.
-UI overlays and per-node/input histogram scope remain planned.
+`plugins/compositing/histogram_ui.rs` owns manual query controls, one shared
+bounded snapshot and presentation-only charts reused by Levels/Curves controls.
+It dispatches Session actions and never scans pixels. Per-node/input scope remains planned.
 
 `plugins/compositing/src/curves.rs` owns bounded cold channel-curve interpolation
 and the independent optional Curves export. `src/plugins/native_curves.rs`
@@ -20,7 +22,8 @@ point controls and a bounded native preview cache for nodes/adjustments; custom
 aliases retain schema editing. Adjustment
 metadata carries an optional strict Curves tail; `src/plugins/adjustments.rs`
 merges nested object patches, replaces point arrays and validates provider bounds.
-Generated adjustment nodes reuse the prepared renderer; histograms remain planned.
+Generated adjustment nodes reuse the prepared renderer; histogram UI reuses the
+shared registered query rather than introducing another pixel execution path.
 
 `src/plugins/native_levels.rs` negotiates and caches optional native Levels
 preparation, validates host arguments and publishes successful byte tables.

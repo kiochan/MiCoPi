@@ -9,6 +9,8 @@ use std::collections::BTreeMap;
 pub(super) mod curves_ui;
 #[path = "groups_view.rs"]
 mod groups_view;
+#[path = "histogram_ui.rs"]
+pub(super) mod histogram_ui;
 #[path = "levels_ui.rs"]
 pub(super) mod levels_ui;
 #[derive(Default)]
@@ -565,6 +567,7 @@ struct NodeViewer<'a> {
     levels_height: f32,
     curves_height: f32,
     contact_active: bool,
+    histogram: Option<std::sync::Arc<histogram_ui::Snapshot>>,
     actions: Vec<crate::application::Action>,
 }
 impl Default for NodeViewer<'_> {
@@ -581,11 +584,12 @@ impl Default for NodeViewer<'_> {
             supported_blends: 0xff,
             mix_available: false,
             levels_height: levels_ui::estimated_height(&crate::configuration::Appearance::default()),
-            curves_height: curves_ui::estimated_height(
+            curves_height: curves_ui::fallback_height(
                 &crate::configuration::Appearance::default(),
                 192.,
             ),
             contact_active: false,
+            histogram: None,
             actions: vec![],
         }
     }
@@ -813,13 +817,13 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
             };
             if def.id=="compositing.curves" {
                 if let NodeKind::Curves {curves}=&mut snarl[id].data {
-                    curves_ui::edit(ui,Id::new(("curves-node",id,self.document.map_or(0,|d|d.identity))),curves,self.document.and_then(|d|d.renderer.as_deref()),self.contact_active);
+                    curves_ui::edit_with_histogram(ui,Id::new(("curves-node",id,self.document.map_or(0,|d|d.identity))),curves,self.document.and_then(|d|d.renderer.as_deref()),self.contact_active,self.histogram.as_deref());
                     return;
                 }
             }
             if def.id=="compositing.levels" {
                 if let NodeKind::Levels {parameters}=&mut snarl[id].data {
-                    levels_ui::edit(ui,Id::new(("levels-node",id)),parameters);
+                    levels_ui::edit_with_histogram(ui,Id::new(("levels-node",id)),parameters,self.histogram.as_deref());
                     return;
                 }
             }
@@ -1012,6 +1016,7 @@ impl Editor {
     pub(super) fn nodes_ui(&mut self, ui: &mut Ui) {
         ui.label(tr("Image Compositing"));
         ui.separator();
+        histogram_ui::controls(ui, &mut self.session);
         self.image_nodes_ui(ui);
     }
 
@@ -1117,11 +1122,13 @@ impl Editor {
         ui.separator();
         let mut viewer = NodeViewer {
             definitions: Some(&self.plugin_nodes),
+            histogram: histogram_ui::cached(ui.ctx(), &self.session),
             levels_height: levels_ui::estimated_height(&self.settings.ui),
-            curves_height: curves_ui::estimated_height(
-                &self.settings.ui,
-                self.settings.ui.font_size * 12.,
-            ),
+            curves_height: if state.fit_view {
+                curves_ui::estimated_height(ui, self.settings.ui.font_size * 12.)
+            } else {
+                0.
+            },
             contact_active: self.session.stroke.active()
                 || self.session.pointer_checkpoint.is_some(),
             layers: self.session.doc.layers.len(),

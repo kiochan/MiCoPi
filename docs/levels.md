@@ -80,7 +80,9 @@ validation remain separate.
 The shared `adjustment.create/set/get` path also supports `compositing.levels`,
 owned masks, Normal effect strength, groups, Undo and verified outcomes. See
 [Adjustment layers](adjustment-layers.md) for placement and partial parameter patches.
-Per-channel Levels controls and histogram overlays remain planned. Shared
-[histogram queries](histograms.md) expose bounded composite/raw statistics;
+Per-channel Levels controls remain planned. Shared
+[histogram controls](histograms.md) display a manually refreshed, cached RGB
+aggregate band with explicit composite/raw scope and exactness; the snapshot is
+not the local Levels draft or the effect input. Bounded queries also serve automation;
 [Curves](curves.md) supplies separate master/R/G/B source and adjustment intent. See [Native contracts](native-plugins.md),
 [Node editor](node-editor.md) and [Roadmap](../ROADMAP.md).
