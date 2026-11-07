@@ -55,6 +55,9 @@ fn project_items(
         match item.kind {
             ItemKind::Layer if selected.contains(&item.id) => result.push(*item),
             ItemKind::Layer => {}
+            ItemKind::Adjustment => {
+                return Err("Selected baking does not support adjustment stack items".into())
+            }
             ItemKind::Group => {
                 let mut group = tree.group(item.id)?.clone();
                 group.children = project_items(tree, &group.children, selected, projected)?;
@@ -77,6 +80,7 @@ impl Document {
     }
 
     fn prepare_selected_merge(&self, ids: &[u64]) -> Result<PreparedMerge, String> {
+        self.require_adjustment_aware_edit()?;
         if ids.len() < 2
             || ids.len() > MAX_LAYERS
             || ids
@@ -184,6 +188,8 @@ impl Document {
             version: original.version,
             roots,
             groups: projected_groups,
+            adjustments: Vec::new(),
+            next_adjustment_id: original.next_adjustment_id,
         };
         let source_modes: Vec<_> = self.layers.iter().map(|layer| layer.mode).collect();
         // Keep global raster indices and local visibility. The LCA and its

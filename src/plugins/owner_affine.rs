@@ -179,6 +179,7 @@ pub(crate) fn admit(s: &Session, op: Operation, args: &Value) -> Result<bool, Ac
                     && matches!(
                         item.owner,
                         crate::engine::raster_masks::MaskOwner::Group { .. }
+                            | crate::engine::raster_masks::MaskOwner::Adjustment { .. }
                     )
             })
         })

@@ -12,10 +12,21 @@ pub(super) struct GroupMaskCopy {
 }
 /// Plan only bounded metadata. Candidate owners are validated by the caller's
 /// final group plan before the source samples are copied.
+#[cfg(test)]
 pub(super) fn plan_mask_copy(
     state: &MaskState,
     layer_map: &[(u64, u64)],
     group_map: &[(u64, u64)],
+    width: usize,
+    height: usize,
+) -> Result<GroupMaskCopy, String> {
+    plan_mask_copy_with_adjustments(state, layer_map, group_map, &[], width, height)
+}
+fn plan_mask_copy_with_adjustments(
+    state: &MaskState,
+    layer_map: &[(u64, u64)],
+    group_map: &[(u64, u64)],
+    adjustment_map: &[(u64, u64)],
     width: usize,
     height: usize,
 ) -> Result<GroupMaskCopy, String> {
@@ -33,6 +44,10 @@ pub(super) fn plan_mask_copy(
                     .iter()
                     .find(|(from, _)| *from == id)
                     .map(|(_, id)| MaskOwner::Group { id: *id }),
+                MaskOwner::Adjustment { id } => adjustment_map
+                    .iter()
+                    .find(|(from, _)| *from == id)
+                    .map(|(_, id)| MaskOwner::Adjustment { id: *id }),
             };
             owner.map(|owner| (slot, owner))
         })
@@ -64,15 +79,17 @@ pub(super) fn plan_mask_copy(
     })
 }
 impl Document {
-    pub(super) fn plan_group_mask_copy(
+    pub(super) fn plan_group_mask_copy_with_adjustments(
         &self,
         layer_map: &[(u64, u64)],
         group_map: &[(u64, u64)],
+        adjustment_map: &[(u64, u64)],
     ) -> Result<GroupMaskCopy, String> {
-        plan_mask_copy(
+        plan_mask_copy_with_adjustments(
             self.mask_state(),
             layer_map,
             group_map,
+            adjustment_map,
             self.width,
             self.height,
         )
@@ -113,10 +130,11 @@ impl Document {
     }
     /// Source storage/capabilities and the complete candidate composition are
     /// validated by the caller before any plane or raster buffer is removed.
-    pub(super) fn plan_group_mask_removal(
+    pub(super) fn plan_group_mask_removal_with_adjustments(
         &self,
         layer_ids: &[u64],
         group_ids: &[u64],
+        adjustment_ids: &[u64],
     ) -> GroupMaskRemoval {
         let mut state = self.raster_masks.clone();
         let slots: Vec<_> = state
@@ -127,6 +145,7 @@ impl Document {
                 let removed = match item.owner {
                     MaskOwner::Layer { id } => layer_ids.contains(&id),
                     MaskOwner::Group { id } => group_ids.contains(&id),
+                    MaskOwner::Adjustment { id } => adjustment_ids.contains(&id),
                 };
                 removed.then_some(slot)
             })

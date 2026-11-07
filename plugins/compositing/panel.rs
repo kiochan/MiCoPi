@@ -989,7 +989,9 @@ impl Editor {
             state.effective = Default::default();
             state.load(&self.session.doc, false, &self.plugin_nodes);
         }
-        let groups = self.session.doc.has_groups() || self.session.doc.has_raster_masks();
+        let groups = self.session.doc.has_groups()
+            || self.session.doc.has_adjustments()
+            || self.session.doc.has_raster_masks();
         if groups && !state.had_groups {
             state.layer_filters = false;
         }
@@ -1004,7 +1006,7 @@ impl Editor {
                 self.nodes = state;
                 return;
             }
-            ui.weak(tr("Layer Filters edits individual source effects. Group composition is shown in Actual Composition."));
+            ui.weak(tr(if self.session.doc.has_adjustments(){"Layer Filters edits raster effects. Adjustment layers are shown in Actual Composition."}else{"Layer Filters edits individual source effects. Group composition is shown in Actual Composition."}));
         }
         if (state.base != self.session.doc.graph
             || state.base_groups != self.session.doc.groups_revision())

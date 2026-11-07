@@ -219,7 +219,13 @@ fn color_label_text(ui: &Ui, color: LayerColor) -> RichText {
         .unwrap_or(text);
     RichText::new(localize(color.title())).color(tint)
 }
-fn layer_text(ui: &Ui, text: String, rect: Rect, font: FontId, color: Color32) {
+pub(in crate::desktop) fn layer_text(
+    ui: &Ui,
+    text: String,
+    rect: Rect,
+    font: FontId,
+    color: Color32,
+) {
     if rect.width() <= 0. {
         return;
     }
@@ -359,6 +365,7 @@ impl Editor {
             active_contact || self.input_owned || self.drawing || self.panning.is_some();
         let defer_names = self.command_palette_open()
             || self.guarded_command_form()
+            || local_input && ctx.is_some_and(|ctx| self.focused_adjustment_ui(ctx).is_some())
             || (local_input
                 && (guarded_pending.is_some()
                     || self
@@ -428,6 +435,7 @@ impl Editor {
                 });
             let requires_idle = action.action.starts_with("group.")
                 || action.action.starts_with("mask.")
+                || action.action.starts_with("adjustment.")
                 || matches!(
                     action.action.as_str(),
                     "layer.duplicate"
@@ -458,7 +466,13 @@ impl Editor {
                 action.action.as_str(),
                 "layer.merge" | "layer.merge_selected"
             );
-            let success = if action.action.starts_with("group.") {
+            let success = if action.action.starts_with("adjustment.") {
+                if let Some(ctx) = ctx {
+                    self.dispatch_adjustment_ui(ctx, action)
+                } else {
+                    self.core_at_revision(&action.action, action.args, action.expected_revision)
+                }
+            } else if action.action.starts_with("group.") {
                 if let Some(ctx) = ctx {
                     self.dispatch_group_ui(ctx, action)
                 } else {
@@ -627,12 +641,17 @@ impl Editor {
                     ui.weak(tr(format!("{} selected outside this filter", outside)));
                 }
                 if filter.active() {
-                    if self.session.doc.has_groups() {
+                    if self.session.doc.has_mixed_stack() {
                         if let Ok(data) = self.group_query_ui(ui.ctx(), &filter) {
-                            ui.weak(tr(format!(
-                                "{} layers and {} groups match",
-                                data.matched_layers, data.matched_groups
-                            )));
+                            if self.session.doc.has_adjustments() {
+                                ui.weak(crate::i18n::text("Matches: {layers} layers, {groups} groups, {adjustments} adjustments.")
+                                    .replace("{layers}",&data.matched_layers.to_string()).replace("{groups}",&data.matched_groups.to_string()).replace("{adjustments}",&data.matched_adjustments.to_string()));
+                            } else {
+                                ui.weak(tr(format!(
+                                    "{} layers and {} groups match",
+                                    data.matched_layers, data.matched_groups
+                                )));
+                            }
                         }
                     } else {
                         ui.weak(tr(format!(
@@ -678,7 +697,7 @@ impl Editor {
         let multi = targets.len() > 1;
         let lowest = *indices.iter().min().unwrap();
         let remaining = count - targets.len();
-        let grouped = self.session.doc.has_groups();
+        let grouped = self.session.doc.has_mixed_stack();
         let group_up = if grouped {
             self.group_sibling_move_ui(&targets, true)
         } else {
@@ -1008,6 +1027,7 @@ impl Editor {
     pub(super) fn layers_ui(&mut self, ui: &mut Ui) {
         let mut pending = Vec::new();
         let focus = self.focused_group_ui(ui.ctx());
+        let inspection = focus.is_some() || self.focused_adjustment_ui(ui.ctx()).is_some();
         let targets = self.session.doc.selected_layer_ids();
         let target_indices: Vec<_> = targets
             .iter()
@@ -1026,7 +1046,7 @@ impl Editor {
             }
             if ui
                 .add_enabled_ui(
-                    focus.is_none()
+                    !inspection
                         && target_indices.iter().all(|&i| {
                             !self.session.doc.pixel_locked(i) && !self.session.doc.alpha_locked(i)
                         }),
@@ -1042,7 +1062,8 @@ impl Editor {
                 }
             }
             self.group_toolbar_ui(ui, &mut pending);
-            ui.add_enabled_ui(focus.is_none(), |ui| {
+            self.adjustment_create_menu_ui(ui, &mut pending);
+            ui.add_enabled_ui(!inspection, |ui| {
                 ui.menu_button(tr("···"), |ui| {
                     if let Some(action) = self.layer_menu(ui, self.session.doc.active) {
                         pending.push(action);
@@ -1056,11 +1077,13 @@ impl Editor {
                 ui.weak(tr(format!("{} / 16", self.session.doc.layers.len())));
             });
         });
-        if focus.is_none() {
+        if !inspection {
             self.layer_link_controls_ui(ui, &mut pending, true);
         }
         let a = self.settings.ui.clone();
-        if !self.group_properties_ui(ui, &mut pending) {
+        if !self.adjustment_properties_ui(ui, &mut pending)
+            && !self.group_properties_ui(ui, &mut pending)
+        {
             let index = self.session.doc.active;
             let id = self.session.doc.layer_id(index);
             if targets.len() > 1 {
@@ -1282,7 +1305,7 @@ impl Editor {
                 data.get_temp::<LayerFilter>(LayerFilter::key(self.session.doc.identity))
             })
             .unwrap_or_default();
-        let listing = if self.session.doc.has_groups() {
+        let listing = if self.session.doc.has_mixed_stack() {
             match self.group_listing_ui(ui.ctx(), &filter) {
                 Ok(listing) => Some(listing),
                 Err(error) => {
@@ -1316,6 +1339,15 @@ impl Editor {
                     .iter()
                     .map(|entry| match *entry {
                         groups::DisplayEntry::Group(i) => groups::DisplayEntry::Group(i),
+                        groups::DisplayEntry::Adjustment {
+                            id,
+                            depth,
+                            effective_visible,
+                        } => groups::DisplayEntry::Adjustment {
+                            id,
+                            depth,
+                            effective_visible,
+                        },
                         groups::DisplayEntry::Layer {
                             index,
                             depth,
@@ -1345,6 +1377,14 @@ impl Editor {
                     if let Some(listing) = &listing {
                         self.group_row_ui(ui, &listing.data.rows[i], filter.active(), &mut pending);
                     }
+                    continue;
+                }
+                groups::DisplayEntry::Adjustment {
+                    id,
+                    depth,
+                    effective_visible,
+                } => {
+                    self.adjustment_row_ui(ui, id, depth, effective_visible, &mut pending);
                     continue;
                 }
                 groups::DisplayEntry::Layer {

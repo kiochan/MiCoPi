@@ -1,0 +1,569 @@
+{
+  "api_version": 1,
+  "id": "adjustments",
+  "name": "Adjustment layers",
+  "requires": [
+    "layers",
+    "compositing"
+  ],
+  "actions": [
+    {
+      "id": "adjustment.catalog",
+      "title": "Adjustment Filter Catalog",
+      "operation": "adjustment_catalog",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "node_type": {
+                  "type": "string"
+                },
+                "owner": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "parameters_schema": {
+                  "type": "object"
+                },
+                "defaults": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "node_type",
+                "owner",
+                "title",
+                "parameters_schema",
+                "defaults"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "revision"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "adjustment.query",
+      "title": "Query Adjustment Layers",
+      "operation": "adjustment_query",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "name": {
+                  "type": "string"
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "node_type": {
+                  "type": "string"
+                },
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "filter": {
+                      "type": "string",
+                      "enum": [
+                        "invert",
+                        "grayscale",
+                        "brightness",
+                        "contrast",
+                        "saturation"
+                      ]
+                    },
+                    "amount": {
+                      "type": "number",
+                      "minimum": -1,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "filter",
+                    "amount"
+                  ],
+                  "additionalProperties": false
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "mask_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "provider_available": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "visible",
+                "opacity",
+                "node_type",
+                "parameters",
+                "parent_id",
+                "index",
+                "mask_ids",
+                "provider_available"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "enum": [
+                  16
+                ]
+              }
+            },
+            "required": [
+              "count"
+            ],
+            "additionalProperties": false
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "limits",
+          "revision"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "adjustment.get",
+      "title": "Read Adjustment Layer",
+      "operation": "adjustment_read",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "name": {
+            "type": "string"
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "opacity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "node_type": {
+            "type": "string"
+          },
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "filter": {
+                "type": "string",
+                "enum": [
+                  "invert",
+                  "grayscale",
+                  "brightness",
+                  "contrast",
+                  "saturation"
+                ]
+              },
+              "amount": {
+                "type": "number",
+                "minimum": -1,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "filter",
+              "amount"
+            ],
+            "additionalProperties": false
+          },
+          "parent_id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mask_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "provider_available": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "visible",
+          "opacity",
+          "node_type",
+          "parameters",
+          "parent_id",
+          "index",
+          "mask_ids",
+          "provider_available",
+          "revision"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "adjustment.create",
+      "title": "Create Adjustment Layer",
+      "operation": "adjustment_create",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "adjustment_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "mask_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "adjustment_id",
+          "mask_ids",
+          "revision"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "adjustment.set",
+      "title": "Set Adjustment Layer Properties",
+      "operation": "adjustment_set",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "adjustment_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "mask_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "changed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "adjustment_id",
+          "mask_ids",
+          "revision",
+          "changed"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "adjustment.move",
+      "title": "Move Adjustment Layer",
+      "operation": "adjustment_move",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "adjustment_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "mask_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "changed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "adjustment_id",
+          "mask_ids",
+          "revision",
+          "changed"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "adjustment.delete",
+      "title": "Delete Adjustment Layer",
+      "operation": "adjustment_delete",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "deleted_adjustment_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "deleted_mask_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "deleted_adjustment_ids",
+          "deleted_mask_ids",
+          "revision"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "adjustment.inspect",
+      "title": "Inspect Adjustment Layer",
+      "operation": "adjustment_inspect",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          },
+          "adjustment_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        },
+        "required": [
+          "queued",
+          "adjustment_id"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "states": [
+    {
+      "id": "adjustments.state",
+      "title": "Adjustment Layers",
+      "action": "adjustment.query",
+      "args": {},
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "name": {
+                  "type": "string"
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "node_type": {
+                  "type": "string"
+                },
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "filter": {
+                      "type": "string",
+                      "enum": [
+                        "invert",
+                        "grayscale",
+                        "brightness",
+                        "contrast",
+                        "saturation"
+                      ]
+                    },
+                    "amount": {
+                      "type": "number",
+                      "minimum": -1,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "filter",
+                    "amount"
+                  ],
+                  "additionalProperties": false
+                },
+                "parent_id": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "index": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "mask_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "provider_available": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "visible",
+                "opacity",
+                "node_type",
+                "parameters",
+                "parent_id",
+                "index",
+                "mask_ids",
+                "provider_available"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "enum": [
+                  16
+                ]
+              }
+            },
+            "required": [
+              "count"
+            ],
+            "additionalProperties": false
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "limits",
+          "revision"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

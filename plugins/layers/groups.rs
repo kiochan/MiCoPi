@@ -25,6 +25,8 @@ pub(super) struct Group {
     pub(super) children: Vec<Entry>,
     #[serde(default)]
     pub(super) layer_ids: Vec<u64>,
+    #[serde(default)]
+    pub(super) adjustment_ids: Vec<u64>,
 }
 #[derive(Clone, Deserialize)]
 pub(super) struct Row {
@@ -36,6 +38,8 @@ pub(super) struct Row {
     pub(super) effective_visible: bool,
     #[serde(default)]
     pub(super) layer_ids: Vec<u64>,
+    #[serde(default)]
+    pub(super) adjustment_ids: Vec<u64>,
 }
 #[derive(Deserialize)]
 struct Query {
@@ -49,6 +53,8 @@ struct Query {
     matching_layer_ids: Vec<u64>,
     #[serde(default)]
     matching_group_ids: Vec<u64>,
+    #[serde(default)]
+    matching_adjustment_ids: Vec<u64>,
 }
 pub(super) struct Data {
     pub(super) pass_through_available: bool,
@@ -58,6 +64,7 @@ pub(super) struct Data {
     pub(super) layers: Arc<[usize]>,
     pub(super) matched_layers: usize,
     pub(super) matched_groups: usize,
+    pub(super) matched_adjustments: usize,
 }
 #[derive(Clone)]
 struct Cache {
@@ -68,8 +75,13 @@ struct Cache {
 }
 #[derive(Clone, Default)]
 struct Workspace {
-    focused: Option<u64>,
+    focused: Option<InspectorFocus>,
     collapsed: std::collections::BTreeSet<u64>,
+}
+#[derive(Clone, Copy)]
+enum InspectorFocus {
+    Group(u64),
+    Adjustment(u64),
 }
 #[derive(Clone)]
 struct NameDraft {
@@ -100,6 +112,11 @@ fn name_key(identity: u64, id: u64) -> Id {
 #[derive(Clone, Copy)]
 pub(super) enum DisplayEntry {
     Group(usize),
+    Adjustment {
+        id: u64,
+        depth: usize,
+        effective_visible: bool,
+    },
     Layer {
         index: usize,
         depth: usize,
@@ -159,6 +176,7 @@ impl Editor {
                     layers: Arc::from(layers),
                     matched_layers: query.matching_layer_ids.len(),
                     matched_groups: query.matching_group_ids.len(),
+                    matched_adjustments: query.matching_adjustment_ids.len(),
                 }))
             });
         ctx.data_mut(|data| {
@@ -179,7 +197,7 @@ impl Editor {
         ctx: &Context,
         filter: &LayerFilter,
     ) -> Result<Arc<[usize]>, String> {
-        if self.session.doc.has_groups() {
+        if self.session.doc.has_mixed_stack() {
             self.group_query_ui(ctx, filter)
                 .map(|data| data.layers.clone())
         } else {
@@ -235,16 +253,34 @@ impl Editor {
             json!({"items":ids.iter().map(|id|json!({"kind":"layer","id":id})).collect::<Vec<_>>(),"parent_id":parent,"index":index}),
         )
     }
-    pub(super) fn focused_group_ui(&self, ctx: &Context) -> Option<u64> {
+    pub(in crate::desktop) fn focused_group_ui(&self, ctx: &Context) -> Option<u64> {
         ctx.data_mut(|data| data.get_temp::<Workspace>(workspace_key(self.session.doc.identity)))
-            .and_then(|workspace| workspace.focused)
+            .and_then(|workspace| match workspace.focused {
+                Some(InspectorFocus::Group(id)) => Some(id),
+                _ => None,
+            })
     }
     pub(in crate::desktop) fn focus_group_ui(&self, ctx: &Context, id: Option<u64>) {
         let key = workspace_key(self.session.doc.identity);
         let mut workspace = ctx
             .data_mut(|data| data.get_temp::<Workspace>(key))
             .unwrap_or_default();
-        workspace.focused = id;
+        workspace.focused = id.map(InspectorFocus::Group);
+        ctx.data_mut(|data| data.insert_temp(key, workspace));
+    }
+    pub(in crate::desktop) fn focused_adjustment_ui(&self, ctx: &Context) -> Option<u64> {
+        ctx.data_mut(|data| data.get_temp::<Workspace>(workspace_key(self.session.doc.identity)))
+            .and_then(|workspace| match workspace.focused {
+                Some(InspectorFocus::Adjustment(id)) => Some(id),
+                _ => None,
+            })
+    }
+    pub(in crate::desktop) fn focus_adjustment_ui(&self, ctx: &Context, id: Option<u64>) {
+        let key = workspace_key(self.session.doc.identity);
+        let mut workspace = ctx
+            .data_mut(|data| data.get_temp::<Workspace>(key))
+            .unwrap_or_default();
+        workspace.focused = id.map(InspectorFocus::Adjustment);
         ctx.data_mut(|data| data.insert_temp(key, workspace));
     }
     pub(super) fn group_listing_ui(
@@ -269,13 +305,21 @@ impl Editor {
                 if !filter.active() && workspace.collapsed.contains(&row.id) {
                     hidden = Some(row.depth);
                 }
-            } else if let Some(index) = self.session.doc.layer_index(row.id) {
-                entries.push(DisplayEntry::Layer {
-                    index,
+            } else if row.kind == "adjustment" {
+                entries.push(DisplayEntry::Adjustment {
+                    id: row.id,
                     depth: row.depth,
                     effective_visible: row.effective_visible,
                 });
-                layers.push(index);
+            } else if row.kind == "layer" {
+                if let Some(index) = self.session.doc.layer_index(row.id) {
+                    entries.push(DisplayEntry::Layer {
+                        index,
+                        depth: row.depth,
+                        effective_visible: row.effective_visible,
+                    });
+                    layers.push(index);
+                }
             }
         }
         Ok(Listing {
@@ -742,6 +786,8 @@ impl Editor {
                         "group.delete" => group.layer_ids.len() < self.session.doc.layers.len(),
                         "group.duplicate" => {
                             self.session.doc.layers.len() + group.layer_ids.len() <= 16
+                                && self.session.doc.adjustments().len() + group.adjustment_ids.len()
+                                    <= crate::engine::adjustments::MAX_ADJUSTMENTS
                         }
                         _ => true,
                     };
@@ -899,7 +945,7 @@ impl Editor {
         ui.painter().text(
             pos2(rect.right() - a.control_height * 1.35, rect.center().y),
             Align2::CENTER_CENTER,
-            row.layer_ids.len(),
+            row.layer_ids.len() + row.adjustment_ids.len(),
             FontId::proportional(a.small_font_size),
             colors.muted,
         );

@@ -18,9 +18,11 @@ impl Document {
             .iter()
             .any(|n| matches!(n.data, NodeKind::Mix { .. }))
             || groups.is_some_and(|tree| {
-                tree.groups
-                    .iter()
-                    .any(|g| g.compositing == GroupPolicy::PassThrough)
+                !tree.adjustments.is_empty()
+                    || tree
+                        .groups
+                        .iter()
+                        .any(|g| g.compositing == GroupPolicy::PassThrough)
             }))
             && self.renderer.as_ref().is_none_or(|r| !r.supports_mix())
         {

@@ -112,6 +112,8 @@ The `engine` directory contains shared document structures and the image graph m
 | `src/application/layer_query.rs`, `src/application/layer_organization_tests.rs` | Read-only layer discovery, organization schema and lock/label/history/replay contracts |
 | `src/engine/layer_selection.rs`, `src/plugins/layer_batch.rs` | Sparse stable-ID layer selection, bounded history grouping and explicit shared-handler batch execution |
 | `src/engine/groups.rs`, `src/engine/group_editing.rs`, `src/plugins/groups.rs` | Versioned group trees, cached isolated composition/visibility, buffer-preserving hierarchy edits and shared public commands |
+| `src/engine/adjustments.rs`, `src/engine/adjustment_editing.rs`, `src/engine/adjustment_tests.rs` | Bounded non-raster records, v3 allocator floors, affect-below metadata edits, owned-mask history and structural/compatibility regressions |
+| `src/plugins/adjustments.rs`, `plugins/adjustments/manifest.json`, `plugins/adjustments/panel.rs` | Registered Filter alias/schema admission, shared action/state contracts and compiled inspection drafts separate from raster painting |
 | `plugins/layers/groups.rs`, `plugins/compositing/groups_view.rs` | Compiled hierarchy/property inspection and the actual-composition node view |
 | `src/engine/document.rs`, `src/engine/raster_mask_editing.rs`, `src/engine/mask_group_editing.rs`, `src/engine/mask_group_editing_tests.rs`, `src/application/mask_group_delete_tests.rs` | Shared immutable multi-plane structural history, consumed-owner staging, original-order result IDs and subtree deletion/rollback/persistence regressions |
 | `src/application/group_tests.rs`, `scripts/smoke-groups.py` | Group composition, structural/history/persistence contracts and cross-transport parity |

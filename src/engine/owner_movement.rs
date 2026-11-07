@@ -101,6 +101,9 @@ impl Document {
                 MaskOwner::Group { .. } => {
                     return Err("Group raster-mask geometry is not supported".into());
                 }
+                MaskOwner::Adjustment { .. } => {
+                    return Err("Adjustment raster-mask geometry is not supported".into())
+                }
             };
             (
                 None,

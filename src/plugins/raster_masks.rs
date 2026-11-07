@@ -12,7 +12,7 @@ pub(crate) fn schema(op: Operation) -> Value {
     use Operation::*;
     let id = json!({"type":"integer","minimum":1,"maximum":4294967295u64});
     let owner = json!({"type":"object","properties":{
-        "kind":{"type":"string","enum":["layer","group"]},"id":id},
+        "kind":{"type":"string","enum":["layer","group","adjustment"]},"id":id},
         "required":["kind","id"],"additionalProperties":false});
     let (properties, required) = match op {
         MaskQuery => (json!({"mask_id":id}), vec![]),
@@ -88,7 +88,7 @@ pub(crate) fn state(s: &Session) -> Value {
             "density":m.density,"feather_radius_px":m.feather_radius_px})
         })
         .collect();
-    json!({"version":1,"items":items,"target":doc.mask_state().target,
+    json!({"version":doc.mask_state().version,"items":items,"target":doc.mask_state().target,
         "width":doc.width,"height":doc.height,"next_id":doc.mask_state().next_id,
         "capabilities":{"composition":doc.renderer.as_ref().is_some_and(|r|r.supports_masks()),
             "effects":doc.renderer.as_ref().is_some_and(|r|r.supports_mask_effects())},

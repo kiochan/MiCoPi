@@ -28,6 +28,7 @@ impl GroupPolicy {
 pub enum ItemKind {
     Layer,
     Group,
+    Adjustment,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -48,6 +49,12 @@ impl GroupItem {
             id,
         }
     }
+    pub fn adjustment(id: u64) -> Self {
+        Self {
+            kind: ItemKind::Adjustment,
+            id,
+        }
+    }
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -61,12 +68,19 @@ pub struct Group {
     pub compositing: GroupPolicy,
     pub children: Vec<GroupItem>,
 }
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GroupTree {
     pub version: u32,
     pub roots: Vec<GroupItem>,
     pub groups: Vec<Group>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub adjustments: Vec<super::adjustments::Adjustment>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub next_adjustment_id: u64,
+}
+fn is_zero(value: &u64) -> bool {
+    *value == 0
 }
 impl GroupTree {
     pub fn flat(ids: &[u64]) -> Self {
@@ -74,6 +88,8 @@ impl GroupTree {
             version: 1,
             roots: ids.iter().map(|id| GroupItem::layer(*id)).collect(),
             groups: Vec::new(),
+            adjustments: Vec::new(),
+            next_adjustment_id: 0,
         }
     }
     pub fn group(&self, id: u64) -> Result<&Group, String> {
@@ -87,6 +103,43 @@ impl GroupTree {
             .iter_mut()
             .find(|g| g.id == id)
             .ok_or_else(|| "Group does not exist".into())
+    }
+    pub fn adjustment(&self, id: u64) -> Result<&super::adjustments::Adjustment, String> {
+        self.adjustments
+            .iter()
+            .find(|a| a.id == id)
+            .ok_or_else(|| "Adjustment does not exist".into())
+    }
+    pub fn retain_tree(&self) -> bool {
+        self.version >= 3 || !self.groups.is_empty()
+    }
+    pub fn adjustment_ids(&self, item: GroupItem) -> Result<Vec<u64>, String> {
+        fn walk(
+            tree: &GroupTree,
+            item: GroupItem,
+            out: &mut Vec<u64>,
+            depth: usize,
+        ) -> Result<(), String> {
+            if depth > MAX_DEPTH {
+                return Err("Group depth limit reached".into());
+            }
+            match item.kind {
+                ItemKind::Layer => {}
+                ItemKind::Adjustment => {
+                    tree.adjustment(item.id)?;
+                    out.push(item.id);
+                }
+                ItemKind::Group => {
+                    for child in &tree.group(item.id)?.children {
+                        walk(tree, *child, out, depth + 1)?;
+                    }
+                }
+            }
+            Ok(())
+        }
+        let mut out = Vec::new();
+        walk(self, item, &mut out, 0)?;
+        Ok(out)
     }
     pub fn children(&self, parent: u64) -> Result<&[GroupItem], String> {
         if parent == 0 {
@@ -124,6 +177,9 @@ impl GroupTree {
             }
             match item.kind {
                 ItemKind::Layer => out.push(item.id),
+                ItemKind::Adjustment => {
+                    tree.adjustment(item.id)?;
+                }
                 ItemKind::Group => {
                     for child in &tree.group(item.id)?.children {
                         visit(tree, *child, out, depth + 1)?;
@@ -144,14 +200,31 @@ impl GroupTree {
         Ok(out)
     }
     pub fn validate(&self, ids: &[u64], next: u64) -> Result<(), String> {
-        if !matches!(self.version, 1 | 2)
+        if !matches!(self.version, 1 | 2 | 3)
             || (self.version == 1 && self.groups.iter().any(|g| !g.compositing.is_isolated()))
-            || self.groups.is_empty()
+            || (self.version < 3
+                && (self.groups.is_empty()
+                    || !self.adjustments.is_empty()
+                    || self.next_adjustment_id != 0))
             || self.groups.len() > MAX_GROUPS
-            || next == 0
+            || (!self.groups.is_empty() && next == 0)
             || next > u32::MAX as u64 + 1
         {
             return Err("Invalid group count or allocator".into());
+        }
+        if self.adjustments.len() > super::adjustments::MAX_ADJUSTMENTS
+            || (self.version == 3
+                && (self.next_adjustment_id == 0 || self.next_adjustment_id > u32::MAX as u64 + 1))
+        {
+            return Err("Invalid adjustment count or allocator".into());
+        }
+        let mut previous = 0;
+        for adjustment in &self.adjustments {
+            adjustment.validate()?;
+            if adjustment.id <= previous || adjustment.id >= self.next_adjustment_id {
+                return Err("Invalid or duplicate adjustment identity".into());
+            }
+            previous = adjustment.id;
         }
         let mut group_ids = BTreeSet::new();
         for group in &self.groups {
@@ -178,6 +251,9 @@ impl GroupTree {
                 }
                 match item.kind {
                     ItemKind::Layer => leaves.push(item.id),
+                    ItemKind::Adjustment => {
+                        tree.adjustment(item.id)?;
+                    }
                     ItemKind::Group => {
                         if depth >= MAX_DEPTH {
                             return Err("Group depth limit reached".into());
@@ -201,6 +277,10 @@ impl GroupTree {
             || group_ids
                 .iter()
                 .any(|id| !seen.contains(&GroupItem::group(*id)))
+            || self
+                .adjustments
+                .iter()
+                .any(|a| !seen.contains(&GroupItem::adjustment(a.id)))
         {
             return Err(
                 "Group leaves must contain every raster exactly once in storage order".into(),
@@ -279,6 +359,7 @@ impl GroupTree {
                     ItemKind::Layer => {
                         out.insert(item.id, visible);
                     }
+                    ItemKind::Adjustment => {}
                     ItemKind::Group => {
                         if let Ok(g) = tree.group(item.id) {
                             visit(tree, &g.children, visible && g.visible, out);
@@ -328,6 +409,18 @@ impl GroupTree {
         opacities: &[u8],
         masks: &super::raster_masks::MaskState,
     ) -> Result<(Graph, BTreeMap<u64, u32>), String> {
+        self.compile_stack_details(source, ids, modes, opacities, masks, false)
+            .map(|(graph, groups, _)| (graph, groups))
+    }
+    pub(crate) fn compile_stack_details(
+        &self,
+        source: &Graph,
+        ids: &[u64],
+        modes: &[BlendMode],
+        opacities: &[u8],
+        masks: &super::raster_masks::MaskState,
+        validate_all: bool,
+    ) -> Result<(Graph, BTreeMap<u64, u32>, BTreeMap<u64, u32>), String> {
         if !source.linked {
             return Err("Groups require linked layer-filter composition".into());
         }
@@ -361,6 +454,7 @@ impl GroupTree {
         let zero_id = zero.id;
         graph.nodes.push(zero);
         let mut group_nodes = BTreeMap::new();
+        let mut adjustment_nodes = BTreeMap::new();
         fn coverage(
             masks: &super::raster_masks::MaskState,
             owner: super::raster_masks::MaskOwner,
@@ -417,9 +511,78 @@ impl GroupTree {
             zero: u32,
             seed: u32,
             group_nodes: &mut BTreeMap<u64, u32>,
+            adjustment_nodes: &mut BTreeMap<u64, u32>,
+            validate_all: bool,
         ) -> Result<u32, String> {
             let mut last = seed;
             for item in items {
+                if item.kind == ItemKind::Adjustment {
+                    let adjustment = tree.adjustment(item.id)?;
+                    if !validate_all
+                        && (!source.enabled || !adjustment.visible || adjustment.opacity == 0)
+                    {
+                        continue;
+                    }
+                    let mut filter = fresh(
+                        next,
+                        NodeKind::Filter {
+                            filter: adjustment.filter,
+                            amount: adjustment.amount,
+                        },
+                        "filter",
+                    )?;
+                    filter.node_type = Some(adjustment.node_type.clone());
+                    graph.edges.push(Edge {
+                        from: last,
+                        to: filter.id,
+                        input: 0,
+                    });
+                    let head = filter.id;
+                    graph.nodes.push(filter);
+                    let mask = coverage(
+                        masks,
+                        super::raster_masks::MaskOwner::Adjustment { id: item.id },
+                        graph,
+                        next,
+                    )?;
+                    let opacity = if adjustment.visible {
+                        adjustment.opacity as f32 / 255.
+                    } else {
+                        0.
+                    };
+                    let mix = fresh(
+                        next,
+                        if mask.is_some() {
+                            NodeKind::MaskedMix { opacity }
+                        } else {
+                            NodeKind::Mix { opacity }
+                        },
+                        if mask.is_some() { "masked_mix" } else { "mix" },
+                    )?;
+                    graph.edges.extend([
+                        Edge {
+                            from: last,
+                            to: mix.id,
+                            input: 0,
+                        },
+                        Edge {
+                            from: head,
+                            to: mix.id,
+                            input: 1,
+                        },
+                    ]);
+                    if let Some(mask) = mask {
+                        graph.edges.push(Edge {
+                            from: mask,
+                            to: mix.id,
+                            input: 2,
+                        });
+                    }
+                    last = mix.id;
+                    adjustment_nodes.insert(item.id, mix.id);
+                    graph.nodes.push(mix);
+                    continue;
+                }
                 if item.kind == ItemKind::Group {
                     let g = tree.group(item.id)?;
                     if g.compositing == GroupPolicy::PassThrough {
@@ -437,6 +600,8 @@ impl GroupTree {
                             zero,
                             last,
                             group_nodes,
+                            adjustment_nodes,
+                            validate_all,
                         )?;
                         let mask = coverage(
                             masks,
@@ -492,7 +657,7 @@ impl GroupTree {
                         let branch = &branches[index];
                         let mut head = branch.source.id;
                         graph.nodes.push(branch.source.clone());
-                        if source.enabled {
+                        if source.enabled || validate_all {
                             for filter in &branch.filters {
                                 graph.edges.push(Edge {
                                     from: head,
@@ -529,6 +694,8 @@ impl GroupTree {
                             zero,
                             zero,
                             group_nodes,
+                            adjustment_nodes,
+                            validate_all,
                         )?;
                         let opacity = if g.visible {
                             g.opacity as f32 / 255.
@@ -545,6 +712,9 @@ impl GroupTree {
                         } else {
                             (head, g.blend_mode, opacity)
                         }
+                    }
+                    ItemKind::Adjustment => {
+                        unreachable!("Adjustment handled before source-over stacking")
                     }
                 };
                 let blend = fresh(next, NodeKind::Blend { mode, opacity }, "blend")?;
@@ -582,6 +752,8 @@ impl GroupTree {
             zero_id,
             zero_id,
             &mut group_nodes,
+            &mut adjustment_nodes,
+            validate_all,
         )?;
         let output = source
             .nodes
@@ -641,6 +813,9 @@ impl GroupTree {
                             + 140.
                             + depth as f32 * 140.
                     }
+                    Some(super::raster_masks::MaskOwner::Adjustment { .. }) => {
+                        inputs.first().map_or(0., |v| v.1)
+                    }
                     None => 0.,
                 },
                 _ if !inputs.is_empty() => {
@@ -652,6 +827,7 @@ impl GroupTree {
                 match mask_owner {
                     Some(super::raster_masks::MaskOwner::Layer { .. }) => -260.,
                     Some(super::raster_masks::MaskOwner::Group { .. }) => -520.,
+                    Some(super::raster_masks::MaskOwner::Adjustment { .. }) => -780.,
                     None => column as f32 * 260.,
                 },
                 row,
@@ -662,7 +838,7 @@ impl GroupTree {
             ids.len(),
             &masks.items.iter().map(|mask| mask.id).collect::<Vec<_>>(),
         )?;
-        Ok((graph, group_nodes))
+        Ok((graph, group_nodes, adjustment_nodes))
     }
     pub fn memory_bytes(&self) -> usize {
         std::mem::size_of::<Self>()
@@ -675,6 +851,11 @@ impl GroupTree {
                         + g.name.len()
                         + g.children.len() * std::mem::size_of::<GroupItem>()
                 })
+                .sum::<usize>()
+            + self
+                .adjustments
+                .iter()
+                .map(super::adjustments::Adjustment::memory_bytes)
                 .sum::<usize>()
     }
 }

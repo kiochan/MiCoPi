@@ -68,7 +68,8 @@ fn selected_tool_controls_canvas_edits_including_custom_brushes() {
 fn startup_plugin_loading_is_deterministic_and_does_not_overwrite_customization() {
     let dir = folder("plugins").join("packs");
     let first = Registry::load(&dir).unwrap();
-    assert_eq!(first.loaded.len(), 12);
+    assert_eq!(first.loaded.len(), 13);
+    assert!(first.actions.contains_key("adjustment.create"));
     let file = dir.join("painting/manifest.json");
     let mut value: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
     value["tools"][0]["title"] = json!("我的画笔");
@@ -77,7 +78,7 @@ fn startup_plugin_loading_is_deterministic_and_does_not_overwrite_customization(
     assert_eq!(loaded.tools["brush"].title, "我的画笔");
     std::fs::write(dir.join("broken.json"), "{").unwrap();
     let loaded = Registry::load(&dir).unwrap();
-    assert_eq!(loaded.loaded.len(), 12);
+    assert_eq!(loaded.loaded.len(), 13);
     assert_eq!(loaded.diagnostics.len(), 1);
 }
 #[test]

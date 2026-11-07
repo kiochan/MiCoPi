@@ -111,7 +111,7 @@ pub(crate) fn destination(
                 "raster_mask",
                 "Raster-mask owner does not exist",
             )),
-            MaskOwner::Group { .. } => Err(pending()),
+            MaskOwner::Group { .. } | MaskOwner::Adjustment { .. } => Err(pending()),
         };
     }
     let layer_id = s.doc.layer_id(s.doc.active);

@@ -10,6 +10,7 @@ pub const MAX_MASK_FEATHER: u16 = 256;
 pub enum MaskOwner {
     Layer { id: u64 },
     Group { id: u64 },
+    Adjustment { id: u64 },
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -95,7 +96,18 @@ impl MaskState {
         std::mem::size_of::<Self>() + self.items.len() * std::mem::size_of::<MaskMetadata>()
     }
     pub fn validate_owners(&self, layer_ids: &[u64], group_ids: &[u64]) -> Result<(), String> {
-        if self.version != 1 || self.items.len() > MAX_MASKS || self.next_id > u32::MAX as u64 + 1 {
+        self.validate_owners_with_adjustments(layer_ids, group_ids, &[])
+    }
+    pub fn validate_owners_with_adjustments(
+        &self,
+        layer_ids: &[u64],
+        group_ids: &[u64],
+        adjustment_ids: &[u64],
+    ) -> Result<(), String> {
+        if !matches!(self.version, 1 | 2)
+            || self.items.len() > MAX_MASKS
+            || self.next_id > u32::MAX as u64 + 1
+        {
             return Err("Invalid raster mask version, count or allocator".into());
         }
         if self.next_id == 0 && !self.is_default() {
@@ -121,6 +133,12 @@ impl MaskState {
                 }
                 MaskOwner::Group { id } => {
                     id != 0 && id <= u32::MAX as u64 && group_ids.contains(&id)
+                }
+                MaskOwner::Adjustment { id } => {
+                    self.version == 2
+                        && id != 0
+                        && id <= u32::MAX as u64
+                        && adjustment_ids.contains(&id)
                 }
             };
             if !exists {
@@ -173,6 +191,17 @@ impl SamplePlane {
             return Err("Invalid raster mask sample count".into());
         }
         Ok(())
+    }
+    pub fn validate_with_adjustments(
+        &self,
+        width: usize,
+        height: usize,
+        layer_ids: &[u64],
+        group_ids: &[u64],
+        adjustment_ids: &[u64],
+    ) -> Result<(), String> {
+        self.validate_owners_with_adjustments(layer_ids, group_ids, adjustment_ids)?;
+        self.validate_dimensions(width, height)
     }
     pub(crate) fn memory_bytes(&self) -> usize {
         match self {

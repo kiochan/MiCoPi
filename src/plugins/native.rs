@@ -1150,7 +1150,12 @@ impl Instance {
 pub(crate) fn execute(session: &mut Session, action: &str, args: Value) -> ActionResult {
     let access = session.registry.actions[action].effective_pixel_access();
     access.require(&session.doc, session.doc.active)?;
-    if access != PixelAccess::None && session.doc.has_raster_masks() {
+    if access != PixelAccess::None && session.doc.has_adjustments() {
+        super::adjustments::validate_document(&session.registry, &session.doc)?;
+    }
+    if access != PixelAccess::None
+        && (session.doc.has_raster_masks() || session.doc.has_adjustments())
+    {
         session
             .doc
             .ensure_graph_renderer()

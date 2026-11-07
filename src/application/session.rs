@@ -479,6 +479,7 @@ impl Session {
             }
             self.remaining_actions -= 1;
             let read_only = self.registry.actions[&id].is_read_only();
+            self.validate_adjustment_boundary(op, &args)?;
             self.validate_mask_boundary(op, &args)?;
             let recording = !read_only
                 && !op.is_some_and(Operation::is_replay)
@@ -574,6 +575,7 @@ impl Session {
                                     | Operation::CaptureWorkspace
                                     | Operation::WindowCapture
                                     | Operation::TransformPreview
+                                    | Operation::AdjustmentInspect
                                     | Operation::ExportDialog
                                     | Operation::OpenSelectedMerge
                                     | Operation::ReplayExport
@@ -683,6 +685,9 @@ impl Session {
         validate(&definition.schema(), &action.args)?;
         if let Some(op) = definition.operation {
             validate(&op.schema(), &action.args)?;
+            if op.is_adjustment() {
+                crate::plugins::adjustments::validate_literal(&self.registry, op, &action.args)?;
+            }
             if matches!(op, Operation::MovePixels | Operation::Nudge) {
                 crate::plugins::movement::validate_literal(&action.args)?;
             }

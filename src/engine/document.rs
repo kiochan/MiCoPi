@@ -176,13 +176,25 @@ impl Composition {
             }
             let ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
             tree.validate(&ids, self.next_group_id)?;
-            tree.compile_graph(
-                &self.graph,
-                &ids,
-                &self.layers.iter().map(|v| v.2).collect::<Vec<_>>(),
-            )?;
+            if !tree.groups.is_empty() || !tree.adjustments.is_empty() {
+                tree.compile_graph(
+                    &self.graph,
+                    &ids,
+                    &self.layers.iter().map(|v| v.2).collect::<Vec<_>>(),
+                )?;
+            }
+            if !tree.adjustments.is_empty() {
+                tree.compile_stack_details(
+                    &self.graph,
+                    &ids,
+                    &self.layers.iter().map(|v| v.2).collect::<Vec<_>>(),
+                    &self.layers.iter().map(|v| v.1).collect::<Vec<_>>(),
+                    &self.raster_masks,
+                    true,
+                )?;
+            }
         }
-        self.raster_masks.validate_owners(
+        self.raster_masks.validate_owners_with_adjustments(
             &self
                 .layer_metadata
                 .iter()
@@ -193,6 +205,9 @@ impl Composition {
                 .as_ref()
                 .map(|tree| tree.groups.iter().map(|group| group.id).collect::<Vec<_>>())
                 .unwrap_or_default(),
+            &self.groups.as_ref().map_or_else(Vec::new, |tree| {
+                tree.adjustments.iter().map(|a| a.id).collect()
+            }),
         )?;
         Ok(())
     }
@@ -285,6 +300,7 @@ pub(crate) struct HistoryCheckpoint {
     next_layer_id: u64,
     history_group: Option<HistoryGroup>,
     next_group_id: u64,
+    next_adjustment_id: u64,
     dirty: bool,
     mask_storage_epoch: u64,
     mask_revisions: Vec<(u64, u64)>,
@@ -359,6 +375,7 @@ pub struct Document {
     selected_layer_ids: Vec<u64>,
     groups: Option<super::groups::GroupTree>,
     next_group_id: u64,
+    next_adjustment_id: u64,
     raster_masks: super::raster_masks::MaskState,
     mask_planes: Vec<super::raster_masks::MaskPlane>,
     mask_storage_epoch: u64,
@@ -369,6 +386,7 @@ pub struct Document {
     group_visibility: [bool; MAX_LAYERS],
     masked_layers: [bool; MAX_LAYERS],
     group_nodes: BTreeMap<u64, u32>,
+    adjustment_nodes: BTreeMap<u64, u32>,
     groups_revision: u64,
     pub(crate) replay_tiles: std::collections::BTreeSet<(usize, usize)>,
     pub(crate) replay_surface: Option<[usize; 4]>,
@@ -428,6 +446,7 @@ impl Document {
             next_layer_id: self.next_layer_id,
             history_group: self.history_group.clone(),
             next_group_id: self.next_group_id,
+            next_adjustment_id: self.next_adjustment_id,
             dirty: self.dirty,
             mask_storage_epoch: self.mask_storage_epoch,
             mask_revisions: self
@@ -451,6 +470,7 @@ impl Document {
         self.next_layer_id = saved.next_layer_id;
         self.history_group = saved.history_group;
         self.next_group_id = saved.next_group_id;
+        self.next_adjustment_id = saved.next_adjustment_id;
         self.dirty = saved.dirty;
         self.mask_storage_epoch = saved.mask_storage_epoch;
         self.mask_contact = saved.mask_contact;
@@ -485,6 +505,7 @@ impl Document {
             selected_layer_ids: Vec::new(),
             groups: None,
             next_group_id: 1,
+            next_adjustment_id: 0,
             raster_masks: Default::default(),
             mask_planes: Vec::new(),
             mask_storage_epoch: 0,
@@ -495,6 +516,7 @@ impl Document {
             group_visibility: [true; MAX_LAYERS],
             masked_layers: [false; MAX_LAYERS],
             group_nodes: BTreeMap::new(),
+            adjustment_nodes: BTreeMap::new(),
             groups_revision: 0,
             selection: Default::default(),
             workflow: Default::default(),
@@ -541,6 +563,7 @@ impl Document {
     pub fn requires_renderer(&self) -> bool {
         self.has_raster_masks()
             || self.has_groups()
+            || self.has_adjustments()
             || (self.graph.enabled && (!self.graph.linked || self.graph.has_filters()))
             || self.layers.iter().any(|l| l.mode != BlendMode::Normal)
     }
@@ -561,7 +584,16 @@ impl Document {
             next_layer_id: self.next_layer_id,
             workflow: self.workflow.clone(),
             selected_layer_ids: self.selected_layer_ids.clone(),
-            groups: self.groups.clone(),
+            groups: self.groups.clone().or_else(|| {
+                (self.next_adjustment_id != 0).then(|| {
+                    let mut tree = super::groups::GroupTree::flat(
+                        &self.layer_metadata.iter().map(|m| m.id).collect::<Vec<_>>(),
+                    );
+                    tree.version = 3;
+                    tree.next_adjustment_id = self.next_adjustment_id;
+                    tree
+                })
+            }),
             next_group_id: if self.next_group_id == 1 {
                 0
             } else {
@@ -643,6 +675,12 @@ impl Document {
         }
         self.selected_layer_ids = state.selected_layer_ids;
         self.groups = state.groups;
+        // Verified-state/project restoration adopts the exact feature floor.
+        // Undo/Redo explicitly reapplies its committed floor in swap_edit.
+        self.next_adjustment_id = self
+            .groups
+            .as_ref()
+            .map_or(0, |tree| tree.next_adjustment_id);
         self.next_group_id = self.next_group_id.max(state.next_group_id).max(1);
         self.layer_metadata = if state.layer_metadata.is_empty() {
             (0..self.layers.len())
@@ -721,6 +759,9 @@ impl Document {
         self.invalidate();
     }
     pub fn set_graph(&mut self, graph: Graph) -> Result<(), String> {
+        if !graph.linked {
+            self.require_adjustment_aware_edit()?;
+        }
         if graph
             .nodes
             .iter()
@@ -962,7 +1003,7 @@ impl Document {
                         )
                     } else {
                         self.renderer.as_ref().unwrap().render(
-                            if self.has_groups()
+                            if self.has_mixed_stack()
                                 || self.graph.enabled
                                     && (!self.graph.linked || self.graph.has_filters())
                             {
@@ -1370,7 +1411,11 @@ impl Document {
             if let Some(change) = &mut e.mask_change {
                 self.swap_mask_change(change);
             }
+            let adjustment_floor = self.next_adjustment_id;
+            let mask_version = self.raster_masks.version;
             self.restore_composition(state.clone());
+            self.retain_adjustment_floor(adjustment_floor);
+            self.raster_masks.version = self.raster_masks.version.max(mask_version);
             *state = before;
             e.metadata_bytes = state.graph.nodes.len() * 160
                 + state.groups.as_ref().map_or(0, |g| g.memory_bytes())
@@ -1840,6 +1885,8 @@ impl Document {
         Ok(doc)
     }
 }
+#[path = "adjustment_editing.rs"]
+mod adjustment_editing;
 #[path = "blend_modes.rs"]
 mod blend_modes;
 #[path = "canvas_editing.rs"]

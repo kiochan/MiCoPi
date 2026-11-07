@@ -76,6 +76,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             let mut doc = codec::open(&path)?;
             let journal = crate::application::replay::read_embedded(&mut doc)?;
             doc.renderer = s.registry.renderer();
+            super::adjustments::validate_document(&s.registry, &doc)?;
             doc.ensure_graph_renderer()
                 .map_err(|e| ActionError::new("renderer_missing", e))?;
             if let Some(graph) = s.workflow_stack.first() {
@@ -107,6 +108,12 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         }
         Save => {
             let path = path()?;
+            if s.doc.has_adjustments() {
+                super::adjustments::validate_document(&s.registry, &s.doc)?;
+                s.doc
+                    .ensure_graph_renderer()
+                    .map_err(|e| ActionError::new("adjustment_renderer", e))?;
+            }
             s.finish_stroke();
             s.pending_save = Some((path.clone(), s.file.clone(), s.doc.dirty, s.revision));
             s.file = Some(path.clone());

@@ -470,6 +470,9 @@ fn mask_group_duplicate_copies_ordered_owners_flags_filters_and_independent_raw_
                         id if id == empty => 6,
                         _ => panic!("Unexpected fixture group"),
                     },
+                    crate::engine::groups::ItemKind::Adjustment => {
+                        panic!("Unexpected fixture adjustment")
+                    }
                 };
             }
             assert_eq!(

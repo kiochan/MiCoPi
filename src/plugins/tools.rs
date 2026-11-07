@@ -72,6 +72,12 @@ impl StrokeEngine {
                 })?;
             let parameters = parameters(&s.parameters)?;
             let painting = matches!(kind, ToolKind::Brush | ToolKind::Eraser);
+            if painting && s.doc.has_adjustments() {
+                super::adjustments::validate_document(&s.registry, &s.doc)?;
+                s.doc
+                    .ensure_graph_renderer()
+                    .map_err(|error| ActionError::new("adjustment_renderer", error))?;
+            }
             let mask_id = if painting {
                 match s.doc.mask_state().target {
                     PaintTarget::Mask { id } => Some(id),

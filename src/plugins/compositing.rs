@@ -6,13 +6,15 @@ use serde_json::{json, Value};
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
     match op {
         Operation::GraphRead => Ok(
-            json!({"graph":s.doc.graph,"effective_graph":s.doc.effective_graph().map_err(|e|ActionError::new("invalid_graph",e))?,"groups":s.doc.groups_state(),"mode":if s.doc.has_groups() {"grouped"} else if s.doc.graph.linked {"linked"} else {"free"},"layers":s.state()["layers"],"default_graph":Graph::linked_from_layers(&s.doc.layers),"renderer_available":s.doc.renderer.is_some(),"available_blend_modes":s.doc.available_blend_modes(),"renderer_transparent":s.doc.renderer.as_ref().is_some_and(|r|r.supports_transparent()),"renderer_mix":s.doc.renderer.as_ref().is_some_and(|r|r.supports_mix()),"render_error":s.doc.render_error}),
+            json!({"graph":s.doc.graph,"effective_graph":s.doc.effective_graph().map_err(|e|ActionError::new("invalid_graph",e))?,"groups":s.doc.groups_state(),"mode":if (s.doc.has_groups() || s.doc.has_adjustments()) {"grouped"} else if s.doc.graph.linked {"linked"} else {"free"},"layers":s.state()["layers"],"default_graph":Graph::linked_from_layers(&s.doc.layers),"renderer_available":s.doc.renderer.is_some(),"available_blend_modes":s.doc.available_blend_modes(),"renderer_transparent":s.doc.renderer.as_ref().is_some_and(|r|r.supports_transparent()),"renderer_mix":s.doc.renderer.as_ref().is_some_and(|r|r.supports_mix()),"render_error":s.doc.render_error}),
         ),
         Operation::GraphCatalog => Ok(
             json!({"version":1,"max_nodes":64,"definitions":s.registry.node_catalog().values().collect::<Vec<_>>(),"workflow_schema":crate::engine::workflow::schema(),"filters":Filter::ALL,"blend_modes":BlendMode::ALL,"available_blend_modes":s.doc.available_blend_modes(),"renderer_mix":s.doc.renderer.as_ref().is_some_and(|r|r.supports_mix()),"node_kinds":["transparent","layer","filter","blend","mix","output"],"graph_schema":crate::engine::graph::schema(),"image_type":"straight_alpha_argb","destructive":false}),
         ),
         Operation::GraphSet => {
-            if s.doc.has_groups() && (s.stroke.active() || s.pointer_checkpoint.is_some()) {
+            if (s.doc.has_groups() || s.doc.has_adjustments())
+                && (s.stroke.active() || s.pointer_checkpoint.is_some())
+            {
                 return Err(ActionError::new(
                     "stroke_active",
                     "Finish the current contact before changing grouped layer filters",
@@ -23,7 +25,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 .compile(s.doc.layers.len())
                 .map_err(|e| ActionError::new("invalid_graph", e))?;
             let graph = s.registry.normalize_image_nodes(graph)?;
-            if s.doc.has_groups() && !graph.linked {
+            if (s.doc.has_groups() || s.doc.has_adjustments()) && !graph.linked {
                 return Err(ActionError::new(
                     "group_graph",
                     "Ungroup layers before enabling free compositing",

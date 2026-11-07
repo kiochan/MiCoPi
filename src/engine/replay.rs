@@ -126,7 +126,19 @@ impl Metadata {
                 .unwrap_or_default();
             self.composition
                 .raster_masks
-                .validate(self.width, self.height, &layers, &groups)
+                .validate_with_adjustments(
+                    self.width,
+                    self.height,
+                    &layers,
+                    &groups,
+                    &self
+                        .composition
+                        .groups
+                        .as_ref()
+                        .map_or_else(Vec::new, |tree| {
+                            tree.adjustments.iter().map(|a| a.id).collect()
+                        }),
+                )
                 .map_err(bad)?;
         }
         self.composition.workflow.validate_structure()?;

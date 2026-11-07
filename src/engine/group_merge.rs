@@ -7,6 +7,7 @@ impl Document {
     /// Shared semantic gates for commands and public inspector feedback.
     /// Contacts and final staged topology/rendering are validated at execution.
     pub fn group_merge_eligibility(&self, group_id: u64) -> Result<(), String> {
+        self.require_adjustment_aware_edit()?;
         self.require_mask_aware_edit()?;
         self.ensure_group_renderer()?;
         self.ensure_mix_capability(&self.graph, self.groups.as_ref())?;
@@ -50,6 +51,7 @@ impl Document {
     /// The only image allocation is the raster that will replace the sources.
     /// Global source indices let subtree rendering borrow every raw buffer.
     pub(super) fn render_group_bake(&self, graph: &Graph) -> Result<Vec<u32>, String> {
+        self.require_adjustment_aware_edit()?;
         self.require_mask_aware_edit()?;
         self.ensure_group_renderer()?;
         let plan = graph.compile(self.layers.len())?;
@@ -200,7 +202,7 @@ impl Document {
         let graph = self
             .graph
             .sync_baked_stack(&modes, &old_ids, &new_ids, None, &[])?;
-        let groups = (!tree.groups.is_empty()).then_some(tree);
+        let groups = tree.retain_tree().then_some(tree);
         let prepared = self.prepare_group_plan(
             &graph,
             groups.as_ref(),

@@ -1,4 +1,6 @@
 //! egui workbench. Painting and platform input remain independent of widget layout.
+#[path = "../../plugins/adjustments/panel.rs"]
+mod adjustments;
 mod area;
 mod blend_modes;
 #[path = "../../plugins/brush/panel.rs"]
@@ -904,6 +906,19 @@ impl Studio {
                             .filter(|id| self.editor.session.doc.group_layer_ids(*id).is_ok())
                         {
                             self.editor.focus_group_ui(ctx, Some(id));
+                            self.focus_panel(Panel::Layers);
+                        }
+                    }
+                }
+                Some("adjustment.inspect") => {
+                    if effect["document_identity"].as_u64()
+                        == Some(self.editor.session.doc.identity)
+                    {
+                        if let Some(id) = effect["value"]
+                            .as_u64()
+                            .filter(|id| self.editor.session.doc.adjustment(*id).is_ok())
+                        {
+                            self.editor.focus_adjustment_ui(ctx, Some(id));
                             self.focus_panel(Panel::Layers);
                         }
                     }

@@ -1,5 +1,8 @@
 //! The single document owner and action boundary, independent of windows and egui.
 mod actions;
+mod adjustment_boundary;
+#[cfg(test)]
+mod adjustment_tests;
 mod atomic;
 pub(crate) mod canvas_geometry;
 pub mod codec;

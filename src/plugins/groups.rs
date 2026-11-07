@@ -15,7 +15,7 @@ pub(crate) fn schema(op: Operation) -> Value {
     }
     let id = json!({"type":"integer","minimum":1,"maximum":4294967295u64});
     let parent = json!({"type":"integer","minimum":0,"maximum":4294967295u64});
-    let item = json!({"type":"object","properties":{"kind":{"type":"string","enum":["layer","group"]},"id":id},"required":["kind","id"],"additionalProperties":false});
+    let item = json!({"type":"object","properties":{"kind":{"type":"string","enum":["layer","group","adjustment"]},"id":id},"required":["kind","id"],"additionalProperties":false});
     let name = json!({"type":"string","description":"An artist-owned, single-line name, at most 512 UTF-8 bytes."});
     let (properties, required) = match op {
         GroupCreate => (
@@ -125,6 +125,11 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 .iter()
                 .map(|m| m.id)
                 .collect::<Vec<_>>(),
+            s.doc
+                .adjustments()
+                .iter()
+                .map(|item| item.id)
+                .collect::<Vec<_>>(),
         )
     });
     match op {
@@ -210,7 +215,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
     if let Some(id) = merged_layer {
         state["layer_id"] = json!(id);
     }
-    if let Some((groups, layers, masks)) = structural_before {
+    if let Some((groups, layers, masks, adjustments)) = structural_before {
         if op == GroupDuplicate {
             let copied = |rows: &Value, before: &[u64]| -> Vec<u64> {
                 rows.as_array()
@@ -221,6 +226,13 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                     .collect()
             };
             state["source_group_id"] = json!(id);
+            state["adjustment_ids"] = json!(s
+                .doc
+                .adjustments()
+                .iter()
+                .map(|item| item.id)
+                .filter(|id| !adjustments.contains(id))
+                .collect::<Vec<_>>());
             // Public group rows follow DFS, while fresh group IDs are allocated
             // in BFS order. Monotonic identities recover that promised order.
             let mut group_ids = copied(&state["groups"]["groups"], &groups);
@@ -236,6 +248,10 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 .filter(|id| !masks.contains(id))
                 .collect::<Vec<_>>());
         } else {
+            state["deleted_adjustment_ids"] = json!(adjustments
+                .into_iter()
+                .filter(|id| s.doc.adjustment(*id).is_err())
+                .collect::<Vec<_>>());
             let remaining = |rows: &Value| -> BTreeSet<u64> {
                 rows.as_array()
                     .into_iter()
@@ -304,6 +320,34 @@ pub(crate) fn query(s: &Session, args: &Value) -> ActionResult {
     };
     let mut leaves = matched_layers.clone();
     let mut included = matched_groups.clone();
+    // Adjustment inspection participates only in name/visibility queries.
+    // Raster selection, locks and color labels never acquire non-raster targets.
+    let adjustment_predicates = args.as_object().is_some_and(|args| {
+        args.keys()
+            .all(|key| matches!(key.as_str(), "query" | "visible" | "effective_visible"))
+    });
+    let matched_adjustments: BTreeSet<u64> = state["rows"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|row| {
+            row["kind"] == "adjustment"
+                && adjustment_predicates
+                && row["name"]
+                    .as_str()
+                    .unwrap_or("")
+                    .to_lowercase()
+                    .contains(&name)
+                && args["visible"]
+                    .as_bool()
+                    .is_none_or(|visible| row["visible"] == visible)
+                && args["effective_visible"]
+                    .as_bool()
+                    .is_none_or(|visible| row["effective_visible"] == visible)
+        })
+        .filter_map(|row| row["id"].as_u64())
+        .collect();
+    let mut included_adjustments = matched_adjustments.clone();
     for row in &groups {
         let id = row["id"].as_u64().unwrap();
         let mut parent = id;
@@ -312,6 +356,9 @@ pub(crate) fn query(s: &Session, args: &Value) -> ActionResult {
                 included.insert(id);
                 if let Some(ids) = row["layer_ids"].as_array() {
                     leaves.extend(ids.iter().filter_map(Value::as_u64));
+                }
+                if let Some(ids) = row["adjustment_ids"].as_array() {
+                    included_adjustments.extend(ids.iter().filter_map(Value::as_u64));
                 }
                 break;
             }
@@ -324,6 +371,8 @@ pub(crate) fn query(s: &Session, args: &Value) -> ActionResult {
     let all = state["rows"].as_array().cloned().unwrap_or_default();
     for row in &all {
         if (row["kind"] == "layer" && leaves.contains(&row["id"].as_u64().unwrap_or(0)))
+            || (row["kind"] == "adjustment"
+                && included_adjustments.contains(&row["id"].as_u64().unwrap_or(0)))
             || (row["kind"] == "group" && included.contains(&row["id"].as_u64().unwrap_or(0)))
         {
             let mut parent = row["parent_id"].as_u64().unwrap_or(0);
@@ -341,9 +390,12 @@ pub(crate) fn query(s: &Session, args: &Value) -> ActionResult {
         .filter_map(|row| {
             let id = row["id"].as_u64().unwrap_or(0);
             let group = row["kind"] == "group";
+            let adjustment = row["kind"] == "adjustment";
             if filtered
                 && !(if group {
                     included.contains(&id)
+                } else if adjustment {
+                    included_adjustments.contains(&id)
                 } else {
                     leaves.contains(&id)
                 })
@@ -354,6 +406,8 @@ pub(crate) fn query(s: &Session, args: &Value) -> ActionResult {
             let matched = !filtered
                 || if group {
                     matched_groups.contains(&id)
+                } else if adjustment {
+                    matched_adjustments.contains(&id)
                 } else {
                     matched_layers.contains(&id)
                 };
@@ -368,6 +422,7 @@ pub(crate) fn query(s: &Session, args: &Value) -> ActionResult {
     state["filter_active"] = json!(filtered);
     state["matching_layer_ids"] = json!(matched_layers);
     state["matching_group_ids"] = json!(matched_groups);
+    state["matching_adjustment_ids"] = json!(matched_adjustments);
     state["revision"] = json!(s.revision);
     state["drawing"] = json!(s.is_drawing());
     state["selected_layer_ids"] = layers["selected_layer_ids"].clone();

@@ -198,7 +198,8 @@
           "version": {
             "type": "integer",
             "enum": [
-              1
+              1,
+              2
             ]
           },
           "items": {
@@ -219,7 +220,8 @@
                       "type": "string",
                       "enum": [
                         "layer",
-                        "group"
+                        "group",
+                        "adjustment"
                       ]
                     },
                     "id": {
@@ -366,7 +368,8 @@
               "version": {
                 "type": "integer",
                 "enum": [
-                  1
+                  1,
+                  2
                 ]
               },
               "items": {
@@ -387,7 +390,8 @@
                           "type": "string",
                           "enum": [
                             "layer",
-                            "group"
+                            "group",
+                            "adjustment"
                           ]
                         },
                         "id": {
@@ -545,7 +549,8 @@
               "version": {
                 "type": "integer",
                 "enum": [
-                  1
+                  1,
+                  2
                 ]
               },
               "items": {
@@ -566,7 +571,8 @@
                           "type": "string",
                           "enum": [
                             "layer",
-                            "group"
+                            "group",
+                            "adjustment"
                           ]
                         },
                         "id": {
@@ -724,7 +730,8 @@
               "version": {
                 "type": "integer",
                 "enum": [
-                  1
+                  1,
+                  2
                 ]
               },
               "items": {
@@ -745,7 +752,8 @@
                           "type": "string",
                           "enum": [
                             "layer",
-                            "group"
+                            "group",
+                            "adjustment"
                           ]
                         },
                         "id": {
@@ -903,7 +911,8 @@
               "version": {
                 "type": "integer",
                 "enum": [
-                  1
+                  1,
+                  2
                 ]
               },
               "items": {
@@ -924,7 +933,8 @@
                           "type": "string",
                           "enum": [
                             "layer",
-                            "group"
+                            "group",
+                            "adjustment"
                           ]
                         },
                         "id": {
@@ -1076,7 +1086,8 @@
               "version": {
                 "type": "integer",
                 "enum": [
-                  1
+                  1,
+                  2
                 ]
               },
               "items": {
@@ -1097,7 +1108,8 @@
                           "type": "string",
                           "enum": [
                             "layer",
-                            "group"
+                            "group",
+                            "adjustment"
                           ]
                         },
                         "id": {
@@ -1255,7 +1267,8 @@
               "version": {
                 "type": "integer",
                 "enum": [
-                  1
+                  1,
+                  2
                 ]
               },
               "items": {
@@ -1276,7 +1289,8 @@
                           "type": "string",
                           "enum": [
                             "layer",
-                            "group"
+                            "group",
+                            "adjustment"
                           ]
                         },
                         "id": {
@@ -1434,7 +1448,8 @@
               "version": {
                 "type": "integer",
                 "enum": [
-                  1
+                  1,
+                  2
                 ]
               },
               "items": {
@@ -1455,7 +1470,8 @@
                           "type": "string",
                           "enum": [
                             "layer",
-                            "group"
+                            "group",
+                            "adjustment"
                           ]
                         },
                         "id": {
@@ -1613,7 +1629,8 @@
               "version": {
                 "type": "integer",
                 "enum": [
-                  1
+                  1,
+                  2
                 ]
               },
               "items": {
@@ -1634,7 +1651,8 @@
                           "type": "string",
                           "enum": [
                             "layer",
-                            "group"
+                            "group",
+                            "adjustment"
                           ]
                         },
                         "id": {
@@ -1849,7 +1867,8 @@
               "version": {
                 "type": "integer",
                 "enum": [
-                  1
+                  1,
+                  2
                 ]
               },
               "items": {
@@ -1870,7 +1889,8 @@
                           "type": "string",
                           "enum": [
                             "layer",
-                            "group"
+                            "group",
+                            "adjustment"
                           ]
                         },
                         "id": {
@@ -2040,7 +2060,8 @@
           "version": {
             "type": "integer",
             "enum": [
-              1
+              1,
+              2
             ]
           },
           "items": {
@@ -2061,7 +2082,8 @@
                       "type": "string",
                       "enum": [
                         "layer",
-                        "group"
+                        "group",
+                        "adjustment"
                       ]
                     },
                     "id": {

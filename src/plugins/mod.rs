@@ -26,6 +26,7 @@ pub fn panel_key(id: &str) -> u32 {
     })
 }
 
+pub(crate) mod adjustments;
 pub(crate) mod affine;
 pub(crate) mod clipboard;
 mod compositing;
@@ -59,6 +60,10 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        AdjustmentCatalog | AdjustmentQuery | AdjustmentRead | AdjustmentCreate | AdjustmentSet
+        | AdjustmentMove | AdjustmentDelete | AdjustmentInspect => {
+            adjustments::execute(session, op, args)
+        }
         MaskQuery | MaskCreate | MaskDelete | MaskProperties | MaskTarget | MaskFill
         | MaskInvert | MaskFromSelection | MaskToSelection | MaskSnapshot | MaskApply => {
             raster_masks::execute(session, op, args)

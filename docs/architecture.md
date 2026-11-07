@@ -98,9 +98,23 @@ Image Size uses the same unit conversion with exact current density, plus a sour
 
 ## Stable layer editing
 
+[Adjustment layers](adjustment-layers.md) are bounded non-raster items in a strict
+version-3 mixed tree, with distinct IDs and an embedded allocator. The compiler
+filters the running backdrop and gates the change through Normal Mix/MaskedMix;
+root, Isolated and Pass Through seeds retain their existing scope. Source Layer
+Filters remain editable raster branches. Disabling node effects bypasses both
+source filters and adjustments while retaining group gates and validating all
+definitions. Registered aliases/schemas supply the shared action/UI boundary;
+no per-pixel JSON or new native opcode is introduced. Optional adjustment masks
+use mask metadata v2 with the unchanged raw A8 codec. Compound metadata/mask
+history, monotonic committed floors and exact checkpoint/outcome restoration
+keep ownership and old-reader rejection explicit. Active painting stays raster-
+or mask-targeted, separate from adjustment inspection. Current runtime validation
+is pending CI.
+
 Optional versioned group trees keep raster buffers flat in depth-first order. Isolated defaults retain version-1 bytes; opting into Pass Through promotes the tree to version 2. The linked source graph stores stable raster/filter branches. A cached effective graph seeds isolated children with transparent zero and Pass Through children with the incoming parent result, then applies each group boundary once. A capability-gated native Mix node interpolates the completed before/after change in premultiplied integer form without image intermediates. Group visibility has a metadata-refreshed per-raster cache for input guards; typed MOVE neither walks nor serializes the tree. The Node Editor displays actual composition separately from editable Layer Filters; disabling effects preserves groups, and free compositing cannot coexist with a nonempty hierarchy. Outcome restoration bypasses renderer capabilities and restores verified surfaces. See [Layer Groups](layer-groups.md) and [Pass Through](pass-through.md).
 
-Selected-only merge builds a bounded metadata projection from explicit stable raster IDs. It retains selected filters and intermediate group gates over a transparent base, excluding the lowest common parent and ancestors that remain around the result. A read-only plan reports normalized targets, placement, hidden consumption and topology/output costs without sampling pixels or ending a contact. Execution preflights source/projected/final capabilities and budgets, renders one output from borrowed global-index sources and publishes through the existing structural history helper. Unselected buffers/filter identities and all folders survive. The result uses the top target's identity and one shared Undo/revision/outcome; outside-backdrop/stacking interactions can change by contract. Group public-state schemas accept versions 1 and 2, and no project/replay format or native ABI is added. See [Selected-only Merge](selected-merge.md).
+Selected-only merge builds a bounded metadata projection from explicit stable raster IDs. It retains selected filters and intermediate group gates over a transparent base, excluding the lowest common parent and ancestors that remain around the result. A read-only plan reports normalized targets, placement, hidden consumption and topology/output costs without sampling pixels or ending a contact. Execution preflights source/projected/final capabilities and budgets, renders one output from borrowed global-index sources and publishes through the existing structural history helper. Unselected buffers/filter identities and all folders survive. The result uses the top target's identity and one shared Undo/revision/outcome; outside-backdrop/stacking interactions can change by contract. Group public-state schemas also accept version 3 for adjustment-aware stacks; selected baking stays guarded while actual adjustments exist. The adjustment increment changes strict metadata versions, without a new raw-pixel/replay codec or native ABI. See [Selected-only Merge](selected-merge.md).
 
 The generic `layer.merge` captures current selected IDs for a multi-selection and delegates to that operation; a singleton delegates to existing Merge Down. The optional nonmodal review captures explicit IDs, document identity and revision. Opening it queues a presentation effect without a revision increment; stale drafts require explicit refresh and cannot silently retarget. Headless clients use plan/execute and receive explicit unavailability for the review window. Opening or refreshing the review leaves pixels and history intact; its Merge Selected Layers button explicitly commits the shared operation. Editing a workflow never runs it.
 

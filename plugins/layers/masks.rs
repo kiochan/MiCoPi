@@ -30,7 +30,7 @@ impl Editor {
         );
     }
 
-    pub(super) fn mask_thumbnail_ui(
+    pub(in crate::desktop) fn mask_thumbnail_ui(
         &mut self,
         ui: &mut Ui,
         owner: MaskOwner,
@@ -93,13 +93,11 @@ impl Editor {
             )
         });
         if response.clicked() {
-            self.focus_group_ui(
-                ui.ctx(),
-                match owner {
-                    MaskOwner::Group { id } => Some(id),
-                    _ => None,
-                },
-            );
+            match owner {
+                MaskOwner::Adjustment { id } => self.focus_adjustment_ui(ui.ctx(), Some(id)),
+                MaskOwner::Group { id } => self.focus_group_ui(ui.ctx(), Some(id)),
+                MaskOwner::Layer { .. } => self.focus_group_ui(ui.ctx(), None),
+            }
             pending.push(crate::application::Action::new(
                 "mask.target",
                 json!({"target":{"kind":"mask","id":metadata.id}}),
@@ -132,6 +130,12 @@ impl Editor {
                         .map(|group| group.name.clone())
                 })
                 .unwrap_or_default(),
+            MaskOwner::Adjustment { id } => self
+                .session
+                .doc
+                .adjustment(id)
+                .map(|adjustment| adjustment.name.clone())
+                .unwrap_or_default(),
         }
     }
 
@@ -156,8 +160,12 @@ impl Editor {
             _ => None,
         };
         let owner = self
-            .focused_group_ui(ui.ctx())
-            .map(|id| MaskOwner::Group { id })
+            .focused_adjustment_ui(ui.ctx())
+            .map(|id| MaskOwner::Adjustment { id })
+            .or_else(|| {
+                self.focused_group_ui(ui.ctx())
+                    .map(|id| MaskOwner::Group { id })
+            })
             .or_else(|| selected.as_ref().map(|mask| mask.owner))
             .unwrap_or(MaskOwner::Layer {
                 id: self.session.doc.layer_id(self.session.doc.active),
@@ -224,8 +232,9 @@ impl Editor {
                 "raster-mask-properties",
                 self.session.doc.identity,
                 match owner {
-                    MaskOwner::Layer { id } => (false, id),
-                    MaskOwner::Group { id } => (true, id),
+                    MaskOwner::Layer { id } => (0u8, id),
+                    MaskOwner::Group { id } => (1u8, id),
+                    MaskOwner::Adjustment { id } => (2u8, id),
                 },
             ))
             .default_open(selected.as_ref().is_some_and(|mask| mask.owner == owner))
@@ -261,10 +270,11 @@ impl Editor {
                         changes["enabled"] = json!(enabled);
                     }
                     let mut linked = mask.linked;
-                    if ui
-                        .checkbox(&mut linked, tr("Link Mask"))
-                        .on_hover_text(tr("Move the mask with its owner when supported."))
-                        .changed()
+                    if !matches!(owner, MaskOwner::Adjustment { .. })
+                        && ui
+                            .checkbox(&mut linked, tr("Link Mask"))
+                            .on_hover_text(tr("Move the mask with its owner when supported."))
+                            .changed()
                     {
                         changes["linked"] = json!(linked);
                     }

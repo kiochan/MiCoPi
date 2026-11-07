@@ -453,12 +453,13 @@
                 "type": "integer",
                 "enum": [
                   1,
-                  2
+                  2,
+                  3
                 ]
               },
               "roots": {
                 "type": "array",
-                "maxItems": 32,
+                "maxItems": 48,
                 "items": {
                   "type": "object",
                   "properties": {
@@ -466,7 +467,8 @@
                       "type": "string",
                       "enum": [
                         "layer",
-                        "group"
+                        "group",
+                        "adjustment"
                       ]
                     },
                     "id": {
@@ -492,7 +494,8 @@
                       "type": "string",
                       "enum": [
                         "layer",
-                        "group"
+                        "group",
+                        "adjustment"
                       ]
                     },
                     "id": {
@@ -528,7 +531,7 @@
                     },
                     "children": {
                       "type": "array",
-                      "maxItems": 32,
+                      "maxItems": 48,
                       "items": {
                         "type": "object",
                         "properties": {
@@ -536,7 +539,8 @@
                             "type": "string",
                             "enum": [
                               "layer",
-                              "group"
+                              "group",
+                              "adjustment"
                             ]
                           },
                           "id": {
@@ -585,6 +589,20 @@
                     },
                     "merge_error": {
                       "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
+                    },
+                    "adjustment_ids": {
+                      "type": "array",
+                      "maxItems": 16,
+                      "items": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4294967295
+                      }
+                    },
+                    "item_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 48
                     }
                   },
                   "required": [
@@ -603,7 +621,7 @@
               },
               "rows": {
                 "type": "array",
-                "maxItems": 32,
+                "maxItems": 48,
                 "items": {
                   "type": "object",
                   "properties": {
@@ -611,7 +629,8 @@
                       "type": "string",
                       "enum": [
                         "layer",
-                        "group"
+                        "group",
+                        "adjustment"
                       ]
                     },
                     "id": {
@@ -647,7 +666,7 @@
                     },
                     "children": {
                       "type": "array",
-                      "maxItems": 32,
+                      "maxItems": 48,
                       "items": {
                         "type": "object",
                         "properties": {
@@ -655,7 +674,8 @@
                             "type": "string",
                             "enum": [
                               "layer",
-                              "group"
+                              "group",
+                              "adjustment"
                             ]
                           },
                           "id": {
@@ -704,6 +724,20 @@
                     },
                     "merge_error": {
                       "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
+                    },
+                    "adjustment_ids": {
+                      "type": "array",
+                      "maxItems": 16,
+                      "items": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4294967295
+                      }
+                    },
+                    "item_count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 48
                     }
                   },
                   "required": [
@@ -719,6 +753,63 @@
               },
               "pass_through_available": {
                 "type": "boolean"
+              },
+              "adjustments": {
+                "type": "array",
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    },
+                    "opacity": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 255
+                    },
+                    "node_type": {
+                      "type": "string"
+                    },
+                    "filter": {
+                      "type": "string",
+                      "enum": [
+                        "invert",
+                        "grayscale",
+                        "brightness",
+                        "contrast",
+                        "saturation"
+                      ]
+                    },
+                    "amount": {
+                      "type": "number",
+                      "minimum": -1,
+                      "maximum": 1
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "visible",
+                    "opacity",
+                    "node_type",
+                    "filter",
+                    "amount"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "next_adjustment_id": {
+                "type": "integer",
+                "minimum": 0
               }
             },
             "required": [
@@ -735,7 +826,8 @@
               "version": {
                 "type": "integer",
                 "enum": [
-                  1
+                  1,
+                  2
                 ]
               },
               "items": {
@@ -756,7 +848,8 @@
                           "type": "string",
                           "enum": [
                             "layer",
-                            "group"
+                            "group",
+                            "adjustment"
                           ]
                         },
                         "id": {
@@ -4868,12 +4961,13 @@
             "type": "integer",
             "enum": [
               1,
-              2
+              2,
+              3
             ]
           },
           "roots": {
             "type": "array",
-            "maxItems": 32,
+            "maxItems": 48,
             "items": {
               "type": "object",
               "properties": {
@@ -4881,7 +4975,8 @@
                   "type": "string",
                   "enum": [
                     "layer",
-                    "group"
+                    "group",
+                    "adjustment"
                   ]
                 },
                 "id": {
@@ -4907,7 +5002,8 @@
                   "type": "string",
                   "enum": [
                     "layer",
-                    "group"
+                    "group",
+                    "adjustment"
                   ]
                 },
                 "id": {
@@ -4943,7 +5039,7 @@
                 },
                 "children": {
                   "type": "array",
-                  "maxItems": 32,
+                  "maxItems": 48,
                   "items": {
                     "type": "object",
                     "properties": {
@@ -4951,7 +5047,8 @@
                         "type": "string",
                         "enum": [
                           "layer",
-                          "group"
+                          "group",
+                          "adjustment"
                         ]
                       },
                       "id": {
@@ -5000,6 +5097,20 @@
                 },
                 "merge_error": {
                   "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
+                },
+                "adjustment_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "item_count": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 48
                 }
               },
               "required": [
@@ -5018,7 +5129,7 @@
           },
           "rows": {
             "type": "array",
-            "maxItems": 32,
+            "maxItems": 48,
             "items": {
               "type": "object",
               "properties": {
@@ -5026,7 +5137,8 @@
                   "type": "string",
                   "enum": [
                     "layer",
-                    "group"
+                    "group",
+                    "adjustment"
                   ]
                 },
                 "id": {
@@ -5062,7 +5174,7 @@
                 },
                 "children": {
                   "type": "array",
-                  "maxItems": 32,
+                  "maxItems": 48,
                   "items": {
                     "type": "object",
                     "properties": {
@@ -5070,7 +5182,8 @@
                         "type": "string",
                         "enum": [
                           "layer",
-                          "group"
+                          "group",
+                          "adjustment"
                         ]
                       },
                       "id": {
@@ -5119,6 +5232,20 @@
                 },
                 "merge_error": {
                   "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
+                },
+                "adjustment_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "item_count": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 48
                 }
               },
               "required": [
@@ -5188,6 +5315,72 @@
           },
           "pass_through_available": {
             "type": "boolean"
+          },
+          "adjustments": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "name": {
+                  "type": "string"
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "node_type": {
+                  "type": "string"
+                },
+                "filter": {
+                  "type": "string",
+                  "enum": [
+                    "invert",
+                    "grayscale",
+                    "brightness",
+                    "contrast",
+                    "saturation"
+                  ]
+                },
+                "amount": {
+                  "type": "number",
+                  "minimum": -1,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "visible",
+                "opacity",
+                "node_type",
+                "filter",
+                "amount"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "next_adjustment_id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "matching_adjustment_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -6512,6 +6705,15 @@
               },
               "minItems": 2
             }
+          },
+          "deleted_adjustment_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -6525,7 +6727,8 @@
           "deleted_group_ids",
           "deleted_layer_ids",
           "deleted_mask_ids",
-          "layer_links"
+          "layer_links",
+          "deleted_adjustment_ids"
         ]
       }
     },
@@ -6738,6 +6941,15 @@
               },
               "minItems": 2
             }
+          },
+          "adjustment_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [
@@ -6752,7 +6964,8 @@
           "active_layer",
           "revision",
           "drawing",
-          "layer_links"
+          "layer_links",
+          "adjustment_ids"
         ]
       }
     },
@@ -12287,12 +12500,13 @@
             "type": "integer",
             "enum": [
               1,
-              2
+              2,
+              3
             ]
           },
           "roots": {
             "type": "array",
-            "maxItems": 32,
+            "maxItems": 48,
             "items": {
               "type": "object",
               "properties": {
@@ -12300,7 +12514,8 @@
                   "type": "string",
                   "enum": [
                     "layer",
-                    "group"
+                    "group",
+                    "adjustment"
                   ]
                 },
                 "id": {
@@ -12326,7 +12541,8 @@
                   "type": "string",
                   "enum": [
                     "layer",
-                    "group"
+                    "group",
+                    "adjustment"
                   ]
                 },
                 "id": {
@@ -12362,7 +12578,7 @@
                 },
                 "children": {
                   "type": "array",
-                  "maxItems": 32,
+                  "maxItems": 48,
                   "items": {
                     "type": "object",
                     "properties": {
@@ -12370,7 +12586,8 @@
                         "type": "string",
                         "enum": [
                           "layer",
-                          "group"
+                          "group",
+                          "adjustment"
                         ]
                       },
                       "id": {
@@ -12419,6 +12636,20 @@
                 },
                 "merge_error": {
                   "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
+                },
+                "adjustment_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "item_count": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 48
                 }
               },
               "required": [
@@ -12437,7 +12668,7 @@
           },
           "rows": {
             "type": "array",
-            "maxItems": 32,
+            "maxItems": 48,
             "items": {
               "type": "object",
               "properties": {
@@ -12445,7 +12676,8 @@
                   "type": "string",
                   "enum": [
                     "layer",
-                    "group"
+                    "group",
+                    "adjustment"
                   ]
                 },
                 "id": {
@@ -12481,7 +12713,7 @@
                 },
                 "children": {
                   "type": "array",
-                  "maxItems": 32,
+                  "maxItems": 48,
                   "items": {
                     "type": "object",
                     "properties": {
@@ -12489,7 +12721,8 @@
                         "type": "string",
                         "enum": [
                           "layer",
-                          "group"
+                          "group",
+                          "adjustment"
                         ]
                       },
                       "id": {
@@ -12538,6 +12771,20 @@
                 },
                 "merge_error": {
                   "description": "A semantic merge rejection message, or null when eligible. Contact/final topology/render checks still apply at execution."
+                },
+                "adjustment_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "item_count": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 48
                 }
               },
               "required": [
@@ -12607,6 +12854,72 @@
           },
           "pass_through_available": {
             "type": "boolean"
+          },
+          "adjustments": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "name": {
+                  "type": "string"
+                },
+                "visible": {
+                  "type": "boolean"
+                },
+                "opacity": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 255
+                },
+                "node_type": {
+                  "type": "string"
+                },
+                "filter": {
+                  "type": "string",
+                  "enum": [
+                    "invert",
+                    "grayscale",
+                    "brightness",
+                    "contrast",
+                    "saturation"
+                  ]
+                },
+                "amount": {
+                  "type": "number",
+                  "minimum": -1,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "visible",
+                "opacity",
+                "node_type",
+                "filter",
+                "amount"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "next_adjustment_id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "matching_adjustment_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
           }
         },
         "required": [

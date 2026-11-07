@@ -45,7 +45,7 @@ impl Document {
                 origin_y: 0,
             };
             renderer.render(
-                if self.has_groups()
+                if self.has_mixed_stack()
                     || self.graph.enabled && (!self.graph.linked || self.graph.has_filters())
                 {
                     &self.plan

@@ -168,6 +168,14 @@ pub enum Operation {
     LayerSelection,
     LayerBatch,
     GroupQuery,
+    AdjustmentCatalog,
+    AdjustmentQuery,
+    AdjustmentRead,
+    AdjustmentCreate,
+    AdjustmentSet,
+    AdjustmentMove,
+    AdjustmentDelete,
+    AdjustmentInspect,
     GroupCreate,
     GroupCreateSelected,
     GroupProperties,
@@ -212,6 +220,10 @@ impl Operation {
         matches!(
             self,
             Self::State
+                | Self::AdjustmentCreate
+                | Self::AdjustmentSet
+                | Self::AdjustmentMove
+                | Self::AdjustmentDelete
                 | Self::New
                 | Self::Open
                 | Self::CanvasSize
@@ -281,6 +293,11 @@ impl Operation {
             || matches!(
                 self,
                 Self::DuplicateLayer
+                    | Self::AdjustmentCreate
+                    | Self::AdjustmentSet
+                    | Self::AdjustmentMove
+                    | Self::AdjustmentDelete
+                    | Self::AdjustmentInspect
                     | Self::DeleteLayer
                     | Self::LayerLinks
                     | Self::LayerBatch
@@ -330,6 +347,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self.is_adjustment() {
+            return crate::plugins::adjustments::schema(self);
+        }
         if self.is_mask() {
             return crate::plugins::raster_masks::schema(self);
         }
@@ -594,6 +614,9 @@ impl Operation {
         matches!(
             self,
             Self::NodeCatalog
+                | Self::AdjustmentCatalog
+                | Self::AdjustmentQuery
+                | Self::AdjustmentRead
                 | Self::ReplayStatus
                 | Self::ReplayOpen
                 | Self::ReplayEvents
@@ -649,6 +672,19 @@ impl Operation {
                 | Self::MaskToSelection
                 | Self::MaskSnapshot
                 | Self::MaskApply
+        )
+    }
+    pub(crate) fn is_adjustment(self) -> bool {
+        matches!(
+            self,
+            Self::AdjustmentCatalog
+                | Self::AdjustmentQuery
+                | Self::AdjustmentRead
+                | Self::AdjustmentCreate
+                | Self::AdjustmentSet
+                | Self::AdjustmentMove
+                | Self::AdjustmentDelete
+                | Self::AdjustmentInspect
         )
     }
 }

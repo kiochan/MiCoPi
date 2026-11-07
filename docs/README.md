@@ -33,6 +33,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Raster Owner Movement](raster-owner-movement.md) | Linked layer/mask integer Move, independent stable-mask targets, outline admission, compound history and exact clipping/fill rules |
 | [Layer Links](layer-links.md) | Persistent raster sets, explicit multi-owner Move/nudge, active-only painting, grouped history and shared action/state nodes |
 | [Owner and Linked Free Transform](owner-affine.md) | Exact captured raster/mask scopes, union bounds, one affine mapping, grouped recipe/history, repeat policies and separate preview costs |
+| [Adjustment Layers](adjustment-layers.md) | Real affect-below stack items, registered scalar filters, group/A8 scope, separate inspection, strict compatibility floors and shared history/outcomes |
 | [Atomic Operations](atomic-operations.md) | Rollback, plugin capabilities, contact commits and compact event storage |
 | [Verified Replay](replay.md) | Event journal, integrity checks, time-lapse preview and frame export |
 | [Project Structure](project-structure.md) | Directory responsibilities, generated files and Git boundaries |

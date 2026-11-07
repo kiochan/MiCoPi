@@ -23,6 +23,11 @@ impl Document {
             MaskOwner::Group { .. } => {
                 return Err("Applying a group mask requires mask-aware subtree baking".into());
             }
+            MaskOwner::Adjustment { .. } => {
+                return Err(
+                    "Applying an adjustment mask requires a dedicated baking operation".into(),
+                )
+            }
         };
         let index = self
             .layer_index(layer_id)

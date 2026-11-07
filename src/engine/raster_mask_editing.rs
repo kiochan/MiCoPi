@@ -50,7 +50,7 @@ impl Document {
         Ok(())
     }
     fn validate_mask_state(&self, state: &MaskState) -> Result<(), String> {
-        state.validate(
+        state.validate_with_adjustments(
             self.width,
             self.height,
             &self
@@ -63,6 +63,7 @@ impl Document {
                 .as_ref()
                 .map(|tree| tree.groups.iter().map(|group| group.id).collect::<Vec<_>>())
                 .unwrap_or_default(),
+            &self.adjustments().iter().map(|a| a.id).collect::<Vec<_>>(),
         )
     }
     fn require_idle_mask_edit(&self) -> Result<(), String> {
@@ -88,6 +89,9 @@ impl Document {
             return Err("Raster mask identity limit reached".into());
         }
         let mut candidate = self.raster_masks.clone();
+        if matches!(owner, MaskOwner::Adjustment { .. }) {
+            candidate.version = 2;
+        }
         candidate.next_id = id + 1;
         candidate.items.push(MaskMetadata::new(id, owner));
         self.validate_mask_state(&candidate)?;
@@ -230,6 +234,7 @@ impl Document {
             MaskOwner::Layer { id } => self
                 .layer_index(id)
                 .is_some_and(|index| self.layer_visible(index)),
+            MaskOwner::Adjustment { id } => self.adjustment_visible(id),
             MaskOwner::Group { mut id } => {
                 let Some(tree) = &self.groups else {
                     return false;

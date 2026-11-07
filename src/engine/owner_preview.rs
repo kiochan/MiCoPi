@@ -246,7 +246,7 @@ impl Document {
                 )?;
             } else {
                 renderer.render(
-                    if self.has_groups()
+                    if self.has_mixed_stack()
                         || self.graph.enabled && (!self.graph.linked || self.graph.has_filters())
                     {
                         &self.plan

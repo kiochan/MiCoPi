@@ -370,7 +370,7 @@ fn isolated_defaults_keep_v1_bytes_while_policy_undo_and_explicit_revert_preserv
     bad.composition = pass.clone();
     bad.composition.groups.as_mut().unwrap().version = 1;
     assert!(bad.validate().is_err());
-    bad.composition.groups.as_mut().unwrap().version = 3;
+    bad.composition.groups.as_mut().unwrap().version = 4;
     assert!(bad.validate().is_err());
     let before = s.doc.composition();
     let source = raw(&s);

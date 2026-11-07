@@ -8,6 +8,7 @@ pub(super) struct GroupPlan {
     pub graph: Option<Graph>,
     pub visible: [bool; MAX_LAYERS],
     pub nodes: BTreeMap<u64, u32>,
+    pub adjustment_nodes: BTreeMap<u64, u32>,
     pub masked_layers: [bool; MAX_LAYERS],
 }
 impl Document {
@@ -37,7 +38,7 @@ impl Document {
         Ok(())
     }
     pub fn ensure_graph_renderer(&self) -> Result<(), String> {
-        if self.has_raster_masks() {
+        if self.has_raster_masks() || self.has_adjustments() {
             self.validate_mask_storage()?;
             // Restored metadata can be inspected without a DLL, but editing or
             // publishing a project must validate the complete generated plan.
@@ -50,6 +51,7 @@ impl Document {
         )?;
         self.ensure_mix_capability(&self.graph, self.groups.as_ref())?;
         if self.has_groups()
+            || self.has_adjustments()
             || self
                 .graph
                 .nodes
@@ -179,7 +181,16 @@ impl Document {
         }
         let group_ids: Vec<_> =
             groups.map_or_else(Vec::new, |tree| tree.groups.iter().map(|g| g.id).collect());
-        masks.validate(self.width, self.height, &ids, &group_ids)?;
+        let adjustment_ids: Vec<_> = groups.map_or_else(Vec::new, |tree| {
+            tree.adjustments.iter().map(|a| a.id).collect()
+        });
+        masks.validate_with_adjustments(
+            self.width,
+            self.height,
+            &ids,
+            &group_ids,
+            &adjustment_ids,
+        )?;
         let mask_ids: Vec<_> = masks.items.iter().map(|m| m.id).collect();
         let mut masked_layers = [false; MAX_LAYERS];
         if !masks.items.is_empty() {
@@ -196,18 +207,31 @@ impl Document {
                 });
             }
         }
+        // A retained v3 allocator floor has no composition semantics. Preserve
+        // the old flat fast path and its complete source-node budget.
         if let Some(tree) = groups {
-            if require {
+            tree.validate(&ids, next)?;
+        }
+        if let Some(tree) =
+            groups.filter(|tree| !tree.groups.is_empty() || !tree.adjustments.is_empty())
+        {
+            if require && (!tree.groups.is_empty() || !tree.adjustments.is_empty()) {
                 self.ensure_group_renderer()?;
             }
             tree.validate(&ids, next)?;
-            let (effective, nodes) =
-                tree.compile_graph_masked_details(graph, &ids, modes, opacities, masks)?;
+            // Disabled/hidden definitions retain full parameter/capability and
+            // generated instruction-budget validation without executing them.
+            if !tree.adjustments.is_empty() {
+                tree.compile_stack_details(graph, &ids, modes, opacities, masks, true)?;
+            }
+            let (effective, nodes, adjustment_nodes) =
+                tree.compile_stack_details(graph, &ids, modes, opacities, masks, false)?;
             Ok(GroupPlan {
                 plan: effective.compile_with_masks(ids.len(), &mask_ids)?,
                 graph: Some(effective),
                 visible: tree.effective_visibility(&ids),
                 nodes,
+                adjustment_nodes,
                 masked_layers,
             })
         } else if !masks.items.is_empty() {
@@ -218,6 +242,7 @@ impl Document {
                 graph: Some(effective),
                 visible: [true; MAX_LAYERS],
                 nodes: BTreeMap::new(),
+                adjustment_nodes: BTreeMap::new(),
                 masked_layers,
             })
         } else {
@@ -226,6 +251,7 @@ impl Document {
                 graph: None,
                 visible: [true; MAX_LAYERS],
                 nodes: BTreeMap::new(),
+                adjustment_nodes: BTreeMap::new(),
                 masked_layers,
             })
         }
@@ -235,6 +261,7 @@ impl Document {
         self.effective_graph = prepared.graph;
         self.group_visibility = prepared.visible;
         self.group_nodes = prepared.nodes;
+        self.adjustment_nodes = prepared.adjustment_nodes;
         self.masked_layers = prepared.masked_layers;
         self.groups_revision = self.groups_revision.wrapping_add(1);
     }
@@ -265,9 +292,15 @@ impl Document {
             .collect();
         self.layers = order.iter().map(|i| old[*i].take().unwrap()).collect();
     }
-    fn tree(&self) -> GroupTree {
+    pub(super) fn tree(&self) -> GroupTree {
         self.groups.clone().unwrap_or_else(|| {
-            GroupTree::flat(&self.layer_metadata.iter().map(|m| m.id).collect::<Vec<_>>())
+            let mut tree =
+                GroupTree::flat(&self.layer_metadata.iter().map(|m| m.id).collect::<Vec<_>>());
+            if self.next_adjustment_id != 0 {
+                tree.version = 3;
+                tree.next_adjustment_id = self.next_adjustment_id;
+            }
+            tree
         })
     }
     fn validate_group_owner_edit(&self) -> Result<(), String> {
@@ -277,8 +310,10 @@ impl Document {
         self.validate_mask_storage()?;
         self.ensure_graph_renderer()
     }
-    fn commit_tree(&mut self, tree: GroupTree, next: u64) -> Result<(), String> {
-        self.ensure_group_renderer()?;
+    pub(super) fn commit_tree(&mut self, tree: GroupTree, next: u64) -> Result<(), String> {
+        if !tree.groups.is_empty() || !tree.adjustments.is_empty() {
+            self.ensure_group_renderer()?;
+        }
         let ids = tree.layer_ids()?;
         let order: Vec<_> = ids
             .iter()
@@ -297,7 +332,7 @@ impl Document {
         project_layer_links(&self.layer_metadata, &mut metadata)?;
         let modes: Vec<_> = order.iter().map(|i| self.layers[*i].mode).collect();
         let opacities: Vec<_> = order.iter().map(|i| self.layers[*i].opacity).collect();
-        let groups = (!tree.groups.is_empty()).then_some(tree);
+        let groups = tree.retain_tree().then_some(tree);
         let graph = self.reindexed_graph(&metadata, None)?;
         let prepared = self.prepare_group_plan_with_masks(
             &graph,
@@ -416,7 +451,7 @@ impl Document {
         if let Some(v) = compositing {
             group.compositing = v;
             if v == GroupPolicy::PassThrough {
-                tree.version = 2;
+                tree.version = tree.version.max(2);
             }
         }
         self.commit_tree(tree, self.next_group_id)
@@ -491,6 +526,7 @@ impl Document {
         self.commit_tree(tree, self.next_group_id)
     }
     pub fn group_ungroup(&mut self, id: u64) -> Result<(), String> {
+        self.require_adjustment_aware_edit()?;
         let mut tree = self.tree();
         let parent = tree.parent(GroupItem::group(id))?;
         let children = tree.group(id)?.children.clone();
@@ -508,6 +544,7 @@ impl Document {
         self.ensure_group_renderer()?;
         let mut tree = self.tree();
         let removed_ids = tree.descendants(GroupItem::group(id))?;
+        let removed_adjustments = tree.adjustment_ids(GroupItem::group(id))?;
         if removed_ids.len() == self.layers.len() {
             return Err("The final raster cannot be deleted".into());
         }
@@ -527,7 +564,9 @@ impl Document {
             offset += 1;
         }
         tree.groups.retain(|g| !descendants.contains(&g.id));
-        let groups = (!tree.groups.is_empty()).then_some(tree);
+        tree.adjustments
+            .retain(|a| !removed_adjustments.contains(&a.id));
+        let groups = tree.retain_tree().then_some(tree);
         let mut metadata: Vec<_> = self
             .layer_metadata
             .iter()
@@ -543,7 +582,11 @@ impl Document {
             .iter()
             .map(|m| self.layers[self.layer_index(m.id).unwrap()].opacity)
             .collect();
-        let mask_removal = self.plan_group_mask_removal(&removed_ids, &descendants);
+        let mask_removal = self.plan_group_mask_removal_with_adjustments(
+            &removed_ids,
+            &descendants,
+            &removed_adjustments,
+        );
         let graph = self.reindexed_graph(&metadata, None)?;
         let prepared = self.prepare_group_plan_with_masks(
             &graph,
@@ -610,6 +653,13 @@ impl Document {
         let source = tree.clone();
         let parent = tree.parent(GroupItem::group(id))?;
         let layer_ids = tree.descendants(GroupItem::group(id))?;
+        let descendant_adjustments = tree.adjustment_ids(GroupItem::group(id))?;
+        let adjustment_ids: Vec<_> = source
+            .adjustments
+            .iter()
+            .filter(|a| descendant_adjustments.contains(&a.id))
+            .map(|a| a.id)
+            .collect();
         let mut group_ids = vec![id];
         let mut offset = 0;
         while offset < group_ids.len() {
@@ -625,6 +675,9 @@ impl Document {
         }
         let next_group = self.next_group_id.checked_add(group_ids.len() as u64);
         let next_layer = self.next_layer_id.checked_add(layer_ids.len() as u64);
+        let next_adjustment = self
+            .next_adjustment_id
+            .checked_add(adjustment_ids.len() as u64);
         if self.layers.len() + layer_ids.len() > MAX_LAYERS
             || self.width * self.height * (self.layers.len() + layer_ids.len()) > 64 * 1024 * 1024
             || tree.groups.len() + group_ids.len() > MAX_GROUPS
@@ -632,6 +685,9 @@ impl Document {
             || self.next_layer_id == 0
             || next_group.is_none_or(|next| next > u32::MAX as u64 + 1)
             || next_layer.is_none_or(|next| next > u32::MAX as u64 + 1)
+            || tree.adjustments.len() + adjustment_ids.len()
+                > crate::engine::adjustments::MAX_ADJUSTMENTS
+            || next_adjustment.is_none_or(|next| next > u32::MAX as u64 + 1)
         {
             return Err("Group copy exceeds layer, group, pixel or identity limits".into());
         }
@@ -646,6 +702,19 @@ impl Document {
             .map(|(i, id)| (*id, self.next_group_id + i as u64))
             .collect();
         let copy = self.next_group_id;
+        let adjustment_map: Vec<_> = adjustment_ids
+            .iter()
+            .enumerate()
+            .map(|(i, id)| (*id, self.next_adjustment_id + i as u64))
+            .collect();
+        for (from, to) in &adjustment_map {
+            let mut adjustment = source.adjustment(*from)?.clone();
+            adjustment.id = *to;
+            tree.adjustments.push(adjustment);
+        }
+        if !adjustment_map.is_empty() {
+            tree.next_adjustment_id = next_adjustment.unwrap();
+        }
         for (old, new) in &group_map {
             let mut group = source.group(*old)?.clone();
             group.id = *new;
@@ -660,6 +729,13 @@ impl Document {
                     }
                     ItemKind::Group => {
                         group_map
+                            .iter()
+                            .find(|(from, _)| *from == item.id)
+                            .unwrap()
+                            .1
+                    }
+                    ItemKind::Adjustment => {
+                        adjustment_map
                             .iter()
                             .find(|(from, _)| *from == item.id)
                             .unwrap()
@@ -709,7 +785,8 @@ impl Document {
                 self.layers[self.layer_index(source).unwrap()].opacity
             })
             .collect();
-        let mask_copy = self.plan_group_mask_copy(&layer_map, &group_map)?;
+        let mask_copy =
+            self.plan_group_mask_copy_with_adjustments(&layer_map, &group_map, &adjustment_map)?;
         let old_ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
         let graph = self
             .graph
@@ -782,6 +859,7 @@ impl Document {
         self.layer_metadata = metadata;
         self.next_layer_id = next_layer.unwrap();
         self.next_group_id = next_group;
+        self.next_adjustment_id = next_adjustment.unwrap();
         self.groups = Some(tree);
         self.graph = graph;
         self.active = selected_active;
@@ -810,7 +888,7 @@ impl Document {
             return Err("Invalid raster permutation".into());
         }
         let tree = self.tree().reordered(ids)?;
-        if self.has_groups() {
+        if self.has_mixed_stack() {
             self.commit_tree(tree, self.next_group_id)
         } else {
             let mut metadata: Vec<_> = ids
@@ -876,9 +954,9 @@ impl Document {
         {
             return Err("Invalid raster permutation".into());
         }
-        if self.has_groups() || self.has_raster_masks() {
+        if self.has_mixed_stack() || self.has_raster_masks() {
             let tree = self
-                .has_groups()
+                .has_mixed_stack()
                 .then(|| self.tree().reordered(ids))
                 .transpose()?;
             let mut metadata: Vec<_> = ids
@@ -929,10 +1007,17 @@ impl Document {
                             rows.push(json!({"kind":"layer","id":item.id,"index":index,"depth":depth,"parent_id":parent,"name":doc.layer_name(index),"visible":doc.layers[index].visible,"effective_visible":doc.layer_visible(index)}));
                         }
                     }
+                    ItemKind::Adjustment => {
+                        if let Ok(a) = tree.adjustment(item.id) {
+                            rows.push(json!({"kind":"adjustment","id":a.id,"name":a.name,"parent_id":parent,"depth":depth,
+                                "visible":a.visible,"effective_visible":visible&&a.visible,"opacity":a.opacity as f32/255.,
+                                "node_type":a.node_type,"filter":a.filter,"amount":a.amount,"node_id":doc.adjustment_nodes.get(&a.id)}));
+                        }
+                    }
                     ItemKind::Group => {
                         if let Ok(g) = tree.group(item.id) {
                             let eligibility = doc.group_merge_eligibility(g.id);
-                            let row = json!({"kind":"group","id":g.id,"name":g.name,"parent_id":parent,"depth":depth,"visible":g.visible,"effective_visible":visible&&g.visible,"opacity":g.opacity as f32/255.,"blend_mode":g.blend_mode,"compositing":g.compositing,"children":g.children,"layer_ids":tree.descendants(*item).unwrap_or_default(),"node_id":doc.group_nodes.get(&g.id),"mergeable":eligibility.is_ok(),"merge_error":eligibility.err()});
+                            let row = json!({"kind":"group","id":g.id,"name":g.name,"parent_id":parent,"depth":depth,"visible":g.visible,"effective_visible":visible&&g.visible,"opacity":g.opacity as f32/255.,"blend_mode":g.blend_mode,"compositing":g.compositing,"children":g.children,"layer_ids":tree.descendants(*item).unwrap_or_default(),"adjustment_ids":tree.adjustment_ids(*item).unwrap_or_default(),"item_count":g.children.len(),"node_id":doc.group_nodes.get(&g.id),"mergeable":eligibility.is_ok(),"merge_error":eligibility.err()});
                             groups.push(row.clone());
                             rows.push(row);
                             walk(
@@ -951,6 +1036,6 @@ impl Document {
             }
         }
         walk(self, &tree, &tree.roots, 0, 0, true, &mut groups, &mut rows);
-        json!({"version":tree.version,"roots":tree.roots,"groups":groups,"rows":rows,"pass_through_available":self.pass_through_available()})
+        json!({"version":tree.version,"roots":tree.roots,"groups":groups,"adjustments":tree.adjustments,"next_adjustment_id":tree.next_adjustment_id,"rows":rows,"pass_through_available":self.pass_through_available()})
     }
 }

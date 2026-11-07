@@ -68,6 +68,9 @@ fn raster_mask_metadata_keeps_namespaces_defaults_and_logical_budget_explicit() 
     state.next_id = 33;
     state.target = PaintTarget::Mask { id: 32 };
     state.validate(128, 128, &layers, &groups).unwrap();
+    let mut promoted = state.clone();
+    promoted.version = 2;
+    promoted.validate(128, 128, &layers, &groups).unwrap();
     let encoded = serde_json::to_value(&state).unwrap();
     assert!(encoded["items"][0].get("enabled").is_none());
     assert!(encoded["items"][0].get("density").is_none());
@@ -78,7 +81,7 @@ fn raster_mask_metadata_keeps_namespaces_defaults_and_logical_budget_explicit() 
             1 => invalid.items.swap(0, 1),
             2 => invalid.target = PaintTarget::Mask { id: 99 },
             3 => invalid.items[0].feather_radius_px = 257,
-            _ => invalid.version = 2,
+            _ => invalid.version = 3,
         }
         assert!(invalid.validate(128, 128, &layers, &groups).is_err());
     }

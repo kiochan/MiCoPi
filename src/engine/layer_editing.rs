@@ -3,6 +3,7 @@ use super::*;
 impl Document {
     /// Simulate only bounded graph/identity metadata before a multi-target copy.
     pub(crate) fn preflight_layer_duplicates(&self, selected: &[u64]) -> Result<(), String> {
+        self.require_adjustment_aware_edit()?;
         self.require_mask_aware_edit()?;
         let count = self.layers.len() + selected.len();
         if count > MAX_LAYERS
@@ -67,6 +68,7 @@ impl Document {
         Ok(())
     }
     pub(crate) fn preflight_layer_deletions(&self, selected: &[u64]) -> Result<(), String> {
+        self.require_adjustment_aware_edit()?;
         self.require_mask_aware_edit()?;
         if selected.len() >= self.layers.len() {
             return Err("The final layer cannot be deleted".into());
@@ -182,6 +184,7 @@ impl Document {
         staged: Option<(Vec<u32>, crate::engine::selection::SelectionState)>,
     ) -> Result<(), String> {
         if staged.is_some() {
+            self.require_adjustment_aware_edit()?;
             // Transformed copies need owner-mask geometry, a separate contract.
             self.require_mask_aware_edit()?;
         }
@@ -292,6 +295,7 @@ impl Document {
         pixels: Vec<u32>,
         cut: Option<([usize; 4], &[u32])>,
     ) -> Result<(), String> {
+        self.require_adjustment_aware_edit()?;
         if pixels.len() != self.width * self.height
             || self.layers.len() >= MAX_LAYERS
             || pixels.len() * (self.layers.len() + 1) > 64 * 1024 * 1024
@@ -397,7 +401,7 @@ impl Document {
         if index == to {
             return Ok(());
         }
-        if self.has_groups() {
+        if self.has_mixed_stack() {
             let mut ids: Vec<_> = self.layer_metadata.iter().map(|m| m.id).collect();
             let moved = ids.remove(index);
             ids.insert(to, moved);

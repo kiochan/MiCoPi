@@ -95,6 +95,10 @@ impl Operation {
         matches!(
             self,
             Self::DocumentResolution
+                | Self::AdjustmentCreate
+                | Self::AdjustmentSet
+                | Self::AdjustmentMove
+                | Self::AdjustmentDelete
                 | Self::MaskCreate
                 | Self::MaskDelete
                 | Self::MaskProperties

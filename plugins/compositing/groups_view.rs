@@ -19,12 +19,22 @@ struct Gate {
     visible: bool,
     opacity: f32,
     compositing: crate::engine::groups::GroupPolicy,
+    adjustment: bool,
 }
 fn fingerprint(editor: &Editor) -> u64 {
     let mut hash = std::collections::hash_map::DefaultHasher::new();
     let doc = &editor.session.doc;
     hash.write_u64(doc.identity);
     hash.write_u64(doc.groups_revision());
+    for adjustment in doc.adjustments() {
+        hash.write_u64(adjustment.id);
+        hash.write(adjustment.name.as_bytes());
+        hash.write(adjustment.node_type.as_bytes());
+        hash.write_u8(adjustment.visible as u8);
+        hash.write_u8(adjustment.opacity);
+        hash.write_u32(adjustment.filter as u32);
+        hash.write_u32(adjustment.amount.to_bits());
+    }
     for (i, layer) in doc.layers.iter().enumerate() {
         hash.write_u64(doc.layer_id(i));
         hash.write_u8(layer.visible as u8);
@@ -63,9 +73,29 @@ impl EffectiveView {
                                 opacity: group["opacity"].as_f64()? as f32,
                                 compositing: serde_json::from_value(group["compositing"].clone())
                                     .unwrap_or_default(),
+                                adjustment: false,
                             },
                         ))
                     })
+                    .chain(
+                        state["groups"]["rows"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter(|row| row["kind"] == "adjustment")
+                            .filter_map(|adjustment| {
+                                Some((
+                                    adjustment["node_id"].as_u64()? as u32,
+                                    Gate {
+                                        name: adjustment["name"].as_str()?.to_owned(),
+                                        visible: adjustment["visible"].as_bool()?,
+                                        opacity: adjustment["opacity"].as_f64()? as f32,
+                                        compositing: crate::engine::groups::GroupPolicy::Isolated,
+                                        adjustment: true,
+                                    },
+                                ))
+                            }),
+                    )
                     .collect();
                 Ok((
                     graph,
@@ -322,20 +352,24 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
             ui.set_width(self.width);
             ui.style_mut().wrap_mode = Some(TextWrapMode::Wrap);
             if let Some(group) = self.names.get(&snarl[id].id) {
-                ui.weak(tr(
-                    if group.compositing == crate::engine::groups::GroupPolicy::PassThrough {
-                        "Pass Through Group"
-                    } else {
-                        "Group Composite"
-                    },
-                ));
+                ui.weak(tr(if group.adjustment {
+                    "Adjustment Layer"
+                } else if group.compositing == crate::engine::groups::GroupPolicy::PassThrough {
+                    "Pass Through Group"
+                } else {
+                    "Group Composite"
+                }));
                 ui.label(format!(
                     "{}: {:.0}%",
                     localize("Opacity"),
                     group.opacity * 100.
                 ));
                 if !group.visible {
-                    ui.weak(tr("Hidden Group"));
+                    ui.weak(tr(if group.adjustment {
+                        "Hidden Adjustment"
+                    } else {
+                        "Hidden Group"
+                    }));
                 }
             }
             match snarl[id].data {
