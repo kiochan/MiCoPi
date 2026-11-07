@@ -9,6 +9,10 @@ extern "C" {
 #endif
 
 ABI_ASSERT(sizeof(void *) == 8, "The supported native SDK target is x64");
+ABI_ASSERT(sizeof(MicopiLevelsParameters) == 32, "Levels preparation parameters");
+ABI_ASSERT(offsetof(MicopiLevelsParameters, gamma) == 24, "Levels gamma offset");
+ABI_ASSERT(sizeof(MicopiLevelsApi) == 16, "Independent Levels API");
+ABI_ASSERT(offsetof(MicopiLevelsApi, prepare) == 8, "Levels preparation callback");
 ABI_ASSERT(sizeof(MicopiPixels) == 40, "Legacy pixel descriptor");
 ABI_ASSERT(sizeof(MicopiToolHost) == 32, "Legacy tool host prefix");
 ABI_ASSERT(sizeof(MicopiToolApi) == 32, "Legacy tool API prefix");

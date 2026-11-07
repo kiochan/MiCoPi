@@ -317,6 +317,20 @@ typedef struct {
     MicopiMaskEffectsReserveFn reserve_mask_effects;
 } MicopiCompositorApiMaskEffects;
 const MicopiCompositorApi *micopi_compositor_v1(void);
+/* Independent cold Levels preparation. Byte endpoints, input white > black,
+   finite gamma 0.1..10. Writes exactly 256 bytes; rejects invalid or overlapping
+   spans without writes. No allocation or retained pointers. */
+typedef struct {
+    uint32_t abi_version, struct_size;
+    uint32_t input_black, input_white, output_black, output_white;
+    double gamma;
+} MicopiLevelsParameters;
+typedef int32_t (*MicopiLevelsPrepareFn)(const MicopiLevelsParameters *, uint8_t *, size_t);
+typedef struct {
+    uint32_t abi_version, struct_size;
+    MicopiLevelsPrepareFn prepare;
+} MicopiLevelsApi;
+const MicopiLevelsApi *micopi_levels_v1(void);
 /* Independent optional exact geometry table, with immutable source and disjoint
    output. Local origins are zero; dimensions/stride are bounded to 4096.
    Kinds: 0 CW, 1 CCW, 2 half turn, 3 flip horizontal, 4 flip vertical.

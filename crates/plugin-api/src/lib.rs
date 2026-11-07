@@ -653,6 +653,43 @@ pub struct CompositorApiMaskEffects {
 }
 pub type CompositorEntry = unsafe extern "C" fn() -> *const CompositorApi;
 
+/// Optional cold Levels preparation. This does not change compositor tables.
+pub const LEVELS_SYMBOL: &[u8] = b"micopi_levels_v1\0";
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct LevelsParameters {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub input_black: u32,
+    pub input_white: u32,
+    pub output_black: u32,
+    pub output_white: u32,
+    pub gamma: f64,
+}
+/// Writes exactly 256 bytes on success; rejects invalid or overlapping spans
+/// without writes. No allocation, retained pointer or document mutation.
+pub type LevelsPrepareFn = unsafe extern "C" fn(*const LevelsParameters, *mut u8, usize) -> i32;
+#[repr(C)]
+pub struct LevelsApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub prepare: Option<LevelsPrepareFn>,
+}
+pub type LevelsEntry = unsafe extern "C" fn() -> *const LevelsApi;
+
+#[cfg(test)]
+mod levels_layout_tests {
+    use super::*;
+    #[test]
+    fn cold_levels_api_has_stable_x64_layout() {
+        assert_eq!(std::mem::size_of::<LevelsParameters>(), 32);
+        assert_eq!(std::mem::offset_of!(LevelsParameters, gamma), 24);
+        assert_eq!(std::mem::size_of::<LevelsApi>(), 16);
+        assert_eq!(std::mem::offset_of!(LevelsApi, prepare), 8);
+        assert_eq!(LEVELS_SYMBOL, b"micopi_levels_v1\0");
+    }
+}
+
 /// Independent optional exact geometry extension. Existing selection/tool tables are unchanged.
 pub const GEOMETRY_SYMBOL: &[u8] = b"micopi_geometry_v1\0";
 #[repr(C)]

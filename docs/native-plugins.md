@@ -1,5 +1,25 @@
 # Native DLL Plugins and ABI v1
 
+## Levels preparation prerequisite
+
+The bundled compositor exports optional `micopi_levels_v1`, a separate 16-byte
+`LevelsApi` with ABI version 1 and a synchronous `prepare` callback. This is a
+native prerequisite; the host does not yet register a Levels document effect.
+Existing compositor tables and instruction IDs remain unchanged.
+
+`LevelsParameters` is 32 bytes: version/size at offsets 0/4, unsigned input black,
+input white, output black and output white at 8/12/16/20, and double gamma at 24.
+Endpoints must be bytes, input white must exceed black, and finite gamma is
+0.1–10. Preparation normalizes/clamps input, raises it to `1/gamma`, maps the
+output endpoints and rounds half-up. Reversed output endpoints are supported.
+The caller supplies at least 256 writable bytes. Success writes exactly the
+first 256 bytes; invalid arguments or overlapping parameter/output spans reject
+before writes. No buffers or pointers are retained. Prepared tables require no
+per-pixel power calculation. Rendering integration, cached host discovery and
+public nodes/adjustments remain planned; ABI and native runtime checks await CI.
+
+## Loading and compatibility
+
 MiCoPi loads library DLLs declared by plugin manifests and merges their describe JSON contributions at startup. The host does not link plugin crates. Independent plugins may register actions, tools, public state, nodes and button panels.
 
 This is a synchronous in-process Windows x64 ABI. A DLL shares process permissions and can terminate the host through a crash or panic=abort. There is no crash isolation or hot replacement. Restart after updating or enabling/disabling a loaded DLL.

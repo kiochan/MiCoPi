@@ -1,5 +1,59 @@
 //! Cold Levels preparation; the renderer will consume the prepared byte table.
 //! This module is a prerequisite, not yet a registered document effect.
+use micopi_plugin_api as abi;
+
+unsafe extern "C" fn prepare(
+    parameters: *const abi::LevelsParameters,
+    output: *mut u8,
+    len: usize,
+) -> i32 {
+    if parameters.is_null() || output.is_null() || len < 256 {
+        return abi::ERROR;
+    }
+    let Some(source) = super::span(parameters, 1) else {
+        return abi::ERROR;
+    };
+    let Some(destination) = super::span(output, len) else {
+        return abi::ERROR;
+    };
+    if super::overlaps(source, destination) {
+        return abi::ERROR;
+    }
+    let header = std::ptr::read_unaligned(parameters.cast::<abi::Header>());
+    if header.abi_version != 1
+        || header.struct_size < std::mem::size_of::<abi::LevelsParameters>() as u32
+    {
+        return abi::ERROR;
+    }
+    let p = std::ptr::read_unaligned(parameters);
+    if [p.input_black, p.input_white, p.output_black, p.output_white]
+        .iter()
+        .any(|v| *v > 255)
+    {
+        return abi::ERROR;
+    }
+    let Some(table) = (Levels {
+        input_black: p.input_black as u8,
+        input_white: p.input_white as u8,
+        output_black: p.output_black as u8,
+        output_white: p.output_white as u8,
+        gamma: p.gamma,
+    })
+    .prepare() else {
+        return abi::ERROR;
+    };
+    std::ptr::copy_nonoverlapping(table.0.as_ptr(), output, 256);
+    abi::OK
+}
+static API: abi::LevelsApi = abi::LevelsApi {
+    abi_version: 1,
+    struct_size: std::mem::size_of::<abi::LevelsApi>() as u32,
+    prepare: Some(prepare),
+};
+#[no_mangle]
+pub extern "C" fn micopi_levels_v1() -> *const abi::LevelsApi {
+    &API
+}
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Levels {
@@ -64,6 +118,58 @@ impl Prepared {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn preparation_abi_rejects_invalid_spans_without_writing_and_preserves_padding() {
+        let mut p = abi::LevelsParameters {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::LevelsParameters>() as u32,
+            input_black: 0,
+            input_white: 255,
+            output_black: 0,
+            output_white: 255,
+            gamma: 1.,
+        };
+        let mut out = [91u8; 264];
+        let api = unsafe { &*micopi_levels_v1() };
+        assert_eq!(api.abi_version, 1);
+        let callback = api.prepare.unwrap();
+        unsafe {
+            let short = abi::Header {
+                abi_version: 1,
+                struct_size: 8,
+            };
+            assert_eq!(
+                callback(
+                    (&short as *const abi::Header).cast(),
+                    out.as_mut_ptr(),
+                    out.len()
+                ),
+                abi::ERROR
+            );
+            assert_eq!(callback(&p, out.as_mut_ptr(), 255), abi::ERROR);
+            assert_eq!(out, [91; 264]);
+            p.input_white = 256;
+            assert_eq!(callback(&p, out.as_mut_ptr(), out.len()), abi::ERROR);
+            assert_eq!(out, [91; 264]);
+            p.input_white = 255;
+            assert_eq!(
+                callback(
+                    &p,
+                    (&p as *const abi::LevelsParameters).cast_mut().cast(),
+                    256
+                ),
+                abi::ERROR
+            );
+            assert_eq!(
+                callback(std::ptr::null(), out.as_mut_ptr(), out.len()),
+                abi::ERROR
+            );
+            assert_eq!(callback(&p, std::ptr::null_mut(), 256), abi::ERROR);
+            assert_eq!(callback(&p, out.as_mut_ptr(), out.len()), abi::OK);
+        }
+        assert_eq!(&out[..256], &(0..=255u8).collect::<Vec<_>>());
+        assert_eq!(&out[256..], &[91; 8]);
+    }
     #[test]
     fn identity_retains_every_byte_and_alpha_word() {
         let table = Levels::default().prepare().unwrap();

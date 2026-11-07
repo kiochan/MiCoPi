@@ -6,6 +6,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Painting and document editing
 
+- Publish optional `micopi_levels_v1` cold table preparation in the native SDK and bundled compositor DLL, independently of existing compositor prefixes. Validate byte endpoints, gamma, capacity and descriptor/output disjointness before writing exactly 256 bytes; retain excess output capacity and avoid allocations or retained pointers. Add Rust/C/C++ layout and native prewrite-rejection references. Host discovery and Levels document/render/UI integration remain planned; runtime checks are pending CI.
+
 - Add the native Levels preparation prerequisite: validate input endpoints and finite gamma, compile one 256-byte encoded-RGB lookup table, support reversed output endpoints, and preserve alpha/transparent words. Add independent byte-domain, integer-reference, gamma and rejection tests. This is not yet a registered filter or adjustment; ABI negotiation, prepared-plan caching, document contracts and UI integration remain planned. Runtime validation is pending CI.
 
 - Expose the brush-tip schema module within the host crate so shared action validation can compile. CI for the analytic-tip increment passed native compilation and ABI checks, then stopped at this host visibility error before runtime tests; corrected runtime verification remains pending.
