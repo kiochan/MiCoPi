@@ -791,13 +791,13 @@ impl Editor {
                         match d.scope {
                             DraftScope::Owners(scope) if scope.is_mask_only()=>{
                                 if let Some(index)=scope.mask_owner_layer_id().and_then(|id|self.session.doc.layer_index(id)) {
-                                    ui.weak(format!("{}: {}",tr("Raster mask"),self.session.doc.layer_name(index)));
+                                    ui.weak(format!("{}: {}",crate::i18n::text("Raster mask"),self.session.doc.layer_name(index)));
                                 }
                                 ui.weak(tr("Mask only; layer pixels stay fixed."));
                                 ui.weak(tr("Exposed mask areas reveal the layer."));
                             }
                             DraftScope::Owners(scope)=>{
-                                ui.weak(tr("Transforming {count} layers and their linked masks.").replace("{count}",&scope.layer_ids().len().to_string()));
+                                ui.weak(crate::i18n::text("Transforming {count} layers and their linked masks.").replace("{count}",&scope.layer_ids().len().to_string()));
                                 if !scope.mask_ids().is_empty() {ui.weak(tr("Exposed mask areas reveal the layer."));}
                                 if self.session.doc.mask_state().items.iter().any(|mask|matches!(mask.owner,crate::engine::raster_masks::MaskOwner::Layer{id} if scope.layer_ids().contains(&id)) && !mask.linked) {
                                     ui.weak(tr("Unlinked mask stays fixed."));

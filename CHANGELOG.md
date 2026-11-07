@@ -87,6 +87,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Workbench and windows
 
+- Format the owner-transform mask label and target count from translated text before creating widgets. Keep rich-text helpers out of string formatting/replacement, resolving the two desktop compile errors caught by the first owner-affine CI build. Layout, catalogs and editing contracts are unchanged; the corrected build/runtime run remains pending.
+
 - Keep layer-link controls compact and within narrow English/CJK panels, choose row/stack layout before child scopes and retain full accessible action names/tooltips. Hide raster-only controls while inspecting a group so group properties/actions retain their space. Extend strict layout coverage to 176 pixels and correct linked-movement regression fixtures to follow stable raster IDs and reversed grouped Undo order, retaining exact pixel and pinned-plane assertions.
 
 - Preserve Brush/Hand contacts and local previews through observation commands, declared macros and guarded runtime forms. Cache frontend admission without changing public capabilities; let Session decide conditional edits and runtime ordering. Fence automatic painting/view writes during preserving drafts and discard stale values before closing or switching modes, retaining name drafts. Keep observations free of automatic mutation revision guards. Compare original contact checkpoints when reconciling local ownership so a replacement external contact retains its input and pressure; refresh immediate macro results even after partial failures. Avoid per-frame action-definition copies and production-headless cache work. Add actual command/form/palette regressions and the [command admission guide](docs/command-contact-admission.md).
