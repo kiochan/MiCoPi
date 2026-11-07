@@ -6,7 +6,7 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Painting and document editing
 
-- Correct the adjustment transport fixture's stored multi-selection to the empty canonical single-active-layer form. A singleton ID array is rejected by project validation; preserve all raster/reference, ownership and outcome checks. CI for `88b7a48` passed 1,106 desktop and 813 headless tests, native kernels/probes and basic JSONL/MCP parity before reaching this malformed fixture. Corrected adjustment transport and the newer Levels integration remain pending CI.
+- Correct the adjustment transport fixture's stored multi-selection to the empty canonical single-active-layer form. A singleton ID array is rejected by project validation; preserve all raster/reference, ownership and outcome checks. Stage this correction independently from the unfinished Levels smoke extension after the preceding documentation-only staging attempt. CI for `88b7a48` passed 1,106 desktop and 813 headless tests, native kernels/probes and basic JSONL/MCP parity before reaching this malformed fixture. Corrected adjustment transport and the newer Levels integration remain pending CI.
 
 - Add dedicated source Levels controls grouped into Input/Output sections with grayscale ramps, drag-editable numbers, local validation feedback and Reset Levels. Keep edits in the draft, retain schema editors for custom aliases, localize owner-aware labels in four languages and derive node fitting from configured appearance metrics. Add actual-click reset and narrow/wide default/large-metric layout regressions. Runtime and screenshot checks remain pending CI; adjustment-layer reuse remains planned.
 

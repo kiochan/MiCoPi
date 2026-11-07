@@ -64,7 +64,8 @@ def scenarios(seed, output):
         model = dict(active=0, composition=copy.deepcopy(seed['composition']), rasters=[
             [(a << 24) | 0x402010 for _ in range(HEIGHT) for a in [0, 1, 73, 128, 255]],
             [0xff1122ee if i % 2 == 0 else 0x001122ee for i in range(AREA)]])
-        model['composition']['selected_layer_ids'] = [1]
+        # A single active layer uses empty stored multi-selection metadata.
+        model['composition']['selected_layer_ids'] = []
         selected = [0, 64, 128, 255, 0]*HEIGHT
         if name in ['isolated', 'pass-through', 'selection-snapshot']:
             model['rasters'][1] = [0x001122ee]*AREA
