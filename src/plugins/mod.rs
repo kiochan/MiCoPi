@@ -29,7 +29,7 @@ pub fn panel_key(id: &str) -> u32 {
 pub(crate) mod adjustments;
 pub(crate) mod affine;
 pub(crate) mod brush_presets;
-mod brush_tip;
+pub(crate) mod brush_tip;
 pub(crate) mod clipboard;
 mod compositing;
 mod document;
