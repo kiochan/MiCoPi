@@ -114,7 +114,8 @@ impl Editor {
         let a = self.settings.ui.clone();
         let colors = theme::Colors::new(&a);
         let mut opened = false;
-        let response=ui.menu_button(tr("Arrange"),|ui|{
+        let (response,_)=egui::containers::menu::MenuButton::new(tr("Arrange"))
+            .config(egui::containers::menu::MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside)).ui(ui,|ui|{
             opened=true;
             let key=Id::new(DRAFT);
             let mut draft=ui.data_mut(|data|data.get_temp::<Draft>(key)).unwrap_or_else(||Draft {
@@ -168,7 +169,7 @@ impl Editor {
             if stale {ui.add(Label::new(tr("The document changed. Reopen Arrange to use the current selection.")).wrap());}
             ui.data_mut(|data|data.insert_temp(key,draft));
         });
-        response.response.on_hover_text(tr(
+        response.on_hover_text(tr(
             "Align and distribute selected raster layers without changing the painting layer.",
         ));
         if !opened {

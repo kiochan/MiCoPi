@@ -82,9 +82,18 @@ fn ctx(app: &Studio) -> Context {
 }
 fn frame(app: &mut Studio, ctx: &Context, size: Vec2, events: Vec<Event>, time: f64) -> FullOutput {
     crate::i18n::set_language(app.editor.settings.ui.language);
+    let modifiers = events
+        .iter()
+        .rev()
+        .find_map(|event| match event {
+            Event::Key { modifiers, .. } => Some(*modifiers),
+            _ => None,
+        })
+        .unwrap_or_default();
     ctx.run(
         RawInput {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, size)),
+            modifiers,
             time: Some(time),
             events,
             focused: true,

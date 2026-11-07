@@ -108,8 +108,25 @@ impl Editor {
             .renderer
             .as_ref()
             .is_some_and(|renderer| renderer.supports_mix());
-        ui.add_enabled_ui(available,|ui|{
-            ui.menu_button(tr("New Adjustment"),|ui|{
+        // Announce a bounded trigger to the wrapping toolbar before entering
+        // an enabled scope. Long CJK labels must not widen the whole inspector.
+        let a = &self.settings.ui;
+        let title = ui.painter().layout_no_wrap(
+            localize("New Adjustment").into_owned(),
+            FontId::proportional(a.font_size),
+            Color32::PLACEHOLDER,
+        );
+        let width = (title.size().x + ui.spacing().button_padding.x * 2.)
+            .max(a.control_height)
+            .min(ui.max_rect().width().min(ui.clip_rect().width()))
+            .max(1.);
+        let size = vec2(width, a.control_height);
+        let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
+        ui.scope_builder(UiBuilder::new().max_rect(rect).layout(Layout::left_to_right(Align::Center)),|ui|ui.add_enabled_ui(available,|ui|{
+            egui::containers::menu::MenuButton::from_button(Button::new(tr("New Adjustment")).truncate().min_size(size))
+                .config(egui::containers::menu::MenuConfig::new().close_behavior(PopupCloseBehavior::CloseOnClickOutside))
+                .ui(ui,|ui|{
+                ui.set_max_width((a.control_height*12.).min(ui.ctx().content_rect().width()-a.panel_padding*4.).max(a.control_height*4.));
                 let key=Id::new(("adjustment-selection-mask",self.session.doc.identity));
                 let mut selection=ui.data_mut(|data|data.get_temp::<bool>(key)).unwrap_or(false);
                 if self.session.doc.selection().current.is_none() {selection=false;}
@@ -135,8 +152,8 @@ impl Editor {
                     };
                     if definition.id=="compositing.filter" {show(ui);}else{ui.menu_button(title,show);}
                 }
-            });
-        }).response.on_disabled_hover_text(tr("Adjustment layers require a compatible compositor."));
+            }).0.on_hover_text(tr("New Adjustment")).on_disabled_hover_text(tr("Adjustment layers require a compatible compositor."));
+        }));
     }
 
     pub(super) fn adjustment_properties_ui(

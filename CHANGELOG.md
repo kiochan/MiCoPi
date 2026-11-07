@@ -91,6 +91,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Workbench and windows
 
+- Keep Adjustment/Arrange menus open while changing selection-mask or alignment-reference controls, and bound the Adjustment trigger before entering its enabled child scope so CJK labels cannot widen narrow layer/group inspectors. Correct actual-input fixtures to carry Windows Ctrl/Command modifiers, use pixel-centered pressure dabs and size generic command forms in their primary viewport; retain clipping, ownership and contact assertions. Match the canonical float result in the adjustment query fixture. Updated runtime verification is pending CI.
+
 - Reserve configured scroll/footer height in the Free Transform window so owner hints, stale-source feedback and Apply/Cancel remain inside egui's auto-sized viewport. Keep natural Brush/Hand contact routing and all editing guards. Account for only the registered opener's intentional UI flag/revision when establishing owner-window test baselines; retain full subsequent document/contact/state assertions and the shared Snapshot helper. Load native-paint for the one contextual workflow fixture that invokes its color-fill action. CI reported 991 desktop tests passing and eight failing before these layout/fixture corrections; corrected execution remains pending.
 
 - Format the owner-transform mask label and target count from translated text before creating widgets. Keep rich-text helpers out of string formatting/replacement, resolving the two desktop compile errors caught by the first owner-affine CI build. Layout, catalogs and editing contracts are unchanged; the corrected build/runtime run remains pending.

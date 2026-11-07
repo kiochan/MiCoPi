@@ -7,6 +7,7 @@ use crate::platform::windows::desktop_bridge::{PenPhase, PenSample};
 
 fn app() -> Studio {
     let mut app = studio();
+    app.editor.settings.ui.language = crate::i18n::Language::English;
     app.editor.session = crate::application::Session::new(
         crate::plugins::Registry::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"))
             .unwrap(),
@@ -52,9 +53,18 @@ fn context(app: &Studio) -> Context {
 }
 fn frame(app: &mut Studio, ctx: &Context, size: Vec2, events: Vec<Event>, time: f64) -> FullOutput {
     crate::i18n::set_language(app.editor.settings.ui.language);
+    let modifiers = events
+        .iter()
+        .rev()
+        .find_map(|event| match event {
+            Event::Key { modifiers, .. } => Some(*modifiers),
+            _ => None,
+        })
+        .unwrap_or_default();
     ctx.run(
         RawInput {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, size)),
+            modifiers,
             events,
             time: Some(time),
             focused: true,
@@ -134,7 +144,11 @@ fn name(app: &mut Studio, ctx: &Context, size: Vec2, id: u64, value: &str, time:
                 physical_key: Some(Key::A),
                 pressed: true,
                 repeat: false,
-                modifiers: Modifiers::CTRL,
+                modifiers: Modifiers {
+                    ctrl: true,
+                    command: true,
+                    ..Default::default()
+                },
             },
             Event::Text(value.into()),
         ],
@@ -468,8 +482,11 @@ fn adjustment_mask_thumbnail_routes_real_pen_input_to_a8_without_touching_the_pa
             },
         );
     };
-    canvas(&mut app, 5.);
-    let p = app.editor.image_rect.min + vec2(5., 4.) * app.editor.zoom;
+    for n in 0..3 {
+        canvas(&mut app, 5. + n as f64 / 100.);
+    }
+    // A radius below one pixel still covers this pixel center at low pressure.
+    let p = app.editor.image_rect.min + vec2(5.5, 4.5) * app.editor.zoom;
     for (phase, time, pressure) in [
         (PenPhase::Down, 6000, 0.4),
         (PenPhase::Move, 6100, 0.7),
@@ -484,6 +501,19 @@ fn adjustment_mask_thumbnail_routes_real_pen_input_to_a8_without_touching_the_pa
             time,
         });
         canvas(&mut app, time as f64 / 1000.);
+        if matches!(phase, PenPhase::Down) {
+            assert!(
+                app.editor.session.stroke.active() && app.editor.pen_active,
+                "{}; canvas={:?}, point={p:?}",
+                app.editor.status,
+                app.editor.canvas
+            );
+            assert_ne!(
+                raw(&app, mask),
+                before,
+                "A centered pressure dab must change the actual A8 plane"
+            );
+        }
     }
     assert_ne!(raw(&app, mask), before);
     assert_eq!(
@@ -551,10 +581,11 @@ fn adjustment_dynamic_inspect_and_rejected_apply_preserve_local_external_brush_h
             app.editor.actions.push(Action::UiCommand(command));
             app.run_actions(&ctx);
             let mut out = FullOutput::default();
+            let command_size = vec2(1360., 920.);
             for time in 4..7 {
                 out = ctx.run(
                     RawInput {
-                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, size)),
+                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, command_size)),
                         time: Some(time as f64),
                         focused: true,
                         ..Default::default()
@@ -570,7 +601,7 @@ fn adjustment_dynamic_inspect_and_rejected_apply_preserve_local_external_brush_h
             for (n, pressed) in [true, false].into_iter().enumerate() {
                 ctx.run(
                     RawInput {
-                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, size)),
+                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, command_size)),
                         time: Some(7. + n as f64 / 100.),
                         focused: true,
                         events: vec![
@@ -765,7 +796,11 @@ fn adjustment_row_inspection_preserves_pending_raster_name_and_native_contact_in
                 physical_key: Some(Key::A),
                 pressed: true,
                 repeat: false,
-                modifiers: Modifiers::CTRL,
+                modifiers: Modifiers {
+                    ctrl: true,
+                    command: true,
+                    ..Default::default()
+                },
             },
             Event::Text("Kept raster draft".into()),
         ],

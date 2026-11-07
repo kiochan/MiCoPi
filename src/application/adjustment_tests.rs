@@ -425,7 +425,7 @@ fn adjustment_queries_catalog_and_typed_workflow_bindings_are_inert_until_run() 
     assert_eq!(query["items"][0]["id"], id);
     assert_eq!(query["items"][0]["provider_available"], true);
     let item = call(&mut s, "adjustment.get", json!({"adjustment_id":id}));
-    assert_eq!(item["parameters"], json!({"filter":"invert","amount":1}));
+    assert_eq!(item["parameters"], json!({"filter":"invert","amount":1.0}));
     assert_eq!(item["revision"], s.revision);
     assert_eq!(content(&s), before);
     assert_eq!(s.state(), state);
