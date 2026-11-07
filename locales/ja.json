@@ -1574,5 +1574,21 @@
   "Image Port": "画像ポート",
   "Input Index": "入力インデックス",
   "Document Identity": "ドキュメント識別子",
-  "Document Revision": "ドキュメントのリビジョン"
+  "Document Revision": "ドキュメントのリビジョン",
+  "Published Graph Node": "適用済みグラフのノード",
+  "Source Graph": "ソースグラフ",
+  "Disabled Source Declaration": "無効なソース定義",
+  "Source Input": "ソース入力",
+  "Source Output": "ソース出力",
+  "Actual Input": "実合成の入力",
+  "Actual Output": "実合成の出力",
+  "Select a Node": "ノードを選択",
+  "Unconnected": "未接続",
+  "Graph structure changed. Select the node again.": "グラフ構造が変わりました。ノードを選び直してください。",
+  "Select a published image node to inspect.": "適用済みグラフの画像ノードを選択してください。",
+  "Choose a connected image port.": "接続済みの画像ポートを選択してください。",
+  "Source declarations include disabled effects; masks and ancestor gates are excluded.": "ソース定義には無効な効果も含みます。マスクと上位グループの合成制御は含みません。",
+  "Actual Composition includes generated masks and group strength.": "実際の合成には生成されたマスクとグループの効果量を含みます。",
+  "Snapshots use published data; local drafts are not sampled.": "スナップショットは適用済みデータを使います。未適用の編集は含みません。",
+  "Node": "ノード"
 }

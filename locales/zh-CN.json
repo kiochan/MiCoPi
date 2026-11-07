@@ -1574,5 +1574,21 @@
   "Image Port": "图像端口",
   "Input Index": "输入端口序号",
   "Document Identity": "文档身份",
-  "Document Revision": "文档修订号"
+  "Document Revision": "文档修订号",
+  "Published Graph Node": "已应用图中的节点",
+  "Source Graph": "源节点图",
+  "Disabled Source Declaration": "已禁用的源定义",
+  "Source Input": "源图输入",
+  "Source Output": "源图输出",
+  "Actual Input": "实际合成输入",
+  "Actual Output": "实际合成输出",
+  "Select a Node": "选择节点",
+  "Unconnected": "未连接",
+  "Graph structure changed. Select the node again.": "节点图结构已改变，请重新选择节点。",
+  "Select a published image node to inspect.": "选择已应用图中的图像节点进行查看。",
+  "Choose a connected image port.": "请选择已连接的图像端口。",
+  "Source declarations include disabled effects; masks and ancestor gates are excluded.": "源定义包含已禁用的效果，不含蒙版和上级图层组的合成控制。",
+  "Actual Composition includes generated masks and group strength.": "实际合成包含生成的蒙版与图层组效果强度。",
+  "Snapshots use published data; local drafts are not sampled.": "快照读取已应用的数据，不采样尚未应用的草稿。",
+  "Node": "节点"
 }

@@ -101,6 +101,8 @@ owned masks, Normal effect strength, groups, Undo and verified outcomes. See
 Shared channel controls select the edited range and the corresponding cached
 [histogram](histograms.md) bins (RGB aggregate for Master). Source/exactness remain
 explicit; the snapshot is
-not the local Levels draft or the effect input. Bounded queries also serve automation;
+not the local Levels draft. Effect inputs require explicit Published Graph Node
+scope and a connected image input; chart placement does not infer that scope.
+Bounded queries also serve automation;
 [Curves](curves.md) supplies separate master/R/G/B source and adjustment intent. See [Native contracts](native-plugins.md),
 [Node editor](node-editor.md) and [Roadmap](../ROADMAP.md).

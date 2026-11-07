@@ -84,7 +84,9 @@ adjustment contracts. Painting remains on the active raster. Hidden/bypassed
 Curves records still preflight native capability. See [Adjustment layers](adjustment-layers.md)
 for shared actions and the strict optional metadata tail. Session and independent
 transport references are authored and await complete CI verification. Shared
-manual histogram controls are described in [Histograms](histograms.md).
+manual histogram controls are described in [Histograms](histograms.md). Explicit
+Published Graph Node scope can inspect Source/Actual image inputs or outputs;
+local curve drafts are never sampled and chart placement does not infer scope.
 
 ## Local curve controls
 

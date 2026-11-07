@@ -11,7 +11,7 @@ pub(crate) fn estimated_height(a: &crate::configuration::Appearance) -> f32 {
         + 4. * a.section_spacing
         + 9. * a.font_size
         + 4. * a.control_height
-        + 3. * a.font_size
+        + 7. * a.font_size
         + 4. * a.item_spacing
 }
 fn ramp(ui: &mut Ui, black: u8, white: u8) {
@@ -242,58 +242,64 @@ mod tests {
             crate::i18n::set_language(language);
             for width in [176., 360., 680.] {
                 for large in [false, true] {
-                    let ctx = Context::default();
-                    theme::fonts(&ctx);
-                    let mut a = crate::configuration::Appearance::default();
-                    if large {
-                        a.font_size = 22.;
-                        a.control_height = 48.;
-                        a.title_height = 60.;
-                        a.toolbar_height = 60.;
-                        a.tab_height = 52.;
-                    }
-                    theme::apply(&ctx, &a);
-                    let mut value = Levels::default();
-                    for _ in 0..3 {
-                        let _ = ctx.run(
-                            RawInput {
-                                screen_rect: Some(Rect::from_min_size(
-                                    Pos2::ZERO,
-                                    vec2(width, 1200.),
-                                )),
-                                ..Default::default()
-                            },
-                            |ctx| {
-                                CentralPanel::default().show(ctx, |ui| {
-                                    let left = ui.max_rect().left();
-                                    let right = ui.max_rect().right();
-                                    // CentralPanel sets its minimum to the whole
-                                    // viewport. Measure the editor child scope.
-                                    let response = ui.scope(|ui| {
-                                        let snapshot = super::super::histogram_ui::test_snapshot();
-                                        edit_with_histogram(
-                                            ui,
-                                            Id::new("levels-test"),
-                                            &mut value,
-                                            Some(&snapshot),
-                                        )
+                    for node_scope in [false, true] {
+                        let ctx = Context::default();
+                        theme::fonts(&ctx);
+                        let mut a = crate::configuration::Appearance::default();
+                        if large {
+                            a.font_size = 22.;
+                            a.control_height = 48.;
+                            a.title_height = 60.;
+                            a.toolbar_height = 60.;
+                            a.tab_height = 52.;
+                        }
+                        theme::apply(&ctx, &a);
+                        let mut value = Levels::default();
+                        for _ in 0..3 {
+                            let _ = ctx.run(
+                                RawInput {
+                                    screen_rect: Some(Rect::from_min_size(
+                                        Pos2::ZERO,
+                                        vec2(width, 1200.),
+                                    )),
+                                    ..Default::default()
+                                },
+                                |ctx| {
+                                    CentralPanel::default().show(ctx, |ui| {
+                                        let left = ui.max_rect().left();
+                                        let right = ui.max_rect().right();
+                                        // CentralPanel sets its minimum to the whole
+                                        // viewport. Measure the editor child scope.
+                                        let response = ui.scope(|ui| {
+                                            let snapshot = if node_scope {
+                                                super::super::histogram_ui::test_node_snapshot()
+                                            } else {
+                                                super::super::histogram_ui::test_snapshot()
+                                            };
+                                            edit_with_histogram(
+                                                ui,
+                                                Id::new("levels-test"),
+                                                &mut value,
+                                                Some(&snapshot),
+                                            )
+                                        });
+                                        let rect = response.response.rect;
+                                        assert!(
+                                            rect.left() >= left - 1. && rect.right() <= right + 1.,
+                                            "{language:?}/{width}/large={large}: {rect:?}"
+                                        );
+                                        assert!(
+                                            rect.height() <= estimated_height(&a),
+                                            "{language:?}/{width}/large={large}: height {} vs {}",
+                                            rect.height(),
+                                            estimated_height(&a)
+                                        );
                                     });
-                                    let rect = response.response.rect;
-                                    assert!(
-                                        rect.left() >= left - 1. && rect.right() <= right + 1.,
-                                        "{language:?}/{width}/large={large}: {rect:?}"
-                                    );
-                                    assert!(
-                                        rect.height() <= estimated_height(&a),
-                                        "{language:?}/{width}/large={large}: height {} vs {}",
-                                        rect.height(),
-                                        estimated_height(&a)
-                                    );
-                                });
-                            },
-                        );
+                                },
+                            );
+                        }
+                        assert_eq!(value, Levels::default());
                     }
-                    assert_eq!(value, Levels::default());
                 }
             }
         }

@@ -3,6 +3,8 @@ use super::*;
 use crate::application::{Action, ActionError, Session};
 use serde::Deserialize;
 use std::sync::Arc;
+#[path = "histogram_nodes_ui.rs"]
+mod nodes;
 const STATE_KEY: &str = "micopi.histogram-ui.v1";
 #[derive(Clone, Copy, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -10,6 +12,7 @@ enum Source {
     #[default]
     Composite,
     Layer,
+    Node,
 }
 #[derive(Clone)]
 pub(crate) struct Snapshot {
@@ -17,6 +20,7 @@ pub(crate) struct Snapshot {
     revision: u64,
     source: Source,
     layer_id: Option<u64>,
+    node: Option<nodes::Observation>,
     budget: u32,
     sampled: u64,
     total: u64,
@@ -30,6 +34,8 @@ struct Wire {
     revision: u64,
     source: Source,
     layer_id: Option<u64>,
+    #[serde(flatten)]
+    node: nodes::Wire,
     max_samples: u32,
     sampled_pixels: u64,
     total_pixels: u64,
@@ -52,7 +58,7 @@ impl Snapshot {
             || w.exact != (w.sampled_pixels == w.total_pixels)
             || match w.source {
                 Source::Layer => w.layer_id.is_none_or(|id| id == 0 || id > u32::MAX as u64),
-                Source::Composite => w.layer_id.is_some(),
+                Source::Composite | Source::Node => w.layer_id.is_some(),
             }
         {
             return Err(ActionError::new(
@@ -60,6 +66,17 @@ impl Snapshot {
                 "Invalid histogram snapshot metadata",
             ));
         }
+        let node = if w.source == Source::Node {
+            Some(w.node.decode()?)
+        } else {
+            if w.node.present() {
+                return Err(ActionError::new(
+                    "histogram_result",
+                    "Unexpected node scope metadata",
+                ));
+            }
+            None
+        };
         let mut bins = [[0; 256]; 4];
         for (target, source) in bins.iter_mut().zip([w.red, w.green, w.blue, w.rgb]) {
             *target = source.try_into().map_err(|_| {
@@ -74,6 +91,7 @@ impl Snapshot {
             revision: w.revision,
             source: w.source,
             layer_id: w.layer_id,
+            node,
             budget: w.max_samples,
             sampled: w.sampled_pixels,
             total: w.total_pixels,
@@ -88,6 +106,7 @@ struct State {
     document: u64,
     source: Source,
     budget: u32,
+    nodes: nodes::Model,
     snapshot: Option<Arc<Snapshot>>,
     error: String,
 }
@@ -97,6 +116,7 @@ impl Default for State {
             document: 0,
             source: Source::Composite,
             budget: 65536,
+            nodes: nodes::Model::default(),
             snapshot: None,
             error: String::new(),
         }
@@ -116,6 +136,7 @@ impl State {
         if self.document != document {
             self.document = document;
             self.snapshot = None;
+            self.nodes.reset();
             self.error.clear();
         }
     }
@@ -127,13 +148,38 @@ impl State {
                     && p.revision == s.revision
                     && p.source == self.source
                     && p.budget == self.budget
-                    && (p.source == Source::Composite
-                        || p.layer_id == Some(s.doc.layer_id(s.doc.active)))
+                    && match p.source {
+                        Source::Composite => true,
+                        Source::Layer => p.layer_id == Some(s.doc.layer_id(s.doc.active)),
+                        Source::Node => p
+                            .node
+                            .is_some_and(|o| Some(o.request) == self.nodes.request(s)),
+                    }
             })
     }
     fn refresh(&mut self, s: &mut Session) {
         self.attach(s.doc.identity);
-        let mut args = serde_json::json!({"max_samples":self.budget,"source":if self.source==Source::Composite {"composite"} else {"layer"}});
+        if self.source == Source::Node {
+            self.nodes.refresh_choices(s);
+        }
+        let expected_node = if self.source == Source::Node {
+            self.nodes.request(s)
+        } else {
+            None
+        };
+        if self.source == Source::Node && expected_node.is_none() {
+            return;
+        }
+        let document = s.doc.identity;
+        let revision = s.revision;
+        let source = self.source;
+        let budget = self.budget;
+        let expected_layer = (source == Source::Layer).then(|| s.doc.layer_id(s.doc.active));
+        let mut args = serde_json::json!({"max_samples":self.budget,"source":match self.source {Source::Composite=>"composite",Source::Layer=>"layer",Source::Node=>"node"}});
+        if let Some(request) = expected_node {
+            nodes::Model::inject(request, s, &mut args);
+        }
+
         if self.source == Source::Layer {
             args["layer_id"] = serde_json::json!(s.doc.layer_id(s.doc.active));
         }
@@ -150,9 +196,20 @@ impl State {
                 )
             });
         match result {
-            Ok(snapshot) => {
+            Ok(snapshot)
+                if snapshot.document == document
+                    && snapshot.revision == revision
+                    && snapshot.source == source
+                    && snapshot.budget == budget
+                    && snapshot.layer_id == expected_layer
+                    && snapshot.node.map(|o| o.request) == expected_node =>
+            {
                 self.snapshot = Some(Arc::new(snapshot));
                 self.error.clear();
+            }
+            Ok(_) => {
+                self.snapshot = None;
+                self.error = "Histogram response does not match the selected scope".into();
             }
             Err(error) => {
                 self.snapshot = None;
@@ -173,6 +230,10 @@ pub(crate) fn caption(snapshot: &Snapshot) -> String {
             "{} #{}",
             translated("Raw Layer Histogram"),
             snapshot.layer_id.unwrap_or(0)
+        ),
+        Source::Node => snapshot.node.map_or_else(
+            || translated("Histogram Unavailable").into_owned(),
+            nodes::Observation::caption,
         ),
     }
 }
@@ -221,6 +282,33 @@ pub(crate) fn band(ui: &mut Ui, snapshot: &Snapshot, channel: usize) {
         paint(ui, rect, snapshot, channel);
     }
 }
+pub(super) fn label_height(ui: &Ui, width: f32) -> f32 {
+    let font = TextStyle::Body.resolve(ui.style());
+    [
+        "Source Input",
+        "Source Output",
+        "Actual Input",
+        "Actual Output",
+    ]
+    .into_iter()
+    .map(|title| {
+        ui.painter()
+            .layout(
+                format!(
+                    "{} · {} #{}",
+                    translated("Sampled"),
+                    translated(title),
+                    u32::MAX
+                ),
+                font.clone(),
+                Color32::WHITE,
+                width.max(1.),
+            )
+            .size()
+            .y
+    })
+    .fold(0., f32::max)
+}
 pub(crate) fn label(ui: &mut Ui, snapshot: &Snapshot) {
     let scope = match snapshot.source {
         Source::Composite => translated("Visible Composite").into_owned(),
@@ -228,6 +316,10 @@ pub(crate) fn label(ui: &mut Ui, snapshot: &Snapshot) {
             "{} #{}",
             translated("Raw Layer"),
             snapshot.layer_id.unwrap_or(0)
+        ),
+        Source::Node => snapshot.node.map_or_else(
+            || translated("Histogram Unavailable").into_owned(),
+            nodes::Observation::short,
         ),
     };
     let label = format!(
@@ -243,8 +335,13 @@ pub(crate) fn label(ui: &mut Ui, snapshot: &Snapshot) {
         translated("Revision"),
         snapshot.revision
     );
-    ui.add(Label::new(RichText::new(label).color(ui.visuals().weak_text_color())).truncate())
-        .on_hover_text(tooltip);
+    let label = Label::new(RichText::new(label).color(ui.visuals().weak_text_color()));
+    ui.add(if snapshot.source == Source::Node {
+        label.wrap()
+    } else {
+        label.truncate()
+    })
+    .on_hover_text(tooltip);
 }
 #[cfg(test)]
 pub(super) fn test_snapshot() -> Snapshot {
@@ -258,6 +355,7 @@ pub(super) fn test_snapshot() -> Snapshot {
         revision: 1,
         source: Source::Layer,
         layer_id: Some(u32::MAX as u64),
+        node: None,
         budget: 65536,
         sampled: 65536,
         total: 16777216,
@@ -266,17 +364,34 @@ pub(super) fn test_snapshot() -> Snapshot {
         bins,
     }
 }
+#[cfg(test)]
+pub(super) fn test_node_snapshot() -> Snapshot {
+    let mut snapshot = test_snapshot();
+    snapshot.source = Source::Node;
+    snapshot.layer_id = None;
+    snapshot.node = Some(nodes::Observation {
+        request: nodes::Request {
+            view: nodes::View::Actual,
+            node: u32::MAX,
+            direction: nodes::Direction::Input,
+            input: Some(0),
+        },
+        resolved: 0,
+        enabled: true,
+    });
+    snapshot
+}
 fn body(ui: &mut Ui, s: &mut Session, state: &mut State) {
     ui.style_mut().wrap_mode = Some(TextWrapMode::Wrap);
     ui.label(text("Histogram Source"));
     let previous = state.source;
-    ComboBox::from_id_salt(("histogram-source", s.doc.identity))
+    let source_combo = ComboBox::from_id_salt(("histogram-source", s.doc.identity))
         .width(ui.available_width())
         .truncate()
-        .selected_text(text(if state.source == Source::Composite {
-            "Visible Composite"
-        } else {
-            "Raw Active Layer"
+        .selected_text(text(match state.source {
+            Source::Composite => "Visible Composite",
+            Source::Layer => "Raw Active Layer",
+            Source::Node => "Published Graph Node",
         }))
         .show_ui(ui, |ui| {
             ui.selectable_value(
@@ -285,8 +400,35 @@ fn body(ui: &mut Ui, s: &mut Session, state: &mut State) {
                 text("Visible Composite"),
             );
             ui.selectable_value(&mut state.source, Source::Layer, text("Raw Active Layer"));
+            let node_option = ui.selectable_value(
+                &mut state.source,
+                Source::Node,
+                text("Published Graph Node"),
+            );
+            #[cfg(test)]
+            ui.data_mut(|d| {
+                d.insert_temp(
+                    Id::new(("histogram-source-node", s.doc.identity)),
+                    node_option.rect,
+                )
+            });
+            #[cfg(not(test))]
+            let _ = node_option;
         });
+    #[cfg(test)]
+    ui.data_mut(|d| {
+        d.insert_temp(
+            Id::new(("histogram-source", s.doc.identity)),
+            source_combo.response.rect,
+        )
+    });
+    #[cfg(not(test))]
+    let _ = source_combo;
     if previous != state.source {
+        state.snapshot = None;
+        state.error.clear();
+    }
+    if state.source == Source::Node && state.nodes.controls(ui, s) {
         state.snapshot = None;
         state.error.clear();
     }
@@ -295,13 +437,20 @@ fn body(ui: &mut Ui, s: &mut Session, state: &mut State) {
         [ui.available_width(), ui.spacing().interact_size.y],
         DragValue::new(&mut state.budget).range(1..=65536),
     );
-    let available = s
-        .registry
-        .native_plugins
-        .get("compositing")
-        .is_some_and(|p| p.supports_histogram());
+    let available = if state.source == Source::Node {
+        s.doc
+            .renderer
+            .as_ref()
+            .is_some_and(|r| r.supports_histogram_plan())
+    } else {
+        s.registry
+            .native_plugins
+            .get("compositing")
+            .is_some_and(|p| p.supports_histogram())
+    };
+    let ready = state.source != Source::Node || state.nodes.request(s).is_some();
     let refresh = ui.add_enabled(
-        !active(s) && available,
+        !active(s) && available && ready,
         Button::new(text("Refresh Histogram")),
     );
     #[cfg(test)]
@@ -356,7 +505,12 @@ fn body(ui: &mut Ui, s: &mut Session, state: &mut State) {
             }
         }
     }
-    ui.add(Label::new(text("Histogram snapshots use published composite or raw layer pixels, not the local curve draft.")).wrap());
+    ui.add(
+        Label::new(text(
+            "Snapshots use published data; local drafts are not sampled.",
+        ))
+        .wrap(),
+    );
 }
 pub(crate) fn controls(ui: &mut Ui, s: &mut Session) {
     let key = Id::new(STATE_KEY);
@@ -449,6 +603,101 @@ mod tests {
     fn refresh(ctx: &Context, s: &mut Session, time: f64) {
         let position = rect(ctx, s, "histogram-refresh").center();
         click(ctx, s, position, time);
+    }
+    fn node_graph() -> crate::engine::graph::Graph {
+        use crate::engine::graph::{Edge, Filter, Graph, Node, NodeKind};
+        Graph {
+            enabled: true,
+            linked: true,
+            nodes: vec![
+                Node {
+                    id: 11,
+                    node_type: None,
+                    position: [0., 0.],
+                    data: NodeKind::Layer { index: 0 },
+                },
+                Node {
+                    id: 22,
+                    node_type: Some("compositing.filter".into()),
+                    position: [200., 0.],
+                    data: NodeKind::Filter {
+                        filter: Filter::Invert,
+                        amount: 1.,
+                    },
+                },
+                Node {
+                    id: 33,
+                    node_type: None,
+                    position: [400., 0.],
+                    data: NodeKind::Output,
+                },
+            ],
+            edges: vec![
+                Edge {
+                    from: 11,
+                    to: 22,
+                    input: 0,
+                },
+                Edge {
+                    from: 22,
+                    to: 33,
+                    input: 0,
+                },
+            ],
+        }
+    }
+    #[test]
+    fn published_node_input_output_clicks_are_explicit_cached_and_read_only() {
+        let mut s = session();
+        call(&mut s, "graph.set", json!({"graph":node_graph()}));
+        let before = s.state();
+        let history = s.doc.history_bytes();
+        let events = s.journal.as_ref().unwrap().entries.len();
+        let ctx = Context::default();
+        open(&ctx, &mut s);
+        let position = rect(&ctx, &s, "histogram-source").center();
+        click(&ctx, &mut s, position, 3.);
+        let position = rect(&ctx, &s, "histogram-source-node").center();
+        click(&ctx, &mut s, position, 4.);
+        frame(&ctx, &mut s, vec![], 5.);
+        assert!(cached(&ctx, &s).is_none());
+        let position = rect(&ctx, &s, "histogram-node").center();
+        click(&ctx, &mut s, position, 6.);
+        let position = ctx
+            .data_mut(|d| {
+                d.get_temp::<Rect>(Id::new(("histogram-node-option", s.doc.identity, 22u32)))
+                    .unwrap()
+            })
+            .center();
+        click(&ctx, &mut s, position, 7.);
+        refresh(&ctx, &mut s, 8.);
+        let input = cached(&ctx, &s).unwrap();
+        assert_eq!(input.bins[0][32], 16);
+        assert_eq!(
+            input.node.unwrap().request.direction,
+            nodes::Direction::Input
+        );
+        for time in 9..12 {
+            frame(&ctx, &mut s, vec![], time as f64);
+        }
+        assert!(Arc::ptr_eq(&input, &cached(&ctx, &s).unwrap()));
+        let position = rect(&ctx, &s, "histogram-port").center();
+        click(&ctx, &mut s, position, 12.);
+        let position = rect(&ctx, &s, "histogram-port-output").center();
+        click(&ctx, &mut s, position, 13.);
+        assert!(cached(&ctx, &s).is_none());
+        refresh(&ctx, &mut s, 14.);
+        let output = cached(&ctx, &s).unwrap();
+        assert_eq!(output.bins[0][223], 16);
+        assert_eq!(
+            output.node.unwrap().request.direction,
+            nodes::Direction::Output
+        );
+        assert_eq!(s.state(), before);
+        assert_eq!(s.doc.history_bytes(), history);
+        assert_eq!(s.journal.as_ref().unwrap().entries.len(), events);
+        call(&mut s, "layer.rename", json!({"name":"Changed"}));
+        assert!(cached(&ctx, &s).is_none());
     }
     #[test]
     fn actual_refresh_is_read_only_and_idle_frames_share_one_snapshot() {
@@ -567,56 +816,85 @@ mod tests {
     #[test]
     fn expanded_controls_fit_four_languages_and_appearance_metrics() {
         let mut s = session();
+        let mut graph = node_graph();
+        graph.nodes.iter_mut().find(|n| n.id == 22).unwrap().id = u32::MAX;
+        for edge in &mut graph.edges {
+            if edge.from == 22 {
+                edge.from = u32::MAX;
+            }
+            if edge.to == 22 {
+                edge.to = u32::MAX;
+            }
+        }
+        call(&mut s, "graph.set", json!({"graph":graph}));
         for language in crate::i18n::Language::ALL {
             crate::i18n::set_language(language);
             for width in [176., 360., 680.] {
                 for large in [false, true] {
-                    let ctx = Context::default();
-                    theme::fonts(&ctx);
-                    let mut a = crate::configuration::Appearance::default();
-                    if large {
-                        a.font_size = 22.;
-                        a.control_height = 48.;
-                        a.title_height = 60.;
-                        a.toolbar_height = 60.;
-                        a.tab_height = 52.;
-                    }
-                    theme::apply(&ctx, &a);
-                    let mut snapshot = test_snapshot();
-                    snapshot.document = s.doc.identity;
-                    snapshot.revision = s.revision;
-                    snapshot.source = Source::Composite;
-                    snapshot.layer_id = None;
-                    let mut state = State {
-                        document: s.doc.identity,
-                        source: Source::Composite,
-                        snapshot: Some(Arc::new(snapshot)),
-                        ..Default::default()
-                    };
-                    let _ = ctx.run(
-                        RawInput {
-                            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(width, 1800.))),
+                    for node_scope in [false, true] {
+                        let ctx = Context::default();
+                        theme::fonts(&ctx);
+                        let mut a = crate::configuration::Appearance::default();
+                        if large {
+                            a.font_size = 22.;
+                            a.control_height = 48.;
+                            a.title_height = 60.;
+                            a.toolbar_height = 60.;
+                            a.tab_height = 52.;
+                        }
+                        theme::apply(&ctx, &a);
+                        let mut snapshot = if node_scope {
+                            test_node_snapshot()
+                        } else {
+                            test_snapshot()
+                        };
+                        snapshot.document = s.doc.identity;
+                        snapshot.revision = s.revision;
+                        snapshot.source = if node_scope {
+                            Source::Node
+                        } else {
+                            Source::Composite
+                        };
+                        snapshot.layer_id = None;
+                        let mut state = State {
+                            document: s.doc.identity,
+                            source: snapshot.source,
+                            snapshot: Some(Arc::new(snapshot)),
                             ..Default::default()
-                        },
-                        |ctx| {
-                            CentralPanel::default().show(ctx, |ui| {
-                                let bounds = ui.max_rect();
-                                let scope = ui.scope(|ui| body(ui, &mut s, &mut state));
-                                let actual = scope.response.rect;
-                                assert!(
-                                    actual.left() >= bounds.left() - 1.
-                                        && actual.right() <= bounds.right() + 1.,
-                                    "{language:?}/{width}/{large}: {actual:?}"
-                                );
-                                assert!(
-                                    actual.height()
-                                        <= 24. * a.control_height
-                                            + 16. * a.font_size
-                                            + 20. * a.item_spacing
-                                );
-                            });
-                        },
-                    );
+                        };
+                        if node_scope {
+                            state.nodes.view = nodes::View::Actual;
+                            state.nodes.refresh_choices(&s);
+                            state.nodes.node = Some(u32::MAX);
+                        }
+                        let _ = ctx.run(
+                            RawInput {
+                                screen_rect: Some(Rect::from_min_size(
+                                    Pos2::ZERO,
+                                    vec2(width, 1800.),
+                                )),
+                                ..Default::default()
+                            },
+                            |ctx| {
+                                CentralPanel::default().show(ctx, |ui| {
+                                    let bounds = ui.max_rect();
+                                    let scope = ui.scope(|ui| body(ui, &mut s, &mut state));
+                                    let actual = scope.response.rect;
+                                    assert!(
+                                        actual.left() >= bounds.left() - 1.
+                                            && actual.right() <= bounds.right() + 1.,
+                                        "{language:?}/{width}/{large}: {actual:?}"
+                                    );
+                                    assert!(
+                                        actual.height()
+                                            <= 24. * a.control_height
+                                                + 16. * a.font_size
+                                                + 20. * a.item_spacing
+                                    );
+                                });
+                            },
+                        );
+                    }
                 }
             }
         }

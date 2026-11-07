@@ -216,7 +216,7 @@ pub(crate) fn estimated_height(ui: &Ui, width: f32) -> f32 {
         + count
         + status
         + buttons
-        + line
+        + line.max(super::histogram_ui::label_height(ui, width))
         + label("Click to add a point. Drag to move. Right-click to remove.")
         + 20. * spacing.item_spacing.y)
         .ceil()
@@ -791,52 +791,61 @@ mod tests {
             crate::i18n::set_language(language);
             for width in [176., 360., 680.] {
                 for large in [false, true] {
-                    let ctx = Context::default();
-                    theme::fonts(&ctx);
-                    let mut a = crate::configuration::Appearance::default();
-                    if large {
-                        a.font_size = 22.;
-                        a.control_height = 48.;
-                        a.title_height = 60.;
-                        a.toolbar_height = 60.;
-                        a.tab_height = 52.;
-                    }
-                    theme::apply(&ctx, &a);
-                    let mut value = Curves::default();
-                    let _ = ctx.run(
-                        RawInput {
-                            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(width, 1800.))),
-                            ..Default::default()
-                        },
-                        |ctx| {
-                            CentralPanel::default().show(ctx, |ui| {
-                                let bounds = ui.max_rect();
-                                let response = ui.scope(|ui| {
-                                    let snapshot = super::super::histogram_ui::test_snapshot();
-                                    edit_with_histogram(
-                                        ui,
-                                        Id::new("curve-layout"),
-                                        &mut value,
-                                        None,
-                                        false,
-                                        Some(&snapshot),
+                    for node_scope in [false, true] {
+                        let ctx = Context::default();
+                        theme::fonts(&ctx);
+                        let mut a = crate::configuration::Appearance::default();
+                        if large {
+                            a.font_size = 22.;
+                            a.control_height = 48.;
+                            a.title_height = 60.;
+                            a.toolbar_height = 60.;
+                            a.tab_height = 52.;
+                        }
+                        theme::apply(&ctx, &a);
+                        let mut value = Curves::default();
+                        let _ = ctx.run(
+                            RawInput {
+                                screen_rect: Some(Rect::from_min_size(
+                                    Pos2::ZERO,
+                                    vec2(width, 1800.),
+                                )),
+                                ..Default::default()
+                            },
+                            |ctx| {
+                                CentralPanel::default().show(ctx, |ui| {
+                                    let bounds = ui.max_rect();
+                                    let response = ui.scope(|ui| {
+                                        let snapshot = if node_scope {
+                                            super::super::histogram_ui::test_node_snapshot()
+                                        } else {
+                                            super::super::histogram_ui::test_snapshot()
+                                        };
+                                        edit_with_histogram(
+                                            ui,
+                                            Id::new("curve-layout"),
+                                            &mut value,
+                                            None,
+                                            false,
+                                            Some(&snapshot),
+                                        );
+                                    });
+                                    let actual = response.response.rect;
+                                    assert!(
+                                        actual.left() >= bounds.left() - 1.
+                                            && actual.right() <= bounds.right() + 1.,
+                                        "{language:?}/{width}/{large}: {actual:?}"
+                                    );
+                                    assert!(
+                                        actual.height() <= estimated_height(ui, bounds.width()),
+                                        "{language:?}/{width}/{large}: {} vs {}",
+                                        actual.height(),
+                                        estimated_height(ui, bounds.width())
                                     );
                                 });
-                                let actual = response.response.rect;
-                                assert!(
-                                    actual.left() >= bounds.left() - 1.
-                                        && actual.right() <= bounds.right() + 1.,
-                                    "{language:?}/{width}/{large}: {actual:?}"
-                                );
-                                assert!(
-                                    actual.height() <= estimated_height(ui, bounds.width()),
-                                    "{language:?}/{width}/{large}: {} vs {}",
-                                    actual.height(),
-                                    estimated_height(ui, bounds.width())
-                                );
-                            });
-                        },
-                    );
+                            },
+                        );
+                    }
                 }
             }
         }

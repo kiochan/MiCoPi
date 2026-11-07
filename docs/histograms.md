@@ -4,8 +4,8 @@
 Session, command search, schema-derived workflow nodes, JSONL and MCP. It uses
 the optional native compositor histogram capability. This source increment
 awaits complete CI verification; shared artist-facing charts are implemented in
-source. Fenced node input/output queries are implemented in source; specialized
-node chart controls and runtime verification remain pending.
+source. Fenced node input/output queries and explicit chart source controls are
+implemented in source; complete runtime and reviewed visual verification remain pending.
 
 ```json
 {"action":"histogram.query","args":{"source":"composite","max_samples":65536}}
@@ -112,13 +112,12 @@ revision in a pipeline, then binds them to before/after queries. Schema-generate
 workflow nodes can wire the same `graph.read` outputs. Editing a workflow does
 not execute it. These are published-graph observations, never local curve drafts.
 Session, masks/Pass Through, stable-cache, stale/port/contact and JSONL/MCP tests
-are authored; runtime verification and specialized chart integration remain pending.
+are authored; complete runtime verification remains pending.
 
 ## Artist-facing inspection
 
-The [prepared-plan native sampler](histogram-plan.md) also serves node-scope API
-queries. The specialized inspector's source picker still offers composite/raw
-layers; a node-aware chart picker remains planned.
+The [prepared-plan native sampler](histogram-plan.md) serves node-scope API queries
+and the inspector's **Published Graph Node** source.
 
 Expand **Histogram** above the image graph or in built-in Levels/Curves adjustment
 properties. Choose **Visible Composite** or **Raw Active Layer**, set Maximum
@@ -126,6 +125,23 @@ Samples, then click **Refresh Histogram**. The raw-layer choice captures the
 current raster's explicit stable ID; it does not expand links or selected layers.
 Exact/Sampled, source, counts and revision identify the observation. Hover the
 counts to inspect ignored transparent pixels.
+
+For an effect's published input or output, select **Published Graph Node**, then
+choose **Source Graph** or **Actual Composition**, a node and its **Image Port**.
+Input observations also require a connected image input index. Coverage sources
+are omitted and coverage inputs are never offered as color ports. Node labels
+use plugin-owned presentation titles or unchanged artist-owned layer/group names.
+Refresh captures the selected view, node, port, document identity and revision
+through the same registered action. The chart caption keeps Source/Actual and
+Input/Output explicit; its tooltip includes the full resolved scope.
+
+Choices cache graph metadata for the current revision. Unchanged frames reuse
+that cache without graph discovery, pixel reads or sampling. Pixel/parameter/name
+revisions preserve a structurally unchanged selection while invalidating its old
+histogram. Structural identities and edges are compared before retaining node IDs;
+rewiring, structural edits, document replacement and view changes require selection
+again. View preferences remain temporary. Generated group/adjustment gate identities
+include their stable owner so reused generated IDs cannot silently retarget a chart.
 
 One bounded shared snapshot serves the inspector, the Levels histogram band and
 the Curves plot background. Both editors display the selected R/G/B channel, or
@@ -140,16 +156,15 @@ explicit. During a contact, Refresh is disabled and cached plot overlays are
 hidden without closing or flushing the contact. The inspector may retain labeled
 old metadata with a refresh warning. Capability failure is explicit.
 
-Snapshots describe the published composite or raw pixels, **not a local curve
-or Levels draft**, nor the arbitrary input below that effect. Source/exactness
-captions remain visible; hover for full source ID, count and revision. A graph
-Apply/Live Preview invalidates the previous snapshot. Per-node/input scope is a
-separate explicit API contract below, not inferred from chart placement. Node-aware
-chart controls remain planned.
+Snapshots describe the explicitly selected published scope, **not a local curve
+or Levels draft**. Chart placement never implicitly selects an effect's input.
+Source/exactness captions remain visible; hover for full source ID, count and
+revision. A graph Apply/Live Preview invalidates the previous snapshot.
 
 The snapshot uses four fixed 256-bin arrays behind one shared `Arc`, with no
 retained image copy. Source and budget are temporary inspection controls, not
 persisted painting defaults. UI tests cover actual refresh clicks, unchanged
 revision/history/outcomes, shared idle cache identity, invalidation, contact
-preservation and four-language narrow/wide/large-metric layouts. These new tests
+preservation, node input/output clicks, structural reselection, scope validation
+and four-language narrow/wide/large-metric layouts including long node IDs. These new tests
 await CI; no new screenshots or tablet measurements are claimed.

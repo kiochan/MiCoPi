@@ -1574,5 +1574,21 @@
   "Image Port": "이미지 포트",
   "Input Index": "입력 인덱스",
   "Document Identity": "문서 식별자",
-  "Document Revision": "문서 리비전"
+  "Document Revision": "문서 리비전",
+  "Published Graph Node": "적용된 그래프 노드",
+  "Source Graph": "소스 그래프",
+  "Disabled Source Declaration": "비활성 소스 정의",
+  "Source Input": "소스 입력",
+  "Source Output": "소스 출력",
+  "Actual Input": "실제 합성 입력",
+  "Actual Output": "실제 합성 출력",
+  "Select a Node": "노드 선택",
+  "Unconnected": "연결되지 않음",
+  "Graph structure changed. Select the node again.": "그래프 구조가 변경되었습니다. 노드를 다시 선택하세요.",
+  "Select a published image node to inspect.": "적용된 그래프에서 확인할 이미지 노드를 선택하세요.",
+  "Choose a connected image port.": "연결된 이미지 포트를 선택하세요.",
+  "Source declarations include disabled effects; masks and ancestor gates are excluded.": "소스 정의에는 비활성 효과도 포함됩니다. 마스크와 상위 그룹의 합성 제어는 제외됩니다.",
+  "Actual Composition includes generated masks and group strength.": "실제 합성에는 생성된 마스크와 그룹 효과 강도가 포함됩니다.",
+  "Snapshots use published data; local drafts are not sampled.": "스냅샷은 적용된 데이터를 사용합니다. 적용 전 편집 내용은 샘플링하지 않습니다.",
+  "Node": "노드"
 }

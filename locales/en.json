@@ -1574,5 +1574,21 @@
   "Image Port": "Image Port",
   "Input Index": "Input Index",
   "Document Identity": "Document Identity",
-  "Document Revision": "Document Revision"
+  "Document Revision": "Document Revision",
+  "Published Graph Node": "Published Graph Node",
+  "Source Graph": "Source Graph",
+  "Disabled Source Declaration": "Disabled Source Declaration",
+  "Source Input": "Source Input",
+  "Source Output": "Source Output",
+  "Actual Input": "Actual Input",
+  "Actual Output": "Actual Output",
+  "Select a Node": "Select a Node",
+  "Unconnected": "Unconnected",
+  "Graph structure changed. Select the node again.": "Graph structure changed. Select the node again.",
+  "Select a published image node to inspect.": "Select a published image node to inspect.",
+  "Choose a connected image port.": "Choose a connected image port.",
+  "Source declarations include disabled effects; masks and ancestor gates are excluded.": "Source declarations include disabled effects; masks and ancestor gates are excluded.",
+  "Actual Composition includes generated masks and group strength.": "Actual Composition includes generated masks and group strength.",
+  "Snapshots use published data; local drafts are not sampled.": "Snapshots use published data; local drafts are not sampled.",
+  "Node": "Node"
 }

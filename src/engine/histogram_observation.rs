@@ -19,6 +19,28 @@ pub struct HistogramObservation {
     pub result: abi::HistogramResult,
 }
 impl Document {
+    /// Presentation/discovery identity for a generated composition gate.
+    /// Borrow names directly; avoid serializing the complete hierarchy to label
+    /// or track a single observation target.
+    pub fn histogram_node_owner(
+        &self,
+        node: u32,
+    ) -> Option<(crate::engine::groups::GroupItem, &str)> {
+        use crate::engine::groups::GroupItem;
+        if let Some((id, _)) = self.group_nodes.iter().find(|(_, value)| **value == node) {
+            let group = self.groups.as_ref()?.groups.iter().find(|g| g.id == *id)?;
+            return Some((GroupItem::group(*id), &group.name));
+        }
+        if let Some((id, _)) = self
+            .adjustment_nodes
+            .iter()
+            .find(|(_, value)| **value == node)
+        {
+            let adjustment = self.adjustments().iter().find(|a| a.id == *id)?;
+            return Some((GroupItem::adjustment(*id), &adjustment.name));
+        }
+        None
+    }
     /// Unlike the editable source, this graph reflects disabled flat filters.
     /// IDs belong to this explicit view at the current document revision.
     pub fn histogram_actual_graph(&self) -> Graph {

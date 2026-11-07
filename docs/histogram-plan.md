@@ -2,9 +2,9 @@
 
 The native sampler now backs fenced node input/output observations through
 `histogram.query`, shared command forms, workflow nodes, JSONL and MCP. This
-integration is implemented in source and awaits CI. Specialized chart source
-pickers still expose composite/raw-layer scopes; node-aware chart controls and
-reviewed captures remain planned.
+integration is implemented in source and awaits complete CI. The shared chart
+source picker now exposes explicit Source/Actual node image input/output controls;
+new UI regressions and reviewed captures remain pending.
 
 ## Optional negotiation
 
