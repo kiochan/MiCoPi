@@ -203,6 +203,75 @@ pub enum Operation {
     Events,
 }
 impl Operation {
+    /// These handlers return a Session-owned state revision assembled before
+    /// publication. Opaque provider/native results and nested reports have their
+    /// own contracts; never infer ownership from a JSON field name alone.
+    pub(crate) fn publishes_session_result_revision(self) -> bool {
+        matches!(
+            self,
+            Self::State
+                | Self::New
+                | Self::Open
+                | Self::CanvasSize
+                | Self::Crop
+                | Self::Undo
+                | Self::Redo
+                | Self::RotateCanvasClockwise
+                | Self::RotateCanvasCounterclockwise
+                | Self::RotateCanvasHalf
+                | Self::FlipCanvasHorizontal
+                | Self::FlipCanvasVertical
+                | Self::RotateLayerClockwise
+                | Self::RotateLayerCounterclockwise
+                | Self::MovePixels
+                | Self::Nudge
+                | Self::TransformPixels
+                | Self::TransformRepeat
+                | Self::TransformRepeatCopy
+                | Self::CanvasTrim
+                | Self::ImageSize
+                | Self::LayerViaCopy
+                | Self::LayerViaCut
+                | Self::RenameLayer
+                | Self::DuplicateLayer
+                | Self::MoveLayer
+                | Self::DeleteLayer
+                | Self::SelectLayer
+                | Self::LayerProperties
+                | Self::LayerSelection
+                | Self::LayerBatch
+                | Self::MergeDown
+                | Self::MergeLayers
+                | Self::MergeSelectedLayers
+                | Self::MergeVisible
+                | Self::FlattenImage
+                | Self::StampVisible
+                | Self::ClearLayer
+                | Self::GroupCreate
+                | Self::GroupCreateSelected
+                | Self::GroupProperties
+                | Self::GroupMove
+                | Self::GroupUngroup
+                | Self::GroupUngroupParent
+                | Self::GroupDelete
+                | Self::GroupDuplicate
+                | Self::GroupMerge
+                | Self::GroupSelectLayers
+                | Self::SelectionShape
+                | Self::SelectAll
+                | Self::Deselect
+                | Self::Reselect
+                | Self::InvertSelection
+                | Self::ExpandSelection
+                | Self::ContractSelection
+                | Self::FeatherSelection
+                | Self::SmoothSelection
+                | Self::SelectColor
+                | Self::GrowSelection
+                | Self::SimilarSelection
+                | Self::Export
+        )
+    }
     #[cfg(feature = "desktop")]
     pub(crate) fn is_contact_guarded_command(self) -> bool {
         self.is_canvas_geometry_command()

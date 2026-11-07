@@ -194,6 +194,40 @@ The final 2026-11-06 GNU Release foundation desktop/CLI executables were 10,266,
 
 The mask-specific JSONL/MCP/GUI check passed, including four reviewed language captures. Separate runtime, workflow, linked-graph, replay, group, selected-merge and Pass Through GUI checks passed. Subsequent capture stabilization adds request/viewport correlation and retained callback acknowledgement; use the capture-aware checks below when validating current builds rather than treating file existence as completion.
 
+## Action-result revision checks
+
+Run `python scripts/smoke-result-revisions.py --cli <built-cli> --gui <built-desktop>`
+with matching staged DLLs; `--skip-gui` retains JSONL/MCP checks for CI. The tiny
+8-by-6 fixtures compare built-in state/plan results with their own response and
+an immediate state query, bind a returned version to the next revision guard,
+retain historical pipeline/workflow observations and verify atomic rollback.
+They preserve field-free compact results, native-owned reports and an unknown
+settings root `revision`, and exercise synthetic pressure/sample continuity.
+Session tests additionally cover opaque state providers, higher embedded-project
+revisions, exact pointer/Stroke counts, mutation no-ops, one-publication batches
+and journal-failure rollback. See [Action Results](action-results.md).
+
+All twelve focused Session regressions passed. Complete library suites passed
+604 headless and 814 desktop tests, with 9 existing ignored tests in each build,
+using serial fresh batches of eight. This retains the existing GNU TLS-index
+test-runner workaround; its cause remains unproven and this is not a shipping
+runtime fix. Validation workers remain below normal priority on at most two
+logical CPUs, with one Cargo job and one Rust test thread.
+
+The matching Release smoke passed 27 built-in result/query pairs per transport
+through JSONL, MCP and GUI attachment, including historical/native result
+ownership, chained guards, exact contact samples and rollback. Existing runtime
+and workflow smokes also passed GUI parity, native PNG equality, inert graph
+editing and project roundtrips. The desktop/CLI executables are
+10,615,296/4,390,912 bytes, respectively: 1.5 KiB each above the preceding masked
+subtree-deletion stage. Native DLLs and dependencies are unchanged.
+
+There are no presentation, catalog, dependency, ABI or file-format changes in this
+correction. Existing reviewed screenshots remain applicable. The typed painting
+path is unchanged; these checks do not establish physical tablet compatibility
+or a latency improvement. The broader committed/provisional and crash-recovery
+work remains planned rather than being inferred from a matching response version.
+
 ## Raster-mask group deletion checks
 
 Run `python scripts/smoke-mask-group-delete.py --cli <built-cli> --gui <built-desktop>`
@@ -243,8 +277,9 @@ commands, 399 MCP commands, GUI parity, four reviewed native Layers captures and
 DLL-free outcome archives. It covers nested/empty folders, interleaved masks,
 owned/unrelated/Pixels targets, last-mask removal, exact raw/filter/selection
 retention, one publication/Undo, typed restored-ID bindings, final-raster/contact
-rejection and atomic recovery. Published revision checks use the outer response
-or a fresh `canvas.state`; legacy handler snapshots can precede publication.
+rejection and atomic recovery. That milestone's revision checks used the outer
+response or a fresh `canvas.state`. The subsequent [Action Results](action-results.md)
+correction also aligns built-in state-bearing result revisions after publication.
 
 All existing Release mask hierarchy, single-owner, public editing, foundation,
 canvas geometry and unmasked group transport smokes passed, including previous

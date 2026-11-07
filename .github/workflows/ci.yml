@@ -50,6 +50,8 @@ jobs:
         run: cargo test --no-default-features --locked
       - name: Verify JSONL and MCP produce identical pixels
         run: python scripts/smoke-runtime.py --skip-gui --cli target/release/micopi-cli.exe
+      - name: Verify published result revisions and historical reports
+        run: python scripts/smoke-result-revisions.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify raster-mask storage, composition and outcome replay
         run: python scripts/smoke-raster-masks.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify public mask editing, effects and outcome replay

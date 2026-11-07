@@ -63,6 +63,8 @@ mod raster_mask_workflow_tests;
 #[cfg(test)]
 mod replay_tests;
 #[cfg(test)]
+mod result_revision_tests;
+#[cfg(test)]
 mod selected_merge_tests;
 #[cfg(test)]
 mod selection_tests;

@@ -36,6 +36,8 @@ The default desktop feature uses eframe Glow, egui_dock and egui-snarl. No WebVi
 
 Actions carry an ID, JSON arguments and optional expected revision. Session validates schemas and native constraints before dispatch. Macros expand into existing actions. Workflow graphs compile into `pipeline.run`, using typed result references and explicit ordering edges. Runtime failures preserve earlier completed work and report partial completion.
 
+Built-in state-bearing results publish their existing top-level Session revision after outcome recording, matching the outer response for optimistic follow-up actions. Explicit operation ownership preserves native/provider/settings values and historical nested reports; compact payloads gain no new fields. Contact samples and existing revision rules remain unchanged. See [Action Results](action-results.md).
+
 GUI request transport parses and queues on worker threads; the GUI thread executes mutations against its Session. Requests do not call DLLs from transport threads. External pointer streams survive loss of GUI focus. Long-running actions occupy the Session thread; independent headless sessions suit offline batch work.
 
 Read-only queries cannot mutate document pixels or dispatch mutating actions. They do not finish strokes or increment revision. A bounded event buffer retains the most recent 512 action/pointer events for diagnostics, not persistent event sourcing. A separate append-only outcome journal records document mutations, raw pen samples and changed tiles with a SHA-256 chain. Playback applies verified results without executing plugins or external effects.

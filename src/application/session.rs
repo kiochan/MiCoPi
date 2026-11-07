@@ -568,6 +568,11 @@ impl Session {
                             error: failed.then(|| value["error"].to_string()),
                         });
                     }
+                    if op.is_some_and(Operation::publishes_session_result_revision) {
+                        if let Some(revision) = value.get_mut("revision") {
+                            *revision = json!(self.revision);
+                        }
+                    }
                     result = value;
                     if failed {
                         break;

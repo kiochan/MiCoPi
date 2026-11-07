@@ -60,6 +60,7 @@ The `engine` directory contains shared document structures and the image graph m
 | Path | Responsibility |
 | --- | --- |
 | `src/application/session.rs` | Single document owner, validation and execution boundaries |
+| `src/application/actions.rs`, `src/application/result_revision_tests.rs`, `scripts/smoke-result-revisions.py` | Explicit Session-owned result-revision publication, optimistic guards, opaque producer values and nested historical-report verification |
 | `src/application/atomic.rs` | Shared-tile rollback checkpoints and atomic action capability checks |
 | `src/application/replay.rs` | Recording boundaries, project persistence and replay actions |
 | `src/application/presentation_captures.rs` | Session-scoped capture IDs and bounded pending/recent diagnostics, separate from document and recorded UI state |

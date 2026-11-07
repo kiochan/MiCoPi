@@ -109,11 +109,11 @@ existing `group_id`, and guarantees three array properties:
 | `deleted_layer_ids` | Consumed rasters in original depth-first raster-storage order; empty for an empty subtree |
 | `deleted_mask_ids` | Consumed owner masks in original mask-metadata order; empty when no consumed owner has a mask |
 
-For the published revision, use the outer action response's `revision` or query
-`canvas.state` after execution. Some legacy built-in state-bearing results are
-assembled before final publication and can carry the preceding revision; aligning
-those snapshots is tracked in the [roadmap](../ROADMAP.md). The smoke check uses
-the published state, one-event boundary and verified outcome together.
+The result's top-level `revision` matches the published outer response and a
+following `canvas.state` query when no operation intervenes. Nested historical
+reports and plugin-owned values retain their own semantics; see
+[Action Results](action-results.md). The deletion smoke checks published state,
+the one-event boundary and verified outcome together.
 
 These are typed workflow output ports, rather than opaque private state. Pipeline
 references can select array entries with `/0`. A deleted ID is no longer a valid
