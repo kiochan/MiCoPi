@@ -140,7 +140,9 @@ for the 32-mask/64 MiB raw-A8 limit.
 
 [Group creation and hierarchy movement](mask-group-editing.md) separately retain
 all existing owners, raw planes and targets through one structural Undo/outcome.
-Group/subtree duplication and deletion, ungrouping, structural layer batches, Layer via
+[Group/subtree deletion](mask-group-delete.md) removes all consumed raster/group
+owner masks through one compound history entry. Group/subtree duplication,
+ungrouping, structural layer batches, Layer via
 Copy/Cut, owner Move/Free Transform and layer rotations, merges/stamp/flatten,
 clipboard mutations and group-mask Apply remain guarded where incomplete.
 Clipping masks remain planned. The full [mask design](raster-masks-design.md)

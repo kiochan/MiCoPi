@@ -2,6 +2,15 @@
 
 These are actual application captures, not interface mockups. Current images come from isolated GUI smoke checks and design previews of MiCoPi builds. Documentation deliberately reuses stable filenames so image updates do not require changing every guide.
 
+`mask-group-delete.png` is the reviewed English final Release capture from
+`scripts/smoke-mask-group-delete.py` on 2026-11-07. All four native Layers captures
+were reviewed. Undo restores the consumed Pass Through subtree and raw masks,
+while the outer folder, active Light raster and unrelated Paper mask target
+retain their separate roles. Hidden/disabled/unlinked properties and artist-owned
+names remain intact. The same 16-case run checks exact raw/composition references,
+compound history, result bindings, contacts, atomic recovery and DLL-free replay
+across JSONL/MCP/GUI; language changes preserve exported pixels.
+
 `mask-group-editing.png` is the reviewed English final Release capture from
 `scripts/smoke-mask-groups.py` on 2026-11-07. All four native Layers captures were
 reviewed. A new unmasked container wraps the existing layer/group mask owners;
@@ -54,6 +63,7 @@ when these dialogs open or cancel.
 | [Layer organization](layer-organization.png) | Layer color labels, pixel/position lock controls and shared name/filter discovery |
 | [Copied raster-mask owner](mask-owner-editing.png) | Independent source/copy masks, explicit copied-mask painting target and retained owner properties |
 | [Grouped raster-mask owners](mask-group-editing.png) | Retained masks beneath a new container, separate group inspection/painting targets and hierarchy feedback |
+| [Restored masked subtree](mask-group-delete.png) | Undo-restored group/raster masks, retained outer folder and separate inspector/painting targets |
 | [Multiple selected layers](layer-multi-selection.png) | Distinct selected/active layer feedback, shared properties and the selected count |
 | [Nested layer groups](layer-groups.png) | Hierarchy headers, isolated groups and the active raster painting target |
 | [Actual group composition](group-composition.png) | Read-only generated transparent, raster and isolated group blend topology |

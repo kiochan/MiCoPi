@@ -210,6 +210,12 @@ enum MaskChange {
         slot: usize,
         saved: Arc<super::raster_masks::MaskPlane>,
     },
+    Structural(Arc<MaskStructuralChange>),
+}
+#[derive(Clone)]
+struct MaskStructuralChange {
+    current: Vec<usize>,
+    saved: Vec<(usize, Arc<super::raster_masks::MaskPlane>)>,
 }
 #[derive(Clone)]
 struct HistoryGroup {
@@ -275,6 +281,17 @@ impl Edit {
                     .as_ref()
                     .map_or(0, |plane| plane.samples.memory_bytes()),
                 MaskChange::Replace { saved, .. } => saved.samples.memory_bytes(),
+                MaskChange::Structural(change) => {
+                    std::mem::size_of::<MaskStructuralChange>()
+                        + change.current.len() * std::mem::size_of::<usize>()
+                        + change.saved.len()
+                            * std::mem::size_of::<(usize, Arc<super::raster_masks::MaskPlane>)>()
+                        + change
+                            .saved
+                            .iter()
+                            .map(|(_, plane)| plane.samples.memory_bytes())
+                            .sum::<usize>()
+                }
             })
             + self.metadata_bytes
             + self.layer_change.as_ref().map_or(0, |c| match c {
@@ -1820,6 +1837,8 @@ mod mask_composition;
 mod mask_effects;
 #[path = "mask_geometry.rs"]
 mod mask_geometry;
+#[path = "mask_group_editing.rs"]
+mod mask_group_editing;
 #[path = "mask_owner_editing.rs"]
 mod mask_owner_editing;
 #[path = "mix.rs"]
@@ -1832,6 +1851,9 @@ mod raster_mask_project;
 mod selected_merge;
 pub use layer_merge::MergeLayers;
 pub use selected_merge::SelectedMergePlan;
+#[cfg(test)]
+#[path = "mask_group_editing_tests.rs"]
+mod mask_group_editing_tests;
 #[cfg(test)]
 #[path = "raster_mask_tests.rs"]
 mod raster_mask_tests;

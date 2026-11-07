@@ -5873,6 +5873,21 @@
             "minimum": 1,
             "maximum": 4294967295
           },
+          "deleted_group_ids": {
+            "type": "array", "minItems": 1, "maxItems": 16,
+            "items": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            "description": "Consumed group IDs in original group-record order, including the requested group."
+          },
+          "deleted_layer_ids": {
+            "type": "array", "minItems": 0, "maxItems": 15,
+            "items": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            "description": "Consumed raster IDs in original storage order; empty for an empty subtree."
+          },
+          "deleted_mask_ids": {
+            "type": "array", "minItems": 0, "maxItems": 32,
+            "items": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            "description": "Consumed raster/group owner-mask IDs in original mask-metadata order."
+          },
           "groups": {
             "type": "object",
             "description": "Versioned group hierarchy. group.query and core.groups expose its complete typed rows and child references."
@@ -6015,7 +6030,11 @@
           "layers",
           "active_layer",
           "revision",
-          "drawing"
+          "drawing",
+          "group_id",
+          "deleted_group_ids",
+          "deleted_layer_ids",
+          "deleted_mask_ids"
         ]
       }
     },

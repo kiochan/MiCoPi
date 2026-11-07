@@ -501,6 +501,7 @@ impl Document {
         self.commit_tree(tree, self.next_group_id)
     }
     pub fn group_delete(&mut self, id: u64) -> Result<(), String> {
+        self.validate_group_owner_edit()?;
         self.ensure_group_renderer()?;
         let mut tree = self.tree();
         let removed_ids = tree.descendants(GroupItem::group(id))?;
@@ -534,13 +535,20 @@ impl Document {
             .iter()
             .map(|m| self.layers[self.layer_index(m.id).unwrap()].mode)
             .collect();
+        let opacities: Vec<_> = metadata
+            .iter()
+            .map(|m| self.layers[self.layer_index(m.id).unwrap()].opacity)
+            .collect();
+        let mask_removal = self.plan_group_mask_removal(&removed_ids, &descendants);
         let graph = self.reindexed_graph(&metadata, None)?;
-        let prepared = self.prepare_group_plan(
+        let prepared = self.prepare_group_plan_with_masks(
             &graph,
             groups.as_ref(),
             &metadata,
             &modes,
+            &opacities,
             self.next_group_id,
+            &mask_removal.state,
             true,
         )?;
         self.finish();
@@ -562,7 +570,7 @@ impl Document {
             })
             .map(|i| self.layer_id(i))
             .unwrap();
-        let mut saved = Vec::new();
+        let mut saved = Vec::with_capacity(removed_ids.len());
         for i in (0..self.layers.len()).rev() {
             if removed_ids.contains(&self.layer_id(i)) {
                 saved.push((i, Arc::new(self.layers.remove(i))));
@@ -577,15 +585,17 @@ impl Document {
             .or_else(|| self.layer_index(next))
             .unwrap();
         self.normalize_layer_selection();
+        let mask_change = self.publish_group_mask_removal(mask_removal);
         self.install_group_plan(prepared);
         self.track_layer_order();
-        self.commit_composition(
+        self.commit_owner_composition(
             before,
             Some(LayerChange::Replace {
                 current: vec![],
                 saved,
                 active,
             }),
+            mask_change,
         );
         Ok(())
     }

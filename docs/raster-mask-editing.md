@@ -226,7 +226,7 @@ properties on hidden or disabled masks.
 
 The following remain guarded with `mask_editing_pending` while mask items exist:
 owner Move/Free Transform and layer rotations,
-group/subtree duplication/deletion and ungrouping, owner transfer, batch layer edits,
+group/subtree duplication and ungrouping, owner transfer, batch layer edits,
 merge/stamp/flatten and cut/paste. Their mutation plans/previews are guarded too.
 Mask-aware layer ordering is supported; the guard is not a promise that every
 structural action is disabled or complete. Selection operations, supported
@@ -245,8 +245,10 @@ Plain [single-layer owner duplicate/delete](mask-owner-editing.md) carries raw
 masks, source properties and target rules through one compound Undo/outcome.
 [Group creation and hierarchy movement](mask-group-editing.md) retain every
 existing owner, raw mask, target and selected/active raster ID, with shared
-source/candidate preflight and one structural Undo/outcome. Linked/unlinked owner
-transforms, group/subtree copy/delete/ungrouping, batch structure, Layer via
+source/candidate preflight and one structural Undo/outcome. [Group/subtree
+deletion](mask-group-delete.md) removes only consumed owner masks, with explicit
+target/selection fallback and one compound history edit. Linked/unlinked owner
+transforms, group/subtree copying/ungrouping, batch structure, Layer via
 Copy/Cut, complete merge/clipboard handling and clipping masks remain planned. The current native,
 host, transport and UI fixtures test their stated scopes; synthetic pen input
 does not establish physical tablet/driver compatibility. Final delivery evidence

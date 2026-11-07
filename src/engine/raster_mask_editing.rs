@@ -407,7 +407,29 @@ impl Document {
                 self.mark_mask_plane(id);
                 self.invalidate_mask_effect_id(id);
             }
+            MaskChange::Structural(change) => {
+                // Layer storage has already been swapped, but its composition
+                // metadata has not. Move the matching planes without validating
+                // owner identities in this deliberately transient state.
+                let change = Arc::make_mut(change);
+                let mut removed = Vec::with_capacity(change.current.len());
+                for &slot in change.current.iter().rev() {
+                    let plane = self.mask_planes.remove(slot);
+                    self.remove_mask_effect_cache(plane.id);
+                    self.replay_mask_tiles.retain(|(mask, _)| *mask != plane.id);
+                    removed.push((slot, Arc::new(plane)));
+                }
+                removed.reverse();
+                change.current = change.saved.iter().map(|(slot, _)| *slot).collect();
+                for (slot, plane) in std::mem::replace(&mut change.saved, removed) {
+                    let id = plane.id;
+                    self.mask_planes.insert(slot, Arc::unwrap_or_clone(plane));
+                    self.mark_mask_plane(id);
+                    self.invalidate_mask_effect_id(id);
+                }
+            }
         }
+        self.mask_contact = None;
         self.bump_mask_storage_epoch();
     }
     pub(super) fn swap_mask_tiles(&mut self, tiles: &mut BTreeMap<(u64, usize), Arc<Vec<u8>>>) {

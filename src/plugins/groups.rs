@@ -108,6 +108,25 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
     let name = args["name"].as_str().map(str::to_owned);
     let mut result_id = id;
     let mut merged_layer = None;
+    // Cold structural result bookkeeping shares the final state response. Only
+    // bounded metadata IDs are copied; raster/A8 buffers stay document-owned.
+    let removed_before = (op == GroupDelete).then(|| {
+        (
+            s.doc
+                .composition()
+                .groups
+                .map_or_else(Vec::new, |tree| tree.groups.iter().map(|g| g.id).collect()),
+            (0..s.doc.layers.len())
+                .map(|index| s.doc.layer_id(index))
+                .collect::<Vec<_>>(),
+            s.doc
+                .mask_state()
+                .items
+                .iter()
+                .map(|m| m.id)
+                .collect::<Vec<_>>(),
+        )
+    });
     match op {
         GroupCreate | GroupCreateSelected => {
             let members: Vec<GroupItem> = if op == GroupCreateSelected {
@@ -190,6 +209,30 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
     }
     if let Some(id) = merged_layer {
         state["layer_id"] = json!(id);
+    }
+    if let Some((groups, layers, masks)) = removed_before {
+        let remaining = |rows: &Value| -> BTreeSet<u64> {
+            rows.as_array()
+                .into_iter()
+                .flatten()
+                .filter_map(|row| row["id"].as_u64())
+                .collect()
+        };
+        let group_ids = remaining(&state["groups"]["groups"]);
+        let layer_ids = remaining(&state["layers"]);
+        let mask_ids: BTreeSet<_> = s.doc.mask_state().items.iter().map(|m| m.id).collect();
+        state["deleted_group_ids"] = json!(groups
+            .into_iter()
+            .filter(|id| !group_ids.contains(id))
+            .collect::<Vec<_>>());
+        state["deleted_layer_ids"] = json!(layers
+            .into_iter()
+            .filter(|id| !layer_ids.contains(id))
+            .collect::<Vec<_>>());
+        state["deleted_mask_ids"] = json!(masks
+            .into_iter()
+            .filter(|id| !mask_ids.contains(id))
+            .collect::<Vec<_>>());
     }
     Ok(state)
 }

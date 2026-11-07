@@ -1,0 +1,28 @@
+{"action":"canvas.new","args":{"width":120,"height":96}}
+{"action":"layer.fill_color","args":{"color":"#243044"}}
+{"action":"layer.rename","args":{"name":"Paper"}}
+{"action":"layer.add","args":{}}
+{"action":"layer.fill_color","args":{"color":"#E5A4C4"}}
+{"action":"layer.rename","args":{"name":"Cel"}}
+{"action":"layer.set","args":{"opacity":0.5372549019607843}}
+{"action":"group.create","args":{"name":"Color","members":[{"kind":"layer","id":2}]}}
+{"action":"group.create","args":{"name":"Retained parent","members":[{"kind":"group","id":1}]}}
+{"action":"mask.create","args":{"owner":{"kind":"layer","id":2},"source":"hide_all"}}
+{"action":"brush.set","args":{"color":"#FFFFFF","radius":18,"opacity":1,"stabilizer":0.5,"pressure_size":true,"pressure_opacity":true}}
+{"action":"canvas.stroke","args":{"tool":"brush","points":[{"x":18,"y":60,"pressure":0.2,"pen":true,"time":0},{"x":45,"y":30,"pressure":0.8,"pen":true,"time":15},{"x":75,"y":66,"pressure":1,"pen":true,"time":30},{"x":104,"y":38,"pressure":0.3,"pen":true,"time":45}]}}
+{"action":"mask.set","args":{"mask_id":1,"density":220,"feather_radius_px":3,"linked":false}}
+{"action":"mask.create","args":{"owner":{"kind":"group","id":1},"select":false}}
+{"action":"mask.fill","args":{"mask_id":2,"value":196}}
+{"action":"mask.create","args":{"owner":{"kind":"group","id":2},"select":false}}
+{"action":"mask.fill","args":{"mask_id":3,"value":224}}
+{"action":"mask.target","args":{"target":{"kind":"mask","id":2}}}
+{"action":"group.delete","args":{"group_id":1}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}
+{"action":"history.undo","args":{}}
+{"action":"pipeline.run","args":{"atomic":true,"steps":[{"id":"delete","action":"group.delete","args":{"group_id":1}},{"id":"undo","action":"history.undo","args":{}},{"id":"name","action":"layer.rename","args":{"layer_id":{"$ref":"delete#/result/deleted_layer_ids/0"},"name":"Restored cel"}},{"id":"mask","action":"mask.fill","args":{"mask_id":{"$ref":"delete#/result/deleted_mask_ids/0"},"value":176}}]}}
+{"action":"mask.query","args":{}}
+{"action":"canvas.export","args":{"path":"target/example-output/mask-group-delete.png"}}
+{"action":"document.save","args":{"path":"target/example-output/mask-group-delete.mcp"}}
+{"action":"replay.export","args":{"path":"target/example-output/mask-group-delete.mcreplay"}}
+{"action":"replay.verify","args":{}}

@@ -194,6 +194,73 @@ The final 2026-11-06 GNU Release foundation desktop/CLI executables were 10,266,
 
 The mask-specific JSONL/MCP/GUI check passed, including four reviewed language captures. Separate runtime, workflow, linked-graph, replay, group, selected-merge and Pass Through GUI checks passed. Subsequent capture stabilization adds request/viewport correlation and retained callback acknowledgement; use the capture-aware checks below when validating current builds rather than treating file existence as completion.
 
+## Raster-mask group deletion checks
+
+Run `python scripts/smoke-mask-group-delete.py --cli <built-cli> --gui <built-desktop>`
+with matching default plugins; `--skip-gui` selects JSONL/MCP. Independent tiny
+tree/raw/composition references cover nested and empty deletion, original-order
+result arrays, explicit target/selection fallback and compound Undo. See
+[Mask Group Deletion](mask-group-delete.md) for the supported scope.
+
+Nine focused shared tests and three engine tests passed. They cover interleaved
+mask slots, stable surviving buffers, shared immutable structural history,
+accounted saved-plane/bookkeeping costs, empty masked groups, source/candidate
+capabilities, independent partial opacity, contact continuity, journal/render
+failure, project/outcome restoration and typed workflow result bindings. Atomic
+Delete/Undo/edit/failure checks preserve the checkpoint's immutable history even
+after restored raw planes are edited. Unshared Undo moves saved planes; a retained
+checkpoint can require copies of affected restored planes, while survivors stay
+untouched. Ordinary Session Undo creates such a rollback checkpoint; direct
+unshared engine Undo can move ownership. The structural variant retains the
+common mask-change enum size.
+
+The complete headless run passed 591 tests with 9 ignored in serial batches of
+eight. A subsequent test-only addition passed separately: a failed recorded Undo
+retains the exact deleted state/history/head, and atomic Undo/edit/failure of a
+preexisting deletion leaves its saved bytes intact for later restoration. The
+partial-write branch first verifies that mutation remains faulted, then explicitly
+simulates recovered storage in the fixture, matching existing replay tests.
+Production has no public in-place recording reset; this is not a recovery UI.
+
+Six focused desktop tests passed real nested/empty group deletion and Undo,
+original-ID buffer retention, dirty group/layer names, local/external Brush/Hand,
+separately queued commands, and actual Commands palette form Run/Cancel with
+recorded/pending sample continuity. Early fixture checks were corrected to locate
+retained rasters by stable ID after setup reordering and to allow the existing
+execution-context suffix on the shared contact-rejection message. No production
+visibility or buffer behavior was changed to satisfy those checks.
+
+The final desktop library run passed 802 tests with 9 ignored in serial isolated
+batches of eight, including the final checkpoint-pinned recovery regression.
+Together with the headless 591/9 run and the subsequent focused test, this covers
+the shared and final desktop contracts. Fresh processes retain the preceding GNU
+TLS-index test-runner workaround; the cause remains unproven and this is not a
+shipping runtime fix. Workers remain serial, below normal priority, restricted
+to at most two logical CPUs, with one Cargo job and one Rust test thread.
+
+The matching Release smoke passed all 16 independent deletion cases: 334 JSONL
+commands, 399 MCP commands, GUI parity, four reviewed native Layers captures and
+DLL-free outcome archives. It covers nested/empty folders, interleaved masks,
+owned/unrelated/Pixels targets, last-mask removal, exact raw/filter/selection
+retention, one publication/Undo, typed restored-ID bindings, final-raster/contact
+rejection and atomic recovery. Published revision checks use the outer response
+or a fresh `canvas.state`; legacy handler snapshots can precede publication.
+
+All existing Release mask hierarchy, single-owner, public editing, foundation,
+canvas geometry and unmasked group transport smokes passed, including previous
+reader/sampler rejection. Runtime, workflow and complete localization smokes
+passed GUI parity, external catalog reload, searchable settings and unchanged
+artwork. The 28-command example produced a 120-by-96 PNG, two restored groups,
+mask IDs 1/2/3 and a sealed verified 26-event/98,524-byte archive. Archive bytes
+include paths, timestamps and all document outcomes, not an isolated compression
+ratio.
+
+Release desktop/CLI executables are 10,613,760/4,389,376 bytes, respectively,
+16 KiB each above the preceding group-creation/movement stage. No dependency,
+native ABI or project/recording format change is introduced. Pointer/history
+assertions cover allocation scope; physical tablet compatibility, pen latency
+and large-image throughput were not measured.
+
 ## Raster-mask group hierarchy checks
 
 Run `python scripts/smoke-mask-groups.py --cli <built-cli> --gui <built-desktop>`

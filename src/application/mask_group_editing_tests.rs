@@ -895,12 +895,7 @@ fn mask_group_render_journal_and_atomic_failures_restore_tree_allocators_raw_dat
 #[test]
 fn mask_group_projects_and_dll_free_outcomes_preserve_owners_while_other_group_edits_remain_guarded(
 ) {
-    let Fixture {
-        mut s,
-        inner,
-        hidden,
-        ..
-    } = fixture();
+    let Fixture { mut s, inner, .. } = fixture();
     let wrapper = create(&mut s, json!([layer(1), group(inner)]), None);
     one_edit(
         &mut s,
@@ -931,7 +926,6 @@ fn mask_group_projects_and_dll_free_outcomes_preserve_owners_while_other_group_e
     );
     for (action, args) in [
         ("group.duplicate", json!({"group_id":inner})),
-        ("group.delete", json!({"group_id":hidden})),
         ("group.ungroup", json!({"group_id":wrapper})),
         ("group.merge", json!({"group_id":inner})),
         (
