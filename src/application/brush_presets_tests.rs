@@ -402,6 +402,9 @@ fn brush_presets_library_file_edits_reject_chunked_contacts_and_valid_apply_fini
         }
         let samples = transcript(&mut s);
         assert_eq!(samples.len(), 270);
+        // A rejected action can materialize the same dirty surface for its
+        // replay boundary. Compare composed pixels, not an older cache frame.
+        s.doc.compose();
         let before = document(&s);
         let parameters = s.parameters.clone();
         let selected = s.selected_tool.clone();
@@ -477,6 +480,7 @@ fn brush_presets_unsupported_native_options_reject_before_ending_existing_contac
     assert_eq!(catalog["user"][0]["available"], false);
     s.pointer(sample(ToolKind::Brush, PointerPhase::Down, 0))
         .unwrap();
+    s.doc.compose();
     let before = document(&s);
     let state = s.state();
     let samples = transcript(&mut s);
