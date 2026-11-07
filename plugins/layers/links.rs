@@ -117,8 +117,9 @@ fn feedback(ui: &mut Ui, appearance: &crate::configuration::Appearance, text: St
     ui.painter()
         .with_clip_rect(ui.clip_rect().intersect(rect))
         .galley(rect.min, galley, color);
-    response
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), text));
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), text.clone())
+    });
 }
 
 impl Editor {
