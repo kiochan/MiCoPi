@@ -327,8 +327,27 @@ fn native_plugin_dll_lifecycle() {
     let disabled = Registry::load_with_disabled(&plugins, &["broken".into()]).unwrap();
     assert!(
         disabled.diagnostics.is_empty(),
-        "disabled DLLs must never load"
+        "disabled DLLs must never load; bundled plugin diagnostics: {:?}",
+        disabled.diagnostics
     );
+    for action in [
+        "brush.presets.query",
+        "brush.presets.upsert",
+        "brush.presets.apply",
+    ] {
+        assert!(
+            disabled.actions.contains_key(action),
+            "fresh bundled profiles must register {action}: {:?}",
+            disabled.diagnostics
+        );
+    }
+    assert_eq!(
+        disabled.contribution_owner("states", "painting.presets"),
+        Some("painting")
+    );
+    let state = &disabled.states["painting.presets"];
+    assert_eq!(state.action, "brush.presets.query");
+    assert!(disabled.actions[&state.action].is_read_only());
     let fixture = std::env::var_os("MICOPI_TEST_BAD_DLL")
         .expect("set MICOPI_TEST_BAD_DLL to the incompatible ABI fixture DLL");
     std::fs::copy(fixture, bad.join("missing.dll")).unwrap();

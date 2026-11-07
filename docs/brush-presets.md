@@ -38,7 +38,7 @@ sampled tips, textures and additional dynamics are still planned.
 | `brush.presets.export` | Write explicit `preset_ids` to `path`; report selected IDs, byte count and SHA-256 |
 | `brush.presets.reload` | Explicitly reload the active profile's library without resetting painting defaults |
 
-The read-only public state is `painting.presets`. Query returns `version`,
+The read-only public state is `painting.presets`. Its query action and state are registered by the painting package; the Brush package owns the library mutation commands and compiled controls. Query returns `version`,
 `library_token`, `library`, `user`, `builtin`, `matching_preset_ids` and
 `profile_path`. Each user row includes its preset, availability, reason and
 matching status. Other actions accept optional `expected_library_token` for

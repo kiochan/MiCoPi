@@ -127,6 +127,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Reliability, performance and compatibility
 
+- Register the public preset query/state with the painting package before dependent Brush commands load, preserving state namespaces. Project editor-schema constants/string annotations into the supported registry schema subset while retaining strict typed limits. Extend the fresh-bootstrap lifecycle regression to report diagnostics and require preset action/state registration.
+
 - Reject complete encoded settings documents above the existing 1 MiB read limit before replacing the file, preventing a bounded preset import plus preserved unknown fields from creating an unreadable profile.
 
 - Write unmasked stroke-opacity transport fixtures without a journal using the strict MICOPI02 envelope and no recording suffix; retain MICOPI04 only for cases with actual raw-mask planes. MICOPI03 requires a real archive, including when its declared length is zero; do not forge an empty embedded recording. Preserve all numeric references and project validation. CI for `927702b` passed 963 desktop, 707 headless, 88 native painting and six SDK tests, the bounded native probe, and preceding native/runtime/mask/owner/linked smokes before this fixture-format mismatch stopped the new stroke transport smoke. The next run exposed the empty MICOPI03 recording as a second fixture mismatch; corrected MICOPI02 transport verification remains pending.
