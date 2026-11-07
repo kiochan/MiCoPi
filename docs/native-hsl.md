@@ -53,6 +53,9 @@ including one private validation point. Parameter/result overlap rejects before
 publication. Counts preserve alpha-zero exclusion and the explicit RGB aggregate.
 No pointer is retained and no document operation or typed contact invokes discovery.
 These bounds are not measured latency or process peak memory.
+The opt-in Release [HSL cost probe](histogram-performance.md#hsl-dirty-region-and-observation-probe)
+now covers small padded regions and bounded observations with independent integer
+references and callback allocation counts; its results await CI.
 
 ## Verification and next integration
 

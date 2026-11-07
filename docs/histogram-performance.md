@@ -8,7 +8,7 @@ work bounds, not a latency guarantee.
 
 ## Release callback probe
 
-CI runs the ignored `bounded_histogram_cost` test with:
+CI runs the ignored tests matching `bounded_histogram_cost` with:
 
 ```powershell
 cargo test --release --lib --locked -p micopi-compositing bounded_histogram_cost -- --ignored --nocapture --test-threads=1
@@ -42,6 +42,33 @@ already prepared. There is no machine-specific timing threshold. The maximum
 prepared input storage is 64 MiB RGBA plus 16 MiB A8, released before moving to
 another source size; this is not a process peak-memory measurement. Histograms
 use caller-owned fixed output records, with no image output buffer.
+
+## HSL dirty-region and observation probe
+
+The same CI filter also selects
+`bounded_histogram_cost_hsl_regions_and_sampling`. It negotiates the independent
+HSL API and uses opaque callback pointers, prepared 1024/4096-square immutable
+RGBA sources and two centered output regions: 32-square and 256-square. Each
+output has eight padding pixels per row. An integer 180-degree hue reference
+reflects RGB about `(min + max)/2`, preserves nonzero alpha and canonicalizes
+alpha-zero source-composition pixels. It shares no HSL conversion code with the
+native implementation.
+
+Every first/warm render checks all output pixels and padding, zero callback Rust
+heap allocations and unchanged output allocation identity/capacity. Failures name
+the first mismatching pixel without dumping an image-sized array. The same
+independent reference checks every bin for budgets 4,096 and 65,536. Full source
+integrity checks run after the calls. References, source/output preparation,
+validation assertions and printing stay outside timings.
+
+The HSL probe prints first-call, nine-warm-call median/p95 and allocation results.
+It includes native parameter preparation, admission and scalar color work; it
+excludes host/Session parameter caches, input processing, history/replay, UI/GPU,
+DLL loading and physical-device latency. Its largest prepared source is 64 MiB;
+ROI outputs/references are bounded small buffers. Tests run serially and release
+their input storage between cases. This is not a full-frame repaint or process
+peak-memory measurement. Runtime results remain pending CI; there are no local
+large-image or machine-specific timing assertions.
 
 ## Evidence and limits
 

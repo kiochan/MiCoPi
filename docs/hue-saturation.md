@@ -114,7 +114,10 @@ native preparation uses another fixed 64-record scalar array. This is bounded
 metadata, separate from image/history/preview storage and process peak memory.
 No parameter preparation, registry discovery or JSON serialization is added to
 typed pointer MOVE. Native HSL adds scalar color work for each rendered dirty
-pixel; end-to-end dirty-region and large-image cost measurements remain open.
+pixel. The ignored Release [HSL cost probe](histogram-performance.md#hsl-dirty-region-and-observation-probe)
+now checks padded 32/256-square regions and bounded observations on 1024/4096-square
+sources, including independent pixels/bins and callback allocations. Results
+await CI; end-to-end dirty-region and large-image costs remain open.
 
 Authored regressions cover mixed unused HSL/Curves slots, exact primary-color
 outputs, source observations, partial adjustment patches, Pass Through and masks,

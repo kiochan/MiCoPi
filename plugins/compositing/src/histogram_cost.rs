@@ -269,3 +269,229 @@ fn bounded_histogram_cost() {
             .all(|(i, p)| p == coverage(i)));
     }
 }
+
+// A 180-degree HSL turn reflects each byte about (min + max)/2. This integer
+// oracle uses no production HSL conversion, grid, alpha or evaluator helpers.
+fn half_turn(value: u32) -> u32 {
+    if value >> 24 == 0 {
+        return 0;
+    }
+    let [r, g, b] = [16, 8, 0].map(|shift| (value >> shift) & 255);
+    let sum = r.max(g).max(b) + r.min(g).min(b);
+    (value & 0xff000000) | ((sum - r) << 16) | ((sum - g) << 8) | (sum - b)
+}
+fn hsl_reference(side: usize, budget: u32) -> abi::HistogramResult {
+    let grid = match budget {
+        4096 => 64,
+        65536 => 256,
+        _ => unreachable!(),
+    };
+    let step = side / grid;
+    let mut result = abi::HistogramResult {
+        grid_width: grid as u32,
+        grid_height: grid as u32,
+        sampled_pixels: budget as u64,
+        ..Default::default()
+    };
+    for row in 0..grid {
+        for column in 0..grid {
+            let value = half_turn(pixel(
+                (row * step + step / 2) * side + column * step + step / 2,
+            ));
+            if value >> 24 == 0 {
+                continue;
+            }
+            result.nontransparent_pixels += 1;
+            for (channel, shift) in [16, 8, 0].into_iter().enumerate() {
+                let byte = ((value >> shift) & 255) as usize;
+                result.bins[channel][byte] += 1;
+                result.bins[3][byte] += 1;
+            }
+        }
+    }
+    result
+}
+fn measure_hsl_roi(side: usize, roi: usize, pixels: &[u32], callback: abi::HslRenderFn) {
+    const WARM: usize = 9;
+    const PADDING: u32 = 0xdeadbeef;
+    let callback = black_box(callback);
+    let stride = roi + 8;
+    let origin = (side - roi) / 2;
+    let layer = abi::CompositeLayer {
+        data: pixels.as_ptr(),
+        len: pixels.len(),
+        opacity: 255,
+        visible: 1,
+        mode: 0,
+    };
+    let nodes = [
+        node(0, 0, 0, 0, 1.),
+        node(11, 0, 0, 0, 1.),
+        node(3, 1, 0, 0, 1.),
+    ];
+    let parameters = abi::HslParameters {
+        hue: 180.,
+        saturation: 0.,
+        lightness: 0.,
+    };
+    let expected = (0..roi * stride)
+        .map(|i| {
+            if i % stride >= roi {
+                PADDING
+            } else {
+                half_turn(pixel((origin + i / stride) * side + origin + i % stride))
+            }
+        })
+        .collect::<Vec<_>>();
+    let mut output = vec![PADDING; roi * stride];
+    let allocation = (output.as_ptr(), output.capacity());
+    let mut target = abi::Pixels {
+        data: output.as_mut_ptr(),
+        len: output.len(),
+        width: roi as u32,
+        height: roi as u32,
+        stride: stride as u32,
+        origin_x: origin as u32,
+        origin_y: origin as u32,
+    };
+    let mut times = [0.; WARM];
+    let mut first = 0.;
+    for iteration in 0..=WARM {
+        ALLOCATIONS.with(|count| count.set(0));
+        TRACK.with(|track| track.set(true));
+        let started = Instant::now();
+        let status = unsafe {
+            callback(
+                black_box(nodes.as_ptr()),
+                3,
+                black_box(&layer),
+                1,
+                std::ptr::null(),
+                0,
+                std::ptr::null(),
+                0,
+                black_box(&parameters),
+                1,
+                side as u32,
+                side as u32,
+                black_box(&mut target),
+            )
+        };
+        let elapsed = started.elapsed().as_secs_f64() * 1000.;
+        TRACK.with(|track| track.set(false));
+        assert_eq!(status, abi::OK);
+        assert_eq!(ALLOCATIONS.with(Cell::get), 0);
+        if let Some((index, (actual, wanted))) = output
+            .iter()
+            .zip(&expected)
+            .enumerate()
+            .find(|(_, (a, b))| a != b)
+        {
+            panic!("HSL ROI mismatch source={side} roi={roi} index={index} actual={actual:08x} expected={wanted:08x}");
+        }
+        assert_eq!((output.as_ptr(), output.capacity()), allocation);
+        assert_eq!(
+            (
+                target.data as usize,
+                target.len,
+                target.width,
+                target.height,
+                target.stride,
+                target.origin_x,
+                target.origin_y
+            ),
+            (
+                allocation.0 as usize,
+                roi * stride,
+                roi as u32,
+                roi as u32,
+                stride as u32,
+                origin as u32,
+                origin as u32
+            )
+        );
+        if iteration == 0 {
+            first = elapsed;
+        } else {
+            times[iteration - 1] = elapsed;
+        }
+    }
+    times.sort_by(f64::total_cmp);
+    println!("hsl_render_cost source_side={side} roi_side={roi} stride={stride} first_ms={first:.6} warm_median_ms={:.6} warm_p95_ms={:.6} callback_allocations=0 output_allocation_reused=true independent_rgba_and_padding=true",times[WARM/2],times[WARM-1]);
+}
+
+#[test]
+#[ignore = "Opt-in Release native HSL dirty-region and sampling cost"]
+fn bounded_histogram_cost_hsl_regions_and_sampling() {
+    assert!(
+        !cfg!(debug_assertions),
+        "Run this ignored measurement with --release"
+    );
+    let pointer = crate::hsl::micopi_hsl_v1();
+    assert!(!pointer.is_null());
+    let header = unsafe { std::ptr::read_unaligned(pointer.cast::<abi::Header>()) };
+    assert_eq!(header.abi_version, 1);
+    assert!(header.struct_size >= std::mem::size_of::<abi::HslApi>() as u32);
+    let api = unsafe { &*pointer };
+    let render = api.render.unwrap();
+    let sample = black_box(api.histogram.unwrap());
+    println!("Scope: negotiated exported HSL callbacks, prepared 1024/4096-square immutable RGBA; 32/256-square padded center ROIs and 4096/65536 centered histogram samples. Includes native parameter preparation/preflight and kernel work. Excludes source allocation, independent references, host/Session caches, undo/replay, UI/GPU and physical tablet latency. No machine-specific time thresholds.");
+    for side in [1024usize, 4096] {
+        let pixels = (0..side * side).map(pixel).collect::<Vec<_>>();
+        for roi in [32, 256] {
+            measure_hsl_roi(side, roi, &pixels, render);
+        }
+        let layer = abi::CompositeLayer {
+            data: pixels.as_ptr(),
+            len: pixels.len(),
+            opacity: 255,
+            visible: 1,
+            mode: 0,
+        };
+        let nodes = [
+            node(0, 0, 0, 0, 1.),
+            node(11, 0, 0, 0, 1.),
+            node(3, 1, 0, 0, 1.),
+        ];
+        let parameters = abi::HslParameters {
+            hue: 180.,
+            saturation: 0.,
+            lightness: 0.,
+        };
+        for budget in [4096, 65536] {
+            let request = abi::HistogramRequest {
+                abi_version: 1,
+                struct_size: 24,
+                width: side as u32,
+                height: side as u32,
+                stride: side as u32,
+                max_samples: budget,
+            };
+            measure(
+                &format!("hsl_half_turn_{side}"),
+                &hsl_reference(side, budget),
+                |output| unsafe {
+                    sample(
+                        black_box(&request),
+                        black_box(nodes.as_ptr()),
+                        3,
+                        black_box(&layer),
+                        1,
+                        std::ptr::null(),
+                        0,
+                        std::ptr::null(),
+                        0,
+                        black_box(&parameters),
+                        1,
+                        output,
+                    )
+                },
+            );
+        }
+        assert!(pixels
+            .iter()
+            .copied()
+            .enumerate()
+            .all(|(i, p)| p == pixel(i)));
+    }
+}
