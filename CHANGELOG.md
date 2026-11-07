@@ -6,6 +6,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Painting and document editing
 
+- Correct the analytic-tip native rejection fixture to pass the 80-byte options prefix at the proper nesting depth. CI for `80bcc11` passed 1,104 desktop tests with nine ignored, then found this test-only compiler error before native runtime checks; corrected native and complete runtime verification remain pending.
+
 - Add an engine-owned bounded Levels plan cache that retains its renderer/DLL lifetime, reuses unchanged tables without allocation or native calls, and stages changed slots before atomic cache publication. Preflight every intent and the 64-table bound before preparation; failed rebuilds retain the prior provider/tables. Render by borrowing cached tables, without registry access or repeated Gamma preparation. Add call-count, provider-change, domain/budget and failure-recovery regressions. Installing this cache in document graphs and exposing Levels effects remain pending; runtime validation is pending CI.
 
 - Add a strict typed Levels intent model and shared renderer preparation/prepared-plan contracts. Validate byte fields and finite gamma before native preparation, keep derived tables outside serialized intent, and borrow tables across repeated renders. The native adapter enforces advertised mask/mix/blend capabilities and table bounds before dispatch; old renderers explicitly reject Levels while retaining their existing path. Add persistence-domain, legacy-rejection and actual-DLL table-reuse/alpha references. Document plan caching, editable graph registration and adjustment/UI integration remain planned; runtime verification is pending CI.

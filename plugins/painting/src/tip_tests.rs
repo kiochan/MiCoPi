@@ -566,7 +566,7 @@ fn analytic_tip_capped_loan_failure_ends_native_contact_without_retaining_host_p
             op.base.base.base.flags |= abi::TOOL_OPTION_A8_TARGET;
         }
         assert_eq!(
-            unsafe { configure(pointer, &op.base.base.base.base.base) },
+            unsafe { configure(pointer, &op.base.base.base.base) },
             abi::OK
         );
         assert_eq!(
