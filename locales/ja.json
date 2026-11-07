@@ -1395,5 +1395,12 @@
   "Finish the current contact before changing layer structure": "現在の入力を終了してからレイヤー構造を変更してください",
   "Group selectors must be bounded integers": "グループの指定値は有効範囲内の整数にしてください",
   "Group entries must be an array": "グループの項目は配列で指定してください",
-  "Group entry IDs must be positive": "グループ項目の ID は正の整数にしてください"
+  "Group entry IDs must be positive": "グループ項目の ID は正の整数にしてください",
+  "Auto: Mask, Selection or Layer": "自動：マスク、選択範囲またはレイヤー",
+  "Layer and linked mask": "レイヤーとリンクしたマスク",
+  "Layer pixels": "レイヤーピクセル",
+  "Raster mask": "ラスターマスク",
+  "Mask only; layer pixels stay fixed.": "マスクのみを移動し、レイヤーピクセルは固定します。",
+  "Unlinked mask stays fixed.": "リンクしていないマスクは固定します。",
+  "Exposed mask areas reveal the layer.": "マスクの空いた領域にはレイヤーの内容が表示されます。"
 }

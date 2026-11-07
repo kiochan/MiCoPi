@@ -101,6 +101,8 @@ mod affine_tests;
 #[cfg(test)]
 mod movement_tests;
 #[cfg(test)]
+mod owner_movement_tests;
+#[cfg(test)]
 mod skew_tests;
 #[cfg(test)]
 mod transform_repeat_tests;

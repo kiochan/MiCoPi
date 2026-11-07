@@ -22,6 +22,13 @@ The host checks locks before invoking opaque actions and again at every mutable 
 
 ## SDK and builds
 
+Generic mutable RGBA loans still reject an A8 painting target, and generic opaque
+geometry remains guarded on mask-bearing documents. The known built-in
+[integer owner Move](raster-owner-movement.md) instead validates an explicit
+domain, stages native outputs from immutable sources and commits a checked
+RGBA/A8 pair. Extensions can dispatch that registered action; it does not grant
+opaque geometry callbacks unrestricted access or add a new ABI loan.
+
 Isolated [layer groups](layer-groups.md) and transparent image nodes use an optional complete `CompositorApiFeatures` tail. The existing `CompositorApi` prefix and render callback stay unchanged; its advertised `struct_size` must cover the appended `u64 capabilities` before the host reads `COMPOSITOR_TRANSPARENT`. Kind 4 is a constant transparent source with zero `a`, `b`, `mode` and `amount`. New hosts retain prefix-only DLLs for original plans and reject unsupported groups/transparent graphs before installation. Extended DLLs retain original four-kind behavior. Input/output spans must be bounded and disjoint; rendering retains one dirty-region call and 64 per-pixel `u32` slots without image intermediates.
 
 crates/plugin-api contains dependency-free repr(C) types, function tables and include/micopi_plugin.h. Independent examples are painting, native-paint, ai-assistant and compositing. The SDK source package builds without the host or GUI crates.

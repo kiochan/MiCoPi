@@ -471,7 +471,7 @@ impl Operation {
                 vec![],
             ),
             Self::MovePixels => (
-                json!({"dx":{"type":"integer","minimum":-4096,"maximum":4096},"dy":{"type":"integer","minimum":-4096,"maximum":4096},"target":{"type":"string","enum":["auto","layer","selection","selection_mask"],"description":"Defaults to movement preferences; auto moves selected pixels when a selection exists, otherwise the active layer."}}),
+                json!({"dx":{"type":"integer","minimum":-4096,"maximum":4096},"dy":{"type":"integer","minimum":-4096,"maximum":4096},"target":{"type":"string","enum":["auto","layer","selection","selection_mask"],"description":"Defaults to movement preferences. Auto first moves the selected raster painting mask, otherwise selected pixels or the active layer. Explicit layer moves its linked mask too. Masked selected-pixel and group-mask movement remain unsupported."},"mask_id":{"type":"integer","minimum":1,"maximum":4294967295u64,"description":"Move this whole raw raster-owner mask independently of painting target, active layer and pixel selection. Use only with an omitted or auto target; overrides stored target preferences. Uncovered mask samples reveal white."}}),
                 vec!["dx", "dy"],
             ),
             Self::TransformPixels => (
@@ -492,7 +492,7 @@ impl Operation {
             ),
             Self::TransformPlan => return Self::TransformPixels.schema(),
             Self::Nudge => (
-                json!({"direction":{"type":"string","enum":["left","right","up","down"]},"large":{"type":"boolean","default":false},"target":{"type":"string","enum":["auto","layer","selection","selection_mask"]}}),
+                json!({"direction":{"type":"string","enum":["left","right","up","down"]},"large":{"type":"boolean","default":false},"target":{"type":"string","enum":["auto","layer","selection","selection_mask"],"description":"Same domain rules as canvas.move; offsets use the configured movement steps."},"mask_id":{"type":"integer","minimum":1,"maximum":4294967295u64,"description":"Nudge this whole raw raster-owner mask. Requires an omitted or auto target and overrides stored target preferences."}}),
                 vec!["direction"],
             ),
             Self::CanvasSize => (

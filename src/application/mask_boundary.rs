@@ -15,16 +15,17 @@ impl Session {
             return Ok(());
         }
         use Operation::*;
+        if matches!(operation, Some(MovePixels | Nudge)) {
+            return crate::plugins::movement::admit_masked(self, args);
+        }
         if matches!(
             operation,
             Some(
-                MovePixels
-                    | TransformPixels
+                TransformPixels
                     | TransformPreview
                     | TransformPlan
                     | TransformRepeat
                     | TransformRepeatCopy
-                    | Nudge
                     | RotateLayerClockwise
                     | RotateLayerCounterclockwise
                     | LayerViaCopy

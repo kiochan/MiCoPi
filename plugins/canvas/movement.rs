@@ -1,6 +1,7 @@
 //! Bounded outline-only movement gestures. No pixel, mask or JSON work on MOVE.
 use super::*;
 use crate::application::MoveTarget;
+use crate::plugins::movement::MoveDestination;
 pub(super) fn target_title(t: MoveTarget) -> &'static str {
     match t {
         MoveTarget::Auto => "Auto: Selection or Layer",
@@ -15,45 +16,79 @@ pub(super) const TARGETS: [MoveTarget; 4] = [
     MoveTarget::Selection,
     MoveTarget::SelectionMask,
 ];
+fn move_target_title(target: MoveTarget) -> &'static str {
+    if target == MoveTarget::Auto {
+        "Auto: Mask, Selection or Layer"
+    } else {
+        target_title(target)
+    }
+}
 pub(super) struct Gesture {
-    source: (u64, u64, u64),
+    source: (u64, u64),
     start: Pos2,
     delta: [i32; 2],
     bounds: [usize; 4],
-    target: MoveTarget,
+    destination: MoveDestination,
+    masked_owner: bool,
 }
 impl Editor {
+    pub(super) fn masked_movement_pending(&self) -> bool {
+        self.movement_gesture
+            .as_ref()
+            .is_some_and(|gesture| gesture.masked_owner)
+    }
+    pub(super) fn masked_movement_input(
+        &self,
+        held: crate::ui::keymap::InputState,
+        middle: bool,
+    ) -> bool {
+        self.area_mode == 8
+            && self.session.doc.has_raster_masks()
+            && !middle
+            && !held.pan
+            && !held.zoom
+            && !held.zoom_out
+    }
     pub(super) fn movement_down(&mut self, q: Pos2) -> bool {
         if self.area_mode != 8 {
             return false;
         }
-        self.finish_stroke();
+        self.movement_start(q);
+        true
+    }
+    pub(super) fn movement_start(&mut self, q: Pos2) -> bool {
+        // Masked owner edits must reach shared admission while the original
+        // Brush/Hand contact is still active. Retain unmasked legacy cleanup.
+        if !self.session.doc.has_raster_masks() {
+            self.finish_stroke();
+        }
         if !q.is_finite() {
             self.status = "Invalid movement position".into();
-            return true;
+            return false;
         }
-        let target = crate::plugins::movement::resolved_target(
+        match crate::plugins::movement::preview(
             &self.session,
             self.session.movement_options().target,
-        );
-        match crate::plugins::movement::preview_bounds(&self.session, target) {
-            Ok(bounds) => {
+            None,
+        ) {
+            Ok(preview) => {
+                self.clear_local_contact();
                 self.movement_gesture = Some(Gesture {
-                    source: (
-                        self.session.doc.identity,
-                        self.session.revision,
-                        self.session.doc.layer_id(self.session.doc.active),
-                    ),
+                    source: (self.session.doc.identity, self.session.revision),
                     start: q,
                     delta: [0, 0],
-                    bounds,
-                    target,
+                    bounds: preview.bounds,
+                    destination: preview.destination,
+                    masked_owner: self.session.doc.has_raster_masks(),
                 });
                 self.input_owned = true;
+                true
             }
-            Err(error) => self.status = error,
+            Err(error) => {
+                self.status = error.to_string();
+                false
+            }
         }
-        true
     }
     pub(super) fn movement_move(&mut self, q: Pos2, constrain: bool) -> bool {
         let Some(g) = self.movement_gesture.as_mut() else {
@@ -81,13 +116,7 @@ impl Editor {
             return;
         };
         self.input_owned = false;
-        if g.source
-            != (
-                self.session.doc.identity,
-                self.session.revision,
-                self.session.doc.layer_id(self.session.doc.active),
-            )
-        {
+        if g.source != (self.session.doc.identity, self.session.revision) {
             self.status = "Document changed; movement cancelled".into();
             return;
         }
@@ -96,7 +125,7 @@ impl Editor {
         }
         let mut action = crate::application::Action::new(
             "canvas.move",
-            serde_json::json!({"dx":g.delta[0],"dy":g.delta[1],"target":g.target}),
+            g.destination.action_args(g.delta[0], g.delta[1]),
         );
         action.expected_revision = Some(g.source.1);
         match self.session.apply(action) {
@@ -143,15 +172,46 @@ impl Editor {
                             .min(self.settings.ui.font_size * 16.),
                     )
                     .wrap_mode(egui::TextWrapMode::Truncate)
-                    .selected_text(tr(target_title(p.target)))
+                    .selected_text(tr(move_target_title(p.target)))
                     .show_ui(ui, |ui| {
                         for target in TARGETS {
-                            ui.selectable_value(&mut p.target, target, tr(target_title(target)));
+                            ui.selectable_value(&mut p.target, target, tr(move_target_title(target)));
                         }
                     });
             });
             if p != before {
                 self.core("toolbox.movement.options", serde_json::to_value(p).unwrap());
+            }
+            match crate::plugins::movement::destination(&self.session, p.target, None) {
+                Ok(destination) => {
+                    let layer_name = |id| self.session.doc.layer_index(id)
+                        .map(|index| self.session.doc.layer_name(index));
+                    let (title, name) = match destination {
+                        MoveDestination::Layer { layer_id, linked_mask_id } => (
+                            if linked_mask_id.is_some() { "Layer and linked mask" } else { "Layer pixels" },
+                            layer_name(layer_id),
+                        ),
+                        MoveDestination::RasterMask { owner_layer_id, .. } => ("Raster mask", layer_name(owner_layer_id)),
+                        MoveDestination::SelectedPixels { layer_id } => ("Selected Pixels", layer_name(layer_id)),
+                        MoveDestination::SelectionOutline => ("Selection Outline", None),
+                    };
+                    let feedback = name.map_or_else(|| localize(title).into_owned(),
+                        |name| format!("{}: {}", localize(title), name));
+                    ui.add(Label::new(RichText::new(feedback).weak()).wrap());
+                    if matches!(destination, MoveDestination::RasterMask { .. }) {
+                        ui.add(Label::new(tr("Mask only; layer pixels stay fixed.").weak()).wrap());
+                    } else if let MoveDestination::Layer { layer_id, linked_mask_id: None } = destination {
+                        if self.session.doc.mask_state().items.iter().any(|mask|
+                            mask.owner == (crate::engine::raster_masks::MaskOwner::Layer { id: layer_id }) && !mask.linked)
+                        {
+                            ui.add(Label::new(tr("Unlinked mask stays fixed.").weak()).wrap());
+                        }
+                    }
+                    if matches!(destination, MoveDestination::RasterMask { .. } | MoveDestination::Layer { linked_mask_id: Some(_), .. }) {
+                        ui.add(Label::new(tr("Exposed mask areas reveal the layer.").weak()).wrap());
+                    }
+                }
+                Err(error) => { ui.add(Label::new(tr(error.message).weak()).wrap()); }
             }
             let drag = tr("Drag the position outline; release to move. Shift constrains the axis. Esc cancels.");
             ui.add(Label::new(drag.weak()).wrap());
@@ -160,6 +220,10 @@ impl Editor {
         });
     }
 }
+
+#[cfg(test)]
+#[path = "movement_mask_ui_tests.rs"]
+mod owner_movement_ui_tests;
 
 #[cfg(test)]
 mod tests {

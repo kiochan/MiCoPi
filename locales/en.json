@@ -1395,5 +1395,12 @@
   "Finish the current contact before changing layer structure": "Finish the current contact before changing layer structure",
   "Group selectors must be bounded integers": "Group selectors must be bounded integers",
   "Group entries must be an array": "Group entries must be an array",
-  "Group entry IDs must be positive": "Group entry IDs must be positive"
+  "Group entry IDs must be positive": "Group entry IDs must be positive",
+  "Auto: Mask, Selection or Layer": "Auto: Mask, Selection or Layer",
+  "Layer and linked mask": "Layer and linked mask",
+  "Layer pixels": "Layer pixels",
+  "Raster mask": "Raster mask",
+  "Mask only; layer pixels stay fixed.": "Mask only; layer pixels stay fixed.",
+  "Unlinked mask stays fixed.": "Unlinked mask stays fixed.",
+  "Exposed mask areas reveal the layer.": "Exposed mask areas reveal the layer."
 }

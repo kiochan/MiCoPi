@@ -17,9 +17,11 @@ Run these tools from the repository root. Downloaded toolchains, builds, capture
 | smoke-raster-masks.py | Verify A8 storage/composition, safe edit boundaries, legacy compatibility and DLL-free replay; optional GUI captures |
 | smoke-mask-editing.py | Verify eleven public mask actions, native density/feather and typed painting, workflow bindings, guarded edits and raw/verified replay across JSONL/MCP/GUI; optional four-language captures |
 | smoke-mask-geometry.py | Compare document framing, rotations/flips, image sampling and Trim against independent raw-mask references across JSONL/MCP/GUI, with undo, legacy capability rejection and DLL-free replay |
+| smoke-owner-movement.py | Compare linked raster/mask Move, independent stable-ID mask Move/nudge, selection outlines and compound Undo against exact raw/composition references across JSONL/MCP/GUI; capture four-language narrow/wide controls |
 | smoke-mask-owners.py | Compare single-layer mask copies/deletions, independent storage, ID bindings, targets, grouped composition, undo, rollback and DLL-free replay across JSONL/MCP/GUI |
 | smoke-mask-groups.py | Compare mask-preserving group creation/reparenting, raw ownership, explicit targets, composition, undo, rollback and DLL-free replay across JSONL/MCP/GUI |
 | smoke-mask-group-delete.py | Verify nested/empty group deletion, independent masks, result-array bindings, compound Undo, rollback and DLL-free outcomes across JSONL/MCP/GUI |
+| smoke-mask-group-duplicate.py | Verify masked subtree copies, independent storage, fresh ID bindings, compound Undo, rollback and DLL-free outcomes across JSONL/MCP/GUI |
 | check-repository.py | Validate local Markdown links, example JSON and tracked-file boundaries |
 
 ```powershell
@@ -62,13 +64,28 @@ Layers captures. Tiny independent tree/raw/composition references cover typed
 result bindings, targets, Undo, contacts, rollback and DLL-free outcomes. Output
 stays under `target/test-output/mask-groups-smoke/`. See
 [Mask Group Editing](../docs/mask-group-editing.md) for the supported subset and
-remaining group copying, ungrouping, batch and geometry boundaries.
+remaining ungrouping, batch and geometry boundaries.
 
 `smoke-mask-group-delete.py --skip-gui` compares nested/empty subtree deletion,
 raw mask ownership, target/selection fallback, result-array bindings and compound
 Undo through JSONL/MCP. The full run adds GUI parity and four native Layers
 captures under `target/test-output/mask-group-delete-smoke/`. See
 [Mask Group Deletion](../docs/mask-group-delete.md) for shared structural history,
-rollback costs and the separate pending copying/ungrouping boundaries.
+rollback costs and the separate pending ungrouping boundary.
+
+`smoke-owner-movement.py --skip-gui` checks ten tiny inverse-coordinate reference
+cases through JSONL/MCP, active-contact admission, literal/contextual validation,
+compound Undo, project persistence and DLL-free replay. The full run adds GUI
+parity and eight four-language narrow/wide native Tool Options captures under
+`target/test-output/owner-movement-smoke/`. See
+[Raster Owner Movement](../docs/raster-owner-movement.md) for exact domain,
+clipping, lock and idle-contact contracts.
+
+`smoke-mask-group-duplicate.py --skip-gui` checks sixteen small nested/empty
+subtree-copy cases with explicit ID mapping, independent raw storage, checkpoint
+isolation and verified outcomes. The full run adds attached-GUI parity and four
+native Layers captures under `target/test-output/mask-group-duplicate-smoke/`.
+See [Mask Group Duplication](../docs/mask-group-duplicate.md) for the supported
+ownership subset and remaining structural boundaries.
 
 See [Development](../docs/development.md) for prerequisites and [Project Structure](../docs/project-structure.md) for ownership rules.

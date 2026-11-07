@@ -190,6 +190,12 @@ impl Editor {
             + size * 0.5;
         self.image_rect = Rect::from_center_size(self.canvas.center() + self.pan, size);
     }
+    fn finish_for_pointer_down(&mut self) {
+        // Entering a new native contact intentionally commits the previous
+        // one, unlike cancelling an outline that owns no native contact.
+        self.session.finish_stroke();
+        self.clear_local_contact();
+    }
     fn pointer_down(
         &mut self,
         p: Pos2,
@@ -199,7 +205,10 @@ impl Editor {
         held: crate::ui::keymap::InputState,
         middle: bool,
         mods: Modifiers,
-    ) {
+    ) -> bool {
+        if self.masked_movement_input(held, middle) {
+            return self.movement_start(self.document_position(p));
+        }
         self.push_gui_parameters();
         self.push_gui_view();
         let tool_override = if middle || held.pan {
@@ -212,22 +221,17 @@ impl Editor {
             None
         };
         let q = self.document_position(p);
-        if tool_override.is_some()
-            && (self.selection_gesture.is_some() || self.movement_gesture.is_some())
-        {
-            self.finish_stroke();
-        }
         if self.area_mode >= 3 {
             self.pressure = pressure;
         }
         if tool_override.is_none() && self.movement_down(q) {
-            return;
+            return true;
         }
         if tool_override.is_none() && self.selection_down(q, mods, time) {
-            return;
+            return true;
         }
         if tool_override.is_none() && self.area_down(q) {
-            return;
+            return true;
         }
         let sample = crate::application::Pointer {
             phase: crate::application::PointerPhase::Down,
@@ -241,6 +245,7 @@ impl Editor {
             view_y: Some(p.y),
             tool_override,
         };
+        self.finish_for_pointer_down();
         match self.session.pointer(sample) {
             Ok(()) => {
                 self.input_owned = self.session.is_drawing() || self.session.is_panning();
@@ -251,8 +256,12 @@ impl Editor {
                     None
                 };
                 self.pressure = pressure;
+                true
             }
-            Err(e) => self.status = e.to_string(),
+            Err(e) => {
+                self.status = e.to_string();
+                false
+            }
         }
     }
     fn move_pointer(&mut self, p: Pos2, pressure: f32, time: u32, pen: bool, constrain: bool) {
@@ -370,17 +379,38 @@ impl Editor {
                 .any(|s| matches!(s.phase, PenPhase::Down | PenPhase::Move | PenPhase::Up));
         for packet in packets.iter().copied() {
             let p = pos2(packet.x, packet.y) / ctx.pixels_per_point();
-            if !matches!(packet.phase, PenPhase::Cancel | PenPhase::Leave) {
+            let masked_move_down = matches!(packet.phase, PenPhase::Down)
+                && !self.blocked
+                && on_canvas(p)
+                && self.masked_movement_input(held, false);
+            if !matches!(packet.phase, PenPhase::Cancel | PenPhase::Leave) && !masked_move_down {
                 self.pen_hover = Some(p);
                 self.pen_eraser = packet.eraser;
             }
             match packet.phase {
                 PenPhase::Down if !self.blocked && on_canvas(p) => {
-                    if !self.polygon_pending() {
-                        self.finish_stroke();
+                    if masked_move_down {
+                        if self.pointer_down(
+                            p,
+                            packet.pressure,
+                            packet.time,
+                            true,
+                            held,
+                            false,
+                            mods,
+                        ) {
+                            self.pen_active = true;
+                            self.pen_hover = Some(p);
+                            self.pen_eraser = packet.eraser;
+                            self.pressure = packet.pressure;
+                        }
+                    } else {
+                        if !self.polygon_pending() {
+                            self.finish_for_pointer_down();
+                        }
+                        self.pen_active = true;
+                        self.pointer_down(p, packet.pressure, packet.time, true, held, false, mods);
                     }
-                    self.pen_active = true;
-                    self.pointer_down(p, packet.pressure, packet.time, true, held, false, mods);
                 }
                 PenPhase::Move if self.pen_active => {
                     self.move_pointer(p, packet.pressure, packet.time, true, mods.shift)
@@ -389,11 +419,12 @@ impl Editor {
                     self.selection_move(self.document_position(p), mods.shift);
                 }
                 PenPhase::Up if self.pen_active => {
+                    let masked_outline = self.masked_movement_pending();
                     self.move_pointer(p, self.pressure, packet.time, true, mods.shift);
                     self.movement_release();
                     self.area_up();
                     self.selection_release();
-                    if !self.polygon_pending() {
+                    if !self.polygon_pending() && !masked_outline {
                         self.finish_stroke();
                     }
                     self.pen_active = false;
@@ -422,8 +453,12 @@ impl Editor {
                         ..
                     } if button == PointerButton::Primary || button == PointerButton::Middle => {
                         if pressed && !self.blocked && on_canvas(pos) {
-                            self.pen_eraser = false;
-                            self.pointer_down(
+                            let masked_move =
+                                self.masked_movement_input(held, button == PointerButton::Middle);
+                            if !masked_move {
+                                self.pen_eraser = false;
+                            }
+                            let admitted = self.pointer_down(
                                 pos,
                                 1.,
                                 time,
@@ -432,7 +467,11 @@ impl Editor {
                                 button == PointerButton::Middle,
                                 mods,
                             );
+                            if masked_move && admitted {
+                                self.pen_eraser = false;
+                            }
                         } else if !pressed {
+                            let masked_outline = self.masked_movement_pending();
                             let finish_owned =
                                 self.input_owned || self.session.pointer_checkpoint.is_none();
                             if self.movement_gesture.is_some() {
@@ -447,7 +486,7 @@ impl Editor {
                                 self.move_pointer(pos, 1., time, false, mods.shift);
                                 self.area_up();
                             }
-                            if !self.polygon_pending() && finish_owned {
+                            if !self.polygon_pending() && finish_owned && !masked_outline {
                                 self.finish_stroke();
                             }
                         }

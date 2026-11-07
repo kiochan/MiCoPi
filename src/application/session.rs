@@ -623,6 +623,9 @@ impl Session {
         validate(&definition.schema(), &action.args)?;
         if let Some(op) = definition.operation {
             validate(&op.schema(), &action.args)?;
+            if matches!(op, Operation::MovePixels | Operation::Nudge) {
+                crate::plugins::movement::validate_literal(&action.args)?;
+            }
             if op.is_mask() {
                 crate::plugins::raster_masks::validate(op, &action.args)?;
             }

@@ -1,4 +1,7 @@
 //! Atomic integer movement; native kernels own pixel/coverage math.
+pub(crate) use super::owner_movement::{admit_masked, validate_literal};
+#[cfg(feature = "desktop")]
+pub(crate) use super::owner_movement::{destination, preview, MoveDestination};
 use crate::application::{ActionError, ActionResult, MoveTarget, Operation, Session};
 use micopi_plugin_api as abi;
 use serde_json::{json, Value};
@@ -71,6 +74,9 @@ fn options(s: &Session, op: Operation, args: &Value) -> abi::Move {
     }
 }
 pub(crate) fn context(s: &Session, op: Operation, args: &Value) -> Value {
+    if s.doc.has_raster_masks() || args.get("mask_id").is_some() {
+        return super::owner_movement::context(s, op, args);
+    }
     let o = options(s, op, args);
     json!({"target":(["layer","selection","selection_mask"][o.kind as usize]),"dx":o.dx,"dy":o.dy})
 }
@@ -104,6 +110,10 @@ fn run(s: &mut Session, op: Operation, args: &Value) -> Result<(), String> {
     s.doc.apply_movement(pixels.as_deref(), selection)
 }
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
+    validate_literal(&args)?;
+    if s.doc.has_raster_masks() || args.get("mask_id").is_some() {
+        return super::owner_movement::execute(s, op, &args);
+    }
     if options(s, op, &args).kind != 2 {
         super::PixelAccess::Geometry.require(&s.doc, s.doc.active)?;
     }

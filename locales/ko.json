@@ -1395,5 +1395,12 @@
   "Finish the current contact before changing layer structure": "현재 입력을 끝낸 뒤 레이어 구조를 변경하세요",
   "Group selectors must be bounded integers": "그룹 선택 값은 유효 범위 내의 정수여야 합니다",
   "Group entries must be an array": "그룹 항목은 배열이어야 합니다",
-  "Group entry IDs must be positive": "그룹 항목 ID는 양의 정수여야 합니다"
+  "Group entry IDs must be positive": "그룹 항목 ID는 양의 정수여야 합니다",
+  "Auto: Mask, Selection or Layer": "자동: 마스크, 선택 영역 또는 레이어",
+  "Layer and linked mask": "레이어와 연결된 마스크",
+  "Layer pixels": "레이어 픽셀",
+  "Raster mask": "래스터 마스크",
+  "Mask only; layer pixels stay fixed.": "마스크만 이동하며 레이어 픽셀은 그대로 유지됩니다.",
+  "Unlinked mask stays fixed.": "연결되지 않은 마스크는 그대로 유지됩니다.",
+  "Exposed mask areas reveal the layer.": "마스크의 빈 영역에는 레이어 내용이 표시됩니다."
 }

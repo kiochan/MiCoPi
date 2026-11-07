@@ -17,6 +17,14 @@ Keep document ownership and execution in Session, painting algorithms in indepen
 
 Validate behavior changes at the appropriate level. Check UI screenshots for layout changes, including English and CJK locales. Report the actual device and driver used for hardware pen testing. Keep examples and documentation aligned with implemented behavior.
 
+For the maintainer's continuous-development workflow, write tests alongside each
+feature and batch related implementation before verification. Keep local checks
+focused; complete builds, desktop/headless regressions and transport smoke tests
+run in CI. Commit and push coherent increments, continue independent work while
+CI runs, and inspect and repair failures against the exact pushed commit. Pending
+CI is not a passing result. Do not repeat full local suites after every small
+edit or remove checks to make a failing feature appear complete.
+
 English is the source of truth for technical documentation, code comments and new source messages. The root README also has Chinese, Japanese and Korean editions; update them together when the overview changes. Add UI translations to the four catalogs in `locales/`, preserve format placeholders, and avoid translating protocol identifiers or user content. See [Localization](docs/localization.md).
 
 Only English is embedded; other catalogs and declared plugin catalogs load externally. Use contribution ownership when translating plugin titles and search terms. Keep malformed-file fallback and hot reload behavior covered when changing the loader. Package activation and native DLL changes still require restart; see [Plugin system](docs/plugin-system.md).

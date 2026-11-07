@@ -149,7 +149,7 @@ Existing composition, history, recording and display costs still apply. This
 adds no dependency, native callback or per-MOVE JSON/lookup/hierarchy traversal.
 
 Ungrouping, batch layer edits,
-Layer via Copy/Cut, owner pixel Move/Free Transform and rotations, merges,
+Layer via Copy/Cut, selected-pixel movement, owner Free Transform and rotations, merges,
 flatten/stamp, clipboard mutations and group-mask Apply remain guarded on
 mask-bearing documents where incomplete. Clipping masks remain planned. The
 full [mask design](raster-masks-design.md) and [roadmap](../ROADMAP.md) stay open.

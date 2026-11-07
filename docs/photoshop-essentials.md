@@ -32,7 +32,7 @@ every slice.
 
 | Priority | Next usable slice | Dependency and delivery boundary |
 | --- | --- | --- |
-| 1 | Blend and mask behavior artists can trust | Build on the delivered 26 color blend modes. Dissolve remains pending with its separate spatial coverage contract; finish bounded linked/unlinked owner movement before broader mask transforms. |
+| 1 | Blend and mask behavior artists can trust | Build on the delivered 26 color blend modes. Dissolve remains pending with its separate spatial coverage contract; use delivered bounded linked/unlinked owner movement as the foundation for broader mask transforms. |
 | 2 | Linked multi-layer editing | Persist explicit stable-ID link sets; deliver linked Move before linked Free Transform, then align/distribute. Painting continues to target the active layer. |
 | 3 | Non-destructive adjustment layers | Define ordered affect-below composition, group/mask scope and transparent-pixel behavior before adding the first practical adjustment controls. |
 | 4 | Brush quality and presets | Prioritize flow, sampled/textured tips, deterministic dynamics, preset editing and responsive stabilization, with measured contact and cache costs. |
@@ -114,7 +114,7 @@ Acceptance: coordinate units, pivots, bounds, resampling and clipping are specif
 - [x] Add owner-preserving group creation, selected-raster grouping and hierarchy reparent/order on mask-bearing documents, with source/candidate admission, unchanged raw A8 planes/targets, one structural Undo/outcome and shared result-schema bindings. See [Mask group editing](mask-group-editing.md).
 - [x] Add mask-bearing group/subtree deletion, including empty masked groups, complete consumed owner removal, explicit target/selection fallback, shared result arrays and one compound Undo/outcome with rollback. See [Mask group deletion](mask-group-delete.md).
 - [x] Add mask-bearing group/subtree duplication, including empty groups and hidden/disabled/unlinked masks, with ordered fresh IDs, exact independent raw buffers, explicit target/selection mapping, required schema outputs and one compound Undo/outcome. See [Mask group duplication](mask-group-duplicate.md).
-- [ ] Complete owner linked/unlinked layer/mask Move/Free Transform, ungrouping and batch structural edits, Layer via Copy/Cut, merges/flatten/clipboard mutations and group-mask application before marking the full mask feature complete.
+- [ ] Complete owner linked/unlinked layer/mask Free Transform, group-mask movement, selected-pixel transfers, ungrouping and batch structural edits, Layer via Copy/Cut, merges/flatten/clipboard mutations and group-mask application before marking the full mask feature complete.
 - [ ] Add clipping masks and mask-aware image graph ports/composition.
 - [ ] Add multi-layer align/distribute and persistent stable-ID link sets, with explicit linked Move/Free Transform targets, lock/mask admission and one undo/revision/outcome per committed edit. Keep the active painting layer distinct from selection and linked membership; never silently widen a brush stroke.
 - [ ] Add solid/gradient fill layers; evaluate pattern fills alongside the pattern library.

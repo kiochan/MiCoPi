@@ -1369,6 +1369,11 @@ impl Document {
                     .map(|m| m.name.len() + std::mem::size_of::<LayerMetadata>())
                     .sum::<usize>()
                 + 64;
+        } else if let Some(change) = &mut e.mask_change {
+            // Whole-domain owner movement changes raw storage without changing
+            // composition metadata. Structural edits retain their ordered swap
+            // above; a raw-only replacement still participates in Undo/Redo.
+            self.swap_mask_change(change);
         }
         let cols = (self.width + TILE - 1) / TILE;
         for (id, data) in e.tiles.iter_mut() {
@@ -1843,6 +1848,8 @@ mod mask_group_editing;
 mod mask_owner_editing;
 #[path = "mix.rs"]
 mod mix;
+#[path = "owner_movement.rs"]
+mod owner_movement;
 #[path = "raster_mask_editing.rs"]
 mod raster_mask_editing;
 #[path = "raster_mask_project.rs"]

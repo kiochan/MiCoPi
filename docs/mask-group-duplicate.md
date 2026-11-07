@@ -140,7 +140,7 @@ raster/mask IDs to later edits and exports a PNG, project and verified archive.
 
 ## Remaining work and verification scope
 
-Ungrouping, layer batches, owner pixel Move/Free Transform and rotations,
+Ungrouping, layer batches, selected-pixel movement, owner Free Transform and rotations,
 Layer via Copy/Cut, merges/stamp/flatten, clipboard mutations and group-mask Apply
 remain guarded where mask integration is incomplete. Clipping masks remain
 planned. The full [mask design](raster-masks-design.md) and [roadmap](../ROADMAP.md)

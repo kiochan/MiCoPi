@@ -60,6 +60,7 @@ impl Editor {
         match action {
             Action::OpenPalette
             | Action::UiCommand(10140 | 10144 | 10145 | 10166..=10174 | 10200) => true,
+            Action::UiCommand(10176..=10183) if self.session.doc.has_raster_masks() => true,
             Action::UiCommand(id) => self.settings.keys.plugin_action(id).is_some_and(|id| {
                 self.session
                     .registry

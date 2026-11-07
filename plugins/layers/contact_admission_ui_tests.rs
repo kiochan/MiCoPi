@@ -479,7 +479,7 @@ fn contact_admission_direct_shared_and_conditional_guards_run_before_cleanup() {
         (
             "move_pixels",
             json!({"dx":1,"dy":0,"target":"layer"}),
-            "mask_editing_pending",
+            "stroke_active",
         ),
     ] {
         for (kind, local) in [(ToolKind::Brush, true), (ToolKind::Hand, false)] {

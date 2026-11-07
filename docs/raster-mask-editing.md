@@ -227,8 +227,12 @@ properties on hidden or disabled masks.
 
 ## Current boundaries
 
+[Raster-owner integer movement](raster-owner-movement.md) supports whole layers
+with linked masks, independent raw raster masks and pixel-selection outlines.
+It preserves unrelated raw planes and commits one compound Undo/outcome.
+
 The following remain guarded with `mask_editing_pending` while mask items exist:
-owner Move/Free Transform and layer rotations,
+owner Free Transform, group-mask movement, selected-pixel movement and layer rotations,
 ungrouping, owner transfer, batch layer edits,
 merge/stamp/flatten and cut/paste. Their mutation plans/previews are guarded too.
 Mask-aware layer ordering is supported; the guard is not a promise that every

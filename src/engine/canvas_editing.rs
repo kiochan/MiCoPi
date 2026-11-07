@@ -103,24 +103,35 @@ impl Document {
         }
         selection.validate(self.width, self.height)?;
         if let Some(p) = pixels {
-            if self.pixel_locked(self.active) {
-                return Err("Unlock layer pixels before transforming them".into());
-            }
-            if self.position_locked(self.active) {
-                return Err("Unlock layer position before transforming pixels".into());
-            }
-            if p.len() != self.width * self.height {
-                return Err("Invalid movement pixel count".into());
-            }
-            if self.alpha_locked(self.active)
-                && self.layers[self.active]
-                    .pixels
-                    .iter()
-                    .zip(p)
-                    .any(|(a, b)| a >> 24 != b >> 24 || a >> 24 == 0 && a != b)
-            {
-                return Err("Movement would change locked layer transparency".into());
-            }
+            self.validate_layer_transform_pixels(self.active, p)?;
+        }
+        Ok(())
+    }
+    /// Pixel permission/output validation shared by explicitly admitted geometry.
+    /// Callers retain their own mask, contact and structural admission guards.
+    pub(super) fn validate_layer_transform_pixels(
+        &self,
+        index: usize,
+        pixels: &[u32],
+    ) -> Result<(), String> {
+        let layer = self.layers.get(index).ok_or("Layer does not exist")?;
+        if self.pixel_locked(index) {
+            return Err("Unlock layer pixels before transforming them".into());
+        }
+        if self.position_locked(index) {
+            return Err("Unlock layer position before transforming pixels".into());
+        }
+        if pixels.len() != self.width * self.height {
+            return Err("Invalid movement pixel count".into());
+        }
+        if self.alpha_locked(index)
+            && layer
+                .pixels
+                .iter()
+                .zip(pixels)
+                .any(|(a, b)| a >> 24 != b >> 24 || a >> 24 == 0 && a != b)
+        {
+            return Err("Movement would change locked layer transparency".into());
         }
         Ok(())
     }

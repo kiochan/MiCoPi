@@ -7,7 +7,7 @@ These instructions apply throughout this repository. Explicit maintainer instruc
 - Read [README](README.md), [Architecture](docs/architecture.md), [Philosophy](docs/philosophy.md) and [Contributing](CONTRIBUTING.md) before changing a subsystem.
 - Use [ROADMAP](ROADMAP.md) for planned work and [CHANGELOG](CHANGELOG.md) for implemented behavior. Do not describe planned features as available.
 - Inspect Git status before editing; preserve unrelated work. Keep changes focused and commit coherent features separately.
-- For this maintainer's workflow, work directly on `main`. Do not create branches unless asked. Push only when explicitly requested; never force-push or rewrite published history.
+- For this maintainer's workflow, work directly on `main`. Do not create branches unless asked. The maintainer authorizes routine commits and pushes after coherent feature increments; follow any later session restriction. Never force-push or rewrite published history.
 - Use repository-local Git identity and credentials. Do not change global Git configuration or substitute another account. Verify the configured remote before pushing.
 
 ## Product direction
@@ -80,6 +80,17 @@ Keep `src/plugins/` host integration separate from root `plugins/` feature packa
 Use the existing Windows build scripts; do not install a replacement toolchain unnecessarily. If using the project-local portable environment, initialize the generated `target/cargo-env.ps1` in that shell. See [Development](docs/development.md) for setup and exact build paths.
 
 Choose checks that exercise the changed behavior:
+
+Write meaningful tests with the implementation and batch related changes into
+complete feature increments. Run formatting, repository checks and necessary
+focused checks locally; use GitHub Actions for complete builds, desktop/headless
+regressions and transport smoke coverage. The table below defines required
+coverage, not a requirement to repeat every check locally before each commit.
+Commit and push reviewable increments, then continue independent feature work
+while CI runs. Inspect the pushed commit's actual result and fix failures in a
+follow-up commit; never claim pending CI passed or disable checks to hide a
+failure. Avoid repeatedly restarting full local suites for small edits. Physical
+tablet and reviewed screenshot evidence remain separate from automated CI.
 
 | Change | Verification |
 | --- | --- |

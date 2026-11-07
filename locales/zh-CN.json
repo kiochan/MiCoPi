@@ -1395,5 +1395,12 @@
   "Finish the current contact before changing layer structure": "请先结束当前接触，再更改图层结构",
   "Group selectors must be bounded integers": "组选择参数必须是有效范围内的整数",
   "Group entries must be an array": "组条目必须是数组",
-  "Group entry IDs must be positive": "组条目 ID 必须是正整数"
+  "Group entry IDs must be positive": "组条目 ID 必须是正整数",
+  "Auto: Mask, Selection or Layer": "自动：蒙版、选区或图层",
+  "Layer and linked mask": "图层与链接蒙版",
+  "Layer pixels": "图层像素",
+  "Raster mask": "栅格蒙版",
+  "Mask only; layer pixels stay fixed.": "仅移动蒙版，图层像素保持不动。",
+  "Unlinked mask stays fixed.": "未链接的蒙版保持不动。",
+  "Exposed mask areas reveal the layer.": "蒙版空出的区域会显示图层内容。"
 }

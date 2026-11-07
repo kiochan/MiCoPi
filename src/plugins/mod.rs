@@ -38,6 +38,7 @@ mod layer_transfer;
 mod layers;
 mod mask_geometry;
 pub(crate) mod movement;
+mod owner_movement;
 mod painting;
 pub(crate) mod raster_masks;
 pub(crate) mod resample;

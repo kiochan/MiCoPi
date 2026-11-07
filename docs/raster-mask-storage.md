@@ -107,9 +107,14 @@ Playback, checkpoint rollback and embedded-history matching include the raw A8 p
 
 ## Temporary editing boundaries
 
+[Raster-owner integer movement](raster-owner-movement.md) now stages one linked
+RGBA/A8 pair or one independent raster-owned plane. Its raw-only compound history
+edit restores bytes without changing composition metadata. Selection-outline
+movement preserves every raw mask; selected-pixel and group-mask moves stay guarded.
+
 Existing mask-unaware operations reject a document with mask items before changing it. Session reports `mask_editing_pending`; lower-level document publication and mutable geometric loans also have guards. Rejection happens before completing an active Brush or Hand contact.
 
-The guarded families include owner pixel movement and Free Transform, layer rotation and Layer via Copy/Cut transfers, batch layer edits, ungrouping, merges/stamp/flatten and cut/paste transfers. Corresponding mutation plans/previews are guarded as well. Switching to an unlinked image graph is rejected. These boundaries are deliberately broader than the future linked/unlinked owner rules; they are removed only as each operation gains mask-aware atomic staging, history and verified outcomes.
+The guarded families include selected-pixel movement, group-mask movement and owner Free Transform, layer rotation and Layer via Copy/Cut transfers, batch layer edits, ungrouping, merges/stamp/flatten and cut/paste transfers. Corresponding mutation plans/previews are guarded as well. Switching to an unlinked image graph is rejected. These boundaries are deliberately broader than the future linked/unlinked owner rules; they are removed only as each operation gains mask-aware atomic staging, history and verified outcomes.
 
 [Document-wide geometry](mask-canvas-geometry.md) is mask-aware: canvas sizing/crop/Trim, document rotations/flips and Image Size stage every raw plane with the new frame, independent of enable/visibility/link flags. Publication and Canvas Undo/Redo invalidate derived coverage and mark the complete raw-A8 replay grid, including same-size permutations. Read-only plans preserve live contacts; geometry mutations require idle Brush and Hand contacts. Legacy mask-unaware geometry publication helpers retain their lower-level guards.
 

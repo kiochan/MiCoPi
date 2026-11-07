@@ -791,3 +791,33 @@ After the multi-selection/history-group change, the final 2026-11-06 Release DLL
 Run `python scripts/smoke-layer-organization.py --cli <built-cli> --gui <built-desktop>` for lock/label/query parity, copies, project persistence, public workflow state and plugin-independent replay, with four-language Layers captures. `layer_organization` library tests cover filtered Unicode names, combined undo, active pressure continuity, write-failure rollback, protected edits and exact double-locked document geometry. Native/registry checks validate legacy access defaults, ownership/conflict rejection, nested target changes and denied mutable loans from read tools. Desktop tests cover filter purity/cache invalidation, pending names, property history and narrow CJK/long-name layout. Use the ignored Release `dll_brush_benchmark` for deterministic DLL/reference pixel parity and throughput; this does not establish tablet latency or driver compatibility.
 
 On 2026-11-05, after layer-access enforcement, the same Release headless benchmark measured 268.5 ms unrestricted DLL, 266.5 ms full-selection DLL and 82.3 ms raster-only reference per 5,120 samples/80 strokes (five-run medians, 512×384). Full pixels matched the independent reference. DLL timings include Session/input/raster/history and outcome recording; GUI presentation and physical tablet latency are excluded. These workload/environment-specific observations do not isolate lock-check overhead or establish a speedup over earlier runs.
+
+## Raster owner integer movement checks
+
+After staging the existing matching painting/compositing DLLs, run the focused
+engine, Session and actual-input tests:
+
+```powershell
+cargo test --locked -j 1 --lib owner_movement -- --test-threads=1
+```
+
+The headless build uses the same filter with `--no-default-features`. Follow the
+local worker priority/CPU limits above.
+
+Run the transport smoke for independent 7×5 raw RGBA/A8 references, selected/linked
+target rules, exact outcome damage/context, grouped Undo, failure guards, project
+roundtrips and DLL-free replay across JSONL, MCP and an isolated GUI. `--skip-gui`
+retains JSONL/MCP and codec/replay checks for CI. Continuing rejection/contact
+streams use MCP/attachment; JSONL rejection fixtures intentionally stop at the
+first failed command. The GUI path captures narrow/wide Tool Options in English,
+Chinese, Japanese and Korean using acknowledged native capture requests.
+
+```powershell
+python scripts/smoke-owner-movement.py --cli <built-cli> --gui <built-desktop>
+```
+
+See [Raster owner movement](raster-owner-movement.md) for fill/clipping, lock,
+contact, staging and compatibility boundaries. These are tiny deterministic
+correctness fixtures, not physical-tablet or large-image latency measurements.
+The wider owner Free Transform, selected-pixel/group-mask and structural mask
+matrix remains open.

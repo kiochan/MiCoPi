@@ -415,12 +415,12 @@ def run_mcp(cli, flags, plan, require_masks=True):
 
 def boundary_cases():
     cases = [
-        ('canvas.move', dict(dx=1, dy=0, target='layer')),
+        ('canvas.move', dict(dx=1, dy=0, target='selection')),
         ('canvas.transform', dict(target='layer', translate_x=1)),
         ('canvas.transform.plan', dict(target='layer', translate_x=1)),
         ('canvas.transform.configure', dict(parameters=dict(target='layer', translate_x=1))),
         ('canvas.transform.repeat', {}), ('canvas.transform.repeat_copy', {}),
-        ('canvas.nudge', dict(direction='right', target='layer')),
+        ('canvas.nudge', dict(direction='right', target='selection')),
         ('layer.via_copy', {}), ('layer.via_cut', {}),
         ('layer.merge_down', {}), ('layer.merge', {}),
         ('layer.merge_selected', dict(layer_ids=[1, 2])),

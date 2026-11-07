@@ -3547,6 +3547,22 @@ pub(crate) fn trim_bounds(s: &mut Session, o: &abi::Trim) -> Result<abi::TrimBou
     Ok(out)
 }
 
+/// Cold all-output preflight, before allocating either half of an owner move.
+pub(crate) fn require_movement(s: &Session, pixels: bool, selection: bool) -> Result<(), String> {
+    let movement = s
+        .registry
+        .native_plugins
+        .get("painting")
+        .and_then(|plugin| plugin.movement);
+    if pixels && movement.and_then(|api| api.pixels).is_none() {
+        return Err("Painting DLL does not support integer movement".into());
+    }
+    if selection && movement.and_then(|api| api.mask).is_none() {
+        return Err("Painting DLL does not support selection movement".into());
+    }
+    Ok(())
+}
+
 pub(crate) fn move_pixels(s: &Session, o: &abi::Move) -> Result<Vec<u32>, String> {
     let kernel = s
         .registry
