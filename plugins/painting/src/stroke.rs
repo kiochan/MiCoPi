@@ -105,6 +105,32 @@ impl Coverage {
         alpha_locked: bool,
         a8_value: Option<u8>,
     ) -> i32 {
+        self.dab_tip(
+            host,
+            region,
+            brush,
+            x,
+            y,
+            flow,
+            selection,
+            alpha_locked,
+            a8_value,
+            Default::default(),
+        )
+    }
+    pub fn dab_tip(
+        &mut self,
+        host: &abi::ToolHost,
+        region: abi::Region,
+        brush: Brush,
+        x: f32,
+        y: f32,
+        flow: f32,
+        selection: abi::Coverage,
+        alpha_locked: bool,
+        a8_value: Option<u8>,
+        geometry: crate::tip::Geometry,
+    ) -> i32 {
         if !flow.is_finite() || !(0. ..=1.).contains(&flow) {
             return abi::ERROR;
         }
@@ -132,7 +158,10 @@ impl Coverage {
             } else {
                 a8_value.unwrap_or_default()
             },
+            geometry,
         };
+        #[cfg(test)]
+        crate::tip::probe::loan(region);
         unsafe {
             if let Some(loan) = loans.a8 {
                 loan(
@@ -198,6 +227,7 @@ struct Dab {
     selection: abi::Coverage,
     alpha_locked: bool,
     a8_value: u8,
+    geometry: crate::tip::Geometry,
 }
 
 fn span(pointer: usize, len: usize, size: usize) -> Option<(usize, usize)> {
@@ -355,6 +385,16 @@ fn amount(dab: &Dab, px: usize, py: usize) -> u32 {
     };
     (FULL as f32 * dab.flow * edge * soft).round() as u32
 }
+fn tip_amount(dab: &Dab, x: usize, y: usize) -> u32 {
+    (FULL as f32
+        * dab.flow
+        * dab.geometry.coverage(
+            x as f32 + 0.5 - dab.x,
+            y as f32 + 0.5 - dab.y,
+            dab.brush.hardness,
+        ))
+    .round() as u32
+}
 unsafe fn selected(dab: &Dab, weight: u16, x: usize, y: usize) -> u32 {
     let selection = if dab.selection.data.is_null() {
         255
@@ -434,10 +474,38 @@ unsafe extern "C" fn render_rgba(
     ) else {
         return abi::ERROR;
     };
+    if dab.geometry.legacy() {
+        render_rgba_loop::<false>(dab, source, target, index)
+    } else {
+        render_rgba_loop::<true>(dab, source, target, index)
+    }
+}
+unsafe fn render_rgba_loop<const TIP: bool>(
+    dab: &Dab,
+    source: abi::OriginPixels,
+    target: abi::Pixels,
+    index: usize,
+) -> i32 {
     let cap = (FULL as f32 * dab.brush.opacity).round() as u16;
     let tile = &mut (&mut *dab.coverage).tiles[index];
     for row in 0..target.height as usize {
-        for column in 0..target.width as usize {
+        let start = target.origin_x as usize;
+        let end = start + target.width as usize;
+        let Some((lo, hi)) = (if !TIP {
+            Some((start, end))
+        } else {
+            dab.geometry.row_span(
+                dab.x,
+                target.origin_y as f32 + row as f32 + 0.5 - dab.y,
+                start,
+                end,
+            )
+        }) else {
+            continue;
+        };
+        #[cfg(test)]
+        crate::tip::probe::candidates(hi - lo);
+        for column in lo - start..hi - start {
             let (x, y) = (
                 target.origin_x as usize + column,
                 target.origin_y as usize + row,
@@ -448,12 +516,24 @@ unsafe extern "C" fn render_rgba(
             }
             let slot = (y % SIDE) * SIDE + x % SIDE;
             let old = tile[slot];
-            let weight = advance(old, cap, amount(dab, x, y));
+            let weight = advance(
+                old,
+                cap,
+                if TIP {
+                    tip_amount(dab, x, y)
+                } else {
+                    amount(dab, x, y)
+                },
+            );
             if weight == old {
                 continue;
             }
             tile[slot] = weight;
             let a = selected(dab, weight, x, y);
+            #[cfg(test)]
+            if a != 0 {
+                crate::tip::probe::positive();
+            }
             let pixel = if dab.alpha_locked {
                 super::raster::atop(original, (dab.brush.color & 0xffffff) | (a << 24))
             } else if dab.brush.erase {
@@ -532,22 +612,62 @@ unsafe extern "C" fn render_a8(
     ) else {
         return abi::ERROR;
     };
+    if dab.geometry.legacy() {
+        render_a8_loop::<false>(dab, source, target, index)
+    } else {
+        render_a8_loop::<true>(dab, source, target, index)
+    }
+}
+unsafe fn render_a8_loop<const TIP: bool>(
+    dab: &Dab,
+    source: abi::OriginA8Pixels,
+    target: abi::A8Pixels,
+    index: usize,
+) -> i32 {
     let cap = (FULL as f32 * dab.brush.opacity).round() as u16;
     let tile = &mut (&mut *dab.coverage).tiles[index];
     for row in 0..target.height as usize {
-        for column in 0..target.width as usize {
+        let start = target.origin_x as usize;
+        let end = start + target.width as usize;
+        let Some((lo, hi)) = (if !TIP {
+            Some((start, end))
+        } else {
+            dab.geometry.row_span(
+                dab.x,
+                target.origin_y as f32 + row as f32 + 0.5 - dab.y,
+                start,
+                end,
+            )
+        }) else {
+            continue;
+        };
+        #[cfg(test)]
+        crate::tip::probe::candidates(hi - lo);
+        for column in lo - start..hi - start {
             let (x, y) = (
                 target.origin_x as usize + column,
                 target.origin_y as usize + row,
             );
             let slot = (y % SIDE) * SIDE + x % SIDE;
             let old = tile[slot];
-            let weight = advance(old, cap, amount(dab, x, y));
+            let weight = advance(
+                old,
+                cap,
+                if TIP {
+                    tip_amount(dab, x, y)
+                } else {
+                    amount(dab, x, y)
+                },
+            );
             if old == weight {
                 continue;
             }
             tile[slot] = weight;
             let a = selected(dab, weight, x, y);
+            #[cfg(test)]
+            if a != 0 {
+                crate::tip::probe::positive();
+            }
             let original = *source.data.add(row * source.stride as usize + column) as u32;
             *target.data.add(row * target.stride as usize + column) =
                 ((original * (255 - a) + u32::from(dab.a8_value) * a + 127) / 255) as u8;

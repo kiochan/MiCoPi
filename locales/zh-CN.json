@@ -1501,5 +1501,22 @@
   "User Brush Presets": "用户笔刷预设",
   "Reload Brush Preset Library": "重新加载笔刷预设库",
   "Brush Preset Library": "笔刷预设库",
-  "Preset library updated; the invalid settings JSON draft was kept": "笔刷库已更新；保留了尚未通过校验的设置 JSON 草稿"
+  "Preset library updated; the invalid settings JSON draft was kept": "笔刷库已更新；保留了尚未通过校验的设置 JSON 草稿",
+  "Tip Shape": "笔尖形状",
+  "Round": "圆形",
+  "Roundness": "圆度",
+  "Width of the tip's short side compared with its long side.": "笔尖短边相对于长边的比例。",
+  "Rotate the tip clockwise on the canvas. Its angle stays fixed as you draw.": "顺时针旋转画布上的笔尖。绘画时角度保持固定。",
+  "Tip shape applies to Brush and Eraser.": "笔尖形状适用于笔刷和橡皮。",
+  "Brush Tip Shape": "笔刷笔尖形状",
+  "Brush Tip Roundness": "笔刷笔尖圆度",
+  "Brush Tip Angle": "笔刷笔尖角度",
+  "Adjust Brush Tip Angle": "调整笔尖角度",
+  "Rotate Brush Tip Clockwise": "顺时针旋转笔尖",
+  "Rotate Brush Tip Counterclockwise": "逆时针旋转笔尖",
+  "Rotate Brush Tip Clockwise (15°)": "顺时针旋转笔尖（15°）",
+  "Rotate Brush Tip Counterclockwise (15°)": "逆时针旋转笔尖（15°）",
+  "Round tips flatten into ellipses; square tips flatten into rectangles.": "圆形笔尖压扁后呈椭圆形，方形笔尖压扁后呈长方形。",
+  "Width of the short side compared with the long side, from 25% to 100%.": "短边相对于长边的宽度比例，范围为 25% 至 100%。",
+  "Rotate the tip clockwise and keep its angle fixed as you draw.": "顺时针旋转笔尖，绘画时角度保持固定。"
 }

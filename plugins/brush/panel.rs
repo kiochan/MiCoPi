@@ -3,6 +3,8 @@ use super::panels::{parameter, section};
 use super::*;
 #[path = "presets.rs"]
 mod presets;
+#[path = "tip_geometry.rs"]
+pub(crate) mod tip_geometry;
 pub(super) const OPACITY_MODES: [crate::application::OpacityMode; 2] = [
     crate::application::OpacityMode::Dab,
     crate::application::OpacityMode::Stroke,
@@ -14,6 +16,88 @@ pub(super) fn opacity_mode_title(mode: crate::application::OpacityMode) -> &'sta
     }
 }
 impl Editor {
+    fn brush_tip_ui(&mut self, ui: &mut Ui) {
+        use crate::application::TipShape;
+        let a = self.settings.ui.clone();
+        let colors = theme::Colors::new(&a);
+        let enabled = self.area_mode == 0 && matches!(self.tool, Tool::Brush | Tool::Eraser);
+        ui.add_enabled_ui(enabled, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(tr("Tip Shape"));
+                let mut shape = self.session.parameters.tip_shape;
+                for (choice, title) in [(TipShape::Round, "Round"), (TipShape::Square, "Square")] {
+                    let response = ui.selectable_value(&mut shape, choice, tr(title));
+                    #[cfg(test)]
+                    ui.data_mut(|data| {
+                        data.insert_temp(
+                            Id::new(("brush-tip-shape", title)),
+                            (response.rect, response.enabled()),
+                        )
+                    });
+                    if response.clicked() {
+                        self.core("brush.set", serde_json::json!({"tip_shape":choice}));
+                    }
+                }
+            });
+            let side = a.control_height * 1.6;
+            let (rect, _) =
+                ui.allocate_exact_size(vec2(ui.available_width(), side), Sense::hover());
+            ui.painter()
+                .rect_filled(rect, a.corner_radius, colors.raised);
+            let p = &self.session.parameters;
+            let radius = side * 0.29;
+            let contour = tip_geometry::cached(
+                ui.ctx(),
+                "brush-tip-swatch",
+                p.tip_shape,
+                p.tip_roundness,
+                p.tip_angle,
+                radius,
+            );
+            contour.filled(
+                &ui.painter().with_clip_rect(rect),
+                rect.center(),
+                radius,
+                if enabled { colors.accent } else { colors.muted },
+            );
+            let mut roundness = self.session.parameters.tip_roundness;
+            let response = ui
+                .scope(|ui| parameter(ui, "Roundness", &mut roundness, 0.25..=1., "%", true, false))
+                .response;
+            #[cfg(test)]
+            ui.data_mut(|data| {
+                data.insert_temp(
+                    Id::new("brush-tip-roundness-control"),
+                    (response.rect, response.enabled()),
+                )
+            });
+            response.on_hover_text(tr(
+                "Width of the tip's short side compared with its long side.",
+            ));
+            if roundness != self.session.parameters.tip_roundness {
+                self.core("brush.set", serde_json::json!({"tip_roundness":roundness}));
+            }
+            let mut angle = self.session.parameters.tip_angle;
+            let response = ui
+                .scope(|ui| parameter(ui, "Angle", &mut angle, -180.0..=180., "°", false, false))
+                .response;
+            #[cfg(test)]
+            ui.data_mut(|data| {
+                data.insert_temp(
+                    Id::new("brush-tip-angle-control"),
+                    (response.rect, response.enabled()),
+                )
+            });
+            response.on_hover_text(tr(
+                "Rotate the tip clockwise on the canvas. Its angle stays fixed as you draw.",
+            ));
+            if angle != self.session.parameters.tip_angle {
+                self.core("brush.set", serde_json::json!({"tip_angle":angle}));
+            }
+        })
+        .response
+        .on_disabled_hover_text(tr("Tip shape applies to Brush and Eraser."));
+    }
     pub(super) fn brush_ui(&mut self, ui: &mut Ui) {
         self.area_ui(ui);
         let a = self.settings.ui.clone();
@@ -127,6 +211,7 @@ impl Editor {
         let mut diameter = self.radius * 2.;
         parameter(ui, "Size", &mut diameter, 1.0..=400., " px", false, true);
         self.radius = diameter / 2.;
+        self.brush_tip_ui(ui);
         parameter(ui, "Opacity", &mut self.opacity, 0.0..=1., "%", true, false);
         ui.add_enabled_ui(self.area_mode == 0 && matches!(self.tool, Tool::Brush | Tool::Eraser), |ui| {
         let mut flow = self.session.parameters.flow;
@@ -260,3 +345,7 @@ impl Editor {
 #[cfg(test)]
 #[path = "opacity_ui_tests.rs"]
 mod opacity_ui_tests;
+
+#[cfg(test)]
+#[path = "tip_ui_tests.rs"]
+mod tip_ui_tests;

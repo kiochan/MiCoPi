@@ -26,7 +26,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -1364,7 +1391,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -2201,7 +2255,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -2497,7 +2578,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -2793,7 +2901,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -3947,15 +4082,33 @@
       "output_schema": {
         "type": "object",
         "properties": {
-          "source_layer_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
-          "layer_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+          "source_layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
           "mask_ids": {
-            "type": "array", "minItems": 0, "maxItems": 1,
-            "items": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 1,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
             "description": "Fresh copied owner-mask IDs; empty for an unmasked source."
           }
         },
-        "required": ["source_layer_id", "layer_id", "mask_ids"]
+        "required": [
+          "source_layer_id",
+          "layer_id",
+          "mask_ids"
+        ]
       }
     },
     {
@@ -3970,14 +4123,27 @@
       "output_schema": {
         "type": "object",
         "properties": {
-          "deleted_layer_id": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+          "deleted_layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
           "deleted_mask_ids": {
-            "type": "array", "minItems": 0, "maxItems": 1,
-            "items": {"type": "integer", "minimum": 1, "maximum": 4294967295},
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 1,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
             "description": "Removed owner-mask IDs; empty for an unmasked source."
           }
         },
-        "required": ["deleted_layer_id", "deleted_mask_ids"]
+        "required": [
+          "deleted_layer_id",
+          "deleted_mask_ids"
+        ]
       }
     },
     {
@@ -4033,7 +4199,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -4503,7 +4696,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -8094,7 +8314,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -8390,7 +8637,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -9095,7 +9369,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -9391,7 +9692,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -9687,7 +10015,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -9983,7 +10338,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -10279,7 +10661,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -10575,7 +10984,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -10871,7 +11307,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"
@@ -11167,7 +11630,34 @@
             "type": "string"
           },
           "parameters": {
-            "type": "object"
+            "type": "object",
+            "properties": {
+              "tip_shape": {
+                "type": "string",
+                "enum": [
+                  "round",
+                  "square"
+                ],
+                "description": "Analytic Round or Square tip; omitted values resolve to Round."
+              },
+              "tip_roundness": {
+                "type": "number",
+                "minimum": 0.25,
+                "maximum": 1,
+                "description": "Minor/major axis ratio; omitted values resolve to 1."
+              },
+              "tip_angle": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+              }
+            },
+            "required": [
+              "tip_shape",
+              "tip_roundness",
+              "tip_angle"
+            ]
           },
           "view": {
             "type": "object"

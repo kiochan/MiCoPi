@@ -1864,6 +1864,59 @@ impl Keymap {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn brush_angle_macros_start_unbound_and_explicit_bindings_survive_registration_and_reload() {
+        let actions = [
+            ("brush.angle.clockwise", "Rotate Brush Tip Clockwise"),
+            (
+                "brush.angle.counterclockwise",
+                "Rotate Brush Tip Counterclockwise",
+            ),
+            (
+                "brush.angle.clockwise_coarse",
+                "Rotate Brush Tip Clockwise (15°)",
+            ),
+            (
+                "brush.angle.counterclockwise_coarse",
+                "Rotate Brush Tip Counterclockwise (15°)",
+            ),
+        ];
+        let definitions = || {
+            actions
+                .into_iter()
+                .map(|(id, title)| (id.to_owned(), title.to_owned()))
+        };
+        let mut defaults = super::Keymap::default();
+        defaults.register_actions(definitions()).unwrap();
+        for (id, _) in actions {
+            let index = defaults
+                .commands()
+                .position(|command| command.id == format!("plugin.{id}"))
+                .unwrap();
+            assert!(defaults.bindings[index].is_empty());
+        }
+        let mut configured = super::Keymap::decode(
+            r#"{"keybindings":{"plugin.brush.angle.clockwise":"Ctrl+Alt+Comma"}}"#,
+        )
+        .unwrap();
+        configured.register_actions(definitions()).unwrap();
+        let command = configured.resolve(188, super::CTRL | super::ALT).unwrap();
+        let super::Action::UiCommand(ui) = command else {
+            panic!("registered action expected")
+        };
+        assert_eq!(configured.plugin_action(ui), Some("brush.angle.clockwise"));
+        let mut restored = super::Keymap::decode(&configured.encode()).unwrap();
+        restored.register_actions(definitions()).unwrap();
+        assert_eq!(
+            restored.resolve(188, super::CTRL | super::ALT),
+            Some(command)
+        );
+        assert_eq!(restored.resolve(219, 0), Some(super::Action::SmallerBrush));
+        assert_eq!(
+            restored.resolve(221, super::SHIFT),
+            Some(super::Action::HarderBrush)
+        );
+    }
+    #[test]
     fn merge_layers_default_keeps_explicit_legacy_merge_down_bindings() {
         assert_eq!(
             super::Keymap::default().resolve('E' as usize, super::CTRL),

@@ -1501,5 +1501,22 @@
   "User Brush Presets": "사용자 브러시 프리셋",
   "Reload Brush Preset Library": "브러시 프리셋 라이브러리 새로 고침",
   "Brush Preset Library": "브러시 프리셋 라이브러리",
-  "Preset library updated; the invalid settings JSON draft was kept": "프리셋 라이브러리를 업데이트했으며 유효하지 않은 설정 JSON 초안은 유지했습니다"
+  "Preset library updated; the invalid settings JSON draft was kept": "프리셋 라이브러리를 업데이트했으며 유효하지 않은 설정 JSON 초안은 유지했습니다",
+  "Tip Shape": "브러시 끝 모양",
+  "Round": "원형",
+  "Roundness": "원형도",
+  "Width of the tip's short side compared with its long side.": "브러시 끝의 긴 축에 대한 짧은 축의 비율입니다.",
+  "Rotate the tip clockwise on the canvas. Its angle stays fixed as you draw.": "캔버스에서 브러시 끝을 시계 방향으로 회전합니다. 그리는 동안 각도가 고정됩니다.",
+  "Tip shape applies to Brush and Eraser.": "브러시 끝 모양은 브러시와 지우개에 적용됩니다.",
+  "Brush Tip Shape": "브러시 끝 모양",
+  "Brush Tip Roundness": "브러시 끝 원형도",
+  "Brush Tip Angle": "브러시 끝 각도",
+  "Adjust Brush Tip Angle": "브러시 끝 각도 조정",
+  "Rotate Brush Tip Clockwise": "브러시 끝을 시계 방향으로 회전",
+  "Rotate Brush Tip Counterclockwise": "브러시 끝을 반시계 방향으로 회전",
+  "Rotate Brush Tip Clockwise (15°)": "브러시 끝을 시계 방향으로 회전(15°)",
+  "Rotate Brush Tip Counterclockwise (15°)": "브러시 끝을 반시계 방향으로 회전(15°)",
+  "Round tips flatten into ellipses; square tips flatten into rectangles.": "원형 끝은 타원형으로, 정사각형 끝은 직사각형으로 납작해집니다.",
+  "Width of the short side compared with the long side, from 25% to 100%.": "긴 축에 대한 짧은 축의 너비 비율로, 25%에서 100%까지 설정할 수 있습니다.",
+  "Rotate the tip clockwise and keep its angle fixed as you draw.": "브러시 끝을 시계 방향으로 회전하고 그리는 동안 각도를 고정합니다."
 }

@@ -10,6 +10,13 @@ Brush/Eraser contacts; fill and gradients retain their own opacity semantics.
 
 The Brush panel exposes pressure size/opacity, minimum size and pressure gamma under **Pressure Dynamics**. A response curve previews gamma; 1 is linear, smaller values respond more strongly to light pressure. Minimum size is a fraction of the selected radius. These controls use existing `brush.set` parameters and the typed native pen path. Mouse input ignores pressure; zero-pressure pen samples deposit no paint. Controls change the current Session; use Painting settings to save startup defaults.
 
+[Analytic tips](brush-tips.md) add Round/Square shape, 25–100% roundness and a
+fixed clockwise angle shared by Brush/Eraser, the nominal cursor/preview,
+searchable defaults and user presets. A narrowed round tip forms an ellipse;
+a narrowed square forms a rectangle. Pressure scales both axes. This source
+increment and its synthetic cost probe are pending CI; sampled/textured tips
+and tilt/rotation dynamics remain planned.
+
 **Dab Spacing** controls stamp distance as a fraction of brush diameter: 0.01–2 (1–200%), with the original 0.11 (11%) default. Larger spacing creates separated marks and reduces stamp callbacks, trading continuous coverage for a different brush appearance. **Minimum Opacity** under Pressure Dynamics retains a fraction of brush opacity at light pressure when pressure opacity is enabled. The response becomes `minimum + (1 - minimum) × pressure^gamma`; zero pressure still deposits nothing. Mouse strokes ignore this floor. Both controls support `brush.set`, project replay metadata and startup settings as `painting.spacing` and `painting.minimum_opacity`.
 
 ```json
@@ -58,7 +65,7 @@ Contiguous fill uses iterative scanline spans, a one-bit-per-pixel visited map a
 
 Nonzero edge controls build a one-bit-per-pixel region mask and reuse one byte per pixel for capped boundary distances. The temporary scanline stack is released before allocating distances. Expansion and feathering use linear scans independent of the chosen radius, with up to two distance passes. No additional full-color image is allocated. The default zero-edge path keeps the existing connected/global fill kernels. Repeating an identical translucent fill correctly accumulates alpha through source-over blending; identical opaque fills can still return early.
 
-Brush rasterization rejects pixels outside the dab circle before computing distance, and avoids distance evaluation inside solid hard dabs. Antialiased boundaries retain the previous distance formula. Legacy spacing, pressure, stabilization and the typed MOVE path remain unchanged at default options. No additional dependency is introduced. Exact DLL-versus-reference stroke tests protect existing pixels. A deterministic 100-pixel line at radius 5 uses 11 stamp callbacks at 100% spacing, versus more than 80 at default spacing; this measures work reduction for sparse brushes, rather than end-to-end input latency.
+Default circular brush rasterization rejects pixels outside the dab circle before computing distance, and avoids distance evaluation inside solid hard dabs. Antialiased boundaries retain the previous distance formula. Analytic nondefault tips use their own bounded rotated regions and row-span culling; their coverage and pending measurement scope are described in the [tip guide](brush-tips.md). Legacy spacing, pressure, stabilization and the typed MOVE path remain unchanged at default options. No additional dependency is introduced. Exact DLL-versus-reference stroke tests protect existing pixels. A deterministic 100-pixel line at radius 5 uses 11 stamp callbacks at 100% spacing, versus more than 80 at default spacing; this measures work reduction for sparse brushes, rather than end-to-end input latency.
 
 Regression checks include an independent breadth-first fill oracle, tolerance/connectivity/transparency fixtures, gradient endpoints and alpha fringes, gesture commit/cancel behavior, undo, atomic failure, replay parity and PNG comparisons across JSONL, MCP and GUI. Fill gap closing, merged-layer fill sampling, textured brush tips and arbitrary editable pressure curves remain future work. New stroke-opacity coverage is authored and pending CI, as detailed in its [guide](stroke-opacity.md#verification-status-and-measurement-scope).
 

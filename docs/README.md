@@ -29,6 +29,7 @@ The technical documentation is maintained in English. The project overview is al
 | [Selections](selections.md) | Marquee/lasso gestures, color commands, native clipping, history and limits |
 | [Painting Tools](painting-tools.md) | Pressure controls, connected fill, gradient gestures and performance limits |
 | [Brush Opacity and Flow](stroke-opacity.md) | Independent Flow, opt-in per-stroke influence limits, public settings, live original-tile loans and bounded native storage |
+| [Analytic Brush Tips](brush-tips.md) | Round/elliptical and square/rectangular tips, fixed clockwise angle, nominal cursor contours, optional native negotiation and legacy-default compatibility |
 | [User Brush Presets](brush-presets.md) | Versioned scalar Brush/Eraser library, both-color preservation, exact providers, cached state and bounded data-only import/export |
 | [Command Contact Admission](command-contact-admission.md) | Private cached frontend policy, shared execution, argument-form synchronization fences and native/local input continuity |
 | [Raster Owner Movement](raster-owner-movement.md) | Linked layer/mask integer Move, independent stable-mask targets, outline admission, compound history and exact clipping/fill rules |

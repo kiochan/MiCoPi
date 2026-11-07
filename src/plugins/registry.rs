@@ -765,7 +765,7 @@ impl Registry {
         out
     }
     pub fn describe(&self) -> Value {
-        json!({"directory":self.root,"loaded":self.loaded,"packages":self.packages,"contribution_owners":self.contribution_owners(),"disabled":self.disabled,"lifecycle":{"contributions":"restart_required","native_library":"restart_required","locales":"hot_reload"},"native":self.native_plugins.iter().map(|(id,p)|json!({"id":id,"library":p.path,"abi_version":micopi_plugin_api::ABI_VERSION,"samplers":{"raw_a8_affine":p.supports_a8_affine(),"raw_a8_bounds":p.supports_a8_affine_bounds()},"tool_options":{"flow":p.supports_stroke_opacity(),"stroke_opacity":p.supports_stroke_opacity()}})).collect::<Vec<_>>(),"diagnostics":self.diagnostics,"tools":self.tools.values().collect::<Vec<_>>(),"actions":self.actions.values().collect::<Vec<_>>(),"states":self.states.values().collect::<Vec<_>>(),"nodes":self.nodes.values().map(|(_,d)|d).collect::<Vec<_>>(),"panels":self.panels.values().collect::<Vec<_>>()})
+        json!({"directory":self.root,"loaded":self.loaded,"packages":self.packages,"contribution_owners":self.contribution_owners(),"disabled":self.disabled,"lifecycle":{"contributions":"restart_required","native_library":"restart_required","locales":"hot_reload"},"native":self.native_plugins.iter().map(|(id,p)|json!({"id":id,"library":p.path,"abi_version":micopi_plugin_api::ABI_VERSION,"samplers":{"raw_a8_affine":p.supports_a8_affine(),"raw_a8_bounds":p.supports_a8_affine_bounds()},"tool_options":{"flow":p.supports_stroke_opacity(),"stroke_opacity":p.supports_stroke_opacity(),"tip_geometry":p.supports_tip_geometry()}})).collect::<Vec<_>>(),"diagnostics":self.diagnostics,"tools":self.tools.values().collect::<Vec<_>>(),"actions":self.actions.values().collect::<Vec<_>>(),"states":self.states.values().collect::<Vec<_>>(),"nodes":self.nodes.values().map(|(_,d)|d).collect::<Vec<_>>(),"panels":self.panels.values().collect::<Vec<_>>()})
     }
     /// Cold discovery of the selected tool's provider, never pointer admission.
     pub(crate) fn tool_option_capabilities(&self, tool: &str) -> Value {
@@ -777,15 +777,15 @@ impl Registry {
                 crate::application::ToolKind::Eraser => Some("eraser"),
                 _ => None,
             });
-        let available = base
+        let plugin = base
             .and_then(|base| {
                 self.native_tools
                     .get(tool)
                     .or_else(|| self.native_tools.get(base))
             })
-            .and_then(|(owner, _)| self.native_plugins.get(owner))
-            .is_some_and(|plugin| plugin.supports_stroke_opacity());
-        json!({"flow":available,"stroke_opacity":available})
+            .and_then(|(owner, _)| self.native_plugins.get(owner));
+        let available = plugin.is_some_and(|plugin| plugin.supports_stroke_opacity());
+        json!({"flow":available,"stroke_opacity":available,"tip_geometry":plugin.is_some_and(|plugin| plugin.supports_tip_geometry())})
     }
 }
 pub fn valid_id(id: &str) -> bool {

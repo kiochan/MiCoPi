@@ -130,6 +130,7 @@ pub enum Operation {
     Render,
     SelectTool,
     Parameters,
+    BrushAngleAdjust,
     BrushPresetsQuery,
     BrushPresetUpsert,
     BrushPresetDelete,
@@ -229,6 +230,7 @@ impl Operation {
         matches!(
             self,
             Self::State
+                | Self::BrushAngleAdjust
                 | Self::BrushPresetApply
                 | Self::AdjustmentCreate
                 | Self::AdjustmentSet
@@ -304,6 +306,7 @@ impl Operation {
             || matches!(
                 self,
                 Self::DuplicateLayer
+                    | Self::BrushAngleAdjust
                     | Self::BrushPresetUpsert
                     | Self::BrushPresetDelete
                     | Self::BrushPresetApply
@@ -365,6 +368,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::BrushAngleAdjust {
+            return crate::plugins::brush_tip::schema();
+        }
         if self.is_brush_preset() {
             return crate::plugins::brush_presets::schema(self);
         }
@@ -565,7 +571,7 @@ impl Operation {
             ),
             Self::SelectTool => (json!({"tool":{"type":"string"}}), vec!["tool"]),
             Self::Parameters => (
-                json!({"radius":{"type":"number","minimum":0.5,"maximum":200},"opacity":{"type":"number","minimum":0,"maximum":1},"flow":{"type":"number","minimum":0,"maximum":1,"default":1,"description":"Paint deposited by each dab. In stroke mode it builds toward the stroke opacity limit."},"opacity_mode":{"type":"string","enum":["dab","stroke"],"default":"dab","description":"Dab preserves per-deposit opacity; stroke limits cumulative paint influence during each continuous contact."},"hardness":{"type":"number","minimum":0,"maximum":1},"color":{"type":"string"},"background_color":{"type":"string"},"stabilizer":{"type":"number","minimum":0,"maximum":1},"pressure_size":{"type":"boolean"},"pressure_opacity":{"type":"boolean"},"pressure_gamma":{"type":"number","minimum":0.25,"maximum":4},"minimum_radius":{"type":"number","minimum":0,"maximum":1},"spacing":{"type":"number","minimum":0.01,"maximum":2},"minimum_opacity":{"type":"number","minimum":0,"maximum":1}}),
+                json!({"radius":{"type":"number","minimum":0.5,"maximum":200},"tip_shape":{"type":"string","enum":["round","square"],"default":"round"},"tip_roundness":{"type":"number","minimum":0.25,"maximum":1,"default":1,"description":"Short/long-axis ratio; nondefault tips use minor-diameter spacing."},"tip_angle":{"type":"number","minimum":-180,"maximum":180,"default":0,"description":"Fixed clockwise document-space degrees; not tilt or stroke direction."},"opacity":{"type":"number","minimum":0,"maximum":1},"flow":{"type":"number","minimum":0,"maximum":1,"default":1,"description":"Paint deposited by each dab. In stroke mode it builds toward the stroke opacity limit."},"opacity_mode":{"type":"string","enum":["dab","stroke"],"default":"dab","description":"Dab preserves per-deposit opacity; stroke limits cumulative paint influence during each continuous contact."},"hardness":{"type":"number","minimum":0,"maximum":1},"color":{"type":"string"},"background_color":{"type":"string"},"stabilizer":{"type":"number","minimum":0,"maximum":1},"pressure_size":{"type":"boolean"},"pressure_opacity":{"type":"boolean"},"pressure_gamma":{"type":"number","minimum":0.25,"maximum":4},"minimum_radius":{"type":"number","minimum":0,"maximum":1},"spacing":{"type":"number","minimum":0.01,"maximum":2},"minimum_opacity":{"type":"number","minimum":0,"maximum":1}}),
                 vec![],
             ),
             Self::Pointer => {

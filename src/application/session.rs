@@ -52,6 +52,15 @@ pub struct Parameters {
     pub flow: f32,
     #[serde(default, skip_serializing_if = "OpacityMode::is_dab")]
     pub opacity_mode: OpacityMode,
+    #[serde(default, skip_serializing_if = "super::TipShape::is_round")]
+    pub tip_shape: super::TipShape,
+    #[serde(
+        default = "super::default_tip_roundness",
+        skip_serializing_if = "super::full_tip_roundness"
+    )]
+    pub tip_roundness: f32,
+    #[serde(default, skip_serializing_if = "super::zero_tip_angle")]
+    pub tip_angle: f32,
 }
 fn default_flow() -> f32 {
     1.
@@ -104,10 +113,16 @@ impl Default for Parameters {
             minimum_opacity: 0.,
             flow: 1.,
             opacity_mode: OpacityMode::Dab,
+            tip_shape: super::TipShape::Round,
+            tip_roundness: 1.,
+            tip_angle: 0.,
         }
     }
 }
 impl Parameters {
+    pub(crate) fn has_custom_tip(&self) -> bool {
+        self.tip_shape != super::TipShape::Round || self.tip_roundness != 1. || self.tip_angle != 0.
+    }
     pub fn patched(&self, patch: &Value) -> Result<Self, ActionError> {
         validate(&Operation::Parameters.schema(), patch)?;
         let mut value = serde_json::to_value(self)?;
@@ -379,6 +394,9 @@ impl Session {
         parameters["minimum_opacity"] = json!(self.parameters.minimum_opacity);
         parameters["flow"] = json!(self.parameters.flow);
         parameters["opacity_mode"] = json!(self.parameters.opacity_mode);
+        parameters["tip_shape"] = json!(self.parameters.tip_shape);
+        parameters["tip_roundness"] = json!(self.parameters.tip_roundness);
+        parameters["tip_angle"] = json!(self.parameters.tip_angle);
         parameters
     }
     pub fn state(&self) -> Value {

@@ -239,6 +239,27 @@ persistence and pending-CI verification scope.
 
 Run `python scripts/check-native-abi.py` with the documented portable compiler, or pass `--cc <existing-x64-clang>`, to compile the C11 and C++17 layout/callback fixtures without creating binary output. Rust SDK tests independently retain old prefix offsets and assert the new layouts.
 
+### Analytic tip geometry
+
+`TOOL_OPTION_TIP_GEOMETRY` / `MICOPI_TOOL_OPTION_TIP_GEOMETRY` uses bit `0x10`
+in the existing options feature/flag contract. `ToolOptionsTip` /
+`MicopiToolOptionsTip` retains the complete 64-byte `ToolOptionsStroke` prefix,
+then appends `u32 tip_shape` at 64, `float roundness` at 68, `float angle` at 72
+and a zero reserved word at 76: 80 bytes on x64. Round is 0, Square is 1;
+roundness is finite 0.25–1 and angle is finite -180–180 clockwise document
+degrees. Read the whole tail only when size and capability permit it; reject
+unknown shape IDs/flags, truncated requested tails, reserved data and changes
+during a contact. Prefix-only options reset Round/1/0 geometry.
+
+Any nondefault field requires this capability, even a nonzero angle on a circle.
+The host rejects unsupported intent before DOWN exposes mutable RGBA or raw A8
+storage. Default circles retain old arithmetic and prefix compatibility. The
+bundled DLL caches trigonometry once per contact, uses bounded rotated regions
+and row culling, and keeps UI contours outside the ABI. Public provider/tool
+discovery adds `tip_geometry`; it does not infer hardware tilt support. See
+[Analytic Brush Tips](brush-tips.md) for coverage approximations, persistence,
+presets and pending-CI measurement scope.
+
 ### Selection capability and kernels
 
 `TOOL_OPTION_SELECTION` / `MICOPI_TOOL_OPTION_SELECTION` uses bit `0x2`. Supporting tools receive `ToolOptionsSelection`, which appends `Coverage` to the existing `ToolOptionsExt` prefix. Only inspect it when `struct_size` covers the whole tail and the flag is present. The host retains the immutable full-canvas byte buffer across the contact; copy the descriptor, not the bytes. A prefix-only configure or absent flag resets selection to unrestricted. Reject truncated tails, invalid strides/dimensions, null active masks and sample/canvas dimension mismatches before painting. Configure still runs only before DOWN. Older DLLs without the capability reject selected contacts.

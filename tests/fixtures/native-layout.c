@@ -36,6 +36,15 @@ ABI_ASSERT(sizeof(MicopiToolOptionsStroke) == 64, "Complete stroke options tail"
 ABI_ASSERT(offsetof(MicopiToolOptionsStroke, base) == 0, "Stroke options preserve selection prefix");
 ABI_ASSERT(offsetof(MicopiToolOptionsStroke, flow) == 56, "Stroke flow offset");
 ABI_ASSERT(offsetof(MicopiToolOptionsStroke, reserved) == 60, "Stroke reserved offset");
+ABI_ASSERT(sizeof(MicopiToolOptionsTip) == 80, "Complete analytic tip options tail");
+ABI_ASSERT(offsetof(MicopiToolOptionsTip, base) == 0, "Tip options preserve stroke prefix");
+ABI_ASSERT(offsetof(MicopiToolOptionsTip, tip_shape) == 64, "Tip shape offset");
+ABI_ASSERT(offsetof(MicopiToolOptionsTip, roundness) == 68, "Tip roundness offset");
+ABI_ASSERT(offsetof(MicopiToolOptionsTip, angle) == 72, "Tip angle offset");
+ABI_ASSERT(offsetof(MicopiToolOptionsTip, reserved) == 76, "Tip reserved offset");
+ABI_ASSERT(MICOPI_TOOL_OPTION_TIP_GEOMETRY == 16, "Independent analytic tip feature");
+ABI_ASSERT((MICOPI_TOOL_OPTION_TIP_GEOMETRY & (MICOPI_TOOL_OPTION_ALPHA_LOCK | MICOPI_TOOL_OPTION_SELECTION | MICOPI_TOOL_OPTION_A8_TARGET | MICOPI_TOOL_OPTION_STROKE_OPACITY)) == 0, "Tip preserves existing feature bits");
+ABI_ASSERT(MICOPI_TIP_ROUND == 0 && MICOPI_TIP_SQUARE == 1, "Stable analytic shape IDs");
 ABI_ASSERT(sizeof(MicopiToolHostStroke) == 64, "Complete origin host tail");
 ABI_ASSERT(offsetof(MicopiToolHostStroke, base) == 0, "Stroke host preserves A8 prefix");
 ABI_ASSERT(offsetof(MicopiToolHostStroke, features) == 40, "Origin host features offset");
@@ -180,6 +189,13 @@ int main(void) {
     MicopiToolOptionsStroke stroke_options;
     stroke_options.flow = 1.0f;
     stroke_options.reserved = 0;
+    MicopiToolOptionsTip tip_options;
+    tip_options.base.flow = 1.0f;
+    tip_options.tip_shape = MICOPI_TIP_SQUARE;
+    tip_options.roundness = 0.25f;
+    tip_options.angle = 45.0f;
+    tip_options.reserved = 0;
+    MicopiToolOptions *tip_prefix = &tip_options.base.base.base.base;
     MicopiCompositorApiMaskEffects effects;
     effects.create_mask_effects = create_effects;
     effects.destroy_mask_effects = destroy_effects;
@@ -207,6 +223,9 @@ int main(void) {
         && stroke_host.a8_origin == a8_origin_loan
         && stroke_host.features == 3 && stroke_host.tile_side == 64
         && stroke_options.flow == 1.0f && stroke_options.reserved == 0
+        && tip_options.tip_shape == MICOPI_TIP_SQUARE && tip_options.roundness == 0.25f
+        && tip_options.angle == 45.0f && tip_options.reserved == 0
+        && tip_prefix == (MicopiToolOptions *)&tip_options
         && effects.create_mask_effects == create_effects
         && effects.destroy_mask_effects == destroy_effects
         && effects.mask_effect_region == effect_region

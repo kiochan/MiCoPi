@@ -55,7 +55,10 @@
         "opacity_mode": "dab",
         "radius": 2,
         "opacity": 1,
-        "hardness": 1
+        "hardness": 1,
+        "tip_shape": "round",
+        "tip_roundness": 1,
+        "tip_angle": 0
       },
       "preset": true,
       "native": 1
@@ -69,7 +72,10 @@
         "opacity_mode": "dab",
         "radius": 6,
         "opacity": 1,
-        "hardness": 0.9
+        "hardness": 0.9,
+        "tip_shape": "round",
+        "tip_roundness": 1,
+        "tip_angle": 0
       },
       "preset": true,
       "native": 1
@@ -83,7 +89,10 @@
         "opacity_mode": "dab",
         "radius": 12,
         "opacity": 0.85,
-        "hardness": 0.8
+        "hardness": 0.8,
+        "tip_shape": "round",
+        "tip_roundness": 1,
+        "tip_angle": 0
       },
       "preset": true,
       "native": 1
@@ -97,7 +106,10 @@
         "opacity_mode": "dab",
         "radius": 24,
         "opacity": 0.45,
-        "hardness": 0.1
+        "hardness": 0.1,
+        "tip_shape": "round",
+        "tip_roundness": 1,
+        "tip_angle": 0
       },
       "preset": true,
       "native": 1
@@ -111,7 +123,10 @@
         "opacity_mode": "dab",
         "radius": 18,
         "opacity": 0.5,
-        "hardness": 1
+        "hardness": 1,
+        "tip_shape": "round",
+        "tip_roundness": 1,
+        "tip_angle": 0
       },
       "preset": true,
       "native": 1
@@ -125,7 +140,10 @@
         "opacity": 0.4,
         "hardness": 1,
         "flow": 0.25,
-        "opacity_mode": "stroke"
+        "opacity_mode": "stroke",
+        "tip_shape": "round",
+        "tip_roundness": 1,
+        "tip_angle": 0
       },
       "preset": true,
       "native": 1
@@ -140,7 +158,10 @@
         "opacity_mode": "dab",
         "radius": 20,
         "opacity": 1,
-        "hardness": 1
+        "hardness": 1,
+        "tip_shape": "round",
+        "tip_roundness": 1,
+        "tip_angle": 0
       },
       "native": 2
     }
@@ -246,7 +267,7 @@
                     "parameters": {
                       "type": "object",
                       "additionalProperties": false,
-                      "description": "Complete current scalar/dynamics snapshot. Foreground and background colors are excluded and preserved when applying a preset.",
+                      "description": "Complete scalar/dynamics snapshot; optional tip geometry resolves to Round/1/0. Foreground and background colors are excluded and preserved on Apply.",
                       "required": [
                         "radius",
                         "opacity",
@@ -319,6 +340,26 @@
                             "dab",
                             "stroke"
                           ]
+                        },
+                        "tip_shape": {
+                          "type": "string",
+                          "enum": [
+                            "round",
+                            "square"
+                          ],
+                          "description": "Analytic Round or Square tip; omitted values resolve to Round."
+                        },
+                        "tip_roundness": {
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 1,
+                          "description": "Minor/major axis ratio; omitted values resolve to 1."
+                        },
+                        "tip_angle": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180,
+                          "description": "Fixed clockwise document degrees; omitted values resolve to 0."
                         }
                       }
                     }
@@ -367,7 +408,7 @@
                     "parameters": {
                       "type": "object",
                       "additionalProperties": false,
-                      "description": "Complete current scalar/dynamics snapshot. Foreground and background colors are excluded and preserved when applying a preset.",
+                      "description": "Complete scalar/dynamics snapshot; optional tip geometry resolves to Round/1/0. Foreground and background colors are excluded and preserved on Apply.",
                       "required": [
                         "radius",
                         "opacity",
@@ -440,6 +481,26 @@
                             "dab",
                             "stroke"
                           ]
+                        },
+                        "tip_shape": {
+                          "type": "string",
+                          "enum": [
+                            "round",
+                            "square"
+                          ],
+                          "description": "Analytic Round or Square tip; omitted values resolve to Round."
+                        },
+                        "tip_roundness": {
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 1,
+                          "description": "Minor/major axis ratio; omitted values resolve to 1."
+                        },
+                        "tip_angle": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180,
+                          "description": "Fixed clockwise document degrees; omitted values resolve to 0."
                         }
                       }
                     }
@@ -481,7 +542,7 @@
                 "parameters": {
                   "type": "object",
                   "additionalProperties": false,
-                  "description": "Complete current scalar/dynamics snapshot. Foreground and background colors are excluded and preserved when applying a preset.",
+                  "description": "Complete scalar/dynamics snapshot; optional tip geometry resolves to Round/1/0. Foreground and background colors are excluded and preserved on Apply.",
                   "required": [
                     "radius",
                     "opacity",
@@ -554,6 +615,26 @@
                         "dab",
                         "stroke"
                       ]
+                    },
+                    "tip_shape": {
+                      "type": "string",
+                      "enum": [
+                        "round",
+                        "square"
+                      ],
+                      "description": "Analytic Round or Square tip; omitted values resolve to Round."
+                    },
+                    "tip_roundness": {
+                      "type": "number",
+                      "minimum": 0.25,
+                      "maximum": 1,
+                      "description": "Minor/major axis ratio; omitted values resolve to 1."
+                    },
+                    "tip_angle": {
+                      "type": "number",
+                      "minimum": -180,
+                      "maximum": 180,
+                      "description": "Fixed clockwise document degrees; omitted values resolve to 0."
                     }
                   }
                 },
@@ -690,7 +771,7 @@
                     "parameters": {
                       "type": "object",
                       "additionalProperties": false,
-                      "description": "Complete current scalar/dynamics snapshot. Foreground and background colors are excluded and preserved when applying a preset.",
+                      "description": "Complete scalar/dynamics snapshot; optional tip geometry resolves to Round/1/0. Foreground and background colors are excluded and preserved on Apply.",
                       "required": [
                         "radius",
                         "opacity",
@@ -763,6 +844,26 @@
                             "dab",
                             "stroke"
                           ]
+                        },
+                        "tip_shape": {
+                          "type": "string",
+                          "enum": [
+                            "round",
+                            "square"
+                          ],
+                          "description": "Analytic Round or Square tip; omitted values resolve to Round."
+                        },
+                        "tip_roundness": {
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 1,
+                          "description": "Minor/major axis ratio; omitted values resolve to 1."
+                        },
+                        "tip_angle": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180,
+                          "description": "Fixed clockwise document degrees; omitted values resolve to 0."
                         }
                       }
                     }
@@ -811,7 +912,7 @@
                     "parameters": {
                       "type": "object",
                       "additionalProperties": false,
-                      "description": "Complete current scalar/dynamics snapshot. Foreground and background colors are excluded and preserved when applying a preset.",
+                      "description": "Complete scalar/dynamics snapshot; optional tip geometry resolves to Round/1/0. Foreground and background colors are excluded and preserved on Apply.",
                       "required": [
                         "radius",
                         "opacity",
@@ -884,6 +985,26 @@
                             "dab",
                             "stroke"
                           ]
+                        },
+                        "tip_shape": {
+                          "type": "string",
+                          "enum": [
+                            "round",
+                            "square"
+                          ],
+                          "description": "Analytic Round or Square tip; omitted values resolve to Round."
+                        },
+                        "tip_roundness": {
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 1,
+                          "description": "Minor/major axis ratio; omitted values resolve to 1."
+                        },
+                        "tip_angle": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180,
+                          "description": "Fixed clockwise document degrees; omitted values resolve to 0."
                         }
                       }
                     }
@@ -925,7 +1046,7 @@
                 "parameters": {
                   "type": "object",
                   "additionalProperties": false,
-                  "description": "Complete current scalar/dynamics snapshot. Foreground and background colors are excluded and preserved when applying a preset.",
+                  "description": "Complete scalar/dynamics snapshot; optional tip geometry resolves to Round/1/0. Foreground and background colors are excluded and preserved on Apply.",
                   "required": [
                     "radius",
                     "opacity",
@@ -998,6 +1119,26 @@
                         "dab",
                         "stroke"
                       ]
+                    },
+                    "tip_shape": {
+                      "type": "string",
+                      "enum": [
+                        "round",
+                        "square"
+                      ],
+                      "description": "Analytic Round or Square tip; omitted values resolve to Round."
+                    },
+                    "tip_roundness": {
+                      "type": "number",
+                      "minimum": 0.25,
+                      "maximum": 1,
+                      "description": "Minor/major axis ratio; omitted values resolve to 1."
+                    },
+                    "tip_angle": {
+                      "type": "number",
+                      "minimum": -180,
+                      "maximum": 180,
+                      "description": "Fixed clockwise document degrees; omitted values resolve to 0."
                     }
                   }
                 },

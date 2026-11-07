@@ -47,8 +47,10 @@ Preset ribbon thumbnails are schematic illustrations, not sampled brush output.
 `canvas.state.parameters` and the `painting.tool` public resource explicitly
 report all parameter defaults. Its resource schema describes the parameters and
 `capabilities.flow` / `capabilities.stroke_opacity` for the selected native tool.
-Registry inventory also reports these capabilities per native plugin. Discovery
-is cold; it is not repeated for each pointer sample. `brush.set` retains its
+The additive `capabilities.tip_geometry` reports [analytic tip](brush-tips.md)
+support independently. Registry inventory exposes the same three capabilities
+per native plugin. Discovery is cold; it is not repeated for each pointer sample.
+`brush.set` retains its
 compact parameter-result convention.
 
 The valid 1% spacing boundary is serialized as decimal `0.01`, including public
@@ -90,16 +92,17 @@ half-up rounding:
 
 ```text
 cap    = round(65535 * pressure_adjusted_opacity)
-amount = round(65535 * flow * radial_edge * softness)
+amount = round(65535 * flow * tip_edge * softness)
 S     += round(max(cap - S, 0) * amount / 65535)
 alpha  = round(S * selection_byte / 65535)
 ```
 
-Unrestricted selection uses byte 255. The existing round brush geometry,
-interpolation, spacing and stabilized tail supply the dabs. The final byte feeds
-the established RGBA/A8 blending equations against immutable original samples.
-The cursor remains a round size/pressure outline; this feature adds no textured
-or sampled brush tip.
+Unrestricted selection uses byte 255. Default round geometry retains the existing
+radial shape; [analytic ellipse/rectangle tips](brush-tips.md) supply their own
+edge/softness product to the same recurrence. Interpolation and stabilized tails
+remain shared. The final byte feeds the established RGBA/A8 blending equations
+against immutable original samples. Cursor contours reflect nominal tip geometry;
+sampled and textured tips remain planned.
 
 ## Storage, ABI and compatibility
 

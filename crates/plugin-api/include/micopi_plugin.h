@@ -136,6 +136,10 @@ const MicopiToolOptionsApi *micopi_tool_options_v1(void);
    Flow also requires the full tail in dab mode. Capped contacts require the
    complete MicopiToolHostStroke, with only their admitted target exposed. */
 #define MICOPI_TOOL_OPTION_STROKE_OPACITY 8u
+/* Fixed analytic geometry, complete 80-byte MicopiToolOptionsTip required. */
+#define MICOPI_TOOL_OPTION_TIP_GEOMETRY 16u
+#define MICOPI_TIP_ROUND 0u
+#define MICOPI_TIP_SQUARE 1u
 typedef struct {
     const uint8_t *data; size_t len;
     uint32_t width, height, stride;
@@ -150,6 +154,13 @@ typedef struct { MicopiToolOptions base; uint32_t flags; } MicopiToolOptionsExt;
 typedef struct { MicopiToolOptionsExt base; MicopiCoverage selection; } MicopiToolOptionsSelection;
 /* Legacy configure resets flow1/dab; finite flow0..1 and reserved0 required. */
 typedef struct { MicopiToolOptionsSelection base; float flow; uint32_t reserved; } MicopiToolOptionsStroke;
+/* Radius is the major half-diameter; finite roundness .25..1, clockwise document
+   angle -180..180, reserved0. Pressure scales both axes. Legacy option prefixes
+   reset geometry to Round/1/0; no assets or new host loans are introduced. */
+typedef struct {
+    MicopiToolOptionsStroke base;
+    uint32_t tip_shape; float roundness, angle; uint32_t reserved;
+} MicopiToolOptionsTip;
 typedef struct {
     uint32_t kind, mode; float bounds[4];
     const float (*points)[2]; size_t count;

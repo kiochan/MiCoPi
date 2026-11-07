@@ -1,5 +1,5 @@
 //! Bounded profile data, never registry contributions or executable plugins.
-use crate::application::{OpacityMode, Parameters};
+use crate::application::{OpacityMode, Parameters, TipShape};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 
@@ -20,6 +20,7 @@ const PARAMETER_KEYS: [&str; 12] = [
     "flow",
     "opacity_mode",
 ];
+const OPTIONAL_PARAMETER_KEYS: [&str; 3] = ["tip_shape", "tip_roundness", "tip_angle"];
 
 /// A complete scalar/dynamics snapshot. Artist foreground/background swatches
 /// are deliberately outside the format and survive every preset application.
@@ -38,6 +39,12 @@ pub struct PresetParameters {
     pub minimum_opacity: f32,
     pub flow: f32,
     pub opacity_mode: OpacityMode,
+    #[serde(skip_serializing_if = "TipShape::is_round")]
+    pub tip_shape: TipShape,
+    #[serde(skip_serializing_if = "crate::application::full_tip_roundness")]
+    pub tip_roundness: f32,
+    #[serde(skip_serializing_if = "crate::application::zero_tip_angle")]
+    pub tip_angle: f32,
 }
 impl PresetParameters {
     fn from_validated(p: &Parameters) -> Self {
@@ -54,6 +61,9 @@ impl PresetParameters {
             minimum_opacity: p.minimum_opacity,
             flow: p.flow,
             opacity_mode: p.opacity_mode,
+            tip_shape: p.tip_shape,
+            tip_roundness: p.tip_roundness,
+            tip_angle: p.tip_angle,
         }
     }
     pub fn capture(p: &Parameters) -> Result<Self, String> {
@@ -65,8 +75,11 @@ impl PresetParameters {
         let object = raw
             .as_object()
             .ok_or("Preset parameters must be a complete object")?;
-        if object.len() != PARAMETER_KEYS.len()
-            || PARAMETER_KEYS.iter().any(|key| !object.contains_key(*key))
+        if PARAMETER_KEYS.iter().any(|key| !object.contains_key(*key))
+            || object.keys().any(|key| {
+                !PARAMETER_KEYS.contains(&key.as_str())
+                    && !OPTIONAL_PARAMETER_KEYS.contains(&key.as_str())
+            })
         {
             return Err("Preset parameters require every scalar/dynamics field and no color or unknown fields".into());
         }

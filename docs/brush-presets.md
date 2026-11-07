@@ -16,11 +16,18 @@ without it open a prefilled command form.
 
 Built-in presets remain immutable registered tool contributions. Selecting one
 continues to apply its existing partial `tool.select` parameters. A user preset
-instead stores all twelve current scalar/dynamics values:
+instead stores twelve required scalar/dynamics values:
 
 `radius`, `opacity`, `hardness`, `stabilizer`, `pressure_size`,
 `pressure_opacity`, `pressure_gamma`, `minimum_radius`, `spacing`,
 `minimum_opacity`, `flow` and `opacity_mode`.
+
+[Analytic tip geometry](brush-tips.md) adds optional `tip_shape`, `tip_roundness`
+and `tip_angle` fields. Missing fields mean Round/1/0, and applying a legacy
+twelve-field record explicitly restores those defaults. Nondefault geometry is
+retained through Save/Update/Apply and bundle import/export. Default geometry
+stays omitted, preserving the older twelve-field representation; strict older
+preset readers may reject records with the new fields.
 
 Both `color` and `background_color` are excluded. Applying a preset preserves
 the artist's foreground and background swatches. These are scalar presets;
@@ -33,7 +40,7 @@ sampled tips, textures and additional dynamics are still planned.
 | `brush.presets.query` | Contact-safe cached library, built-in/user availability and matching information; no file I/O |
 | `brush.presets.upsert` | Complete `name`, `owner`, `tool_id`, `parameters`; omit `preset_id` to create, include it to replace an existing record |
 | `brush.presets.delete` | Remove one explicit `preset_id` without recycling its identity |
-| `brush.presets.apply` | Resolve one `preset_id`, finish an accepted contact through the checked pointer boundary, then select its real tool and apply all twelve values |
+| `brush.presets.apply` | Resolve one `preset_id`, finish an accepted contact through the checked pointer boundary, then select its real tool and apply the complete resolved setup |
 | `brush.presets.import` | Read a bounded bundle from `path` and assign fresh local IDs in file order |
 | `brush.presets.export` | Write explicit `preset_ids` to `path`; report selected IDs, byte count and SHA-256 |
 | `brush.presets.reload` | Explicitly reload the active profile's library without resetting painting defaults |
@@ -106,9 +113,10 @@ The Session loads a typed library cache for both desktop and CLI. Only explicit
 file operations read disk. A dedicated desktop cache-sync effect updates the
 settings model without applying painting defaults; later settings saves retain
 the latest library and supported unknown root fields. Cached UI cards rebuild
-when the library token changes; matching compares the twelve values directly.
-No registry injection, new dependency, native ABI or per-MOVE file/JSON work is
-introduced.
+when the library token changes; matching compares the resolved scalar and tip
+values directly. Preset storage introduces no registry injection, new dependency
+or per-MOVE file/JSON work. Tip geometry uses the separately negotiated optional
+native options tail described in its [guide](brush-tips.md).
 
 Existing replay metadata records the resolved tool and painting parameters,
 not a dependency on the preset file. Verified outcome playback therefore needs

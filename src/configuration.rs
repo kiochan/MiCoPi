@@ -138,6 +138,18 @@ impl Appearance {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct PaintingPreferences {
+    #[serde(
+        default,
+        skip_serializing_if = "crate::application::TipShape::is_round"
+    )]
+    pub tip_shape: crate::application::TipShape,
+    #[serde(
+        default = "crate::application::default_tip_roundness",
+        skip_serializing_if = "crate::application::full_tip_roundness"
+    )]
+    pub tip_roundness: f32,
+    #[serde(default, skip_serializing_if = "crate::application::zero_tip_angle")]
+    pub tip_angle: f32,
     pub flow: f32,
     pub opacity_mode: crate::application::OpacityMode,
     #[serde(serialize_with = "crate::application::serialize_spacing")]
@@ -153,6 +165,9 @@ impl Default for PaintingPreferences {
     fn default() -> Self {
         Self {
             flow: 1.,
+            tip_shape: crate::application::TipShape::Round,
+            tip_roundness: 1.,
+            tip_angle: 0.,
             opacity_mode: crate::application::OpacityMode::Dab,
             spacing: 0.11,
             minimum_opacity: 0.,
@@ -168,6 +183,9 @@ impl From<&crate::application::Parameters> for PaintingPreferences {
     fn from(p: &crate::application::Parameters) -> Self {
         Self {
             flow: p.flow,
+            tip_shape: p.tip_shape,
+            tip_roundness: p.tip_roundness,
+            tip_angle: p.tip_angle,
             opacity_mode: p.opacity_mode,
             spacing: p.spacing,
             minimum_opacity: p.minimum_opacity,
@@ -180,6 +198,14 @@ impl From<&crate::application::Parameters> for PaintingPreferences {
     }
 }
 impl PaintingPreferences {
+    pub(crate) fn parameter_patch(&self) -> Result<Value, String> {
+        self.validate()?;
+        let mut value = serde_json::to_value(self).map_err(|e| e.to_string())?;
+        value["tip_shape"] = json!(self.tip_shape);
+        value["tip_roundness"] = json!(self.tip_roundness);
+        value["tip_angle"] = json!(self.tip_angle);
+        Ok(value)
+    }
     pub fn validate(&self) -> Result<(), String> {
         crate::application::Parameters::default()
             .patched(&serde_json::to_value(self).map_err(|e| e.to_string())?)
@@ -187,6 +213,9 @@ impl PaintingPreferences {
             .map_err(|e| e.to_string())
     }
     pub fn apply(&self, parameters: &mut crate::application::Parameters) {
+        parameters.tip_shape = self.tip_shape;
+        parameters.tip_roundness = self.tip_roundness;
+        parameters.tip_angle = self.tip_angle;
         parameters.flow = self.flow;
         parameters.opacity_mode = self.opacity_mode;
         parameters.spacing = self.spacing;
@@ -371,6 +400,51 @@ pub fn atomic_write(path: &Path, text: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn painting_tip_storage_omits_defaults_but_runtime_patch_resets_custom_geometry() {
+        use crate::application::{Parameters, TipShape};
+        let defaults = PaintingPreferences::default();
+        let stored = serde_json::to_value(&defaults).unwrap();
+        for key in ["tip_shape", "tip_roundness", "tip_angle"] {
+            assert!(stored.get(key).is_none());
+        }
+        let patch = defaults.parameter_patch().unwrap();
+        assert_eq!(patch["tip_shape"], "round");
+        assert_eq!(patch["tip_roundness"], 1.);
+        assert_eq!(patch["tip_angle"], 0.);
+        let mut current = Parameters::default();
+        current.tip_shape = TipShape::Square;
+        current.tip_roundness = 0.25;
+        current.tip_angle = 137.;
+        current.radius = 19.;
+        current.opacity = 0.4;
+        current.color = "#ABCDEF".into();
+        current.background_color = "#112233".into();
+        let restored = current.patched(&patch).unwrap();
+        assert_eq!(PaintingPreferences::from(&restored), defaults);
+        assert_eq!(restored.radius, current.radius);
+        assert_eq!(restored.opacity, current.opacity);
+        assert_eq!(restored.color, current.color);
+        assert_eq!(restored.background_color, current.background_color);
+        let settings=Settings::decode(r#"{"painting":{"tip_shape":"square","tip_roundness":0.25,"tip_angle":137},"custom":{"keep":42}}"#,PathBuf::new()).unwrap();
+        let encoded = settings.encode().unwrap();
+        let roundtrip = Settings::decode(&encoded, PathBuf::new()).unwrap();
+        assert_eq!(roundtrip.painting, settings.painting);
+        assert_eq!(roundtrip.painting.tip_shape, TipShape::Square);
+        assert_eq!(
+            serde_json::from_str::<Value>(&encoded).unwrap()["custom"]["keep"],
+            42
+        );
+        for invalid in [
+            json!({"tip_shape":"image"}),
+            json!({"tip_roundness":0.249999999999}),
+            json!({"tip_angle":180.00000001}),
+        ] {
+            assert!(
+                Settings::decode(&json!({"painting":invalid}).to_string(), PathBuf::new()).is_err()
+            );
+        }
+    }
     #[test]
     fn selection_preferences_are_typed_and_preserve_existing_profile_content() {
         let old = Settings::decode(

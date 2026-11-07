@@ -1,5 +1,7 @@
 use super::*;
 use crate::{configure, Raster, State};
+#[path = "tip_tests.rs"]
+mod tip_tests;
 
 const GAP: u32 = 0xa1b2c3d4;
 struct Host {
@@ -805,6 +807,7 @@ fn stroke_callback_rejects_alias_coordinates_and_torn_spans_before_writes() {
     coverage.reserve_region(region).unwrap();
     let mut dab = Dab {
         coverage: &mut coverage,
+        geometry: Default::default(),
         region,
         brush: brush(0.4, false),
         x: 0.5,

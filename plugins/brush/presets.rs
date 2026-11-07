@@ -13,6 +13,7 @@ struct Card {
     search: String,
     available: bool,
     reason: Option<String>,
+    tip: super::tip_geometry::Contour,
 }
 #[derive(Clone)]
 struct View {
@@ -43,6 +44,9 @@ fn current_matches(p: &PresetParameters, s: &crate::application::Parameters) -> 
         && p.minimum_opacity == s.minimum_opacity
         && p.flow == s.flow
         && p.opacity_mode == s.opacity_mode
+        && p.tip_shape == s.tip_shape
+        && p.tip_roundness == s.tip_roundness
+        && p.tip_angle == s.tip_angle
 }
 fn button(ui: &mut Ui, a: &Appearance, title: &str, enabled: bool) -> Response {
     let natural = ui.painter().layout_no_wrap(
@@ -69,7 +73,27 @@ fn button(ui: &mut Ui, a: &Appearance, title: &str, enabled: bool) -> Response {
     )
     .inner
 }
-fn preview(ui: &Ui, rect: Rect, p: &PresetParameters, color: Color32) {
+fn preview(
+    ui: &Ui,
+    rect: Rect,
+    p: &PresetParameters,
+    tip: &super::tip_geometry::Contour,
+    color: Color32,
+) {
+    let badge = rect.height().min(rect.width() * 0.3);
+    tip.filled(
+        &ui.painter().with_clip_rect(rect),
+        pos2(rect.left() + badge * 0.5, rect.center().y),
+        badge * 0.33,
+        color,
+    );
+    let rect = Rect::from_min_max(
+        pos2(
+            rect.left() + badge + ui.spacing().item_spacing.x,
+            rect.top(),
+        ),
+        rect.max,
+    );
     let width = (p.radius * 0.22).clamp(0.75, 4.);
     let points = (0..=20)
         .map(|n| {
@@ -107,6 +131,12 @@ impl Editor {
                     &preset.parameters,
                 );
                 Card {
+                    tip: super::tip_geometry::contour(
+                        preset.parameters.tip_shape,
+                        preset.parameters.tip_roundness,
+                        preset.parameters.tip_angle,
+                        32,
+                    ),
                     preset: preset.clone(),
                     search: preset.name.to_lowercase(),
                     available: status.available,
@@ -380,7 +410,7 @@ impl Editor {
                             &&self.session.selected_tool==card.preset.tool_id&&current_matches(&card.preset.parameters,&self.session.parameters);
                         ui.painter().rect_filled(rect,a.corner_radius,if matching{colors.tint(0.16)}else if response.hovered(){colors.border}else{colors.raised});
                         let mark=Rect::from_min_max(rect.min+vec2(a.item_spacing,a.item_spacing),pos2(rect.right()-a.item_spacing,rect.top()+a.control_height));
-                        preview(ui,mark,&card.preset.parameters,if card.available{if matching{colors.accent}else{colors.text}}else{colors.muted});
+                        preview(ui,mark,&card.preset.parameters,&card.tip,if card.available{if matching{colors.accent}else{colors.text}}else{colors.muted});
                         let title=WidgetText::from(RichText::new(&card.preset.name).size(a.small_font_size)).into_galley(ui,Some(TextWrapMode::Truncate),(body.width()-a.item_spacing*2.).max(0.),TextStyle::Small);
                         ui.painter().with_clip_rect(body).galley(pos2(body.left()+a.item_spacing,rect.bottom()-a.item_spacing-title.size().y),title,colors.muted);
                         let tooltip=card.reason.as_ref().map_or_else(||card.preset.name.clone(),|reason|format!("{}\n{}",card.preset.name,crate::i18n::text(reason)));

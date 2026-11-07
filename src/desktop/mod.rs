@@ -556,6 +556,9 @@ impl Editor {
         let desired = crate::application::Parameters {
             flow: self.session.parameters.flow,
             opacity_mode: self.session.parameters.opacity_mode,
+            tip_shape: self.session.parameters.tip_shape,
+            tip_roundness: self.session.parameters.tip_roundness,
+            tip_angle: self.session.parameters.tip_angle,
             spacing: self.session.parameters.spacing,
             minimum_opacity: self.session.parameters.minimum_opacity,
             radius: self.radius,

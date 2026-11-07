@@ -1501,5 +1501,22 @@
   "User Brush Presets": "User Brush Presets",
   "Reload Brush Preset Library": "Reload Brush Preset Library",
   "Brush Preset Library": "Brush Preset Library",
-  "Preset library updated; the invalid settings JSON draft was kept": "Preset library updated; the invalid settings JSON draft was kept"
+  "Preset library updated; the invalid settings JSON draft was kept": "Preset library updated; the invalid settings JSON draft was kept",
+  "Tip Shape": "Tip Shape",
+  "Round": "Round",
+  "Roundness": "Roundness",
+  "Width of the tip's short side compared with its long side.": "Width of the tip's short side compared with its long side.",
+  "Rotate the tip clockwise on the canvas. Its angle stays fixed as you draw.": "Rotate the tip clockwise on the canvas. Its angle stays fixed as you draw.",
+  "Tip shape applies to Brush and Eraser.": "Tip shape applies to Brush and Eraser.",
+  "Brush Tip Shape": "Brush Tip Shape",
+  "Brush Tip Roundness": "Brush Tip Roundness",
+  "Brush Tip Angle": "Brush Tip Angle",
+  "Adjust Brush Tip Angle": "Adjust Brush Tip Angle",
+  "Rotate Brush Tip Clockwise": "Rotate Brush Tip Clockwise",
+  "Rotate Brush Tip Counterclockwise": "Rotate Brush Tip Counterclockwise",
+  "Rotate Brush Tip Clockwise (15°)": "Rotate Brush Tip Clockwise (15°)",
+  "Rotate Brush Tip Counterclockwise (15°)": "Rotate Brush Tip Counterclockwise (15°)",
+  "Round tips flatten into ellipses; square tips flatten into rectangles.": "Round tips flatten into ellipses; square tips flatten into rectangles.",
+  "Width of the short side compared with the long side, from 25% to 100%.": "Width of the short side compared with the long side, from 25% to 100%.",
+  "Rotate the tip clockwise and keep its angle fixed as you draw.": "Rotate the tip clockwise and keep its angle fixed as you draw."
 }

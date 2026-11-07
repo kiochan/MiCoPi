@@ -1501,5 +1501,22 @@
   "User Brush Presets": "ユーザーブラシプリセット",
   "Reload Brush Preset Library": "ブラシプリセットライブラリを再読み込み",
   "Brush Preset Library": "ブラシプリセットライブラリ",
-  "Preset library updated; the invalid settings JSON draft was kept": "プリセットライブラリを更新しました。無効な設定 JSON の下書きは保持されています"
+  "Preset library updated; the invalid settings JSON draft was kept": "プリセットライブラリを更新しました。無効な設定 JSON の下書きは保持されています",
+  "Tip Shape": "先端の形状",
+  "Round": "丸型",
+  "Roundness": "真円率",
+  "Width of the tip's short side compared with its long side.": "ブラシ先端の長辺に対する短辺の比率です。",
+  "Rotate the tip clockwise on the canvas. Its angle stays fixed as you draw.": "キャンバス上の先端を時計回りに回転します。描画中も角度は固定されます。",
+  "Tip shape applies to Brush and Eraser.": "先端の形状はブラシと消しゴムに適用されます。",
+  "Brush Tip Shape": "ブラシ先端の形状",
+  "Brush Tip Roundness": "ブラシ先端の真円率",
+  "Brush Tip Angle": "ブラシ先端の角度",
+  "Adjust Brush Tip Angle": "ブラシ先端の角度を調整",
+  "Rotate Brush Tip Clockwise": "ブラシ先端を時計回りに回転",
+  "Rotate Brush Tip Counterclockwise": "ブラシ先端を反時計回りに回転",
+  "Rotate Brush Tip Clockwise (15°)": "ブラシ先端を時計回りに回転（15°）",
+  "Rotate Brush Tip Counterclockwise (15°)": "ブラシ先端を反時計回りに回転（15°）",
+  "Round tips flatten into ellipses; square tips flatten into rectangles.": "丸型の先端は楕円形に、正方形の先端は長方形に扁平化します。",
+  "Width of the short side compared with the long side, from 25% to 100%.": "長辺に対する短辺の幅の比率です。25%から100%まで設定できます。",
+  "Rotate the tip clockwise and keep its angle fixed as you draw.": "先端を時計回りに回転し、描画中もその角度を保ちます。"
 }

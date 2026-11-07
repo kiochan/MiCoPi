@@ -7,6 +7,81 @@ use std::path::PathBuf;
 fn snapshot() -> PresetParameters {
     PresetParameters::capture(&Parameters::default()).unwrap()
 }
+
+#[test]
+fn preset_legacy_twelve_fields_reset_tip_defaults_and_custom_fifteen_round_trip_in_v1_bundle() {
+    let legacy = snapshot().value().unwrap();
+    assert_eq!(legacy.as_object().unwrap().len(), 12);
+    let old = PresetParameters::decode_value(&legacy).unwrap();
+    assert_eq!(old.tip_shape, TipShape::Round);
+    assert_eq!(old.tip_roundness, 1.);
+    assert_eq!(old.tip_angle, 0.);
+    assert_eq!(old.value().unwrap(), legacy);
+    let mut current = Parameters::default();
+    current.tip_shape = TipShape::Square;
+    current.tip_roundness = 0.4;
+    current.tip_angle = -135.;
+    current.color = "#aAbBcC".into();
+    current.background_color = "#dDeEfF".into();
+    let custom = PresetParameters::capture(&current).unwrap();
+    let custom_value = custom.value().unwrap();
+    assert_eq!(custom_value.as_object().unwrap().len(), 15);
+    assert_eq!(custom_value["tip_shape"], "square");
+    assert_eq!(custom_value["tip_roundness"], 0.4);
+    assert_eq!(custom_value["tip_angle"], -135.);
+    let reset = old.apply_to(&current).unwrap();
+    assert_eq!(reset.tip_shape, TipShape::Round);
+    assert_eq!(reset.tip_roundness, 1.);
+    assert_eq!(reset.tip_angle, 0.);
+    assert_eq!(reset.color, current.color);
+    assert_eq!(reset.background_color, current.background_color);
+    let bundle = BrushPresetBundle::from_items(vec![
+        UserPreset::new(1, "Legacy".into(), "painting".into(), "brush".into(), old).unwrap(),
+        UserPreset::new(
+            2,
+            "Chisel".into(),
+            "painting".into(),
+            "eraser".into(),
+            custom.clone(),
+        )
+        .unwrap(),
+    ])
+    .unwrap();
+    let encoded = bundle.encode().unwrap();
+    let wire: Value = serde_json::from_str(&encoded).unwrap();
+    assert_eq!(wire["version"], 1);
+    assert_eq!(wire["items"][0]["parameters"], legacy);
+    assert_eq!(wire["items"][1]["parameters"], custom_value);
+    let decoded = BrushPresetBundle::decode(&encoded).unwrap();
+    assert_eq!(decoded, bundle);
+    assert_eq!(decoded.items[1].parameters, custom);
+}
+
+#[test]
+fn preset_tip_optional_tail_rejects_original_boundary_overflow_and_unknown_geometry() {
+    let legacy = snapshot().value().unwrap();
+    for (key, value) in [
+        ("tip_roundness", json!(0.249999999999)),
+        ("tip_roundness", json!(1.000000001)),
+        ("tip_angle", json!(180.00000001)),
+        ("tip_angle", json!(-180.00000001)),
+        ("tip_shape", json!("image")),
+        ("tip_angle", Value::Null),
+        ("tip_texture", json!("brush.png")),
+    ] {
+        let mut value_with_tail = legacy.clone();
+        value_with_tail[key] = value;
+        assert!(
+            PresetParameters::decode_value(&value_with_tail).is_err(),
+            "{key}: {value_with_tail}"
+        );
+    }
+    // An additive tip tail never makes a missing legacy scalar acceptable.
+    let mut incomplete = legacy;
+    incomplete["tip_shape"] = json!("square");
+    incomplete.as_object_mut().unwrap().remove("radius");
+    assert!(PresetParameters::decode_value(&incomplete).is_err());
+}
 fn preset(id: u64) -> UserPreset {
     UserPreset::new(
         id,

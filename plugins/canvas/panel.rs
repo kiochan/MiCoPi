@@ -601,15 +601,29 @@ impl Editor {
                     ctx.set_cursor_icon(CursorIcon::Crosshair);
                 } else {
                     ctx.set_cursor_icon(CursorIcon::None);
-                    let radius = self.brush(self.pressure, self.pen_active).radius * self.zoom;
-                    painter.circle_stroke(
+                    // The DLL clamps the major radius in document pixels;
+                    // screen-space readability marks are separate from the tip.
+                    let radius =
+                        self.brush(self.pressure, self.pen_active).radius.max(0.5) * self.zoom;
+                    let parameters = &self.session.parameters;
+                    let contour = super::brush::tip_geometry::cached(
+                        &ctx,
+                        "brush-tip-cursor",
+                        parameters.tip_shape,
+                        parameters.tip_roundness,
+                        parameters.tip_angle,
+                        radius,
+                    );
+                    contour.outline(
+                        &painter,
                         p,
-                        radius.max(0.5),
+                        radius,
                         Stroke::new(2.5, Color32::from_white_alpha(230)),
                     );
-                    painter.circle_stroke(
+                    contour.outline(
+                        &painter,
                         p,
-                        radius.max(0.5),
+                        radius,
                         Stroke::new(1., Color32::from_black_alpha(220)),
                     );
                     if radius < 4. {
@@ -627,6 +641,10 @@ impl Editor {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "brush_tip_cursor_tests.rs"]
+mod brush_tip_cursor_tests;
 
 #[cfg(test)]
 #[path = "geometry_contact_ui_tests.rs"]

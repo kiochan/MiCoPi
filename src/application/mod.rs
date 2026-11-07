@@ -5,8 +5,13 @@ mod adjustment_boundary;
 mod adjustment_tests;
 mod atomic;
 mod brush_presets;
+mod brush_tip;
+pub use brush_tip::TipShape;
+pub(crate) use brush_tip::{default_tip_roundness, full_tip_roundness, zero_tip_angle};
 #[cfg(test)]
 mod brush_presets_tests;
+#[cfg(test)]
+mod brush_tip_tests;
 pub(crate) mod canvas_geometry;
 pub mod codec;
 pub(crate) mod creation;

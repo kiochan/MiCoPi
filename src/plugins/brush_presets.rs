@@ -23,7 +23,13 @@ pub(crate) fn parameters_schema() -> Value {
     let fields = schema["properties"].as_object_mut().unwrap();
     fields.remove("color");
     fields.remove("background_color");
-    let required = fields.keys().cloned().collect::<Vec<_>>();
+    // Legacy bundles remain complete snapshots: omitted tip fields reset to
+    // circular defaults. Only the twelve original scalar fields are required.
+    let required = fields
+        .keys()
+        .filter(|key| !matches!(key.as_str(), "tip_shape" | "tip_roundness" | "tip_angle"))
+        .cloned()
+        .collect::<Vec<_>>();
     schema["required"] = json!(required);
     schema
 }

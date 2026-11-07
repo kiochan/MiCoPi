@@ -11,6 +11,7 @@ mod raster;
 mod resample;
 mod selection;
 mod stroke;
+mod tip;
 mod trim;
 use input::{Dynamics, Sample, Stabilizer};
 use micopi_plugin_api as abi;
@@ -35,6 +36,7 @@ struct State {
     flow: f32,
     stroke_opacity: bool,
     stroke_cache: stroke::Coverage,
+    tip: tip::Tip,
 }
 impl Default for State {
     fn default() -> Self {
@@ -49,6 +51,7 @@ impl Default for State {
             flow: 1.,
             stroke_opacity: false,
             stroke_cache: Default::default(),
+            tip: Default::default(),
         }
     }
 }
@@ -168,6 +171,7 @@ impl State {
                         }),
                         spacing: self.spacing,
                         flow: self.flow,
+                        tip: self.tip,
                         stroke: if capped {
                             Some(std::mem::take(&mut self.stroke_cache))
                         } else {
@@ -373,7 +377,8 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
             & !(abi::TOOL_OPTION_ALPHA_LOCK
                 | abi::TOOL_OPTION_SELECTION
                 | abi::TOOL_OPTION_A8_TARGET
-                | abi::TOOL_OPTION_STROKE_OPACITY)
+                | abi::TOOL_OPTION_STROKE_OPACITY
+                | abi::TOOL_OPTION_TIP_GEOMETRY)
             != 0
         || flags & (abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_A8_TARGET)
             == (abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_A8_TARGET)
@@ -382,6 +387,13 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
     }
     let complete_stroke =
         header.struct_size >= std::mem::size_of::<abi::ToolOptionsStroke>() as u32;
+    let complete_tip = header.struct_size >= std::mem::size_of::<abi::ToolOptionsTip>() as u32;
+    if (flags & abi::TOOL_OPTION_TIP_GEOMETRY != 0 && !complete_tip)
+        || (header.struct_size > std::mem::size_of::<abi::ToolOptionsStroke>() as u32
+            && !complete_tip)
+    {
+        return abi::ERROR;
+    }
     if (flags & abi::TOOL_OPTION_STROKE_OPACITY != 0 && !complete_stroke)
         || (header.struct_size > std::mem::size_of::<abi::ToolOptionsSelection>() as u32
             && !complete_stroke)
@@ -399,6 +411,24 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
         extended.flow
     } else {
         1.
+    };
+    let tip = if complete_tip {
+        let extended = std::ptr::read_unaligned(options.cast::<abi::ToolOptionsTip>());
+        if extended.reserved != 0
+            || (flags & abi::TOOL_OPTION_TIP_GEOMETRY == 0
+                && (extended.tip_shape != abi::TIP_ROUND
+                    || extended.roundness != 1.
+                    || extended.angle != 0.))
+        {
+            return abi::ERROR;
+        }
+        let Some(tip) = tip::Tip::new(extended.tip_shape, extended.roundness, extended.angle)
+        else {
+            return abi::ERROR;
+        };
+        tip
+    } else {
+        tip::Tip::default()
     };
     let mask = if flags & abi::TOOL_OPTION_SELECTION != 0 {
         if header.struct_size < std::mem::size_of::<abi::ToolOptionsSelection>() as u32 {
@@ -431,6 +461,7 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
     state.alpha_locked = flags & abi::TOOL_OPTION_ALPHA_LOCK != 0;
     state.a8_target = flags & abi::TOOL_OPTION_A8_TARGET != 0;
     state.selection = mask;
+    state.tip = tip;
     abi::OK
 }
 static OPTIONS: abi::ToolOptionsApiExt = abi::ToolOptionsApiExt {
@@ -442,7 +473,8 @@ static OPTIONS: abi::ToolOptionsApiExt = abi::ToolOptionsApiExt {
     features: abi::TOOL_OPTION_ALPHA_LOCK
         | abi::TOOL_OPTION_SELECTION
         | abi::TOOL_OPTION_A8_TARGET
-        | abi::TOOL_OPTION_STROKE_OPACITY,
+        | abi::TOOL_OPTION_STROKE_OPACITY
+        | abi::TOOL_OPTION_TIP_GEOMETRY,
 };
 #[no_mangle]
 pub extern "C" fn micopi_tool_options_v1() -> *const abi::ToolOptionsApi {

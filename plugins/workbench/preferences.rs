@@ -299,7 +299,7 @@ const SETTINGS: &[Setting] = &[
     Setting {
         id: "painting.spacing",
         title: "Dab Spacing",
-        description: "Distance between brush dabs as a fraction of diameter.",
+        description: "Default circles use major diameter; other tips use minor diameter, with a 0.5 px minimum step.",
         keywords: "spacing dabs brush jianju 间距",
         category: Category::Painting,
         range: Some((0.01, 2.)),
@@ -312,6 +312,9 @@ const SETTINGS: &[Setting] = &[
         category: Category::Painting,
         range: Some((0., 1.)),
     },
+    Setting {id:"painting.tip_shape",title:"Brush Tip Shape",description:"Round tips flatten into ellipses; square tips flatten into rectangles.",keywords:"brush tip shape round square",category:Category::Painting,range:None},
+    Setting {id:"painting.tip_roundness",title:"Brush Tip Roundness",description:"Width of the short side compared with the long side, from 25% to 100%.",keywords:"brush tip roundness ratio",category:Category::Painting,range:Some((0.25,1.))},
+    Setting {id:"painting.tip_angle",title:"Brush Tip Angle",description:"Rotate the tip clockwise and keep its angle fixed as you draw.",keywords:"brush tip angle rotate",category:Category::Painting,range:Some((-180.,180.))},
 ];
 fn matches(query: &str, text: &str, modified: bool) -> bool {
     let text = text.to_lowercase();
@@ -395,8 +398,12 @@ impl Studio {
             }
             if let Some(painting) = self.preferences.painting_before.take() {
                 if painting != PaintingPreferences::from(&self.editor.session.parameters) {
-                    self.editor
-                        .core("brush.set", serde_json::to_value(painting).unwrap());
+                    match painting.parameter_patch() {
+                        Ok(patch) => {
+                            self.editor.core("brush.set", patch);
+                        }
+                        Err(error) => self.editor.status = error,
+                    };
                     self.editor.sync_from_session();
                 }
             }
@@ -414,11 +421,14 @@ impl Studio {
         }
         let mut prefs = std::mem::take(&mut self.preferences);
         let mut draft = self.editor.settings.clone();
-        let documents = draft.editor_document().and_then(|document| {
-            Settings::defaults(PathBuf::new())
-                .editor_document()
-                .map(|defaults| (document, defaults))
-        });
+        let documents = (|| -> Result<_, String> {
+            let mut document = draft.editor_document()?;
+            document["painting"] = draft.painting.parameter_patch()?;
+            let default_settings = Settings::defaults(PathBuf::new());
+            let mut defaults = default_settings.editor_document()?;
+            defaults["painting"] = default_settings.painting.parameter_patch()?;
+            Ok((document, defaults))
+        })();
         let (mut document, defaults) = match documents {
             Ok(documents) => documents,
             Err(error) => {
@@ -645,10 +655,12 @@ impl Studio {
             self.editor.core("ui.dispatch", serde_json::json!({"id":"selection.options","value":self.editor.settings.selection}));
         }
         if painting_changed {
-            self.editor.core(
-                "brush.set",
-                serde_json::to_value(&self.editor.settings.painting).unwrap(),
-            );
+            match self.editor.settings.painting.parameter_patch() {
+                Ok(patch) => {
+                    self.editor.core("brush.set", patch);
+                }
+                Err(error) => self.editor.status = error,
+            };
             self.editor.sync_from_session();
         }
         if reset_layout {
@@ -845,6 +857,21 @@ impl Studio {
                         if ui.checkbox(&mut enabled, tr("Enabled")).changed() {
                             v = serde_json::json!(enabled);
                         }
+                    } else if item.id == "painting.tip_shape" {
+                        let mut shape: crate::application::TipShape =
+                            serde_json::from_value(v.clone()).unwrap_or_default();
+                        ComboBox::from_id_salt(item.id)
+                            .selected_text(tr(shape.title()))
+                            .show_ui(ui, |ui| {
+                                for candidate in crate::application::TipShape::ALL {
+                                    ui.selectable_value(
+                                        &mut shape,
+                                        candidate,
+                                        tr(candidate.title()),
+                                    );
+                                }
+                            });
+                        v = serde_json::to_value(shape).unwrap();
                     } else if item.id == "painting.opacity_mode" {
                         let mut mode: crate::application::OpacityMode =
                             serde_json::from_value(v.clone()).unwrap_or_default();

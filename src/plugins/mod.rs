@@ -29,6 +29,7 @@ pub fn panel_key(id: &str) -> u32 {
 pub(crate) mod adjustments;
 pub(crate) mod affine;
 pub(crate) mod brush_presets;
+mod brush_tip;
 pub(crate) mod clipboard;
 mod compositing;
 mod document;
@@ -62,6 +63,7 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        BrushAngleAdjust => brush_tip::execute(session, args),
         BrushPresetsQuery | BrushPresetUpsert | BrushPresetDelete | BrushPresetApply
         | BrushPresetsImport | BrushPresetsExport | BrushPresetsReload => {
             brush_presets::execute(session, op, args)

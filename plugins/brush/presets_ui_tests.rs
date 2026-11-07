@@ -240,6 +240,10 @@ fn label(shape: &Shape, title: &str) -> Option<Rect> {
 fn brush_presets_ui_save_and_apply_capture_dynamics_preserve_both_swatches_and_real_tool() {
     let mut app = fixture("save-apply");
     let ctx = context(&app);
+    assert!(app.editor.core(
+        "brush.set",
+        json!({"tip_shape":"square","tip_roundness":0.4,"tip_angle":35})
+    ));
     let before = raw(&app);
     let id = save_current(&mut app, &ctx, "Soft", 0.);
     let record = app.editor.session.preset_library().get(id).unwrap().clone();
@@ -251,6 +255,12 @@ fn brush_presets_ui_save_and_apply_capture_dynamics_preserve_both_swatches_and_r
         crate::application::OpacityMode::Stroke
     );
     assert_eq!(record.parameters.stabilizer, 0.55);
+    assert_eq!(
+        record.parameters.tip_shape,
+        crate::application::TipShape::Square
+    );
+    assert!((record.parameters.tip_roundness - 0.4).abs() < 1e-6);
+    assert_eq!(record.parameters.tip_angle, 35.);
     assert!(record.parameters.pressure_size && record.parameters.pressure_opacity);
     let value = record.parameters.value().unwrap();
     assert!(value.get("color").is_none() && value.get("background_color").is_none());
@@ -258,7 +268,7 @@ fn brush_presets_ui_save_and_apply_capture_dynamics_preserve_both_swatches_and_r
     assert!(app.editor.core("tool.select", json!({"tool":"eraser"})));
     assert!(app.editor.core(
         "brush.set",
-        json!({"radius":9,"flow":1,"color":"#224466","background_color":"#F1E3C8"})
+        json!({"radius":9,"flow":1,"color":"#224466","background_color":"#F1E3C8","tip_shape":"round","tip_roundness":1,"tip_angle":0})
     ));
     app.editor.sync_from_session();
     warm(&mut app, &ctx, 360., 1.);
@@ -282,6 +292,12 @@ fn brush_presets_ui_save_and_apply_capture_dynamics_preserve_both_swatches_and_r
     assert_eq!(app.editor.session.selected_tool, "brush");
     assert_eq!(app.editor.radius, 3.);
     assert_eq!(app.editor.session.parameters.flow, 0.25);
+    assert_eq!(
+        app.editor.session.parameters.tip_shape,
+        crate::application::TipShape::Square
+    );
+    assert!((app.editor.session.parameters.tip_roundness - 0.4).abs() < 1e-6);
+    assert_eq!(app.editor.session.parameters.tip_angle, 35.);
     assert_eq!(app.editor.session.parameters.color, "#224466");
     assert_eq!(app.editor.session.parameters.background_color, "#F1E3C8");
     assert_eq!(

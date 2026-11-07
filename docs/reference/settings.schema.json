@@ -190,7 +190,10 @@
         },
         "opacity_mode": {
           "type": "string",
-          "enum": ["dab", "stroke"],
+          "enum": [
+            "dab",
+            "stroke"
+          ],
           "default": "dab",
           "description": "Per-dab buildup or a cumulative opacity limit for each continuous stroke."
         },
@@ -231,6 +234,26 @@
           "minimum": 0,
           "maximum": 1,
           "default": 0
+        },
+        "tip_shape": {
+          "type": "string",
+          "enum": [
+            "round",
+            "square"
+          ],
+          "description": "Analytic Round or Square tip; omitted values resolve to Round."
+        },
+        "tip_roundness": {
+          "type": "number",
+          "minimum": 0.25,
+          "maximum": 1,
+          "description": "Minor/major axis ratio; omitted values resolve to 1."
+        },
+        "tip_angle": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Fixed clockwise document degrees; omitted values resolve to 0."
         }
       }
     },
@@ -238,40 +261,154 @@
       "type": "object",
       "additionalProperties": false,
       "description": "Versioned user Brush/Eraser scalar presets. IDs are sorted, unique, below next_id and never reused after committed deletion. Missing providers may remain stored; apply validates the exact registered owner/tool.",
-      "required": ["version", "next_id", "items"],
+      "required": [
+        "version",
+        "next_id",
+        "items"
+      ],
       "properties": {
-        "version": { "const": 1 },
-        "next_id": { "type": "integer", "minimum": 1, "maximum": 4294967296 },
+        "version": {
+          "const": 1
+        },
+        "next_id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4294967296
+        },
         "items": {
           "type": "array",
           "maxItems": 128,
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["id", "name", "owner", "tool_id", "parameters"],
+            "required": [
+              "id",
+              "name",
+              "owner",
+              "tool_id",
+              "parameters"
+            ],
             "properties": {
-              "id": { "type": "integer", "minimum": 1, "maximum": 4294967295 },
-              "name": { "type": "string", "minLength": 1, "maxLength": 512, "description": "Nonblank artist-owned name, no control characters; runtime enforces at most 512 UTF-8 bytes." },
-              "owner": { "type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9._-]+$" },
-              "tool_id": { "type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9._-]+$" },
+              "id": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4294967295
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512,
+                "description": "Nonblank artist-owned name, no control characters; runtime enforces at most 512 UTF-8 bytes."
+              },
+              "owner": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 96,
+                "pattern": "^[a-z0-9._-]+$"
+              },
+              "tool_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 96,
+                "pattern": "^[a-z0-9._-]+$"
+              },
               "parameters": {
                 "type": "object",
                 "additionalProperties": false,
-                "description": "Complete current scalar/dynamics snapshot. Foreground and background colors are excluded and preserved when applying a preset.",
-                "required": ["radius", "opacity", "hardness", "stabilizer", "pressure_size", "pressure_opacity", "pressure_gamma", "minimum_radius", "spacing", "minimum_opacity", "flow", "opacity_mode"],
+                "description": "Complete scalar/dynamics snapshot; optional tip geometry resolves to Round/1/0. Foreground and background colors are excluded and preserved on Apply.",
+                "required": [
+                  "radius",
+                  "opacity",
+                  "hardness",
+                  "stabilizer",
+                  "pressure_size",
+                  "pressure_opacity",
+                  "pressure_gamma",
+                  "minimum_radius",
+                  "spacing",
+                  "minimum_opacity",
+                  "flow",
+                  "opacity_mode"
+                ],
                 "properties": {
-                  "radius": { "type": "number", "minimum": 0.5, "maximum": 200 },
-                  "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "hardness": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "stabilizer": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "pressure_size": { "type": "boolean" },
-                  "pressure_opacity": { "type": "boolean" },
-                  "pressure_gamma": { "type": "number", "minimum": 0.25, "maximum": 4 },
-                  "minimum_radius": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "spacing": { "type": "number", "minimum": 0.01, "maximum": 2 },
-                  "minimum_opacity": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "flow": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "opacity_mode": { "type": "string", "enum": ["dab", "stroke"] }
+                  "radius": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 200
+                  },
+                  "opacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "hardness": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "stabilizer": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "pressure_size": {
+                    "type": "boolean"
+                  },
+                  "pressure_opacity": {
+                    "type": "boolean"
+                  },
+                  "pressure_gamma": {
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 4
+                  },
+                  "minimum_radius": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "spacing": {
+                    "type": "number",
+                    "minimum": 0.01,
+                    "maximum": 2
+                  },
+                  "minimum_opacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "flow": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "opacity_mode": {
+                    "type": "string",
+                    "enum": [
+                      "dab",
+                      "stroke"
+                    ]
+                  },
+                  "tip_shape": {
+                    "type": "string",
+                    "enum": [
+                      "round",
+                      "square"
+                    ],
+                    "description": "Analytic Round or Square tip; omitted values resolve to Round."
+                  },
+                  "tip_roundness": {
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 1,
+                    "description": "Minor/major axis ratio; omitted values resolve to 1."
+                  },
+                  "tip_angle": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180,
+                    "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+                  }
                 }
               }
             }

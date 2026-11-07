@@ -688,6 +688,10 @@ impl NativePlugin {
         self.tool_options
             .is_some_and(|(_, features)| features & abi::TOOL_OPTION_STROKE_OPACITY != 0)
     }
+    pub(crate) fn supports_tip_geometry(&self) -> bool {
+        self.tool_options
+            .is_some_and(|(_, features)| features & abi::TOOL_OPTION_TIP_GEOMETRY != 0)
+    }
     fn validate_flow_parameters(
         &self,
         p: &crate::application::Parameters,
@@ -709,6 +713,12 @@ impl NativePlugin {
         p: &crate::application::Parameters,
     ) -> Result<(), ActionError> {
         self.validate_flow_parameters(p)?;
+        if p.has_custom_tip() && !self.supports_tip_geometry() {
+            return Err(ActionError::new(
+                "tool_options_unsupported",
+                "Tool DLL does not support brush tip geometry",
+            ));
+        }
         if self.tool_options.is_none() && (p.spacing != 0.11 || p.minimum_opacity != 0.) {
             return Err(ActionError::new(
                 "tool_options_unsupported",
@@ -3145,6 +3155,12 @@ impl ToolInstance {
             let stroke_opacity =
                 session.parameters.opacity_mode == crate::application::OpacityMode::Stroke;
             self.plugin.validate_flow_parameters(&session.parameters)?;
+            if session.parameters.has_custom_tip() && !self.plugin.supports_tip_geometry() {
+                return Err(ActionError::new(
+                    "tool_options_unsupported",
+                    "Tool DLL does not support brush tip geometry",
+                ));
+            }
             if a8_target
                 && self
                     .plugin
@@ -3197,7 +3213,44 @@ impl ToolInstance {
                 } else {
                     0
                 };
-                let status = if features & abi::TOOL_OPTION_STROKE_OPACITY != 0 {
+                let status = if features & abi::TOOL_OPTION_TIP_GEOMETRY != 0 {
+                    let extended = abi::ToolOptionsTip {
+                        base: abi::ToolOptionsStroke {
+                            base: abi::ToolOptionsSelection {
+                                base: abi::ToolOptionsExt {
+                                    base: abi::ToolOptions {
+                                        struct_size: std::mem::size_of::<abi::ToolOptionsTip>()
+                                            as u32,
+                                        ..options
+                                    },
+                                    flags: flags
+                                        | if self.selection.is_some() {
+                                            abi::TOOL_OPTION_SELECTION
+                                        } else {
+                                            0
+                                        }
+                                        | if p.has_custom_tip() {
+                                            abi::TOOL_OPTION_TIP_GEOMETRY
+                                        } else {
+                                            0
+                                        },
+                                },
+                                selection: self
+                                    .selection
+                                    .as_ref()
+                                    .map(coverage)
+                                    .unwrap_or_default(),
+                            },
+                            flow: p.flow,
+                            reserved: 0,
+                        },
+                        tip_shape: p.tip_shape.as_abi(),
+                        roundness: p.tip_roundness,
+                        angle: p.tip_angle,
+                        reserved: 0,
+                    };
+                    unsafe { (api.configure.unwrap())(self.state, &extended.base.base.base.base) }
+                } else if features & abi::TOOL_OPTION_STROKE_OPACITY != 0 {
                     let extended = abi::ToolOptionsStroke {
                         base: abi::ToolOptionsSelection {
                             base: abi::ToolOptionsExt {

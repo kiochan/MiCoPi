@@ -95,6 +95,7 @@ impl Operation {
         matches!(
             self,
             Self::DocumentResolution
+                | Self::BrushAngleAdjust
                 | Self::BrushPresetApply
                 | Self::ArrangeLayers
                 | Self::AdjustmentCreate

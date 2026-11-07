@@ -584,7 +584,7 @@ fn stroke_opacity_public_tool_parameters_match_strict_resource_and_node_schemas_
         assert_eq!(tool["parameters"]["minimum_opacity"], 0.);
         assert_eq!(
             tool["capabilities"],
-            json!({"flow":true,"stroke_opacity":true})
+            json!({"flow":true,"stroke_opacity":true,"tip_geometry":true})
         );
         for field in ["flow", "opacity_mode", "spacing", "minimum_opacity"] {
             let mut incomplete = tool.clone();
@@ -628,18 +628,18 @@ fn stroke_opacity_discovery_resolves_fallback_presets_and_distinguishes_tool_fro
     );
     assert_eq!(
         observed["resources"]["painting.tool"]["value"]["capabilities"],
-        json!({"flow":true,"stroke_opacity":true})
+        json!({"flow":true,"stroke_opacity":true,"tip_geometry":true})
     );
     let native = observed["resources"]["plugins.registry"]["value"]["native"]
         .as_array()
         .unwrap();
     assert_eq!(
         native.iter().find(|p| p["id"] == "painting").unwrap()["tool_options"],
-        json!({"flow":true,"stroke_opacity":true})
+        json!({"flow":true,"stroke_opacity":true,"tip_geometry":true})
     );
     assert_eq!(
         native.iter().find(|p| p["id"] == "compositing").unwrap()["tool_options"],
-        json!({"flow":false,"stroke_opacity":false})
+        json!({"flow":false,"stroke_opacity":false,"tip_geometry":false})
     );
     // Exercise the real fallback, rather than accepting a discovery-only helper answer.
     contact(&mut s, &[1., 1., 1.], false);
@@ -656,7 +656,7 @@ fn stroke_opacity_discovery_resolves_fallback_presets_and_distinguishes_tool_fro
         );
         assert_eq!(
             observed["resources"]["painting.tool"]["value"]["capabilities"],
-            json!({"flow":false,"stroke_opacity":false}),
+            json!({"flow":false,"stroke_opacity":false,"tip_geometry":false}),
             "{tool}"
         );
         let native = observed["resources"]["plugins.registry"]["value"]["native"]
@@ -697,7 +697,7 @@ fn stroke_opacity_missing_feature_discovery_is_false_without_hiding_complete_par
     let tool = &observed["resources"]["painting.tool"]["value"];
     assert_eq!(
         tool["capabilities"],
-        json!({"flow":false,"stroke_opacity":false})
+        json!({"flow":false,"stroke_opacity":false,"tip_geometry":true})
     );
     assert_eq!(tool["parameters"]["flow"], 1.);
     assert_eq!(tool["parameters"]["opacity_mode"], "dab");
@@ -707,7 +707,7 @@ fn stroke_opacity_missing_feature_discovery_is_false_without_hiding_complete_par
         .unwrap();
     assert_eq!(
         native.iter().find(|p| p["id"] == "painting").unwrap()["tool_options"],
-        json!({"flow":false,"stroke_opacity":false})
+        json!({"flow":false,"stroke_opacity":false,"tip_geometry":true})
     );
     assert_eq!(s.revision, revision);
     assert!(!s.stroke.active());

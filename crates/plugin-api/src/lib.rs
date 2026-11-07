@@ -312,6 +312,11 @@ pub const TOOL_OPTION_A8_TARGET: u32 = 4;
 /// As an options flag, selects capped stroke mode and requires ToolHostStroke.
 /// Nondefault Flow requires the complete ToolOptionsStroke even in dab mode.
 pub const TOOL_OPTION_STROKE_OPACITY: u32 = 8;
+/// Optional analytic tip geometry in a complete ToolOptionsTip. The flag marks
+/// the tail as meaningful; capability absence permits only legacy round tips.
+pub const TOOL_OPTION_TIP_GEOMETRY: u32 = 16;
+pub const TIP_ROUND: u32 = 0;
+pub const TIP_SQUARE: u32 = 1;
 /// Borrowed full-canvas 8-bit coverage, frozen until the contact ends.
 /// A null pointer with all other fields zero means unrestricted painting.
 #[repr(C)]
@@ -353,6 +358,18 @@ pub struct ToolOptionsSelection {
 pub struct ToolOptionsStroke {
     pub base: ToolOptionsSelection,
     pub flow: f32,
+    pub reserved: u32,
+}
+/// Additive fixed contact geometry. Radius is the major half-diameter; roundness
+/// is the minor/major ratio in 0.25..=1, angle is clockwise document degrees in
+/// -180..=180, and reserved must be zero. Both axes scale with pressure. Legacy
+/// option prefixes reset to round/1/0. This tail adds no host callbacks or loans.
+#[repr(C)]
+pub struct ToolOptionsTip {
+    pub base: ToolOptionsStroke,
+    pub tip_shape: u32,
+    pub roundness: f32,
+    pub angle: f32,
     pub reserved: u32,
 }
 /// Optional cold-path selection blending. Both pixel regions share coordinates;
@@ -1007,6 +1024,29 @@ mod transform_layout_tests {
         assert_eq!(offset_of!(A8SamplerApi, resample), 24);
         assert_eq!(size_of::<Affine>(), 56);
         assert_eq!(size_of::<AffineApi>(), 32);
+    }
+    #[test]
+    fn analytic_tip_tail_preserves_stroke_and_legacy_options() {
+        assert_eq!(size_of::<ToolOptionsTip>(), 80);
+        assert_eq!(offset_of!(ToolOptionsTip, base), 0);
+        assert_eq!(offset_of!(ToolOptionsTip, tip_shape), 64);
+        assert_eq!(offset_of!(ToolOptionsTip, roundness), 68);
+        assert_eq!(offset_of!(ToolOptionsTip, angle), 72);
+        assert_eq!(offset_of!(ToolOptionsTip, reserved), 76);
+        assert_eq!(TOOL_OPTION_TIP_GEOMETRY, 16);
+        assert_eq!(
+            TOOL_OPTION_TIP_GEOMETRY
+                & (TOOL_OPTION_ALPHA_LOCK
+                    | TOOL_OPTION_SELECTION
+                    | TOOL_OPTION_A8_TARGET
+                    | TOOL_OPTION_STROKE_OPACITY),
+            0
+        );
+        assert_eq!((TIP_ROUND, TIP_SQUARE), (0, 1));
+        assert_eq!(size_of::<ToolOptions>(), 16);
+        assert_eq!(size_of::<ToolOptionsSelection>(), 56);
+        assert_eq!(size_of::<ToolOptionsStroke>(), 64);
+        assert_eq!(size_of::<ToolHostStroke>(), 64);
     }
     #[test]
     fn optional_a8_bounds_callback_uses_the_published_scalar_descriptor_and_output() {

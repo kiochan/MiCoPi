@@ -41,16 +41,16 @@ pub fn resolve(key: usize, ctrl: bool, shift: bool, alt: bool) -> Option<Action>
         .resolve(key, ctrl as u8 | ((shift as u8) << 1) | ((alt as u8) << 2))
 }
 pub fn brush_diameter(current: f32, increase: bool) -> f32 {
-    const SIZES: [f32; 27] = [
+    const SIZES: [f32; 31] = [
         1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 15., 20., 25., 30., 35., 40., 45., 50., 60., 70.,
-        80., 90., 100., 125., 150., 175., 200.,
+        80., 90., 100., 125., 150., 175., 200., 250., 300., 350., 400.,
     ];
     if increase {
         SIZES
             .iter()
             .copied()
             .find(|n| *n > current + 0.01)
-            .unwrap_or(200.)
+            .unwrap_or(current.max(400.))
     } else {
         SIZES
             .iter()
@@ -90,7 +90,7 @@ mod tests {
     fn size_steps_and_ps_tool_and_export_keys() {
         assert_eq!(brush_diameter(12., true), 15.);
         assert_eq!(brush_diameter(12., false), 10.);
-        assert_eq!(brush_diameter(200., true), 200.);
+        assert_eq!(brush_diameter(200., true), 250.);
         assert_eq!(brush_diameter(1., false), 1.);
         assert_eq!(resolve(0x48, false, false, false), Some(Action::Hand));
         assert_eq!(
@@ -100,6 +100,24 @@ mod tests {
         assert_eq!(resolve(0x5a, false, false, false), Some(Action::Zoom));
         assert_eq!(resolve(0x57, true, true, true), Some(Action::Export));
         assert_eq!(resolve(0x4b, true, true, true), Some(Action::ShowShortcuts));
+    }
+    #[test]
+    fn brush_size_ladder_reaches_full_supported_diameter_without_increase_shrinking() {
+        for (before, after) in [
+            (175., 200.),
+            (200., 250.),
+            (250., 300.),
+            (300., 350.),
+            (350., 400.),
+            (400., 400.),
+            (450., 450.),
+        ] {
+            assert_eq!(brush_diameter(before, true), after);
+            assert!(brush_diameter(before, true) >= before);
+        }
+        assert_eq!(brush_diameter(400., false), 350.);
+        assert_eq!(brush_diameter(250., false), 200.);
+        assert_eq!(brush_diameter(200., false), 175.);
     }
     #[test]
     fn photoshop_keys_do_not_reuse_unimplemented_ps_commands() {

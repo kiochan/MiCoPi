@@ -14,6 +14,7 @@ pub struct Raster {
     pub spacing: f32,
     pub flow: f32,
     pub stroke: Option<crate::stroke::Coverage>,
+    pub(crate) tip: crate::tip::Tip,
 }
 impl Default for Raster {
     fn default() -> Self {
@@ -30,6 +31,7 @@ impl Default for Raster {
             spacing: 0.,
             flow: 1.,
             stroke: None,
+            tip: Default::default(),
         }
     }
 }
@@ -45,7 +47,11 @@ impl Raster {
             let dx = x - px;
             let dy = y - py;
             let len = dx.hypot(dy);
-            let spacing = (b.radius * (self.spacing * 2.)).max(0.5);
+            let spacing = if self.tip.legacy() {
+                (b.radius * (self.spacing * 2.)).max(0.5)
+            } else {
+                (b.radius * (self.spacing * 2.) * self.tip.spacing_scale()).max(0.5)
+            };
             let previous = self.last_brush.unwrap_or(b);
             if len < 0.0001 && previous.opacity <= 0. && b.opacity > 0. {
                 self.dab(host, x, y, b);
@@ -83,15 +89,30 @@ impl Raster {
             return;
         }
         let r = b.radius.max(0.5);
-        let x0 = (x - r - 1.).max(0.).min(self.width as f32) as u32;
-        let y0 = (y - r - 1.).max(0.).min(self.height as f32) as u32;
-        let x1 = (x + r + 1.).ceil().max(0.).min(self.width as f32) as u32;
-        let y1 = (y + r + 1.).ceil().max(0.).min(self.height as f32) as u32;
+        let geometry = self.tip.geometry(r);
+        let (x0, y0, x1, y1) = if self.tip.legacy() {
+            (
+                (x - r - 1.).max(0.).min(self.width as f32) as u32,
+                (y - r - 1.).max(0.).min(self.height as f32) as u32,
+                (x + r + 1.).ceil().max(0.).min(self.width as f32) as u32,
+                (y + r + 1.).ceil().max(0.).min(self.height as f32) as u32,
+            )
+        } else {
+            let region = geometry.region(x, y, self.width, self.height);
+            (
+                region.x,
+                region.y,
+                region.x + region.width,
+                region.y + region.height,
+            )
+        };
         if x0 >= x1 || y0 >= y1 {
             return;
         }
+        #[cfg(test)]
+        crate::tip::probe::dab();
         if let Some(stroke) = &mut self.stroke {
-            self.failed = stroke.dab(
+            self.failed = stroke.dab_tip(
                 host,
                 abi::Region {
                     x: x0,
@@ -106,6 +127,7 @@ impl Raster {
                 self.selection,
                 self.alpha_locked,
                 self.a8_value,
+                geometry,
             ) != abi::OK;
             return;
         }
@@ -128,7 +150,15 @@ impl Raster {
                 width: self.width,
                 height: self.height,
                 value: if b.erase { 255 } else { value },
+                geometry,
             };
+            #[cfg(test)]
+            crate::tip::probe::loan(abi::Region {
+                x: x0,
+                y: y0,
+                width: x1 - x0,
+                height: y1 - y0,
+            });
             self.failed = unsafe {
                 loan(
                     host.context,
@@ -150,7 +180,15 @@ impl Raster {
             y,
             brush: b,
             alpha_locked: self.alpha_locked,
+            geometry,
         };
+        #[cfg(test)]
+        crate::tip::probe::loan(abi::Region {
+            x: x0,
+            y: y0,
+            width: x1 - x0,
+            height: y1 - y0,
+        });
         self.failed = unsafe {
             (host.pixels)(
                 host.context,
@@ -189,6 +227,7 @@ struct A8Dab {
     width: u32,
     height: u32,
     value: u8,
+    geometry: crate::tip::Geometry,
 }
 fn a8_span(start: usize, len: usize) -> Option<(usize, usize)> {
     (len <= isize::MAX as usize)
@@ -279,8 +318,13 @@ unsafe extern "C" fn render_a8(user: *mut c_void, buffer: *mut abi::A8Pixels) ->
         }
     }
     let pixels = std::slice::from_raw_parts_mut(buffer.data, buffer.len);
+    if !dab.geometry.legacy() {
+        return render_tip_a8(&dab, &buffer, pixels);
+    }
     let r = b.radius.max(0.5);
     for row in 0..h {
+        #[cfg(test)]
+        crate::tip::probe::candidates(w);
         let py = buffer.origin_y as usize + row;
         for column in 0..w {
             let px = buffer.origin_x as usize + column;
@@ -310,9 +354,101 @@ unsafe extern "C" fn render_a8(user: *mut c_void, buffer: *mut abi::A8Pixels) ->
                 a = (a * coverage + 127) / 255;
             }
             if a != 0 {
+                #[cfg(test)]
+                crate::tip::probe::positive();
                 let pixel = &mut pixels[row * stride + column];
                 *pixel = ((*pixel as u32 * (255 - a) + dab.value as u32 * a + 127) / 255) as u8;
             }
+        }
+    }
+    abi::OK
+}
+fn render_tip_a8(dab: &A8Dab, buffer: &abi::A8Pixels, pixels: &mut [u8]) -> i32 {
+    let b = dab.brush;
+    let start = buffer.origin_x as usize;
+    let end = start + buffer.width as usize;
+    for row in 0..buffer.height as usize {
+        let py = buffer.origin_y as usize + row;
+        let Some((lo, hi)) = dab
+            .geometry
+            .row_span(dab.x, py as f32 + 0.5 - dab.y, start, end)
+        else {
+            continue;
+        };
+        #[cfg(test)]
+        crate::tip::probe::candidates(hi - lo);
+        for px in lo..hi {
+            let weight =
+                dab.geometry
+                    .coverage(px as f32 + 0.5 - dab.x, py as f32 + 0.5 - dab.y, b.hardness);
+            let mut a = (255. * b.opacity * weight).round() as u32;
+            if !dab.selection.data.is_null() {
+                let coverage = unsafe {
+                    *dab.selection
+                        .data
+                        .add(py * dab.selection.stride as usize + px)
+                } as u32;
+                a = (a * coverage + 127) / 255;
+            }
+            if a != 0 {
+                #[cfg(test)]
+                crate::tip::probe::positive();
+                let pixel = &mut pixels[row * buffer.stride as usize + px - start];
+                *pixel =
+                    ((u32::from(*pixel) * (255 - a) + u32::from(dab.value) * a + 127) / 255) as u8;
+            }
+        }
+    }
+    abi::OK
+}
+fn render_tip_rgba(dab: &Dab, buffer: &abi::Pixels, pixels: &mut [u32]) -> i32 {
+    let b = dab.brush;
+    let start = buffer.origin_x as usize;
+    let end = start + buffer.width as usize;
+    for row in 0..buffer.height as usize {
+        let py = buffer.origin_y as usize + row;
+        let Some((lo, hi)) = dab
+            .geometry
+            .row_span(dab.x, py as f32 + 0.5 - dab.y, start, end)
+        else {
+            continue;
+        };
+        #[cfg(test)]
+        crate::tip::probe::candidates(hi - lo);
+        for px in lo..hi {
+            let weight =
+                dab.geometry
+                    .coverage(px as f32 + 0.5 - dab.x, py as f32 + 0.5 - dab.y, b.hardness);
+            let mut a = (255. * b.opacity * weight).round() as u32;
+            if !dab.selection.data.is_null() {
+                if px >= dab.selection.width as usize || py >= dab.selection.height as usize {
+                    return abi::ERROR;
+                }
+                let coverage = unsafe {
+                    *dab.selection
+                        .data
+                        .add(py * dab.selection.stride as usize + px)
+                } as u32;
+                a = (a * coverage + 127) / 255;
+            }
+            if a == 0 {
+                continue;
+            }
+            #[cfg(test)]
+            crate::tip::probe::positive();
+            let pixel = &mut pixels[row * buffer.stride as usize + px - start];
+            let old = *pixel;
+            *pixel = if dab.alpha_locked {
+                if b.erase {
+                    old
+                } else {
+                    atop(old, (b.color & 0xffffff) | (a << 24))
+                }
+            } else if b.erase {
+                (old & 0xffffff) | ((((old >> 24) * (255 - a) + 127) / 255) << 24)
+            } else {
+                over(old, (b.color & 0xffffff) | (a << 24))
+            };
         }
     }
     abi::OK
@@ -323,6 +459,7 @@ struct Dab {
     x: f32,
     y: f32,
     brush: Brush,
+    geometry: crate::tip::Geometry,
 }
 unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 {
     if user.is_null() || buffer.is_null() {
@@ -345,9 +482,14 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
         return abi::ERROR;
     }
     let pixels = std::slice::from_raw_parts_mut(buffer.data, buffer.len);
+    if !dab.geometry.legacy() {
+        return render_tip_rgba(dab, buffer, pixels);
+    }
     let b = dab.brush;
     let r = b.radius.max(0.5);
     for row in 0..h {
+        #[cfg(test)]
+        crate::tip::probe::candidates(w);
         let py = buffer.origin_y as usize + row;
         for column in 0..w {
             let px = buffer.origin_x as usize + column;
@@ -384,6 +526,8 @@ unsafe extern "C" fn render(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 
             if a == 0 {
                 continue;
             }
+            #[cfg(test)]
+            crate::tip::probe::positive();
             let pixel = &mut pixels[row * stride + column];
             let old = *pixel;
             *pixel = if dab.alpha_locked {
@@ -430,6 +574,7 @@ mod a8_sink_tests {
             width: 8,
             height: 4,
             value,
+            geometry: Default::default(),
         }
     }
     fn region(data: &mut [u8]) -> abi::A8Pixels {
@@ -715,6 +860,7 @@ mod spacing_tests {
                 stride: 4,
             },
             alpha_locked: false,
+            geometry: Default::default(),
             x: 2.,
             y: 0.5,
             brush: Brush {
@@ -746,6 +892,7 @@ mod spacing_tests {
         };
         let mut dab = Dab {
             x: 2.,
+            geometry: Default::default(),
             selection: Default::default(),
             y: 0.5,
             alpha_locked: true,
