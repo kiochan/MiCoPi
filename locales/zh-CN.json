@@ -1594,5 +1594,7 @@
   "Hue/Saturation: Active Layer": "色相／饱和度：当前图层",
   "Hue Shift": "色相偏移",
   "Saturation Adjustment": "饱和度调整",
-  "Lightness Adjustment": "明度调整"
+  "Lightness Adjustment": "明度调整",
+  "Hue/Saturation": "色相／饱和度",
+  "HSL Parameters": "HSL 参数"
 }

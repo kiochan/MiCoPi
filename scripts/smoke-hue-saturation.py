@@ -32,6 +32,29 @@ def commands():
     p.add('dry', 'workflow.validate')
     p.add('run', 'workflow.run', atomic=True)
     p.add('blue', 'histogram.query', source='layer', layer_id=1)
+
+    p.add('source-new', 'canvas.new', width=4, height=4)
+    p.add('source-fill', 'layer.fill_color', color='#ff000080')
+    graph = dict(enabled=True, linked=True, nodes=[
+        dict(id=11, kind='layer', index=0, position=[0, 0]),
+        dict(id=22, kind='hsl', node_type='compositing.hsl', hsl=dict(hue=120, saturation=0, lightness=0), position=[200, 0]),
+        dict(id=33, kind='output', position=[400, 0])], edges=[
+        dict(**{'from': 11}, to=22, input=0), dict(**{'from': 22}, to=33, input=0)])
+    p.add('source-set', 'graph.set', graph=graph)
+    p.add('source-green', 'histogram.query')
+    p.add('source-raw', 'histogram.query', source='layer', layer_id=1)
+    p.add('source-observe', 'pipeline.run', atomic=True, steps=[
+        dict(id='read', action='graph.read', args={}),
+        dict(id='sample', action='histogram.query', args=dict(source='node', graph_view='source', node_id=22, port='output',
+             document_identity={'$ref': 'read#/result/document_identity'}, document_revision={'$ref': 'read#/result/revision'}))])
+    p.add('adjustment-new', 'canvas.new', width=4, height=4)
+    p.add('adjustment-fill', 'layer.fill_color', color='#ff000080')
+    p.add('adjustment-create', 'adjustment.create', node_type='compositing.hsl', parameters=dict(hsl=dict(hue=120)))
+    p.add('adjustment-green', 'histogram.query')
+    p.add('adjustment-set', 'adjustment.set', adjustment_id=1, parameters=dict(hsl=dict(lightness=50)))
+    p.add('adjustment-light-green', 'histogram.query')
+    p.add('adjustment-undo', 'history.undo')
+    p.add('adjustment-green-again', 'histogram.query')
     p.add('verify', 'replay.verify')
     return p
 
@@ -44,13 +67,21 @@ def validate(values, plan):
     for key, colors in [('green', [(255, 0, 0)]*12+[(0, 255, 0)]*4),
                         ('red', [(255, 0, 0)]*16),
                         ('green-again', [(255, 0, 0)]*12+[(0, 255, 0)]*4),
-                        ('blue', [(0, 0, 255)]*16)]:
+                        ('blue', [(0, 0, 255)]*16),
+                        ('source-green', [(0, 255, 0)]*16),
+                        ('source-raw', [(255, 0, 0)]*16),
+                        ('adjustment-green', [(0, 255, 0)]*16),
+                        ('adjustment-light-green', [(128, 255, 128)]*16),
+                        ('adjustment-green-again', [(0, 255, 0)]*16)]:
         actual = at(key)
         assert actual['exact'] and actual['nontransparent_pixels'] == 16
         for channel, index in [('red', 0), ('green', 1), ('blue', 2)]:
             expected = [sum(color[index] == byte for color in colors) for byte in range(256)]
             assert actual[channel] == expected, (key, channel)
         result[key] = actual['red'], actual['green'], actual['blue']
+    assert at('adjustment-create')['adjustment_id'] == 1
+    observed = at('source-observe')
+    assert observed['ok'] and observed['results']['sample']['result']['green'][255] == 16
     assert at('dry')['ok'] and at('run')['ok'] and at('verify')['valid']
     return result
 

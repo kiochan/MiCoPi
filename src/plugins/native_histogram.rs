@@ -90,7 +90,7 @@ fn sample(
     }
     validate_result(output, &p)
 }
-fn validate_result(
+pub(super) fn validate_result(
     output: abi::HistogramResult,
     p: &abi::HistogramRequest,
 ) -> Result<abi::HistogramResult, ActionError> {
@@ -132,7 +132,7 @@ fn validate_result(
 }
 impl NativePlugin {
     pub(crate) fn supports_histogram_plan(&self) -> bool {
-        self.histogram_plan.is_some()
+        self.histogram_plan.is_some() || self.hsl.is_some()
     }
     /// Cold read of the same immutable loans accepted by prepared rendering.
     pub(crate) fn histogram_plan(
@@ -143,6 +143,11 @@ impl NativePlugin {
         luts: &[abi::CompositeLut],
         request: abi::HistogramRequest,
     ) -> Result<abi::HistogramResult, ActionError> {
+        if self.histogram_plan.is_none() && self.hsl.is_some() {
+            return self
+                .histogram_hsl_plan(nodes, layers, masks, luts, &[], request)
+                .map_err(|e| ActionError::new("histogram_plan_sample", e));
+        }
         sample_plan(self.histogram_plan, nodes, layers, masks, luts, request)
     }
     pub(crate) fn supports_histogram(&self) -> bool {

@@ -523,7 +523,9 @@ impl GroupTree {
                     {
                         continue;
                     }
-                    let (kind, operation) = if let Some(curves) = &adjustment.curves {
+                    let (kind, operation) = if let Some(hsl) = adjustment.hsl {
+                        (NodeKind::Hsl { hsl }, "hsl")
+                    } else if let Some(curves) = &adjustment.curves {
                         (
                             NodeKind::Curves {
                                 curves: curves.clone(),

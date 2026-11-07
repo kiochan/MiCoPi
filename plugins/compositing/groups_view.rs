@@ -392,6 +392,19 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
                     ui.label(tr(filter.title()));
                     ui.label(format!("{amount:.2}"));
                 }
+                NodeKind::Hsl { hsl } => {
+                    ui.label(tr("Hue/Saturation"));
+                    for (title, value) in [
+                        ("Hue Shift", hsl.hue),
+                        ("Saturation Adjustment", hsl.saturation),
+                        ("Lightness Adjustment", hsl.lightness),
+                    ] {
+                        ui.label(format!(
+                            "{}: {value:.1}",
+                            crate::i18n::translated_for(Some("compositing"), title)
+                        ));
+                    }
+                }
                 NodeKind::Curves { ref curves } => {
                     ui.weak(tr("Curves"));
                     for (title, curve) in [

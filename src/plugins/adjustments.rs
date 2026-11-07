@@ -8,6 +8,7 @@ use crate::engine::{
     adjustments::{Adjustment, AdjustmentSpec, MAX_ADJUSTMENTS},
     curves::Curves,
     graph::Filter,
+    hsl::Hsl,
     levels::Levels,
     raster_masks::{MaskOwner, SamplePlane},
     Document,
@@ -35,7 +36,7 @@ pub(crate) fn schema(op: Operation) -> Value {
         properties["name"] = json!({"type":"string","description":"Nonblank, single-line artist-owned name, at most 512 UTF-8 bytes."});
         properties["visible"] = json!({"type":"boolean"});
         properties["opacity"] = json!({"type":"number","minimum":0,"maximum":1});
-        properties["node_type"] = json!({"type":"string","description":"Registered image Filter, Levels or Curves node ID; all parameters also obey that provider's schema."});
+        properties["node_type"] = json!({"type":"string","description":"Registered image Filter, Levels, Curves or HSL node ID; all parameters also obey that provider's schema."});
         properties["parameters"] = json!({"type":"object","properties":{
             "filter":{"type":"string","enum":Filter::ALL},
             "amount":{"type":"number","minimum":-1,"maximum":1}},"additionalProperties":false});
@@ -45,6 +46,9 @@ pub(crate) fn schema(op: Operation) -> Value {
         let mut curves = Curves::schema();
         partial_objects(&mut curves);
         properties["parameters"]["properties"]["curves"] = curves;
+        let mut hsl = Hsl::schema();
+        partial_objects(&mut hsl);
+        properties["parameters"]["properties"]["hsl"] = hsl;
     }
     if matches!(op, AdjustmentCreate | AdjustmentMove) {
         properties["parent_id"] = json!({"type":"integer","minimum":0,"maximum":4294967295u64});
@@ -71,9 +75,13 @@ struct ResolvedParameters {
     amount: f32,
     levels: Option<Levels>,
     curves: Option<Curves>,
+    hsl: Option<Hsl>,
 }
 impl ResolvedParameters {
     fn value(&self) -> Value {
+        if let Some(hsl) = self.hsl {
+            return hsl_parameters(hsl);
+        }
         if let Some(curves) = &self.curves {
             return curve_parameters(curves);
         }
@@ -81,6 +89,9 @@ impl ResolvedParameters {
             .map_or_else(|| parameters(self.filter, self.amount), level_parameters)
     }
     fn title(&self) -> &'static str {
+        if self.hsl.is_some() {
+            return "Hue/Saturation";
+        }
         if self.curves.is_some() {
             "Curves"
         } else if self.levels.is_some() {
@@ -96,7 +107,13 @@ pub(crate) fn level_parameters(parameters: Levels) -> Value {
 pub(crate) fn curve_parameters(curves: &Curves) -> Value {
     json!({"curves":curves})
 }
+pub(crate) fn hsl_parameters(hsl: Hsl) -> Value {
+    json!({"hsl":hsl})
+}
 pub(crate) fn item_parameters(item: &Adjustment) -> Value {
+    if let Some(hsl) = item.hsl {
+        return hsl_parameters(hsl);
+    }
     if let Some(curves) = &item.curves {
         return curve_parameters(curves);
     }
@@ -116,10 +133,10 @@ fn definition(registry: &Registry, id: &str) -> Result<Resolved, ActionError> {
         .nodes
         .get(id)
         .ok_or_else(|| error(format!("Registered adjustment filter is unavailable: {id}")))?;
-    if !matches!(&node.binding, Binding::Image {operation,..} if operation == "filter" || operation == "levels" || operation == "curves")
+    if !matches!(&node.binding, Binding::Image {operation,..} if operation == "filter" || operation == "levels" || operation == "curves" || operation == "hsl")
     {
         return Err(error(
-            "Adjustment nodes must bind a native scalar Filter, Levels or Curves kernel",
+            "Adjustment nodes must bind a native scalar Filter, Levels, Curves or HSL kernel",
         ));
     }
     node.resolve(registry, owner).map_err(error)
@@ -177,7 +194,17 @@ fn resolve_parameters(
     }
     // Validate the raw caller domain before rounding to the native f32 kernel.
     super::validate(&def.parameters_schema, &value)?;
-    let typed = if matches!(&def.binding,Binding::Image {operation,..} if operation=="curves") {
+    let typed = if matches!(&def.binding,Binding::Image {operation,..} if operation=="hsl") {
+        let hsl: Hsl = serde_json::from_value(value["hsl"].clone())?;
+        hsl.validate().map_err(error)?;
+        ResolvedParameters {
+            filter: Filter::Invert,
+            amount: 0.,
+            levels: None,
+            curves: None,
+            hsl: Some(hsl),
+        }
+    } else if matches!(&def.binding,Binding::Image {operation,..} if operation=="curves") {
         let curves: Curves = serde_json::from_value(value["curves"].clone())?;
         curves.validate().map_err(error)?;
         ResolvedParameters {
@@ -185,6 +212,7 @@ fn resolve_parameters(
             amount: 0.,
             levels: None,
             curves: Some(curves),
+            hsl: None,
         }
     } else if matches!(&def.binding,Binding::Image {operation,..} if operation=="levels") {
         let levels: Levels = serde_json::from_value(value["parameters"].clone())?;
@@ -194,6 +222,7 @@ fn resolve_parameters(
             amount: 0.,
             levels: Some(levels),
             curves: None,
+            hsl: None,
         }
     } else {
         let scalar: FilterParameters = serde_json::from_value(value)?;
@@ -202,6 +231,7 @@ fn resolve_parameters(
             amount: scalar.amount,
             levels: None,
             curves: None,
+            hsl: None,
         }
     };
     if !typed.amount.is_finite() || !(typed.filter.minimum()..=1.).contains(&typed.amount) {
@@ -348,6 +378,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 amount: parameters.amount,
                 levels: parameters.levels,
                 curves: parameters.curves,
+                hsl: parameters.hsl,
             };
             let (parent, index) = placement(s, &args)?;
             let with_mask = args["mask_source"] == "selection";
@@ -388,6 +419,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 amount: parameters.amount,
                 levels: parameters.levels,
                 curves: parameters.curves,
+                hsl: parameters.hsl,
             };
             let changed = s.doc.set_adjustment(id, spec).map_err(error)?;
             Ok(

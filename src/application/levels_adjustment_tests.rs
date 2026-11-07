@@ -167,9 +167,11 @@ fn levels_adjustment_rejects_hidden_unsupported_and_ambiguous_definitions_before
         amount: 1.,
         levels: None,
         curves: None,
+        hsl: None,
     };
     let legacy = serde_json::to_value(&spec).unwrap();
     assert!(legacy.get("levels").is_none());
+    assert!(legacy.get("hsl").is_none());
     assert_eq!(
         serde_json::from_value::<AdjustmentSpec>(legacy).unwrap(),
         spec

@@ -1,12 +1,20 @@
 # Project Structure and Ownership
 
+`src/engine/hsl.rs` owns typed non-destructive HSL intent/schema/validation.
+The shared prepared color cache stores HSL records separately from byte tables;
+common renderer dispatch carries both domains through composition, bakes and
+previews. `plugins/compositing/hsl_ui.rs` owns local controls shared by source and
+adjustment panels; public mutations remain `graph.set` and adjustment actions.
+The existing node observation module preserves both storage indices when
+redirecting a private output. See [HSL editing](hue-saturation.md).
+
 `plugins/native-paint/src/hue_saturation.rs` owns the direct HSL JSON adapter.
 It calls `plugins/native-paint/src/hsl_math.rs`, a pure scalar
 source module compiled independently into both painting and compositor DLLs.
 `plugins/compositing/src/hsl.rs` owns optional HSL plan rendering/observation,
 while `src/plugins/native_hsl.rs` owns startup negotiation and capability inventory.
-SDK Rust/C contracts and fixtures describe this native prerequisite; document
-node/adjustment integration remains planned. See [Native HSL](native-hsl.md).
+SDK Rust/C contracts and fixtures describe this native prerequisite; the typed
+document integration is implemented in source, pending CI. See [Native HSL](native-hsl.md).
 Its DLL contribution declares schemas, pixel access, atomic support and idle-only
 admission. The host registry/native dispatcher owns the optional `requires_idle`
 contract, and `src/plugins/command_contact.rs` propagates frontend admission

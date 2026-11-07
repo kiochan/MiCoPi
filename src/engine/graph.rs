@@ -13,9 +13,10 @@ pub fn schema() -> serde_json::Value {
         "enabled":{"type":"boolean"},"linked":{"type":"boolean","default":false,"description":"A validated layer-stack chain; structural layer edits keep its branches synchronized"},
         "nodes":{"type":"array","maxItems":64,"items":{"type":"object","required":["id","position","kind"],"additionalProperties":false,"properties":{
             "node_type":{"type":"string"},"id":id,"position":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-1000000,"maximum":1000000}},
-            "kind":{"type":"string","enum":["layer","filter","levels","curves","blend","mix","output","transparent","mask_source","apply_mask","masked_mix"]},"index":{"type":"integer","minimum":0,"maximum":15},
+            "kind":{"type":"string","enum":["layer","filter","levels","curves","hsl","blend","mix","output","transparent","mask_source","apply_mask","masked_mix"]},"index":{"type":"integer","minimum":0,"maximum":15},
             "parameters":super::levels::Levels::schema(),
             "curves":super::curves::Curves::schema(),
+            "hsl":super::hsl::Hsl::schema(),
             "mask_id":{"type":"integer","minimum":1,"maximum":4294967295u64},
             "filter":{"type":"string","enum":Filter::ALL},"amount":{"type":"number","minimum":-1,"maximum":1},
             "mode":{"type":"string","enum":BlendMode::ALL},"opacity":{"type":"number","minimum":0,"maximum":1}
@@ -260,6 +261,7 @@ pub enum NodeKind {
     Filter { filter: Filter, amount: f32 },
     Levels { parameters: super::levels::Levels },
     Curves { curves: super::curves::Curves },
+    Hsl { hsl: super::hsl::Hsl },
     Blend { mode: BlendMode, opacity: f32 },
     Mix { opacity: f32 },
     MaskSource { mask_id: u64 },
@@ -309,6 +311,7 @@ impl NodeKind {
             Self::Filter { filter, .. } => filter.title().into(),
             Self::Levels { .. } => "Levels".into(),
             Self::Curves { .. } => "Curves".into(),
+            Self::Hsl { .. } => "Hue/Saturation".into(),
             Self::Blend { mode, .. } => format!("Blend · {}", mode.title()),
             Self::Mix { .. } => "Backdrop Mix".into(),
             Self::MaskSource { mask_id } => format!("Mask #{mask_id}"),
@@ -360,6 +363,33 @@ pub trait Renderer {
     ) -> Result<abi::HistogramResult, String> {
         Err("The compositor does not support histogram plan sampling".into())
     }
+    fn supports_hsl(&self) -> bool {
+        false
+    }
+    fn render_hsl(
+        &self,
+        _nodes: &[abi::CompositeNode],
+        _layers: &[abi::CompositeLayer],
+        _masks: &[abi::CompositeMask],
+        _luts: &[abi::CompositeLut],
+        _hsl: &[abi::HslParameters],
+        _width: u32,
+        _height: u32,
+        _output: &mut abi::Pixels,
+    ) -> Result<(), String> {
+        Err("The compositor does not support HSL rendering".into())
+    }
+    fn histogram_hsl(
+        &self,
+        _nodes: &[abi::CompositeNode],
+        _layers: &[abi::CompositeLayer],
+        _masks: &[abi::CompositeMask],
+        _luts: &[abi::CompositeLut],
+        _hsl: &[abi::HslParameters],
+        _request: abi::HistogramRequest,
+    ) -> Result<abi::HistogramResult, String> {
+        Err("The compositor does not support HSL histogram sampling".into())
+    }
     fn supports_levels_channels(&self) -> bool {
         false
     }
@@ -386,6 +416,23 @@ pub trait Renderer {
         _parameters: &abi::LevelsParameters,
     ) -> Result<abi::CompositeLut, String> {
         Err("The compositor does not support Levels preparation".into())
+    }
+    fn render_color(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        luts: &[abi::CompositeLut],
+        hsl: &[abi::HslParameters],
+        width: u32,
+        height: u32,
+        output: &mut abi::Pixels,
+    ) -> Result<(), String> {
+        if hsl.is_empty() {
+            self.render_prepared(nodes, layers, masks, luts, width, height, output)
+        } else {
+            self.render_hsl(nodes, layers, masks, luts, hsl, width, height, output)
+        }
     }
     /// Borrow prepared tables without modifying or retaining the document plan.
     fn render_prepared(
@@ -471,9 +518,15 @@ impl Graph {
                 NodeKind::Curves { curves } => {
                     Some(super::curves::ColorIntent::Curves(curves.clone()))
                 }
+                NodeKind::Hsl { hsl } => Some(super::curves::ColorIntent::Hsl(*hsl)),
                 _ => None,
             })
             .collect()
+    }
+    pub fn has_hsl(&self) -> bool {
+        self.nodes
+            .iter()
+            .any(|n| matches!(n.data, NodeKind::Hsl { .. }))
     }
     pub fn has_curves(&self) -> bool {
         self.nodes
@@ -484,7 +537,7 @@ impl Graph {
         self.nodes.iter().any(|n|matches!(n.data,NodeKind::Levels {parameters} if !parameters.channels.is_identity()))
     }
     pub fn has_prepared_color(&self) -> bool {
-        self.has_levels() || self.has_curves()
+        self.has_levels() || self.has_curves() || self.has_hsl()
     }
     fn table_index(&self, index: usize) -> u32 {
         self.nodes[..index]
@@ -639,6 +692,7 @@ impl Graph {
             match n.data {
                 NodeKind::Levels { parameters } => parameters.validate()?,
                 NodeKind::Curves { ref curves } => curves.validate()?,
+                NodeKind::Hsl { hsl } => hsl.validate()?,
                 NodeKind::Layer { index } if index >= layer_count => {
                     return Err("Node references a missing layer".into())
                 }
@@ -789,6 +843,16 @@ impl Graph {
                         a: input(0),
                         b: 0,
                         mode: self.table_index(i),
+                        amount: 1.,
+                    },
+                    NodeKind::Hsl { .. } => abi::CompositeNode {
+                        kind: 11,
+                        a: input(0),
+                        b: 0,
+                        mode: self.nodes[..i]
+                            .iter()
+                            .filter(|n| matches!(n.data, NodeKind::Hsl { .. }))
+                            .count() as u32,
                         amount: 1.,
                     },
                     NodeKind::Blend { mode, opacity } => abi::CompositeNode {

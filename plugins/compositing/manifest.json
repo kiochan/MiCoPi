@@ -95,6 +95,10 @@
           "revision": {
             "type": "integer",
             "minimum": 0
+          },
+          "renderer_hsl": {
+            "type": "boolean",
+            "description": "The active document renderer supports native HSL plans."
           }
         },
         "required": [
@@ -177,6 +181,10 @@
           "renderer_histogram_plan": {
             "type": "boolean",
             "description": "The active document renderer supports bounded prepared-plan histogram observations."
+          },
+          "renderer_hsl": {
+            "type": "boolean",
+            "description": "The active document renderer supports native HSL plans."
           }
         },
         "required": [
@@ -491,6 +499,10 @@
           "revision": {
             "type": "integer",
             "minimum": 0
+          },
+          "renderer_hsl": {
+            "type": "boolean",
+            "description": "The active document renderer supports native HSL plans."
           }
         },
         "required": [
@@ -1173,6 +1185,61 @@
           "curves"
         ],
         "additionalProperties": false
+      }
+    },
+    {
+      "id": "compositing.hsl",
+      "title": "Hue/Saturation",
+      "category": "Color",
+      "binding": {
+        "kind": "image",
+        "operation": "hsl",
+        "defaults": {
+          "hsl": {
+            "hue": 0,
+            "saturation": 0,
+            "lightness": 0
+          }
+        }
+      },
+      "parameters_schema": {
+        "type": "object",
+        "required": [
+          "hsl"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "hsl": {
+            "type": "object",
+            "required": [
+              "hue",
+              "saturation",
+              "lightness"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "hue": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "title": "Hue Shift"
+              },
+              "saturation": {
+                "type": "number",
+                "minimum": -100,
+                "maximum": 100,
+                "title": "Saturation Adjustment"
+              },
+              "lightness": {
+                "type": "number",
+                "minimum": -100,
+                "maximum": 100,
+                "title": "Lightness Adjustment"
+              }
+            },
+            "title": "HSL Parameters"
+          }
+        }
       }
     }
   ]

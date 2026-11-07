@@ -44,7 +44,7 @@ impl Document {
                 origin_x: 0,
                 origin_y: 0,
             };
-            renderer.render_prepared(
+            renderer.render_color(
                 if self.has_mixed_stack()
                     || self.graph.enabled && (!self.graph.linked || self.graph.has_filters())
                 {
@@ -55,6 +55,7 @@ impl Document {
                 &layers,
                 &[],
                 self.levels_plan.as_ref().map_or(&[], |p| p.tables()),
+                self.levels_plan.as_ref().map_or(&[], |p| p.hsl()),
                 self.width as u32,
                 self.height as u32,
                 &mut out,

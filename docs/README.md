@@ -2,9 +2,11 @@
 
 [Direct Hue/Saturation](hue-saturation.md) describes the native active-raster
 command, selection/lock/idle admission and shared workflow/MCP/headless path.
-Runtime verification is pending; non-destructive HSL integration remains planned.
+Typed source/adjustment HSL integration and shared controls are now implemented
+in source, with new runtime verification pending.
 The [native HSL prerequisite](native-hsl.md) adds independent optional render/
-observation callbacks and cached negotiation, without editable document nodes.
+observation callbacks and cached negotiation; the document integration stores
+separate parameter slots and shares verified persistence.
 
 See [Histograms](histograms.md) for bounded native color queries through Session,
 nodes and MCP, with shared manual chart overlays and explicit Source/Actual node

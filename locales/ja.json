@@ -1594,5 +1594,7 @@
   "Hue/Saturation: Active Layer": "色相・彩度：現在のレイヤー",
   "Hue Shift": "色相の移動",
   "Saturation Adjustment": "彩度の調整",
-  "Lightness Adjustment": "明度の調整"
+  "Lightness Adjustment": "明度の調整",
+  "Hue/Saturation": "色相・彩度",
+  "HSL Parameters": "HSL パラメーター"
 }

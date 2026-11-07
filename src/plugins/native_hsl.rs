@@ -36,8 +36,129 @@ impl NativePlugin {
     pub(crate) fn supports_hsl(&self) -> bool {
         self.hsl.is_some()
     }
+    pub(crate) fn render_hsl_plan(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        luts: &[abi::CompositeLut],
+        hsl: &[abi::HslParameters],
+        width: u32,
+        height: u32,
+        output: &mut abi::Pixels,
+    ) -> Result<(), String> {
+        validate_parameters(hsl)?;
+        if nodes.len() > 64
+            || !(1..=16).contains(&layers.len())
+            || masks.len() > 32
+            || luts.len() > 64
+            || !(1..=4096).contains(&width)
+            || !(1..=4096).contains(&height)
+        {
+            return Err("Invalid HSL plan bounds".into());
+        }
+        if layers
+            .iter()
+            .any(|l| !<Self as crate::engine::graph::Renderer>::supports_blend_mode(self, l.mode))
+            || nodes.iter().any(|n| {
+                n.kind == 2
+                    && !<Self as crate::engine::graph::Renderer>::supports_blend_mode(self, n.mode)
+            })
+        {
+            return Err("The compositor does not support this blend mode".into());
+        }
+        let callback = self.hsl.ok_or("Native HSL rendering is unavailable")?.0;
+        let status = unsafe {
+            callback(
+                nodes.as_ptr(),
+                nodes.len(),
+                layers.as_ptr(),
+                layers.len(),
+                masks.as_ptr(),
+                masks.len(),
+                luts.as_ptr(),
+                luts.len(),
+                hsl.as_ptr(),
+                hsl.len(),
+                width,
+                height,
+                output,
+            )
+        };
+        if status == abi::OK {
+            Ok(())
+        } else {
+            Err("Native HSL rendering failed".into())
+        }
+    }
+    pub(crate) fn histogram_hsl_plan(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        luts: &[abi::CompositeLut],
+        hsl: &[abi::HslParameters],
+        mut request: abi::HistogramRequest,
+    ) -> Result<abi::HistogramResult, String> {
+        validate_parameters(hsl)?;
+        if !(1..=4096).contains(&request.width)
+            || !(1..=4096).contains(&request.height)
+            || request.stride != request.width
+            || !(1..=abi::HISTOGRAM_MAX_SAMPLES).contains(&request.max_samples)
+            || !(1..=64).contains(&nodes.len())
+            || !(1..=16).contains(&layers.len())
+            || masks.len() > 32
+            || luts.len() > 64
+            || layers.iter().any(|l| {
+                l.data.is_null() || l.len < (request.width as usize * request.height as usize)
+            })
+        {
+            return Err("Invalid HSL histogram bounds or loans".into());
+        }
+        let callback = self
+            .hsl
+            .ok_or("Native HSL histogram sampling is unavailable")?
+            .1;
+        request.abi_version = 1;
+        request.struct_size = std::mem::size_of::<abi::HistogramRequest>() as u32;
+        let mut result = abi::HistogramResult::default();
+        let status = unsafe {
+            callback(
+                &request,
+                nodes.as_ptr(),
+                nodes.len(),
+                layers.as_ptr(),
+                layers.len(),
+                masks.as_ptr(),
+                masks.len(),
+                luts.as_ptr(),
+                luts.len(),
+                hsl.as_ptr(),
+                hsl.len(),
+                &mut result,
+            )
+        };
+        if status != abi::OK {
+            return Err("Native HSL histogram sampling failed".into());
+        }
+        super::histogram::validate_result(result, &request).map_err(|e| e.to_string())
+    }
 }
 
+fn validate_parameters(parameters: &[abi::HslParameters]) -> Result<(), String> {
+    if parameters.len() > abi::HSL_MAX_PARAMETERS {
+        return Err("HSL parameter limit exceeded".into());
+    }
+    for p in parameters {
+        crate::engine::hsl::Hsl {
+            hue: p.hue,
+            saturation: p.saturation,
+            lightness: p.lightness,
+        }
+        .validate()?;
+    }
+    Ok(())
+}
 #[cfg(test)]
 mod tests {
     use super::*;

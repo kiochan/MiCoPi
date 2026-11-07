@@ -24,6 +24,7 @@ fn invert(opacity: u8) -> AdjustmentSpec {
         amount: 1.,
         levels: None,
         curves: None,
+        hsl: None,
     }
 }
 fn raw(doc: &Document, id: u64) -> Vec<u8> {

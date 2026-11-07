@@ -242,11 +242,12 @@ impl Document {
                 layer.opacity = 255;
             }
         }
-        self.renderer.as_ref().unwrap().render_prepared(
+        self.renderer.as_ref().unwrap().render_color(
             &self.plan,
             layers,
             &descriptors[..self.mask_planes.len()],
             self.levels_plan.as_ref().map_or(&[], |p| p.tables()),
+            self.levels_plan.as_ref().map_or(&[], |p| p.hsl()),
             self.width as u32,
             self.height as u32,
             output,

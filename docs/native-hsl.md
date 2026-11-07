@@ -1,10 +1,11 @@
 # Native HSL composition prerequisite
 
 This is the independent native prerequisite for non-destructive Hue/Saturation.
-It is implemented in source with SDK/native/host fixtures, pending CI. Editable
-HSL image nodes, adjustment-layer intent, project schemas, public document actions
-and dedicated reversible previews are **not implemented by this increment**.
-The existing [direct HSL command](hue-saturation.md) remains the document-editing path.
+It is implemented in source with SDK/native/host fixtures, pending CI. The next
+[document integration](hue-saturation.md#non-destructive-source-and-adjustment-effects)
+now supplies typed HSL source/adjustment intent, shared schemas/controls and
+verified persistence in source; those new runtime checks remain pending. Dedicated
+reversible direct-operation previews and Colorize remain planned.
 
 ## Independent capability
 
@@ -63,8 +64,9 @@ legacy rejection. Host fixtures cover complete/malformed/future tables, cached
 live-DLL callbacks and missing capability on another DLL. Runtime checks remain
 pending CI; no local heavy suite or physical-device test was run.
 
-Next, add typed source/adjustment intent and schemas; capability admission for
-all declared branches; stable parameter slots in prepared plans; atomic
-history/project/outcome integration; shared histogram projection and UI controls.
-Keep the [feature checklist](photoshop-essentials.md) unchecked until those pieces,
-failure/replay/transport references, reviewed captures and measured costs pass.
+Typed source/adjustment intent, all-declaration capability admission, separate
+stable parameter slots, shared rendering/observation and atomic persistence are
+now implemented in source. Shared controls edit local drafts. New document,
+failure/replay/transport/cache/layout references await CI. Keep the
+[feature checklist](photoshop-essentials.md) unchecked until those delivery gates,
+reviewed captures and measured costs pass.

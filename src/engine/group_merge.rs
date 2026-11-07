@@ -82,11 +82,12 @@ impl Document {
             origin_y: 0,
         };
         let levels = self.prepare_levels_cache(graph, true)?;
-        self.renderer.as_ref().unwrap().render_prepared(
+        self.renderer.as_ref().unwrap().render_color(
             &plan,
             &layers[..self.layers.len()],
             &[],
             levels.as_ref().map_or(&[], |p| p.tables()),
+            levels.as_ref().map_or(&[], |p| p.hsl()),
             self.width as u32,
             self.height as u32,
             &mut output,

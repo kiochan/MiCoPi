@@ -154,20 +154,21 @@ impl Document {
                 ));
             }
         }
-        let result = renderer.histogram_plan(
-            &plan,
-            &layers,
-            &masks,
-            prepared.as_ref().map_or(&[], |p| p.tables()),
-            abi::HistogramRequest {
-                abi_version: 1,
-                struct_size: std::mem::size_of::<abi::HistogramRequest>() as u32,
-                width: self.width as u32,
-                height: self.height as u32,
-                stride: self.width as u32,
-                max_samples: budget,
-            },
-        )?;
+        let request = abi::HistogramRequest {
+            abi_version: 1,
+            struct_size: std::mem::size_of::<abi::HistogramRequest>() as u32,
+            width: self.width as u32,
+            height: self.height as u32,
+            stride: self.width as u32,
+            max_samples: budget,
+        };
+        let tables = prepared.as_ref().map_or(&[][..], |p| p.tables());
+        let hsl = prepared.as_ref().map_or(&[][..], |p| p.hsl());
+        let result = if graph.has_hsl() {
+            renderer.histogram_hsl(&plan, &layers, &masks, tables, hsl, request)?
+        } else {
+            renderer.histogram_plan(&plan, &layers, &masks, tables, request)?
+        };
         Ok(HistogramObservation {
             resolved_node_id: resolved,
             graph_enabled: enabled,

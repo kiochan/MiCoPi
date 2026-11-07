@@ -11,6 +11,8 @@ pub(super) mod curves_ui;
 mod groups_view;
 #[path = "histogram_ui.rs"]
 pub(super) mod histogram_ui;
+#[path = "hsl_ui.rs"]
+pub(super) mod hsl_ui;
 #[path = "levels_ui.rs"]
 pub(super) mod levels_ui;
 #[derive(Default)]
@@ -566,6 +568,7 @@ struct NodeViewer<'a> {
     mix_available: bool,
     levels_height: f32,
     curves_height: f32,
+    hsl_height: f32,
     contact_active: bool,
     histogram: Option<std::sync::Arc<histogram_ui::Snapshot>>,
     actions: Vec<crate::application::Action>,
@@ -588,6 +591,7 @@ impl Default for NodeViewer<'_> {
                 &crate::configuration::Appearance::default(),
                 192.,
             ),
+            hsl_height: hsl_ui::estimated_height(&crate::configuration::Appearance::default()),
             contact_active: false,
             histogram: None,
             actions: vec![],
@@ -702,6 +706,8 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
         for (_, pos, node) in snarl.nodes_pos_ids() {
             let height = if matches!(node.data, NodeKind::Curves { .. }) {
                 self.curves_height
+            } else if matches!(node.data, NodeKind::Hsl { .. }) {
+                self.hsl_height
             } else if matches!(node.data, NodeKind::Levels { .. }) {
                 self.levels_height
             } else if self.linked && matches!(node.data, NodeKind::Layer { .. }) {
@@ -815,6 +821,7 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
                 );
                 return;
             };
+            if def.id=="compositing.hsl" {if let NodeKind::Hsl{hsl}=&mut snarl[id].data {hsl_ui::edit(ui,Id::new(("hsl-node",id,self.document.map_or(0,|d|d.identity))),hsl);return;}}
             if def.id=="compositing.curves" {
                 if let NodeKind::Curves {curves}=&mut snarl[id].data {
                     curves_ui::edit_with_histogram(ui,Id::new(("curves-node",id,self.document.map_or(0,|d|d.identity))),curves,self.document.and_then(|d|d.renderer.as_deref()),self.contact_active,self.histogram.as_deref());
@@ -977,10 +984,11 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
                     | NodeKind::Filter { .. }
                     | NodeKind::Levels { .. }
                     | NodeKind::Curves { .. }
+                    | NodeKind::Hsl { .. }
             ) {
                 ui.menu_button(tr("Insert Filter"), |ui| {
                     if let Some(defs) = self.definitions {
-                        for def in defs.values().filter(|d| matches!(&d.binding, crate::plugins::nodes::Binding::Image { operation, .. } if operation == "filter" || operation == "levels" || operation == "curves")) {
+                        for def in defs.values().filter(|d| matches!(&d.binding, crate::plugins::nodes::Binding::Image { operation, .. } if operation == "filter" || operation == "levels" || operation == "curves" || operation == "hsl")) {
                             if ui.button(tr(&def.title)).clicked() {
                                 if let crate::plugins::nodes::Binding::Image { defaults, operation } = &def.binding {
                                     let mut data = defaults.clone();
@@ -998,7 +1006,10 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
             }
             if matches!(
                 snarl[id].data,
-                NodeKind::Filter { .. } | NodeKind::Levels { .. } | NodeKind::Curves { .. }
+                NodeKind::Filter { .. }
+                    | NodeKind::Levels { .. }
+                    | NodeKind::Curves { .. }
+                    | NodeKind::Hsl { .. }
             ) && ui.button(tr("Delete Node")).clicked()
             {
                 remove_filter(snarl, id);
@@ -1124,6 +1135,7 @@ impl Editor {
             definitions: Some(&self.plugin_nodes),
             histogram: histogram_ui::cached(ui.ctx(), &self.session),
             levels_height: levels_ui::estimated_height(&self.settings.ui),
+            hsl_height: hsl_ui::estimated_height(&self.settings.ui),
             curves_height: if state.fit_view {
                 curves_ui::estimated_height(ui, self.settings.ui.font_size * 12.)
             } else {
@@ -1182,7 +1194,7 @@ impl Editor {
                 || state.snarl.nodes_ids_data().any(|(_, n)| {
                     matches!(
                         n.value.data,
-                        NodeKind::Levels { .. } | NodeKind::Curves { .. }
+                        NodeKind::Levels { .. } | NodeKind::Curves { .. } | NodeKind::Hsl { .. }
                     )
                 }));
         if state.preview

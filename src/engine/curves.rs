@@ -121,18 +121,21 @@ impl Curves {
 pub enum ColorIntent {
     Levels(Levels),
     Curves(Curves),
+    Hsl(super::hsl::Hsl),
 }
 impl ColorIntent {
     pub fn table_count(&self) -> usize {
         match self {
             Self::Levels(p) => p.table_count(),
             Self::Curves(_) => 3,
+            Self::Hsl(_) => 0,
         }
     }
     pub fn validate(&self) -> Result<(), String> {
         match self {
             Self::Levels(p) => p.validate(),
             Self::Curves(p) => p.validate(),
+            Self::Hsl(p) => p.validate(),
         }
     }
     pub fn prepare(
@@ -143,6 +146,10 @@ impl ColorIntent {
         match self {
             Self::Levels(p) => p.prepare_color(renderer, tables)?,
             Self::Curves(p) => tables.extend_from_slice(&p.prepare(renderer)?),
+            Self::Hsl(_) if !renderer.supports_hsl() => {
+                return Err("The compositor does not support HSL rendering".into())
+            }
+            Self::Hsl(_) => {}
         }
         Ok(())
     }

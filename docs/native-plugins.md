@@ -2,8 +2,9 @@
 
 The independent [HSL plan prerequisite](native-hsl.md) adds an optional complete
 24-byte API, fixed-stride binary64 intent, render/observation callbacks and cached
-startup discovery. Existing tables keep rejecting HSL instructions; typed document
-node/adjustment integration and runtime verification remain pending.
+startup discovery. Existing tables keep rejecting HSL instructions. Typed document
+source/adjustment integration now uses cached HSL parameter records through shared
+rendering/observation; new runtime validation remains pending.
 
 ## Histogram analysis
 

@@ -3,7 +3,7 @@
 Adjustment layers are real non-raster stack items: they filter the accumulated
 image below their position without changing source pixels or occupying a raster
 slot. This source increment supports the five registered scalar filters
-**Invert, Grayscale, Brightness, Contrast and Saturation** plus typed **Levels and Curves**, Normal effect mixing,
+**Invert, Grayscale, Brightness, Contrast and Saturation** plus typed **Levels, Curves and Hue/Saturation**, Normal effect mixing,
 byte opacity, visibility, groups and optional owned A8 masks. Runtime validation
 is pending CI; no new reviewed screenshots or measured performance results are
 claimed here.
@@ -12,6 +12,11 @@ This is distinct from a source Layer Filter, which processes one raster before
 stack composition. Additional multi-parameter color adjustments, clipping
 relationships and other adjustment blend modes remain planned. Registering a
 schema does not provide an algorithm that the compositor does not implement.
+
+[HSL adjustment integration](hue-saturation.md#non-destructive-source-and-adjustment-effects)
+adds partial hue/saturation/lightness patches, independent cached parameter slots
+and the same groups, masks, persistence and shared controls; new runtime checks
+await CI. Native callbacks are capability-gated before publication.
 
 ## Affect the accumulated image
 

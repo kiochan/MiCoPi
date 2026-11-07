@@ -118,6 +118,7 @@ impl Definition {
                     "filter" => &["filter", "amount"],
                     "levels" => &["parameters"],
                     "curves" => &["curves"],
+                    "hsl" => &["hsl"],
                     "blend" => &["mode", "opacity"],
                     "mix" => &["opacity"],
                     "output" | "transparent" => &[],
@@ -141,6 +142,7 @@ impl Definition {
                 match kind {
                     NodeKind::Levels { parameters } => parameters.validate()?,
                     NodeKind::Curves { curves } => curves.validate()?,
+                    NodeKind::Hsl { hsl } => hsl.validate()?,
                     NodeKind::Layer { index } if index >= 16 => {
                         return Err("Default layer index is out of range".into())
                     }

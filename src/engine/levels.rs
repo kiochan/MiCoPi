@@ -11,6 +11,7 @@ pub struct PreparedLevelsPlan {
     provider: Arc<dyn Renderer>,
     intents: Vec<ColorIntent>,
     tables: Vec<abi::CompositeLut>,
+    hsl: Vec<abi::HslParameters>,
 }
 impl PreparedLevelsPlan {
     pub fn matches(&self, provider: &Arc<dyn Renderer>, intents: &[Levels]) -> bool {
@@ -53,6 +54,9 @@ impl PreparedLevelsPlan {
         Arc::ptr_eq(&self.provider, provider) && self.intents == intents
     }
     fn validate_color(intents: &[ColorIntent]) -> Result<usize, String> {
+        if intents.len() > 64 {
+            return Err("Color intent limit exceeded".into());
+        }
         let count = intents.iter().map(ColorIntent::table_count).sum::<usize>();
         if count > 64 {
             return Err("Color table limit exceeded".into());
@@ -71,6 +75,7 @@ impl PreparedLevelsPlan {
         Ok(Self {
             provider,
             intents: intents.to_vec(),
+            hsl: Self::hsl_parameters(intents),
             tables,
         })
     }
@@ -97,9 +102,22 @@ impl PreparedLevelsPlan {
             old_start += self.intents.get(slot).map_or(0, ColorIntent::table_count);
         }
         self.provider = provider;
+        self.hsl = Self::hsl_parameters(intents);
         self.intents = intents.to_vec();
         self.tables = tables;
         Ok(())
+    }
+    fn hsl_parameters(intents: &[ColorIntent]) -> Vec<abi::HslParameters> {
+        intents
+            .iter()
+            .filter_map(|intent| match intent {
+                ColorIntent::Hsl(p) => Some(p.parameters()),
+                _ => None,
+            })
+            .collect()
+    }
+    pub fn hsl(&self) -> &[abi::HslParameters] {
+        &self.hsl
     }
     pub fn tables(&self) -> &[abi::CompositeLut] {
         &self.tables
@@ -113,6 +131,18 @@ impl PreparedLevelsPlan {
         height: u32,
         output: &mut abi::Pixels,
     ) -> Result<(), String> {
+        if !self.hsl.is_empty() {
+            return self.provider.render_hsl(
+                nodes,
+                layers,
+                masks,
+                &self.tables,
+                &self.hsl,
+                width,
+                height,
+                output,
+            );
+        }
         self.provider
             .render_prepared(nodes, layers, masks, &self.tables, width, height, output)
     }

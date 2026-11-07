@@ -1,6 +1,6 @@
 //! Strict non-raster affect-below stack metadata. Pixel kernels remain native.
 use super::graph::Filter;
-use super::{curves::Curves, levels::Levels};
+use super::{curves::Curves, hsl::Hsl, levels::Levels};
 use serde::{Deserialize, Serialize};
 
 pub const MAX_ADJUSTMENTS: usize = 16;
@@ -18,11 +18,23 @@ pub struct AdjustmentSpec {
     pub levels: Option<Levels>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub curves: Option<Curves>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hsl: Option<Hsl>,
 }
 impl AdjustmentSpec {
     pub fn validate(&self) -> Result<(), String> {
-        if self.levels.is_some() && self.curves.is_some() {
+        if usize::from(self.levels.is_some())
+            + usize::from(self.curves.is_some())
+            + usize::from(self.hsl.is_some())
+            > 1
+        {
             return Err("Adjustment intent must select only one effect family".into());
+        }
+        if let Some(hsl) = self.hsl {
+            hsl.validate()?;
+            if self.filter != Filter::Invert || self.amount != 0. {
+                return Err("HSL adjustments require neutral legacy filter fields".into());
+            }
         }
         if let Some(curves) = &self.curves {
             curves.validate()?;
@@ -68,6 +80,8 @@ pub struct Adjustment {
     pub levels: Option<Levels>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub curves: Option<Curves>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hsl: Option<Hsl>,
 }
 impl Adjustment {
     pub fn new(id: u64, spec: AdjustmentSpec) -> Self {
@@ -81,6 +95,7 @@ impl Adjustment {
             amount: spec.amount,
             levels: spec.levels,
             curves: spec.curves,
+            hsl: spec.hsl,
         }
     }
     pub fn spec(&self) -> AdjustmentSpec {
@@ -93,6 +108,7 @@ impl Adjustment {
             amount: self.amount,
             levels: self.levels,
             curves: self.curves.clone(),
+            hsl: self.hsl,
         }
     }
     pub fn validate(&self) -> Result<(), String> {

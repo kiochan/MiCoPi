@@ -174,10 +174,12 @@ fn hidden_unsupported_curves_invalid_points_and_ambiguous_intents_reject_before_
         amount: 1.,
         levels: None,
         curves: None,
+        hsl: None,
     };
     let value = serde_json::to_value(&spec).unwrap();
     assert!(value.get("curves").is_none());
     assert!(value.get("levels").is_none());
+    assert!(value.get("hsl").is_none());
     assert!(AdjustmentSpec {
         amount: 0.,
         levels: Some(Levels::default()),

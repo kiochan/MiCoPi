@@ -73,6 +73,10 @@ raw scope, contact rejection and unchanged document/history/events. The tiny
 stress workload. These runtime checks await CI. Sampling bounds are not latency
 measurements; reviewed visual captures and physical-device checks remain separate.
 
+Typed [HSL nodes and adjustments](hue-saturation.md) now preserve separate HSL
+parameter and LUT indices during projection, using the negotiated HSL sampler.
+Mixed-table, source-input/output and parameter-storage regressions await CI.
+
 ## Published node inputs and outputs
 
 Use `source=node` with explicit `graph_view` (`source` or `actual`), `node_id`,

@@ -1594,5 +1594,7 @@
   "Hue/Saturation: Active Layer": "색조／채도: 현재 레이어",
   "Hue Shift": "색조 이동",
   "Saturation Adjustment": "채도 조정",
-  "Lightness Adjustment": "명도 조정"
+  "Lightness Adjustment": "명도 조정",
+  "Hue/Saturation": "색조／채도",
+  "HSL Parameters": "HSL 매개변수"
 }

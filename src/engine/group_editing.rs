@@ -20,6 +20,9 @@ impl Document {
         for intent in graph.color_intents() {
             intent.validate()?;
         }
+        if require && graph.has_hsl() && self.renderer.as_ref().is_none_or(|r| !r.supports_hsl()) {
+            return Err("The compositor does not support HSL rendering".into());
+        }
         if require
             && graph.has_curves()
             && self.renderer.as_ref().is_none_or(|r| !r.supports_curves())
@@ -56,6 +59,7 @@ impl Document {
             (!graph.has_levels() || r.supports_levels())
                 && (!graph.has_channel_levels() || r.supports_levels_channels())
                 && (!graph.has_curves() || r.supports_curves())
+                && (!graph.has_hsl() || r.supports_hsl())
         }) else {
             return Ok(None);
         };

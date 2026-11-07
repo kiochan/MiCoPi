@@ -41,7 +41,10 @@ impl Graph {
         self.nodes.iter().any(|n| {
             matches!(
                 n.data,
-                NodeKind::Filter { .. } | NodeKind::Levels { .. } | NodeKind::Curves { .. }
+                NodeKind::Filter { .. }
+                    | NodeKind::Levels { .. }
+                    | NodeKind::Curves { .. }
+                    | NodeKind::Hsl { .. }
             )
         })
     }
@@ -86,7 +89,10 @@ impl Graph {
                 }
                 match n.data {
                     NodeKind::Layer { .. } => break (*n).clone(),
-                    NodeKind::Filter { .. } | NodeKind::Levels { .. } | NodeKind::Curves { .. } => {
+                    NodeKind::Filter { .. }
+                    | NodeKind::Levels { .. }
+                    | NodeKind::Curves { .. }
+                    | NodeKind::Hsl { .. } => {
                         filters.push((*n).clone());
                         head = *inputs.get(&(head, 0)).ok_or(error)?;
                     }

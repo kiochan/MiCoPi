@@ -1,7 +1,7 @@
 //! Shared encoded-byte HSL math, compiled independently into native DLLs.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct Parameters {
-    hue: f64,
+    hue_sextants: f64,
     saturation: f64,
     lightness: f64,
 }
@@ -17,13 +17,15 @@ impl Parameters {
             return None;
         }
         Some(Self {
-            hue,
+            hue_sextants: hue / 60.,
             saturation: saturation / 100.,
             lightness: lightness / 100.,
         })
     }
     pub fn apply(self, pixel: u32) -> u32 {
-        if pixel >> 24 == 0 || self.hue == 0. && self.saturation == 0. && self.lightness == 0. {
+        if pixel >> 24 == 0
+            || self.hue_sextants == 0. && self.saturation == 0. && self.lightness == 0.
+        {
             return pixel;
         }
         let [r, g, b] = [16, 8, 0].map(|shift| f64::from((pixel >> shift) & 255) / 255.);
@@ -52,7 +54,7 @@ impl Parameters {
         } else {
             (r - g) / chroma + 4.
         };
-        let hue = (hue + self.hue / 60.).rem_euclid(6.);
+        let hue = (hue + self.hue_sextants).rem_euclid(6.);
         lightness = if self.lightness <= 0. {
             lightness * (1. + self.lightness)
         } else {

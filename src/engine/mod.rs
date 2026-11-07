@@ -7,6 +7,7 @@ pub mod document_info;
 pub mod graph;
 pub mod groups;
 pub mod homography;
+pub mod hsl;
 pub mod input;
 pub mod levels;
 mod linked_graph;
