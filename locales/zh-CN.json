@@ -1524,5 +1524,9 @@
   "Input White": "输入白场",
   "Midtone Gamma": "中间调伽马",
   "Output Black": "输出黑场",
-  "Output White": "输出白场"
+  "Output White": "输出白场",
+  "Input Levels": "输入色阶",
+  "Output Levels": "输出色阶",
+  "Reset Levels": "重置色阶",
+  "Input white must exceed input black.": "输入白场必须大于输入黑场。"
 }

@@ -1524,5 +1524,9 @@
   "Input White": "入力の白点",
   "Midtone Gamma": "中間調ガンマ",
   "Output Black": "出力の黒点",
-  "Output White": "出力の白点"
+  "Output White": "出力の白点",
+  "Input Levels": "入力レベル",
+  "Output Levels": "出力レベル",
+  "Reset Levels": "レベル補正をリセット",
+  "Input white must exceed input black.": "入力の白点は黒点より大きくしてください。"
 }

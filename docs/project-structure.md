@@ -10,6 +10,8 @@ not serialized intent. `group_editing.rs` installs derived caches with document 
 `PreparedLevelsPlan` provides a bounded reusable cache with transactional rebuilds
 and retained renderer lifetime. `compositing.levels` registers the source-node
 schema in its feature manifest; adjustment-layer integration remains pending.
+`plugins/compositing/levels_ui.rs` owns the shared local-draft Levels controls,
+owner-aware labels, grayscale ramps and appearance-derived node height budget.
 
 The repository separates executable source, plugin packages, examples, documentation and local output. Paths that participate in the runtime contract remain stable; documentation and examples are grouped for navigation.
 

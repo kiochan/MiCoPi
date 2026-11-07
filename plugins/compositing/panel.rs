@@ -7,6 +7,8 @@ use egui_snarl::{
 use std::collections::BTreeMap;
 #[path = "groups_view.rs"]
 mod groups_view;
+#[path = "levels_ui.rs"]
+pub(super) mod levels_ui;
 #[derive(Default)]
 pub(super) struct GraphEditor {
     #[cfg(test)]
@@ -558,6 +560,7 @@ struct NodeViewer<'a> {
     document: Option<&'a crate::engine::Document>,
     supported_blends: u32,
     mix_available: bool,
+    levels_height: f32,
     actions: Vec<crate::application::Action>,
 }
 impl Default for NodeViewer<'_> {
@@ -573,6 +576,7 @@ impl Default for NodeViewer<'_> {
             document: None,
             supported_blends: 0xff,
             mix_available: false,
+            levels_height: levels_ui::estimated_height(&crate::configuration::Appearance::default()),
             actions: vec![],
         }
     }
@@ -684,7 +688,7 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
         let mut bounds = Rect::NOTHING;
         for (_, pos, node) in snarl.nodes_pos_ids() {
             let height = if matches!(node.data, NodeKind::Levels { .. }) {
-                self.width * 4. + 96.
+                self.levels_height
             } else if self.linked && matches!(node.data, NodeKind::Layer { .. }) {
                 self.width * 1.4 + 24.
             } else {
@@ -796,6 +800,12 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
                 );
                 return;
             };
+            if def.id=="compositing.levels" {
+                if let NodeKind::Levels {parameters}=&mut snarl[id].data {
+                    levels_ui::edit(ui,Id::new(("levels-node",id)),parameters);
+                    return;
+                }
+            }
             let mut data = serde_json::to_value(&snarl[id].data).unwrap();
             let operation = data.as_object_mut().unwrap().remove("kind").unwrap();
             if let Some(properties) = def.parameters_schema["properties"].as_object() {
@@ -1087,6 +1097,7 @@ impl Editor {
         ui.separator();
         let mut viewer = NodeViewer {
             definitions: Some(&self.plugin_nodes),
+            levels_height: levels_ui::estimated_height(&self.settings.ui),
             layers: self.session.doc.layers.len(),
             message: String::new(),
             width: self.settings.ui.font_size * 12.,

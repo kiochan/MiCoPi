@@ -1524,5 +1524,9 @@
   "Input White": "Input White",
   "Midtone Gamma": "Midtone Gamma",
   "Output Black": "Output Black",
-  "Output White": "Output White"
+  "Output White": "Output White",
+  "Input Levels": "Input Levels",
+  "Output Levels": "Output Levels",
+  "Reset Levels": "Reset Levels",
+  "Input white must exceed input black.": "Input white must exceed input black."
 }

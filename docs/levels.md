@@ -3,10 +3,14 @@
 The registered `compositing.levels` image node applies a master encoded-RGB
 curve independently to R, G and B while preserving alpha. It works in linked
 Layer Filters and free image graphs. This source increment awaits CI validation;
-true Levels adjustment layers and dedicated artist controls remain planned.
+true Levels adjustment layers remain planned.
 
 Right-click a layer or source effect in Layer Filters, choose **Insert Filter →
-Levels**, and edit its schema-described parameters. Changes remain in the graph
+Levels**, and edit its Input Levels and Output Levels controls. The numeric
+fields support dragging, the grayscale bars show the input/output ranges and
+Reset Levels restores the identity curve. Controls edit the local draft only.
+Plugin aliases with custom schemas retain the generic schema editor.
+Changes remain in the graph
 draft until Apply or explicitly enabled Live Preview. Live Preview pauses during
 active contacts; explicit Levels graph edits reject without ending the contact.
 Undo restores the previous graph and composite while raw layer pixels remain
