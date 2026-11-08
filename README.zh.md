@@ -1,5 +1,7 @@
 # MiCoPi
 
+**测试版本：** main 的所有 CI 检查通过后，可从 [Actions](https://github.com/kiochan/MiCoPi/actions/workflows/ci.yml) 下载 Windows x64 便携 ZIP。完整解压后运行 `MiCoPi.exe`，包内包含 DLL、插件和语言文件，保留 30 天。参见[下载与校验说明](docs/development.md#automatic-main-builds)。
+
 [绑定多图层的共享调整](docs/shared-adjustments.md)已在源码中接通：一个控制器逐源作用于明确绑定的图层，空绑定不影响画面，并提供可取消的画布预览。绑定界面、命令/节点/MCP/headless 和持久化回放已接入；首版控制器仅限根级，图扩展有明确上限，新运行、性能及截图验证仍待完成。
 
 [多图层液化](docs/liquify-design.md)已在源码中接通共享原生变形、独立图层与已链接蒙版、可取消的画布预览及一次撤销，并提供压感/对称控制和 MCP/headless 命令。最新运行验证、真实界面截图及大画布性能测量仍待完成。

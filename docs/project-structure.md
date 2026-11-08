@@ -388,6 +388,8 @@ Capture fixtures exercise asynchronous presentation and file publication indepen
 
 Generated smoke captures, extracted packages, benchmarks and artwork from examples belong under ignored `target/test-output/` or `target/example-output/`. Only reviewed screenshots are promoted to `docs/screenshots/`; portable deliverables stay under ignored `dist/`.
 
+CI portable staging belongs to `scripts/package-ci.py`; it reuses verified MSVC release outputs, includes app-local CRT files and records build identity. `scripts/package.py` owns the archive whitelist, plugin catalog admission and virtual documentation links. `scripts/smoke-portable.py` validates the extracted deliverable independently of checkout plugin discovery. The final main-only steps in `.github/workflows/ci.yml` upload ZIP/checksum artifacts from ignored `target/artifacts/` after all verification succeeds. See [automatic main builds](development.md#automatic-main-builds) for downloads and retention.
+
 `scripts/collect-licenses.py` owns locked, offline notice staging; `scripts/licenses/` contains reviewed upstream legal-text supplements and their provenance pins. `scripts/test-collect-licenses.py` covers archive validation, declared coverage, staging rollback and package admission; `scripts/test-package.py` checks relative links against the files actually distributed. Generated dependency notices and `LICENSES.json` belong in the ignored portable staging tree, not alongside the source supplements. The full collection contract is `scripts/licenses/README.md` in the source checkout.
 
 ## Documentation and screenshots

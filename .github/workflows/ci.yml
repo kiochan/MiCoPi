@@ -31,6 +31,11 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Check repository links and example data
         run: python scripts/check-repository.py
+      - name: Test portable packaging and license admission
+        run: |
+          python scripts/test-collect-licenses.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/test-package.py
       - name: Check C11 and C++17 native SDK layouts
         shell: pwsh
         run: |
@@ -105,3 +110,49 @@ jobs:
         run: python scripts/smoke-mask-group-delete.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify mask-bearing subtree copies, identities and compound outcomes
         run: python scripts/smoke-mask-group-duplicate.py --skip-gui --cli target/release/micopi-cli.exe
+      # Reuse this job's tested release binaries only after every check above succeeds.
+      - name: Package verified main build
+        if: ${{ success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        id: portable
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $installation = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $installation) { throw 'Visual Studio C++ redistributables not found' }
+          $runtime = Get-ChildItem -Path "$installation/VC/Redist/MSVC/*/x64/Microsoft.VC*.CRT" -Directory |
+            Sort-Object { [version]$_.Parent.Parent.Name } -Descending | Select-Object -First 1
+          if (-not $runtime) { throw 'x64 release CRT redistributables not found' }
+          python scripts/package-ci.py --crt $runtime.FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify extracted portable build
+        if: ${{ success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        run: python scripts/smoke-portable.py --zip "${{ steps.portable.outputs.zip_path }}"
+      - name: Upload portable ZIP
+        if: ${{ success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        id: portable_upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: ${{ steps.portable.outputs.zip_path }}
+          archive: false
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload portable checksum
+        if: ${{ success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          path: ${{ steps.portable.outputs.checksum_path }}
+          archive: false
+          if-no-files-found: error
+          retention-days: 30
+      - name: Link portable download
+        if: ${{ success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        shell: pwsh
+        run: |
+          @'
+          ## Windows x64 portable development build
+          [Download the tested ZIP](${{ steps.portable_upload.outputs.artifact-url }})
+
+          Retained for 30 days. Extract the entire ZIP and launch MiCoPi.exe.
+          BUILD-INFO.json identifies the commit and executable/DLL hashes; the SHA-256 sidecar is a separate artifact.
+          '@ >> $env:GITHUB_STEP_SUMMARY

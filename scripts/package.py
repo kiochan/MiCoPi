@@ -62,7 +62,7 @@ def validate_markdown_links(entries):
         raise ValueError('Portable Markdown link validation failed:\n' + '\n'.join(errors))
 
 
-def package(dist: Path, output: Path):
+def package(dist: Path, output: Path, *, extra_files=()):
     spec = importlib.util.spec_from_file_location('micopi_license_collector', ROOT/'scripts/collect-licenses.py')
     collector = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(collector)
@@ -101,7 +101,19 @@ def package(dist: Path, output: Path):
         readme = manifest.parent/'README.md'
         if readme.exists():
             add(readme, readme.relative_to(ROOT).as_posix())
-        library = json.loads(manifest.read_text(encoding='utf-8')).get('library')
+        declaration = json.loads(manifest.read_text(encoding='utf-8'))
+        for locale in sorted(set(declaration.get('locales', {}).values())):
+            # Match the host's owner-relative catalog contract on Windows too.
+            parts = locale.split('/')
+            if (not locale or '\\' in locale or ':' in locale
+                    or any(part in ('', '.', '..') for part in parts)
+                    or not locale.endswith('.json')):
+                raise ValueError(f'Invalid locale path in {manifest}: {locale}')
+            source = manifest.parent / locale
+            if not source.resolve().is_relative_to(manifest.parent.resolve()):
+                raise ValueError(f'Locale escapes plugin directory: {locale}')
+            add(source, source.relative_to(ROOT).as_posix())
+        library = declaration.get('library')
         if library:
             if Path(library).name != library or not library.lower().endswith('.dll'):
                 raise ValueError(f'Invalid native library path in {manifest}')
@@ -113,6 +125,8 @@ def package(dist: Path, output: Path):
         raise FileNotFoundError('Missing staged licenses; run scripts/build.ps1 first')
     for path in licenses:
         add(path, path.relative_to(dist).as_posix())
+    for source, destination in extra_files:
+        add(source, destination)
     validate_markdown_links(entries)
     output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:

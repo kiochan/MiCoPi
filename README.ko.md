@@ -1,5 +1,7 @@
 # MiCoPi
 
+**테스트 빌드:** main의 모든 CI 검사가 통과하면 [Actions](https://github.com/kiochan/MiCoPi/actions/workflows/ci.yml)에서 Windows x64 포터블 ZIP을 다운로드할 수 있습니다. 전체 압축을 풀고 `MiCoPi.exe`를 실행하세요. DLL, 플러그인과 언어 파일을 포함하며 30일 동안 보관합니다. [다운로드 및 검증 안내](docs/development.md#automatic-main-builds)를 참고하세요.
+
 [공유 대상 레이어 조정](docs/shared-adjustments.md)은 하나의 컨트롤러를 명시한 레이어에 연결하여 각 소스에 개별 적용합니다. 빈 연결은 이미지에 영향을 주지 않으며 취소 가능한 미리 보기와 공유 명령을 소스에서 연결했습니다. 첫 버전의 컨트롤러는 루트에만 놓을 수 있고 그래프 크기에 상한이 있습니다. 최신 실행·성능·실제 화면 검증은 아직 남아 있습니다.
 
 [다중 레이어 픽셀 유동화](docs/liquify-design.md)는 공유 네이티브 변형, 독립 레이어와 연결된 마스크, 취소 가능한 미리 보기, 한 번의 실행 취소를 소스에서 연결합니다. 필압·대칭 제어와 MCP/headless 명령을 포함합니다. 최신 CI, 실제 화면 검토와 대형 캔버스 성능 측정은 아직 남아 있습니다.

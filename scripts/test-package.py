@@ -1,8 +1,11 @@
 """Check virtual archive links and portable identities without executable builds."""
 import importlib.util
+import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,6 +19,7 @@ def load(name, path):
 
 
 PACKAGE = load('package_fixture', ROOT / 'scripts/package.py')
+CI_PACKAGE = load('ci_package_fixture', ROOT / 'scripts/package-ci.py')
 LICENSE_FIXTURES = load('license_fixtures', ROOT / 'scripts/test-collect-licenses.py')
 
 
@@ -145,6 +149,84 @@ class PackageTests(unittest.TestCase):
             self.assertFalse(any(name.startswith(('target/', 'scripts/')) or name.startswith('/') or '..' in name.split('/') for name in names))
             self.assertTrue(all(info.date_time == (1980, 1, 1, 0, 0, 0) for info in archive.infolist()))
             self.assertIsNone(archive.testzip())
+
+    def test_plugin_catalogs_and_explicit_runtime_files_survive_packaging(self):
+        fixture, package, output = self.fixture()
+        plugin = fixture.root/'plugins/feature'
+        (plugin/'locales').mkdir()
+        (plugin/'locales/ja.json').write_text('{"title":"ブラシ"}', encoding='utf-8')
+        (plugin/'manifest.json').write_text(json.dumps(dict(
+            id='feature', library='feature.dll', locales={'ja':'locales/ja.json'})), encoding='utf-8')
+        runtime = fixture.output.parent/'vcruntime140.dll'
+        runtime.write_bytes(b'redistributed runtime')
+        package.package(fixture.output.parent, output, extra_files=[(runtime, runtime.name)])
+        with zipfile.ZipFile(output) as archive:
+            self.assertEqual(json.loads(archive.read('plugins/feature/locales/ja.json'))['title'], 'ブラシ')
+            self.assertEqual(archive.read(runtime.name), runtime.read_bytes())
+            self.assertNotIn('settings.json', archive.namelist())
+
+    def test_missing_and_escaping_plugin_catalogs_fail_before_publication(self):
+        fixture, package, output = self.fixture()
+        manifest = fixture.root/'plugins/feature/manifest.json'
+        for path in ['locales/missing.json', '../private.json', 'C:/private.json', 'locales\\ja.json', '/ja.json']:
+            manifest.write_text(json.dumps(dict(id='feature', locales={'ja':path})), encoding='utf-8')
+            with self.subTest(path=path), self.assertRaises((ValueError, FileNotFoundError)):
+                package.package(fixture.output.parent, output)
+            self.assertFalse(output.exists())
+
+    def test_crt_admission_rejects_incomplete_debug_and_wrong_architecture(self):
+        fixture, _, _ = self.fixture()
+        runtime = fixture.root/'redist/14.44.0/x64/Microsoft.VC143.CRT'
+        runtime.mkdir(parents=True)
+        with self.assertRaisesRegex(ValueError, 'Incomplete'):
+            CI_PACKAGE.runtime_files(runtime)
+        required = ['vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll']
+        for name in required:
+            (runtime/name).write_bytes(b'CRT fixture')
+        self.assertEqual([p.name for p in CI_PACKAGE.runtime_files(runtime)], sorted(required))
+        (runtime/'vcruntime140d.dll').write_bytes(b'debug CRT')
+        with self.assertRaisesRegex(ValueError, 'Unexpected'):
+            CI_PACKAGE.runtime_files(runtime)
+        with self.assertRaisesRegex(ValueError, 'redistributable directory'):
+            CI_PACKAGE.runtime_files(runtime.parent)
+
+    def test_ci_stage_uses_build_outputs_and_records_archive_hashes(self):
+        fixture, _, output = self.fixture()
+        root, build = fixture.root, fixture.output.parent
+        (root/'scripts/package.py').write_bytes((ROOT/'scripts/package.py').read_bytes())
+        (build/'micopi.exe').write_bytes(b'tested desktop')
+        (build/'micopi-cli.exe').write_bytes(b'tested cli')
+        (build/'feature.dll').write_bytes(b'tested native build')
+        runtime = root/'redist/14.44.0/x64/Microsoft.VC143.CRT'
+        runtime.mkdir(parents=True)
+        for name in ['msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll']:
+            (runtime/name).write_bytes(b'CRT fixture')
+        ci = load('isolated_ci_packager', ROOT/'scripts/package-ci.py')
+        ci.ROOT = root
+        commit = 'b'*40
+
+        def cargo_metadata(command, **kwargs):
+            self.assertEqual(command[:2], ['cargo', 'metadata'])
+            self.assertIn('--locked', command)
+            self.assertIn('--offline', command)
+            kwargs['stdout'].write(json.dumps(fixture.metadata).encode())
+
+        with mock.patch('sys.argv', ['package-ci.py', '--crt', str(runtime), '--build', str(build),
+                                     '--output', str(output.parent)]), \
+                mock.patch.dict(os.environ, {'GITHUB_SHA':commit}, clear=True), \
+                mock.patch.object(ci.subprocess, 'check_output', return_value=commit+'\n'), \
+                mock.patch.object(ci.subprocess, 'run', side_effect=cargo_metadata):
+            ci.main()
+        archive_path = output.parent/f'MiCoPi-0.1.0-{commit[:12]}-Windows-x64.zip'
+        self.assertTrue(archive_path.with_suffix('.zip.sha256').read_text().startswith(ci.digest(archive_path)))
+        with zipfile.ZipFile(archive_path) as archive:
+            self.assertEqual(archive.read('MiCoPi.exe'), b'tested desktop')
+            self.assertEqual(archive.read('plugins/feature/feature.dll'), b'tested native build')
+            info = json.loads(archive.read('BUILD-INFO.json'))
+            self.assertEqual(info['commit'], commit)
+            self.assertEqual(info['runtime_version'], '14.44.0')
+            self.assertEqual(info['sha256']['MiCoPi.exe'], ci.digest(build/'micopi.exe'))
+            self.assertNotIn('metadata.json', archive.namelist())
 
 
 if __name__ == '__main__':
