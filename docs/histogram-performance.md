@@ -67,8 +67,29 @@ excludes host/Session parameter caches, input processing, history/replay, UI/GPU
 DLL loading and physical-device latency. Its largest prepared source is 64 MiB;
 ROI outputs/references are bounded small buffers. Tests run serially and release
 their input storage between cases. This is not a full-frame repaint or process
-peak-memory measurement. Runtime results remain pending CI; there are no local
-large-image or machine-specific timing assertions.
+peak-memory measurement. The first verified CI results are recorded below;
+there are no local large-image or machine-specific timing assertions.
+
+### Verified HSL callback baseline
+
+[CI for `4c8f19d`](https://github.com/kiochan/MiCoPi/actions/runs/42431038394)
+passed the ignored Release probes on the hosted Windows runner. These are
+single-run observations over prepared input and nine warm calls, not targets:
+
+| Source side | ROI side | First ms | Warm median ms | Warm p95 ms |
+| ---: | ---: | ---: | ---: | ---: |
+| 1024 | 32 | 0.0562 | 0.0377 | 0.0552 |
+| 1024 | 256 | 2.4765 | 2.4818 | 2.5465 |
+| 4096 | 32 | 0.0555 | 0.0405 | 0.0415 |
+| 4096 | 256 | 2.7248 | 2.6403 | 2.6695 |
+
+For 4096-square input, the 4,096-sample HSL histogram measured 0.2465 ms first,
+0.1742 ms median and 0.2010 ms p95; 65,536 samples measured 3.2849, 2.9371 and
+3.3198 ms respectively. Every callback reported zero counted Rust heap
+allocations, valid independent RGBA/bin references, preserved ROI padding and
+reused output allocation. Input, references and output were allocated outside
+timers; these figures do not describe a full-frame document preview, process
+peak memory, GUI/physical-device latency or the newer shared tonal pipeline.
 
 ## Evidence and limits
 
@@ -76,8 +97,13 @@ large-image or machine-specific timing assertions.
 passed 1,181 desktop, 874 headless, 64 compositor, 99 painting and 11 SDK tests,
 native contact probes, C/C++ layouts and every configured transport smoke,
 including fenced node histograms and channel Levels adjustment persistence/replay.
-That run predates the specialized node picker in `694e5c7` and this cost probe;
-it does not validate either increment. Their runtime results remain pending CI.
+That run predates the specialized node picker and cost probe. The later green
+`4c8f19d` run passed 1,212 desktop, 893 headless, 72 compositor, 18 native-paint,
+99 painting and 12 SDK tests, both histogram probes, native contact/tip probes,
+SDK layouts and all configured transport smokes. This includes the HSL UI unit
+tests, direct/source/adjustment operations, fenced PNG previews and persistence.
+It predates the newer tonal/shared-staging work. Standard CI did not run native
+window capture scripts, so no actual screenshot production/review is certified.
 
 Callback timing excludes Session dispatch, source/actual graph discovery, color
 table preparation, mask-cache preparation, JSON serialization, native DLL loading,

@@ -197,6 +197,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Reliability, performance and compatibility
 
+- Retain running CI validation across new same-workflow/ref pushes by disabling in-progress cancellation. Document the latest-pending policy and exact-head evidence so authorized feature pushes can continue without restarting an almost-complete build. Record the first verified HSL callback/observation timing and zero-allocation baseline from green CI `4c8f19d`, with exact test counts, excluded costs and explicit lack of native GUI capture execution. New tonal/shared-draft behavior keeps its separate pending CI status; no local heavy workload or end-to-end latency/process-memory claim is introduced.
+
 - Fix the channel Levels independent reference helper's integer inference exposed by CI for `7d5d63f`: explicitly type the shift and byte mask as `u32`, retaining all expected-pixel assertions. C11/C++17 SDK layout checks passed, but the host test compiler stopped before runtime verification. Corrected Levels and histogram-plan runtime/cost checks remain pending CI.
 
 - Update owner-movement smoke to reflect supported whole-layer affine editing: retain negative selected-pixel affine checks on masked documents and add positive explicit-Layer planning scope/matrix checks while preserving all unchanged-state/PNG assertions. CI for `ad97889` passed 1,139 desktop, 844 headless, 50 compositor, 99 painting and 10 SDK tests plus Curves adjustment, mask editing and geometry transport before exposing the stale negative expectation. Later smoke phases and the newer curve controls/histogram query remain pending CI.

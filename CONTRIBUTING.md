@@ -25,6 +25,13 @@ CI runs, and inspect and repair failures against the exact pushed commit. Pendin
 CI is not a passing result. Do not repeat full local suites after every small
 edit or remove checks to make a failing feature appear complete.
 
+The per-workflow/ref concurrency group retains its running CI validation when a
+new increment is pushed. GitHub's default single-pending policy keeps the latest
+waiting run and can replace an older pending run; it does not promise a separate
+completed run for every intermediate commit. Continue implementing and pushing
+authorized coherent increments while CI runs, then inspect evidence for the
+exact tested head. See [GitHub concurrency rules](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
+
 English is the source of truth for technical documentation, code comments and new source messages. The root README also has Chinese, Japanese and Korean editions; update them together when the overview changes. Add UI translations to the four catalogs in `locales/`, preserve format placeholders, and avoid translating protocol identifiers or user content. See [Localization](docs/localization.md).
 
 Only English is embedded; other catalogs and declared plugin catalogs load externally. Use contribution ownership when translating plugin titles and search terms. Keep malformed-file fallback and hot reload behavior covered when changing the loader. Package activation and native DLL changes still require restart; see [Plugin system](docs/plugin-system.md).

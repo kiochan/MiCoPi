@@ -1,5 +1,11 @@
 # Development and Verification
 
+CI serializes the same workflow/ref without cancelling its running validation
+on another push. The latest pending head may replace an older pending head;
+keep exact commit/run references in validation reports. Local checks stay light
+while implementation continues. Standard CI uses headless transport smokes and
+egui unit tests; it does not execute the interactive Windows capture scripts.
+
 The [histogram cost probe](histogram-performance.md) runs as an ignored Release
 test in CI, checking independent sampled bins and zero callback Rust heap
 allocations on 1024/4096-square sources. It is separate from local lightweight
