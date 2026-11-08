@@ -134,10 +134,19 @@ remains in place. Future group expansion needs a reviewed explicit owner policy.
 
 A draft caches one DLL field and initialized owner outputs. Accepted typed pushes
 record compact bounded intent and accumulate up to four dirty unions; a packet
-batch updates the field first and samples each owner once per union. Sources stay
+batch updates the field first, partitions the exact rectangle union into disjoint
+row bands/runs and samples each covered owner pixel once. Fixed stack storage
+handles at most seven bands with four intervals per band, coalescing adjacent
+identical runs; distant symmetry arms never force one enclosing image span. Sources stay
 immutable. Headless execution likewise accumulates the full requested sequence
 before owner sampling. No per-MOVE JSON, DLL instance creation, registry lookup,
-file I/O or full-source copying occurs. Reset clears and refills existing buffers;
+file I/O or full-source copying occurs. One through four arms are stored inline
+per intent step, preserving the existing JSON array-of-arrays contract. Reserve
+8192 inline slots once when opening a draft; accepted points and Reset reuse that
+transcript without per-step heap arrays. `transcript_bytes` reports the requested
+payload as `8192 * size_of::<Step>()` (819,200 bytes with the current 100-byte
+layout), separate from allocator overhead and JSON transport storage. Clearing
+or a native no-op never appends an empty step. Reset clears and refills existing buffers;
 Cancel drops the private draft. Failed native updates/sampling poison the draft
 until reset/cancel; no partial owner set is published.
 
@@ -151,7 +160,8 @@ existing tiled/compressed outcome persistence remains the recording format.
 
 Select rasters in Layers and search **Multi-layer Liquify…** in the command
 palette. Drag on the ordinary canvas. Controls expose radius, strength, optional
-pressure strength and Reset/Cancel/Apply. The adapter uses native packet pressure,
+pressure strength and Reset/Cancel/Apply. The captured target list shows artist
+layer names in a bounded scroll area and explains linked/unlinked mask behavior. The adapter uses native packet pressure,
 existing stabilization intent and document/view reflection. Captured symmetry
 axes reflect both centers and displacement vectors, with joint native evaluation.
 The normal Brush/Eraser path is unchanged. A circular canvas cursor shows radius.

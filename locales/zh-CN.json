@@ -1667,5 +1667,6 @@
   "Liquify source changed; cancel and reopen.": "液化源已变化，请取消后重新打开。",
   "Radius": "半径",
   "Strength": "强度",
-  "Stabilization": "防抖"
+  "Stabilization": "防抖",
+  "Linked masks follow their layers; unlinked masks stay in place.": "已链接的蒙版随图层变形；未链接的蒙版保持原位。"
 }

@@ -1667,5 +1667,6 @@
   "Liquify source changed; cancel and reopen.": "元の画像が変更されました。キャンセルして開き直してください。",
   "Radius": "半径",
   "Strength": "強さ",
-  "Stabilization": "手ブレ補正"
+  "Stabilization": "手ブレ補正",
+  "Linked masks follow their layers; unlinked masks stay in place.": "リンクされたマスクはレイヤーと一緒に変形し、リンクされていないマスクは元の位置を保ちます。"
 }

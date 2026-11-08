@@ -910,6 +910,10 @@
           },
           "exterior_a8": {
             "type": "string"
+          },
+          "transcript_bytes": {
+            "type": "integer",
+            "minimum": 0
           }
         },
         "required": [
@@ -925,7 +929,8 @@
           "contact_active",
           "selection_policy",
           "exterior_rgba",
-          "exterior_a8"
+          "exterior_a8",
+          "transcript_bytes"
         ]
       }
     },
@@ -977,6 +982,10 @@
           },
           "apply": {
             "type": "object"
+          },
+          "transcript_bytes": {
+            "type": "integer",
+            "minimum": 0
           }
         },
         "required": [
@@ -991,7 +1000,8 @@
           "preview_cost",
           "mimeType",
           "data",
-          "apply"
+          "apply",
+          "transcript_bytes"
         ]
       }
     },

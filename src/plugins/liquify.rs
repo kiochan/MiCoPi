@@ -7,9 +7,15 @@ use crate::engine::{
 use micopi_plugin_api as abi;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+#[path = "liquify_regions.rs"]
+mod regions;
+#[path = "liquify_steps.rs"]
+mod steps;
+pub(crate) use steps::Step;
 
 const FIELD_LIMIT: usize = 64 * 1024 * 1024;
 const MAX_STEPS: usize = 8192;
+const TRANSCRIPT_BYTES: usize = MAX_STEPS * std::mem::size_of::<Step>();
 fn spacing() -> u32 {
     4
 }
@@ -62,7 +68,7 @@ pub(crate) struct Request {
     #[serde(default)]
     pub method: Method,
     #[serde(default)]
-    pub steps: Vec<Vec<Push>>,
+    pub steps: Vec<Step>,
 }
 fn decode_ids<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Vec<u64>, D::Error> {
     let value = Value::deserialize(deserializer)?;
@@ -119,6 +125,7 @@ pub(crate) struct Plan {
     pub scope: OwnerScope,
     pub field_bytes: usize,
     pub staged_bytes: usize,
+    pub transcript_bytes: usize,
 }
 pub(crate) fn plan(s: &Session, r: &Request) -> Result<Plan, String> {
     r.check(s)?;
@@ -155,6 +162,7 @@ pub(crate) fn plan(s: &Session, r: &Request) -> Result<Plan, String> {
         staged_bytes: s.doc.owner_transform_staging_bytes(&scope)?,
         scope,
         field_bytes,
+        transcript_bytes: TRANSCRIPT_BYTES,
     })
 }
 pub(crate) fn admit(s: &Session, args: &Value, require_idle: bool) -> Result<(), ActionError> {
@@ -170,7 +178,7 @@ pub(crate) fn describe(s: &Session, args: Value) -> ActionResult {
     let p = plan(s, &r).map_err(failure)?;
     let preview = s.doc.owner_preview_cost(p.scope.mask_ids());
     Ok(
-        json!({"document_identity":s.doc.identity,"revision":s.revision,"owner_scope":p.scope,"layer_ids":p.scope.layer_ids(),"mask_ids":p.scope.mask_ids(),"width":s.doc.width,"height":s.doc.height,"field_bytes":p.field_bytes,"staged_bytes":p.staged_bytes,"preview_cost":preview.as_ref().ok(),"preview_error":preview.err(),"contact_active":s.stroke.active()||s.pointer_checkpoint.is_some(),"selection_policy":"whole_owners_preserve_selection","exterior_rgba":"transparent","exterior_a8":"reveal"}),
+        json!({"document_identity":s.doc.identity,"revision":s.revision,"owner_scope":p.scope,"layer_ids":p.scope.layer_ids(),"mask_ids":p.scope.mask_ids(),"width":s.doc.width,"height":s.doc.height,"field_bytes":p.field_bytes,"staged_bytes":p.staged_bytes,"transcript_bytes":p.transcript_bytes,"preview_cost":preview.as_ref().ok(),"preview_error":preview.err(),"contact_active":s.stroke.active()||s.pointer_checkpoint.is_some(),"selection_policy":"whole_owners_preserve_selection","exterior_rgba":"transparent","exterior_a8":"reveal"}),
     )
 }
 fn copied<T: Copy>(source: &[T]) -> Result<Vec<T>, String> {
@@ -235,6 +243,11 @@ impl Draft {
         super::owner_affine::require_idle(s).map_err(|e| e.to_string())?;
         let p = plan(s, &request)?;
         let steps = std::mem::take(&mut request.steps);
+        // Fixed inline records reserve one bounded transcript, not one heap per MOVE.
+        request
+            .steps
+            .try_reserve_exact(MAX_STEPS)
+            .map_err(|_| "Cannot reserve Liquify event transcript")?;
         let field = s.registry.native_plugins["painting"].create_liquify(
             s.doc.width as u32,
             s.doc.height as u32,
@@ -302,7 +315,8 @@ impl Draft {
             .steps
             .try_reserve(1)
             .map_err(|_| "Cannot reserve Liquify event step")?;
-        let record = copied(arms)?;
+        let record =
+            Step::copy_from(arms).ok_or("Each Liquify step needs one through four arms")?;
         let mut native = [abi::LiquifyPush {
             x: 0.,
             y: 0.,
@@ -347,7 +361,8 @@ impl Draft {
         } else {
             1
         };
-        for region in self.pending.iter().flatten() {
+        let dirty = regions::disjoint(&self.pending);
+        for region in dirty.iter() {
             for (id, pixels, mask) in &mut self.outputs.layers {
                 let index = s
                     .doc
@@ -423,7 +438,7 @@ pub(crate) fn preview(s: &Session, args: Value) -> ActionResult {
         s.doc.info().export_density(),
     )?;
     Ok(
-        json!({"document_identity":request.document_identity,"revision":request.document_revision,"layer_ids":request.layer_ids,"mask_ids":p.scope.mask_ids(),"width":s.doc.width,"height":s.doc.height,"field_bytes":p.field_bytes,"staged_bytes":p.staged_bytes,"preview_cost":cost,"mimeType":"image/png","data":crate::application::codec::base64(&bytes),"apply":request.apply_action()}),
+        json!({"document_identity":request.document_identity,"revision":request.document_revision,"layer_ids":request.layer_ids,"mask_ids":p.scope.mask_ids(),"width":s.doc.width,"height":s.doc.height,"field_bytes":p.field_bytes,"staged_bytes":p.staged_bytes,"transcript_bytes":p.transcript_bytes,"preview_cost":cost,"mimeType":"image/png","data":crate::application::codec::base64(&bytes),"apply":request.apply_action()}),
     )
 }
 

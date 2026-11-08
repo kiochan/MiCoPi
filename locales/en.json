@@ -1667,5 +1667,6 @@
   "Liquify source changed; cancel and reopen.": "Liquify source changed; cancel and reopen.",
   "Radius": "Radius",
   "Strength": "Strength",
-  "Stabilization": "Stabilization"
+  "Stabilization": "Stabilization",
+  "Linked masks follow their layers; unlinked masks stay in place.": "Linked masks follow their layers; unlinked masks stay in place."
 }

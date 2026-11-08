@@ -1667,5 +1667,6 @@
   "Liquify source changed; cancel and reopen.": "원본이 변경되었습니다. 취소한 후 다시 여세요.",
   "Radius": "반경",
   "Strength": "강도",
-  "Stabilization": "손떨림 보정"
+  "Stabilization": "손떨림 보정",
+  "Linked masks follow their layers; unlinked masks stay in place.": "연결된 마스크는 레이어와 함께 변형되고 연결되지 않은 마스크는 원래 위치를 유지합니다."
 }
