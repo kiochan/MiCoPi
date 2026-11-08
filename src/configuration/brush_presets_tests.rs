@@ -163,7 +163,7 @@ fn preset_raw_numbers_validate_before_f32_rounding_and_spacing_boundary_round_tr
 #[test]
 fn preset_parameter_format_rejects_missing_color_code_and_unknown_fields() {
     let valid = snapshot().value().unwrap();
-    for key in PARAMETER_KEYS {
+    for key in REQUIRED_PARAMETER_KEYS {
         let mut raw = valid.clone();
         raw.as_object_mut().unwrap().remove(key);
         assert!(PresetParameters::decode_value(&raw).is_err());
