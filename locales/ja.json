@@ -1617,5 +1617,9 @@
   "Threshold: Active Layer": "しきい値：現在のレイヤー",
   "Threshold Level": "しきい値",
   "Posterize: Active Layer": "ポスタリゼーション：現在のレイヤー",
-  "Posterize Levels": "ポスタリゼーション階調数"
+  "Posterize Levels": "ポスタリゼーション階調数",
+  "Threshold": "しきい値",
+  "Posterize": "ポスタリゼーション",
+  "Quantization Parameters": "量子化パラメーター",
+  "Quantization Effect": "量子化効果"
 }

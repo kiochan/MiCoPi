@@ -20,15 +20,24 @@ pub struct AdjustmentSpec {
     pub curves: Option<Curves>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hsl: Option<Hsl>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quantization: Option<super::quantization::Quantization>,
 }
 impl AdjustmentSpec {
     pub fn validate(&self) -> Result<(), String> {
         if usize::from(self.levels.is_some())
             + usize::from(self.curves.is_some())
             + usize::from(self.hsl.is_some())
+            + usize::from(self.quantization.is_some())
             > 1
         {
             return Err("Adjustment intent must select only one effect family".into());
+        }
+        if let Some(quantization) = self.quantization {
+            quantization.validate()?;
+            if self.filter != Filter::Invert || self.amount != 0. {
+                return Err("Quantization adjustments require neutral legacy filter fields".into());
+            }
         }
         if let Some(hsl) = self.hsl {
             hsl.validate()?;
@@ -82,6 +91,8 @@ pub struct Adjustment {
     pub curves: Option<Curves>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hsl: Option<Hsl>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quantization: Option<super::quantization::Quantization>,
 }
 impl Adjustment {
     pub fn new(id: u64, spec: AdjustmentSpec) -> Self {
@@ -96,6 +107,7 @@ impl Adjustment {
             levels: spec.levels,
             curves: spec.curves,
             hsl: spec.hsl,
+            quantization: spec.quantization,
         }
     }
     pub fn spec(&self) -> AdjustmentSpec {
@@ -109,6 +121,7 @@ impl Adjustment {
             levels: self.levels,
             curves: self.curves.clone(),
             hsl: self.hsl,
+            quantization: self.quantization,
         }
     }
     pub fn validate(&self) -> Result<(), String> {

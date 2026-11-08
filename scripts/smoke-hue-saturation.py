@@ -110,6 +110,27 @@ def commands():
             id=1, type='action.layer.'+operation, position=[0, 0], parameters={})], edges=[]))
         p.add(operation+'-run', 'workflow.run', atomic=True)
         p.add(operation+'-workflow-bins', 'histogram.query', source='layer', layer_id=1)
+        value = next(iter(parameters.values()))
+        p.add(operation+'-source-new', 'canvas.new', width=4, height=4)
+        p.add(operation+'-source-fill', 'layer.fill_color', color='#20406080')
+        p.add(operation+'-source-set', 'graph.set', graph=dict(enabled=True, linked=True, nodes=[
+            dict(id=11, kind='layer', index=0, position=[0, 0]),
+            dict(id=22, kind='quantization', node_type='compositing.'+operation,
+                 quantization=dict(effect=operation, value=value), position=[200, 0]),
+            dict(id=33, kind='output', position=[400, 0])], edges=[
+            dict(**{'from':11}, to=22, input=0), dict(**{'from':22}, to=33, input=0)]))
+        p.add(operation+'-source-bins', 'histogram.query')
+        p.add(operation+'-source-raw', 'histogram.query', source='layer', layer_id=1)
+        p.add(operation+'-source-observe', 'pipeline.run', steps=[
+            dict(id='read', action='graph.read', args={}),
+            dict(id='sample', action='histogram.query', args=dict(source='node', graph_view='source', node_id=22, port='output',
+                 document_identity={'$ref':'read#/result/document_identity'}, document_revision={'$ref':'read#/result/revision'}))])
+        p.add(operation+'-adjustment-new', 'canvas.new', width=4, height=4)
+        p.add(operation+'-adjustment-fill', 'layer.fill_color', color='#20406080')
+        p.add(operation+'-adjustment-create', 'adjustment.create', node_type='compositing.'+operation,
+              parameters=dict(quantization=dict(value=value)))
+        p.add(operation+'-adjustment-bins', 'histogram.query')
+
     p.add('verify', 'replay.verify')
     return p
 
@@ -151,7 +172,13 @@ def validate(values, plan):
                         ('threshold-workflow-bins', [(0, 0, 0)]*16),
                         ('posterize-bins', [(0, 85, 85)]*16),
                         ('posterize-original', [(32, 64, 96)]*16),
-                        ('posterize-workflow-bins', [(0, 85, 85)]*16)]:
+                        ('posterize-workflow-bins', [(0, 85, 85)]*16),
+                        ('threshold-source-bins', [(0, 0, 0)]*16),
+                        ('threshold-source-raw', [(32, 64, 96)]*16),
+                        ('threshold-adjustment-bins', [(0, 0, 0)]*16),
+                        ('posterize-source-bins', [(0, 85, 85)]*16),
+                        ('posterize-source-raw', [(32, 64, 96)]*16),
+                        ('posterize-adjustment-bins', [(0, 85, 85)]*16)]:
         actual = at(key)
         assert actual['exact'] and actual['nontransparent_pixels'] == 16
         for channel, index in [('red', 0), ('green', 1), ('blue', 2)]:
@@ -168,6 +195,8 @@ def validate(values, plan):
         assert any(node['id'] == 'action.layer.'+operation for node in at('nodes')['nodes'])
         assert at(operation+'-edit')['implementation'] == 'independent Rust DLL'
         assert at(operation+'-run')['ok']
+        assert at(operation+'-source-observe')['ok']
+        assert any(node['id'] == 'compositing.'+operation for node in at('nodes')['nodes'])
     gray_preview = at('gray-preview')
     assert gray_preview['ok']
     assert gray_preview['results']['draft']['result']['data'] == at('gray-image')['data']

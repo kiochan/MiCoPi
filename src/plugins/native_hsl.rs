@@ -67,7 +67,13 @@ impl NativePlugin {
         {
             return Err("The compositor does not support this blend mode".into());
         }
-        let callback = self.hsl.ok_or("Native HSL rendering is unavailable")?.0;
+        let callback = if nodes.iter().any(|n| matches!(n.kind, 12 | 13)) {
+            self.quantization
+                .ok_or("Native quantization rendering is unavailable")?
+                .0
+        } else {
+            self.hsl.ok_or("Native HSL rendering is unavailable")?.0
+        };
         let status = unsafe {
             callback(
                 nodes.as_ptr(),
@@ -115,10 +121,15 @@ impl NativePlugin {
         {
             return Err("Invalid HSL histogram bounds or loans".into());
         }
-        let callback = self
-            .hsl
-            .ok_or("Native HSL histogram sampling is unavailable")?
-            .1;
+        let callback = if nodes.iter().any(|n| matches!(n.kind, 12 | 13)) {
+            self.quantization
+                .ok_or("Native quantization histogram sampling is unavailable")?
+                .1
+        } else {
+            self.hsl
+                .ok_or("Native HSL histogram sampling is unavailable")?
+                .1
+        };
         request.abi_version = 1;
         request.struct_size = std::mem::size_of::<abi::HistogramRequest>() as u32;
         let mut result = abi::HistogramResult::default();

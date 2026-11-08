@@ -144,8 +144,10 @@ complete (`input` and `output`), with ordered-byte and provider validation.
 {"action":"adjustment.set","args":{"adjustment_id":1,"parameters":{"curves":{"master":{"interpolation":"linear"}}}}}
 ```
 
-Version-3 adjustment records have optional `levels` or `curves` intent tails.
-Both are omitted for scalar effects, retaining their old bytes. Typed effects
+Version-3 adjustment records have optional `levels`, `curves`, `hsl` or
+`quantization` intent tails. All are omitted for scalar effects, retaining their
+old bytes. [Threshold and Posterize](quantization.md) use registered typed
+quantization providers, shared local controls and the existing mask/stack path. Typed effects
 require neutral legacy `filter=invert, amount=0` compatibility anchors. Multiple
 effect tails, non-neutral anchors, invalid curves and mismatched provider records
 reject. Old strict readers reject unknown tails. Public action/state parameters

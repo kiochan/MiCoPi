@@ -1617,5 +1617,9 @@
   "Threshold: Active Layer": "阈值：当前图层",
   "Threshold Level": "阈值色阶",
   "Posterize: Active Layer": "色调分离：当前图层",
-  "Posterize Levels": "色调分离级数"
+  "Posterize Levels": "色调分离级数",
+  "Threshold": "阈值",
+  "Posterize": "色调分离",
+  "Quantization Parameters": "量化参数",
+  "Quantization Effect": "量化效果"
 }

@@ -1617,5 +1617,9 @@
   "Threshold: Active Layer": "임계값: 현재 레이어",
   "Threshold Level": "임계값 수준",
   "Posterize: Active Layer": "포스터화: 현재 레이어",
-  "Posterize Levels": "포스터화 단계 수"
+  "Posterize Levels": "포스터화 단계 수",
+  "Threshold": "임계값",
+  "Posterize": "포스터화",
+  "Quantization Parameters": "양자화 매개변수",
+  "Quantization Effect": "양자화 효과"
 }

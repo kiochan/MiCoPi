@@ -45,6 +45,7 @@ impl Graph {
                     | NodeKind::Levels { .. }
                     | NodeKind::Curves { .. }
                     | NodeKind::Hsl { .. }
+                    | NodeKind::Quantization { .. }
             )
         })
     }
@@ -92,7 +93,8 @@ impl Graph {
                     NodeKind::Filter { .. }
                     | NodeKind::Levels { .. }
                     | NodeKind::Curves { .. }
-                    | NodeKind::Hsl { .. } => {
+                    | NodeKind::Hsl { .. }
+                    | NodeKind::Quantization { .. } => {
                         filters.push((*n).clone());
                         head = *inputs.get(&(head, 0)).ok_or(error)?;
                     }

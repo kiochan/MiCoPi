@@ -164,7 +164,9 @@ impl Document {
         };
         let tables = prepared.as_ref().map_or(&[][..], |p| p.tables());
         let hsl = prepared.as_ref().map_or(&[][..], |p| p.hsl());
-        let result = if graph.has_hsl() {
+        let result = if graph.has_quantization() {
+            renderer.histogram_quantization(&plan, &layers, &masks, tables, hsl, request)?
+        } else if graph.has_hsl() {
             renderer.histogram_hsl(&plan, &layers, &masks, tables, hsl, request)?
         } else {
             renderer.histogram_plan(&plan, &layers, &masks, tables, request)?

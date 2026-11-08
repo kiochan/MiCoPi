@@ -15,6 +15,8 @@ pub(super) mod histogram_ui;
 pub(super) mod hsl_ui;
 #[path = "levels_ui.rs"]
 pub(super) mod levels_ui;
+#[path = "quantization_ui.rs"]
+pub(super) mod quantization_ui;
 #[derive(Default)]
 pub(super) struct GraphEditor {
     #[cfg(test)]
@@ -569,6 +571,7 @@ struct NodeViewer<'a> {
     levels_height: f32,
     curves_height: f32,
     hsl_height: f32,
+    quantization_height: f32,
     contact_active: bool,
     histogram: Option<std::sync::Arc<histogram_ui::Snapshot>>,
     actions: Vec<crate::application::Action>,
@@ -592,6 +595,9 @@ impl Default for NodeViewer<'_> {
                 192.,
             ),
             hsl_height: hsl_ui::estimated_height(&crate::configuration::Appearance::default()),
+            quantization_height: quantization_ui::estimated_height(
+                &crate::configuration::Appearance::default(),
+            ),
             contact_active: false,
             histogram: None,
             actions: vec![],
@@ -706,6 +712,8 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
         for (_, pos, node) in snarl.nodes_pos_ids() {
             let height = if matches!(node.data, NodeKind::Curves { .. }) {
                 self.curves_height
+            } else if matches!(node.data, NodeKind::Quantization { .. }) {
+                self.quantization_height
             } else if matches!(node.data, NodeKind::Hsl { .. }) {
                 self.hsl_height
             } else if matches!(node.data, NodeKind::Levels { .. }) {
@@ -821,6 +829,7 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
                 );
                 return;
             };
+            if matches!(def.id.as_str(),"compositing.threshold"|"compositing.posterize") {if let NodeKind::Quantization{quantization}=&mut snarl[id].data {quantization_ui::edit(ui,Id::new(("quantization-node",id,self.document.map_or(0,|d|d.identity))),quantization);return;}}
             if def.id=="compositing.hsl" {if let NodeKind::Hsl{hsl}=&mut snarl[id].data {hsl_ui::edit(ui,Id::new(("hsl-node",id,self.document.map_or(0,|d|d.identity))),hsl);return;}}
             if def.id=="compositing.curves" {
                 if let NodeKind::Curves {curves}=&mut snarl[id].data {
@@ -985,10 +994,11 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
                     | NodeKind::Levels { .. }
                     | NodeKind::Curves { .. }
                     | NodeKind::Hsl { .. }
+                    | NodeKind::Quantization { .. }
             ) {
                 ui.menu_button(tr("Insert Filter"), |ui| {
                     if let Some(defs) = self.definitions {
-                        for def in defs.values().filter(|d| matches!(&d.binding, crate::plugins::nodes::Binding::Image { operation, .. } if operation == "filter" || operation == "levels" || operation == "curves" || operation == "hsl")) {
+                        for def in defs.values().filter(|d| matches!(&d.binding, crate::plugins::nodes::Binding::Image { operation, .. } if operation == "filter" || operation == "levels" || operation == "curves" || operation == "hsl" || operation == "quantization")) {
                             if ui.button(tr(&def.title)).clicked() {
                                 if let crate::plugins::nodes::Binding::Image { defaults, operation } = &def.binding {
                                     let mut data = defaults.clone();
@@ -1010,6 +1020,7 @@ impl SnarlViewer<Node> for NodeViewer<'_> {
                     | NodeKind::Levels { .. }
                     | NodeKind::Curves { .. }
                     | NodeKind::Hsl { .. }
+                    | NodeKind::Quantization { .. }
             ) && ui.button(tr("Delete Node")).clicked()
             {
                 remove_filter(snarl, id);
@@ -1136,6 +1147,7 @@ impl Editor {
             histogram: histogram_ui::cached(ui.ctx(), &self.session),
             levels_height: levels_ui::estimated_height(&self.settings.ui),
             hsl_height: hsl_ui::estimated_height(&self.settings.ui),
+            quantization_height: quantization_ui::estimated_height(&self.settings.ui),
             curves_height: if state.fit_view {
                 curves_ui::estimated_height(ui, self.settings.ui.font_size * 12.)
             } else {
@@ -1194,7 +1206,10 @@ impl Editor {
                 || state.snarl.nodes_ids_data().any(|(_, n)| {
                     matches!(
                         n.value.data,
-                        NodeKind::Levels { .. } | NodeKind::Curves { .. } | NodeKind::Hsl { .. }
+                        NodeKind::Levels { .. }
+                            | NodeKind::Curves { .. }
+                            | NodeKind::Hsl { .. }
+                            | NodeKind::Quantization { .. }
                     )
                 }));
         if state.preview

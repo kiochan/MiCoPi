@@ -10,6 +10,7 @@ use crate::engine::{
     graph::Filter,
     hsl::Hsl,
     levels::Levels,
+    quantization::Quantization,
     raster_masks::{MaskOwner, SamplePlane},
     Document,
 };
@@ -36,7 +37,7 @@ pub(crate) fn schema(op: Operation) -> Value {
         properties["name"] = json!({"type":"string","description":"Nonblank, single-line artist-owned name, at most 512 UTF-8 bytes."});
         properties["visible"] = json!({"type":"boolean"});
         properties["opacity"] = json!({"type":"number","minimum":0,"maximum":1});
-        properties["node_type"] = json!({"type":"string","description":"Registered image Filter, Levels, Curves or HSL node ID; all parameters also obey that provider's schema."});
+        properties["node_type"] = json!({"type":"string","description":"Registered image Filter, Levels, Curves, HSL or quantization node ID; all parameters also obey that provider's schema."});
         properties["parameters"] = json!({"type":"object","properties":{
             "filter":{"type":"string","enum":Filter::ALL},
             "amount":{"type":"number","minimum":-1,"maximum":1}},"additionalProperties":false});
@@ -49,6 +50,9 @@ pub(crate) fn schema(op: Operation) -> Value {
         let mut hsl = Hsl::schema();
         partial_objects(&mut hsl);
         properties["parameters"]["properties"]["hsl"] = hsl;
+        let mut quantization = Quantization::schema();
+        partial_objects(&mut quantization);
+        properties["parameters"]["properties"]["quantization"] = quantization;
     }
     if matches!(op, AdjustmentCreate | AdjustmentMove) {
         properties["parent_id"] = json!({"type":"integer","minimum":0,"maximum":4294967295u64});
@@ -76,9 +80,13 @@ struct ResolvedParameters {
     levels: Option<Levels>,
     curves: Option<Curves>,
     hsl: Option<Hsl>,
+    quantization: Option<Quantization>,
 }
 impl ResolvedParameters {
     fn value(&self) -> Value {
+        if let Some(quantization) = self.quantization {
+            return quantization_parameters(quantization);
+        }
         if let Some(hsl) = self.hsl {
             return hsl_parameters(hsl);
         }
@@ -89,6 +97,9 @@ impl ResolvedParameters {
             .map_or_else(|| parameters(self.filter, self.amount), level_parameters)
     }
     fn title(&self) -> &'static str {
+        if let Some(quantization) = self.quantization {
+            return quantization.title();
+        }
         if self.hsl.is_some() {
             return "Hue/Saturation";
         }
@@ -110,7 +121,13 @@ pub(crate) fn curve_parameters(curves: &Curves) -> Value {
 pub(crate) fn hsl_parameters(hsl: Hsl) -> Value {
     json!({"hsl":hsl})
 }
+pub(crate) fn quantization_parameters(value: Quantization) -> Value {
+    json!({"quantization":value})
+}
 pub(crate) fn item_parameters(item: &Adjustment) -> Value {
+    if let Some(quantization) = item.quantization {
+        return quantization_parameters(quantization);
+    }
     if let Some(hsl) = item.hsl {
         return hsl_parameters(hsl);
     }
@@ -133,10 +150,10 @@ fn definition(registry: &Registry, id: &str) -> Result<Resolved, ActionError> {
         .nodes
         .get(id)
         .ok_or_else(|| error(format!("Registered adjustment filter is unavailable: {id}")))?;
-    if !matches!(&node.binding, Binding::Image {operation,..} if operation == "filter" || operation == "levels" || operation == "curves" || operation == "hsl")
+    if !matches!(&node.binding, Binding::Image {operation,..} if operation == "filter" || operation == "levels" || operation == "curves" || operation == "hsl" || operation == "quantization")
     {
         return Err(error(
-            "Adjustment nodes must bind a native scalar Filter, Levels, Curves or HSL kernel",
+            "Adjustment nodes must bind a native scalar Filter, Levels, Curves, HSL or quantization kernel",
         ));
     }
     node.resolve(registry, owner).map_err(error)
@@ -194,7 +211,19 @@ fn resolve_parameters(
     }
     // Validate the raw caller domain before rounding to the native f32 kernel.
     super::validate(&def.parameters_schema, &value)?;
-    let typed = if matches!(&def.binding,Binding::Image {operation,..} if operation=="hsl") {
+    let typed = if matches!(&def.binding,Binding::Image {operation,..} if operation=="quantization")
+    {
+        let quantization: Quantization = serde_json::from_value(value["quantization"].clone())?;
+        quantization.validate().map_err(error)?;
+        ResolvedParameters {
+            filter: Filter::Invert,
+            amount: 0.,
+            levels: None,
+            curves: None,
+            hsl: None,
+            quantization: Some(quantization),
+        }
+    } else if matches!(&def.binding,Binding::Image {operation,..} if operation=="hsl") {
         let hsl: Hsl = serde_json::from_value(value["hsl"].clone())?;
         hsl.validate().map_err(error)?;
         ResolvedParameters {
@@ -203,6 +232,7 @@ fn resolve_parameters(
             levels: None,
             curves: None,
             hsl: Some(hsl),
+            quantization: None,
         }
     } else if matches!(&def.binding,Binding::Image {operation,..} if operation=="curves") {
         let curves: Curves = serde_json::from_value(value["curves"].clone())?;
@@ -213,6 +243,7 @@ fn resolve_parameters(
             levels: None,
             curves: Some(curves),
             hsl: None,
+            quantization: None,
         }
     } else if matches!(&def.binding,Binding::Image {operation,..} if operation=="levels") {
         let levels: Levels = serde_json::from_value(value["parameters"].clone())?;
@@ -223,6 +254,7 @@ fn resolve_parameters(
             levels: Some(levels),
             curves: None,
             hsl: None,
+            quantization: None,
         }
     } else {
         let scalar: FilterParameters = serde_json::from_value(value)?;
@@ -232,6 +264,7 @@ fn resolve_parameters(
             levels: None,
             curves: None,
             hsl: None,
+            quantization: None,
         }
     };
     if !typed.amount.is_finite() || !(typed.filter.minimum()..=1.).contains(&typed.amount) {
@@ -379,6 +412,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 levels: parameters.levels,
                 curves: parameters.curves,
                 hsl: parameters.hsl,
+                quantization: parameters.quantization,
             };
             let (parent, index) = placement(s, &args)?;
             let with_mask = args["mask_source"] == "selection";
@@ -420,6 +454,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 levels: parameters.levels,
                 curves: parameters.curves,
                 hsl: parameters.hsl,
+                quantization: parameters.quantization,
             };
             let changed = s.doc.set_adjustment(id, spec).map_err(error)?;
             Ok(

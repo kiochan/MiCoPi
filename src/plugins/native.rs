@@ -962,6 +962,33 @@ impl NativePlugin {
     }
 }
 impl crate::engine::graph::Renderer for NativePlugin {
+    fn supports_quantization(&self) -> bool {
+        NativePlugin::supports_quantization(self)
+    }
+    fn render_quantization(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        luts: &[abi::CompositeLut],
+        hsl: &[abi::HslParameters],
+        width: u32,
+        height: u32,
+        output: &mut abi::Pixels,
+    ) -> Result<(), String> {
+        self.render_hsl_plan(nodes, layers, masks, luts, hsl, width, height, output)
+    }
+    fn histogram_quantization(
+        &self,
+        nodes: &[abi::CompositeNode],
+        layers: &[abi::CompositeLayer],
+        masks: &[abi::CompositeMask],
+        luts: &[abi::CompositeLut],
+        hsl: &[abi::HslParameters],
+        request: abi::HistogramRequest,
+    ) -> Result<abi::HistogramResult, String> {
+        self.histogram_hsl_plan(nodes, layers, masks, luts, hsl, request)
+    }
     fn supports_hsl(&self) -> bool {
         NativePlugin::supports_hsl(self)
     }

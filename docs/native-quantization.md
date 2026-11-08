@@ -3,8 +3,9 @@
 This optional SDK/native capability is the prerequisite for non-destructive
 Threshold/Posterize and immutable direct-operation previews. The direct
 [document commands](quantization.md) already have separate registered contracts.
-This increment does not yet add editable source nodes, adjustment layers or
-cached desktop previews. New ABI/native/host tests await CI.
+Typed source nodes and adjustment layers are now integrated in source, with
+shared local controls and verified persistence contracts; runtime checks await CI.
+Direct-operation cached previews remain planned.
 
 ## Independent negotiation
 
@@ -19,7 +20,7 @@ prefixes retain the known layout. Startup caches function pointers once.
 
 Inventory reports native `filters.quantization_plan` and
 `analysis.histogram_quantization`. These flags describe the native prerequisite;
-they do not advertise document node availability. No symbol lookup occurs during
+document availability additionally requires registered typed node definitions. No symbol lookup occurs during
 contacts or per-pixel evaluation. Other compositor tables retain their contracts
 and reject the new instructions.
 
@@ -65,7 +66,7 @@ prefixes and future tails. The shared direct-kernel all-level/all-byte reference
 remain enabled after extracting the pure math source.
 
 Only source/format/repository checks run locally; runtime/ABI checks await CI.
-No latency, binary-size or process-peak measurements are claimed. Next integrate
-typed source/adjustment intent, all-declaration renderer admission, separate cached
-parameters, persistence/Undo/replay, fenced PNG previews and shared controls before
-marking the corresponding feature checklist items complete.
+No latency, binary-size or process-peak measurements are claimed. Typed source/adjustment intent, all-declaration renderer admission, separate
+intent slots, persistence/Undo/replay and shared controls are now implemented in
+source. Fenced direct PNG previews and persistent native prepared tables remain
+planned; keep the corresponding feature checklist items unchecked pending all gates.

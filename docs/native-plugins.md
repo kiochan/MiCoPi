@@ -2,7 +2,8 @@
 
 [Native quantization](native-quantization.md) adds independently negotiated
 Threshold/Posterize plan rendering and bounded observations with cached startup
-discovery. It does not yet enable editable source/adjustment nodes.
+discovery. Typed source/adjustment integration is implemented in source, pending
+runtime validation; direct cached previews remain planned.
 
 The independent [HSL plan prerequisite](native-hsl.md) adds an optional complete
 24-byte API, fixed-stride binary64 intent, render/observation callbacks and cached

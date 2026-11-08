@@ -1,6 +1,6 @@
 # MiCoPi
 
-[Threshold and Posterize](docs/quantization.md) now register native active-layer edits with integer luminance boundaries or a cold byte table, selection/locks, Undo and verified replay. Runtime validation, cached previews and non-destructive variants remain pending.
+[Threshold and Posterize](docs/quantization.md) now share native direct edits, non-destructive source nodes and affect-below adjustment layers, with integer byte policies, local controls, masks, Undo and verified persistence. New runtime/UI checks and reviewed captures remain pending; direct cached previews remain planned.
 
 [Direct weighted grayscale](docs/grayscale.md) adds native active-layer strength controls with preserved alpha, selection/locks, Undo and verified replay. Fenced PNG previews and cached desktop Strength/Reset/Apply/Cancel controls now share the color-draft pipeline. Runtime validation and native screenshot review remain pending.
 

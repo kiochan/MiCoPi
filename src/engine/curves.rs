@@ -122,13 +122,14 @@ pub enum ColorIntent {
     Levels(Levels),
     Curves(Curves),
     Hsl(super::hsl::Hsl),
+    Quantization(super::quantization::Quantization),
 }
 impl ColorIntent {
     pub fn table_count(&self) -> usize {
         match self {
             Self::Levels(p) => p.table_count(),
             Self::Curves(_) => 3,
-            Self::Hsl(_) => 0,
+            Self::Hsl(_) | Self::Quantization(_) => 0,
         }
     }
     pub fn validate(&self) -> Result<(), String> {
@@ -136,6 +137,7 @@ impl ColorIntent {
             Self::Levels(p) => p.validate(),
             Self::Curves(p) => p.validate(),
             Self::Hsl(p) => p.validate(),
+            Self::Quantization(p) => p.validate(),
         }
     }
     pub fn prepare(
@@ -150,6 +152,10 @@ impl ColorIntent {
                 return Err("The compositor does not support HSL rendering".into())
             }
             Self::Hsl(_) => {}
+            Self::Quantization(_) if !renderer.supports_quantization() => {
+                return Err("The compositor does not support quantization rendering".into())
+            }
+            Self::Quantization(_) => {}
         }
         Ok(())
     }

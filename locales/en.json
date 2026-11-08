@@ -1617,5 +1617,9 @@
   "Threshold: Active Layer": "Threshold: Active Layer",
   "Threshold Level": "Threshold Level",
   "Posterize: Active Layer": "Posterize: Active Layer",
-  "Posterize Levels": "Posterize Levels"
+  "Posterize Levels": "Posterize Levels",
+  "Threshold": "Threshold",
+  "Posterize": "Posterize",
+  "Quantization Parameters": "Quantization Parameters",
+  "Quantization Effect": "Quantization Effect"
 }

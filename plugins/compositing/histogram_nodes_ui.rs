@@ -392,6 +392,7 @@ impl Model {
                     NodeKind::Levels { .. } => "Levels".into(),
                     NodeKind::Curves { .. } => "Curves".into(),
                     NodeKind::Hsl { .. } => "Hue/Saturation".into(),
+                    NodeKind::Quantization { quantization } => quantization.title().into(),
                     NodeKind::Blend { .. } => "Blend".into(),
                     NodeKind::Mix { .. } => "Backdrop Mix".into(),
                     NodeKind::ApplyMask { .. } => "Apply Mask".into(),

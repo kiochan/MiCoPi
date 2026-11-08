@@ -99,6 +99,9 @@
           "renderer_hsl": {
             "type": "boolean",
             "description": "The active document renderer supports native HSL plans."
+          },
+          "renderer_quantization": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -185,6 +188,9 @@
           "renderer_hsl": {
             "type": "boolean",
             "description": "The active document renderer supports native HSL plans."
+          },
+          "renderer_quantization": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -1238,6 +1244,102 @@
               }
             },
             "title": "HSL Parameters"
+          }
+        }
+      }
+    },
+    {
+      "id": "compositing.threshold",
+      "title": "Threshold",
+      "category": "Color",
+      "binding": {
+        "kind": "image",
+        "operation": "quantization",
+        "defaults": {
+          "quantization": {
+            "effect": "threshold",
+            "value": 128
+          }
+        }
+      },
+      "parameters_schema": {
+        "type": "object",
+        "required": [
+          "quantization"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "quantization": {
+            "type": "object",
+            "required": [
+              "effect",
+              "value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "effect": {
+                "type": "string",
+                "enum": [
+                  "threshold"
+                ],
+                "title": "Quantization Effect"
+              },
+              "value": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "title": "Threshold Level"
+              }
+            },
+            "title": "Quantization Parameters"
+          }
+        }
+      }
+    },
+    {
+      "id": "compositing.posterize",
+      "title": "Posterize",
+      "category": "Color",
+      "binding": {
+        "kind": "image",
+        "operation": "quantization",
+        "defaults": {
+          "quantization": {
+            "effect": "posterize",
+            "value": 4
+          }
+        }
+      },
+      "parameters_schema": {
+        "type": "object",
+        "required": [
+          "quantization"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "quantization": {
+            "type": "object",
+            "required": [
+              "effect",
+              "value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "effect": {
+                "type": "string",
+                "enum": [
+                  "posterize"
+                ],
+                "title": "Quantization Effect"
+              },
+              "value": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 256,
+                "title": "Posterize Levels"
+              }
+            },
+            "title": "Quantization Parameters"
           }
         }
       }

@@ -523,7 +523,9 @@ impl GroupTree {
                     {
                         continue;
                     }
-                    let (kind, operation) = if let Some(hsl) = adjustment.hsl {
+                    let (kind, operation) = if let Some(quantization) = adjustment.quantization {
+                        (NodeKind::Quantization { quantization }, "quantization")
+                    } else if let Some(hsl) = adjustment.hsl {
                         (NodeKind::Hsl { hsl }, "hsl")
                     } else if let Some(curves) = &adjustment.curves {
                         (

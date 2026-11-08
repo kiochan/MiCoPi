@@ -13,10 +13,11 @@ pub fn schema() -> serde_json::Value {
         "enabled":{"type":"boolean"},"linked":{"type":"boolean","default":false,"description":"A validated layer-stack chain; structural layer edits keep its branches synchronized"},
         "nodes":{"type":"array","maxItems":64,"items":{"type":"object","required":["id","position","kind"],"additionalProperties":false,"properties":{
             "node_type":{"type":"string"},"id":id,"position":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"number","minimum":-1000000,"maximum":1000000}},
-            "kind":{"type":"string","enum":["layer","filter","levels","curves","hsl","blend","mix","output","transparent","mask_source","apply_mask","masked_mix"]},"index":{"type":"integer","minimum":0,"maximum":15},
+            "kind":{"type":"string","enum":["layer","filter","levels","curves","hsl","quantization","blend","mix","output","transparent","mask_source","apply_mask","masked_mix"]},"index":{"type":"integer","minimum":0,"maximum":15},
             "parameters":super::levels::Levels::schema(),
             "curves":super::curves::Curves::schema(),
             "hsl":super::hsl::Hsl::schema(),
+            "quantization":super::quantization::Quantization::schema(),
             "mask_id":{"type":"integer","minimum":1,"maximum":4294967295u64},
             "filter":{"type":"string","enum":Filter::ALL},"amount":{"type":"number","minimum":-1,"maximum":1},
             "mode":{"type":"string","enum":BlendMode::ALL},"opacity":{"type":"number","minimum":0,"maximum":1}
@@ -257,16 +258,41 @@ impl Filter {
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum NodeKind {
     Transparent,
-    Layer { index: usize },
-    Filter { filter: Filter, amount: f32 },
-    Levels { parameters: super::levels::Levels },
-    Curves { curves: super::curves::Curves },
-    Hsl { hsl: super::hsl::Hsl },
-    Blend { mode: BlendMode, opacity: f32 },
-    Mix { opacity: f32 },
-    MaskSource { mask_id: u64 },
-    ApplyMask { opacity: f32 },
-    MaskedMix { opacity: f32 },
+    Layer {
+        index: usize,
+    },
+    Filter {
+        filter: Filter,
+        amount: f32,
+    },
+    Levels {
+        parameters: super::levels::Levels,
+    },
+    Curves {
+        curves: super::curves::Curves,
+    },
+    Hsl {
+        hsl: super::hsl::Hsl,
+    },
+    Quantization {
+        quantization: super::quantization::Quantization,
+    },
+    Blend {
+        mode: BlendMode,
+        opacity: f32,
+    },
+    Mix {
+        opacity: f32,
+    },
+    MaskSource {
+        mask_id: u64,
+    },
+    ApplyMask {
+        opacity: f32,
+    },
+    MaskedMix {
+        opacity: f32,
+    },
     Output,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -312,6 +338,7 @@ impl NodeKind {
             Self::Levels { .. } => "Levels".into(),
             Self::Curves { .. } => "Curves".into(),
             Self::Hsl { .. } => "Hue/Saturation".into(),
+            Self::Quantization { quantization } => quantization.title().into(),
             Self::Blend { mode, .. } => format!("Blend · {}", mode.title()),
             Self::Mix { .. } => "Backdrop Mix".into(),
             Self::MaskSource { mask_id } => format!("Mask #{mask_id}"),
@@ -362,6 +389,33 @@ pub trait Renderer {
         _request: abi::HistogramRequest,
     ) -> Result<abi::HistogramResult, String> {
         Err("The compositor does not support histogram plan sampling".into())
+    }
+    fn supports_quantization(&self) -> bool {
+        false
+    }
+    fn render_quantization(
+        &self,
+        _nodes: &[abi::CompositeNode],
+        _layers: &[abi::CompositeLayer],
+        _masks: &[abi::CompositeMask],
+        _luts: &[abi::CompositeLut],
+        _hsl: &[abi::HslParameters],
+        _width: u32,
+        _height: u32,
+        _output: &mut abi::Pixels,
+    ) -> Result<(), String> {
+        Err("The compositor does not support quantization rendering".into())
+    }
+    fn histogram_quantization(
+        &self,
+        _nodes: &[abi::CompositeNode],
+        _layers: &[abi::CompositeLayer],
+        _masks: &[abi::CompositeMask],
+        _luts: &[abi::CompositeLut],
+        _hsl: &[abi::HslParameters],
+        _request: abi::HistogramRequest,
+    ) -> Result<abi::HistogramResult, String> {
+        Err("The compositor does not support quantization histogram sampling".into())
     }
     fn supports_hsl(&self) -> bool {
         false
@@ -428,7 +482,9 @@ pub trait Renderer {
         height: u32,
         output: &mut abi::Pixels,
     ) -> Result<(), String> {
-        if hsl.is_empty() {
+        if nodes.iter().any(|n| matches!(n.kind, 12 | 13)) {
+            self.render_quantization(nodes, layers, masks, luts, hsl, width, height, output)
+        } else if hsl.is_empty() {
             self.render_prepared(nodes, layers, masks, luts, width, height, output)
         } else {
             self.render_hsl(nodes, layers, masks, luts, hsl, width, height, output)
@@ -519,9 +575,17 @@ impl Graph {
                     Some(super::curves::ColorIntent::Curves(curves.clone()))
                 }
                 NodeKind::Hsl { hsl } => Some(super::curves::ColorIntent::Hsl(*hsl)),
+                NodeKind::Quantization { quantization } => {
+                    Some(super::curves::ColorIntent::Quantization(*quantization))
+                }
                 _ => None,
             })
             .collect()
+    }
+    pub fn has_quantization(&self) -> bool {
+        self.nodes
+            .iter()
+            .any(|n| matches!(n.data, NodeKind::Quantization { .. }))
     }
     pub fn has_hsl(&self) -> bool {
         self.nodes
@@ -537,7 +601,7 @@ impl Graph {
         self.nodes.iter().any(|n|matches!(n.data,NodeKind::Levels {parameters} if !parameters.channels.is_identity()))
     }
     pub fn has_prepared_color(&self) -> bool {
-        self.has_levels() || self.has_curves() || self.has_hsl()
+        self.has_levels() || self.has_curves() || self.has_hsl() || self.has_quantization()
     }
     fn table_index(&self, index: usize) -> u32 {
         self.nodes[..index]
@@ -693,6 +757,7 @@ impl Graph {
                 NodeKind::Levels { parameters } => parameters.validate()?,
                 NodeKind::Curves { ref curves } => curves.validate()?,
                 NodeKind::Hsl { hsl } => hsl.validate()?,
+                NodeKind::Quantization { quantization } => quantization.validate()?,
                 NodeKind::Layer { index } if index >= layer_count => {
                     return Err("Node references a missing layer".into())
                 }
@@ -843,6 +908,13 @@ impl Graph {
                         a: input(0),
                         b: 0,
                         mode: self.table_index(i),
+                        amount: 1.,
+                    },
+                    NodeKind::Quantization { quantization } => abi::CompositeNode {
+                        kind: quantization.instruction(),
+                        a: input(0),
+                        b: 0,
+                        mode: quantization.value,
                         amount: 1.,
                     },
                     NodeKind::Hsl { .. } => abi::CompositeNode {

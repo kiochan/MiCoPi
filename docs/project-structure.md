@@ -4,7 +4,10 @@
 independently compiled into both native DLLs. `plugins/compositing/src/quantization.rs`
 prepares instruction-indexed kernels; optional callbacks share validated plan/
 histogram evaluation. `src/plugins/native_quantization.rs` owns startup negotiation
-and native inventory, with document integration still planned.
+and native inventory. `src/engine/quantization.rs` owns typed document intent;
+prepared color slots, graph compilation and adjustment metadata retain host
+ownership. `plugins/compositing/quantization_ui.rs` supplies shared local integer
+controls to source and adjustment drafts. Runtime validation remains pending.
 
 `plugins/native-paint/src/quantize.rs` owns direct Threshold cutoff parsing and
 Posterize table preparation/pixel lookup. DLL descriptors register their schemas;

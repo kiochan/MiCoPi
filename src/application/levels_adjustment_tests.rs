@@ -168,6 +168,7 @@ fn levels_adjustment_rejects_hidden_unsupported_and_ambiguous_definitions_before
         levels: None,
         curves: None,
         hsl: None,
+        quantization: None,
     };
     let legacy = serde_json::to_value(&spec).unwrap();
     assert!(legacy.get("levels").is_none());

@@ -9,9 +9,10 @@ The native painting plugin registers two direct active-raster edits:
 
 Command search, schema parameter forms, configurable shortcuts, action workflow
 nodes, JSONL, MCP and headless all use the same Session/native execution path.
-This increment is implemented in source; runtime verification awaits CI. Cached
-reversible previews and non-destructive source/adjustment nodes for these effects
-remain planned. Editing a workflow does not execute it.
+Typed source nodes and affect-below adjustment layers now share this native
+arithmetic, with local controls, masks, history and verified persistence. New
+integration checks await CI; direct-operation cached reversible previews remain
+planned. Editing a workflow does not execute it.
 
 ## Byte policy
 
@@ -70,5 +71,59 @@ Session tests cover selection, locks, masks, one revision/Undo/Redo/outcome,
 actual post-edit atomic rollback, default workflow parameters, continuing pressure
 contacts and verified replay. The existing small color smoke adds independent
 histogram bins, Undo, default workflows and JSONL/MCP parity for both operations.
-These tests are authored, with runtime results pending CI. Native screenshot
-review and physical-device validation remain separate pending gates.
+CI at [`d27f03a`](https://github.com/kiochan/MiCoPi/actions/runs/42435215434)
+passed direct native/Session/transport cases (1,232 desktop and 908 headless
+tests, plus native SDK/kernel suites and all configured transport smokes). This
+baseline excludes the later native quantization-plan and document-node increments.
+New integration tests await CI. Native screenshot review and physical-device
+validation remain separate pending gates.
+
+## Non-destructive source nodes and adjustment layers
+
+The compositing package registers `compositing.threshold` and
+`compositing.posterize` as image nodes. Both use `kind: "quantization"` and a typed
+`quantization` object: `{"effect":"threshold","value":128}` or
+`{"effect":"posterize","value":4}`. Provider schemas restrict the effect name and
+its integer range; generic document validation also rejects mismatched ranges.
+The image has one input. Linked Layer Filters allow insertion/deletion alongside
+existing filters; free graphs allow explicit wiring. Actual Composition remains
+a generated read-only view, distinct from editable source filters.
+
+Threshold Level / Posterize Levels use shared slider, numeric and Reset controls
+in nodes and adjustment drafts. Reset uses 128 / 4. Drafts do not dispatch pixel
+operations or execute workflows. Node fitting derives from appearance metrics;
+four-language narrow/wide and large-metric reset cases are authored. Aliased
+plugin providers retain their schema editors. Native screenshot review is pending.
+
+```json
+{"action":"adjustment.create","args":{"node_type":"compositing.threshold","parameters":{"quantization":{"value":128}}}}
+{"action":"adjustment.set","args":{"adjustment_id":1,"parameters":{"quantization":{"value":64}}}}
+```
+
+Adjustment operations retain affect-below order, group/isolation/Pass Through
+boundaries, Normal premultiplied opacity and optional owned A8 masks. Painting
+stays on the active raster. Switching provider clears the previous typed family;
+public parameter schemas expose the selected provider's actual contract.
+
+Typed quantization records have separate intent/cache slots and consume no
+Levels/Curves LUT or HSL parameter indices. Compiled instruction kinds 12/13 carry
+the integer value inline. The renderer negotiates
+[the independent native capability](native-quantization.md). Capability preflight
+covers every declaration, including hidden, unused and disabled branches, before
+mutation or project publication. Old DLLs can still render old documents; the host
+rejects new quantization intent when the capability is absent. Outcome replay
+restores verified pixels without renderer capability checks.
+
+Version-three adjustment metadata adds an optional `quantization` tail, omitted
+for older/scalar records. Exactly one typed family is permitted, with neutral
+legacy anchors. Strict old readers reject the new tail; existing projects and
+recording hashes remain supported. Source intent and adjustment metadata share
+project persistence, Undo and verified outcomes; private tables remain derived.
+Native tables are prepared per callback rather than persistently cached across
+callbacks; the ordinary typed brush MOVE contract remains unchanged.
+
+Source/adjustment, mixed HSL/Curves slot order, masks, actual post-edit rollback,
+provider changes, contact guards, project round trips, DLL-free outcome restoration,
+fenced node histograms and JSONL/MCP cases are authored. Runtime validation, reviewed
+native captures and end-to-end measurements remain pending. The full common-filter
+checklist is not complete. See [the automation example](../examples/automation/quantization-composition.jsonl).

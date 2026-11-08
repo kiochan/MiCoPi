@@ -26,7 +26,10 @@ fn parameters(value: &Adjustment) -> Value {
     result
 }
 fn filter_definition(def: &Resolved) -> bool {
-    matches!(&def.binding,Binding::Image{operation,..} if operation=="filter" || operation=="levels" || operation=="curves" || operation=="hsl")
+    matches!(&def.binding,Binding::Image{operation,..} if operation=="filter" || operation=="levels" || operation=="curves" || operation=="hsl" || operation=="quantization")
+}
+fn quantization_definition(def: &Resolved) -> bool {
+    matches!(&def.binding,Binding::Image{operation,..} if operation=="quantization")
 }
 fn hsl_definition(def: &Resolved) -> bool {
     matches!(&def.binding,Binding::Image {operation,..} if operation=="hsl")
@@ -155,8 +158,8 @@ impl Editor {
                 let definitions=self.plugin_nodes.values().filter(|def|filter_definition(def)).cloned().collect::<Vec<_>>();
                 for definition in definitions {
                     let title=crate::i18n::translated_for(Some(&definition.owner),&definition.title).into_owned();
-                    if levels_definition(&definition) || curves_definition(&definition) {
-                        let supported=self.session.doc.renderer.as_ref().is_some_and(|r|if curves_definition(&definition) {r.supports_curves()} else {r.supports_levels()});
+                    if levels_definition(&definition) || curves_definition(&definition) || hsl_definition(&definition) || quantization_definition(&definition) {
+                        let supported=self.session.doc.renderer.as_ref().is_some_and(|r|if quantization_definition(&definition) {r.supports_quantization()} else if hsl_definition(&definition) {r.supports_hsl()} else if curves_definition(&definition) {r.supports_curves()} else {r.supports_levels()});
                         if ui.add_enabled(supported,Button::new(title)).clicked() {
                             let (parent,index)=self.adjustment_placement_ui(ui.ctx());
                             let mut args=json!({"node_type":definition.id,"parameters":definition.defaults,"parent_id":parent,"index":index});
@@ -227,7 +230,7 @@ impl Editor {
         ScrollArea::vertical().id_salt(("adjustment-properties",self.session.doc.identity,id))
             .max_height((ui.available_height()-a.control_height*7.-a.section_spacing).max(a.control_height*3.))
             .auto_shrink([false,true]).show(ui,|ui|{
-                if draft.value.curves.is_some() || draft.value.levels.is_some() || draft.value.hsl.is_some() {super::nodes::histogram_ui::controls(ui,&mut self.session);}
+                if draft.value.curves.is_some() || draft.value.levels.is_some() || draft.value.hsl.is_some() || draft.value.quantization.is_some() {super::nodes::histogram_ui::controls(ui,&mut self.session);}
                 ui.add_enabled_ui(!stale,|ui|{
                     let _name=ui.add(TextEdit::singleline(&mut draft.value.name).id(Id::new(("adjustment-name",self.session.doc.identity,id))).char_limit(120).desired_width(f32::INFINITY).hint_text(crate::i18n::text("Adjustment Name")));
                     #[cfg(test)] ui.data_mut(|data|data.insert_temp(Id::new(("adjustment-name",self.session.doc.identity,id)),_name.rect));
@@ -240,19 +243,23 @@ impl Editor {
                                 for definition in self.plugin_nodes.values().filter(|definition|filter_definition(definition)) {
                                     let title=crate::i18n::translated_for(Some(&definition.owner),&definition.title);
                                     if ui.selectable_label(draft.value.node_type==definition.id,title).clicked()&&draft.value.node_type!=definition.id {
-                                        if hsl_definition(definition) {
-                                            if let Ok(hsl)=serde_json::from_value::<crate::engine::hsl::Hsl>(definition.defaults["hsl"].clone()) {draft.value.node_type=definition.id.clone();draft.value.filter=Filter::Invert;draft.value.amount=0.;draft.value.levels=None;draft.value.curves=None;draft.value.hsl=Some(hsl);}
+                                        if quantization_definition(definition) {
+                                            if let Ok(quantization)=serde_json::from_value(definition.defaults["quantization"].clone()) {
+                                                draft.value.node_type=definition.id.clone();draft.value.filter=Filter::Invert;draft.value.amount=0.;draft.value.levels=None;draft.value.curves=None;draft.value.hsl=None;draft.value.quantization=Some(quantization);
+                                            }
+                                        } else if hsl_definition(definition) {
+                                            if let Ok(hsl)=serde_json::from_value::<crate::engine::hsl::Hsl>(definition.defaults["hsl"].clone()) {draft.value.node_type=definition.id.clone();draft.value.filter=Filter::Invert;draft.value.amount=0.;draft.value.levels=None;draft.value.curves=None;draft.value.hsl=Some(hsl);draft.value.quantization=None;}
                                         } else if curves_definition(definition) {
                                             if let Ok(curves)=serde_json::from_value::<crate::engine::curves::Curves>(definition.defaults["curves"].clone()) {
-                                                draft.value.node_type=definition.id.clone();draft.value.filter=Filter::Invert;draft.value.amount=0.;draft.value.levels=None;draft.value.curves=Some(curves);draft.value.hsl=None;
+                                                draft.value.node_type=definition.id.clone();draft.value.filter=Filter::Invert;draft.value.amount=0.;draft.value.levels=None;draft.value.curves=Some(curves);draft.value.hsl=None;draft.value.quantization=None;
                                             }
                                         } else if levels_definition(definition) {
                                             if let Ok(levels)=serde_json::from_value::<crate::engine::levels::Levels>(definition.defaults["parameters"].clone()) {
-                                                draft.value.node_type=definition.id.clone();draft.value.filter=Filter::Invert;draft.value.amount=0.;draft.value.levels=Some(levels);draft.value.curves=None;draft.value.hsl=None;
+                                                draft.value.node_type=definition.id.clone();draft.value.filter=Filter::Invert;draft.value.amount=0.;draft.value.levels=Some(levels);draft.value.curves=None;draft.value.hsl=None;draft.value.quantization=None;
                                             }
                                         }else{
                                         if let Some((filter,amount))=Filter::ALL.into_iter().find_map(|filter|allowed(definition,filter).map(|amount|(filter,amount))) {
-                                            draft.value.node_type=definition.id.clone();draft.value.filter=filter;draft.value.amount=amount;draft.value.levels=None;draft.value.curves=None;draft.value.hsl=None;
+                                            draft.value.node_type=definition.id.clone();draft.value.filter=filter;draft.value.amount=amount;draft.value.levels=None;draft.value.curves=None;draft.value.hsl=None;draft.value.quantization=None;
                                         }
                                         }
                                     }
@@ -260,7 +267,17 @@ impl Editor {
                             });
                     });
                     if let Some(definition)=self.plugin_nodes.get(&draft.value.node_type).filter(|definition|filter_definition(definition)) {
-                        if hsl_definition(definition) {
+                        if quantization_definition(definition) {
+                            if let Some(quantization)=&mut draft.value.quantization {
+                                if matches!(definition.id.as_str(),"compositing.threshold"|"compositing.posterize") {
+                                    super::nodes::quantization_ui::edit(ui,Id::new(("adjustment-quantization",self.session.doc.identity,id)),quantization);
+                                } else {
+                                    let mut value=crate::plugins::adjustments::quantization_parameters(*quantization);
+                                    super::schema::edit(ui,("adjustment-quantization",id),&definition.parameters_schema,&mut value);
+                                    if let Ok(next)=serde_json::from_value(value["quantization"].clone()) {*quantization=next;}
+                                }
+                            }
+                        } else if hsl_definition(definition) {
                             if let Some(hsl)=&mut draft.value.hsl {
                                 if definition.id=="compositing.hsl" {super::nodes::hsl_ui::edit(ui,Id::new(("adjustment-hsl",self.session.doc.identity,id)),hsl);} else {
                                 let mut value=crate::plugins::adjustments::hsl_parameters(*hsl);

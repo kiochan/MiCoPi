@@ -485,6 +485,58 @@
                         "blue"
                       ],
                       "additionalProperties": false
+                    },
+                    "hsl": {
+                      "type": "object",
+                      "required": [
+                        "hue",
+                        "saturation",
+                        "lightness"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "hue": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180,
+                          "title": "Hue Shift"
+                        },
+                        "saturation": {
+                          "type": "number",
+                          "minimum": -100,
+                          "maximum": 100,
+                          "title": "Saturation Adjustment"
+                        },
+                        "lightness": {
+                          "type": "number",
+                          "minimum": -100,
+                          "maximum": 100,
+                          "title": "Lightness Adjustment"
+                        }
+                      },
+                      "title": "HSL Parameters"
+                    },
+                    "quantization": {
+                      "type": "object",
+                      "required": [
+                        "effect",
+                        "value"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "effect": {
+                          "type": "string",
+                          "enum": [
+                            "threshold",
+                            "posterize"
+                          ]
+                        },
+                        "value": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 256
+                        }
+                      }
                     }
                   },
                   "required": [],
@@ -977,6 +1029,58 @@
                   "blue"
                 ],
                 "additionalProperties": false
+              },
+              "hsl": {
+                "type": "object",
+                "required": [
+                  "hue",
+                  "saturation",
+                  "lightness"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "hue": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180,
+                    "title": "Hue Shift"
+                  },
+                  "saturation": {
+                    "type": "number",
+                    "minimum": -100,
+                    "maximum": 100,
+                    "title": "Saturation Adjustment"
+                  },
+                  "lightness": {
+                    "type": "number",
+                    "minimum": -100,
+                    "maximum": 100,
+                    "title": "Lightness Adjustment"
+                  }
+                },
+                "title": "HSL Parameters"
+              },
+              "quantization": {
+                "type": "object",
+                "required": [
+                  "effect",
+                  "value"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "effect": {
+                    "type": "string",
+                    "enum": [
+                      "threshold",
+                      "posterize"
+                    ]
+                  },
+                  "value": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 256
+                  }
+                }
               }
             },
             "required": [],
@@ -1626,6 +1730,58 @@
                         "blue"
                       ],
                       "additionalProperties": false
+                    },
+                    "hsl": {
+                      "type": "object",
+                      "required": [
+                        "hue",
+                        "saturation",
+                        "lightness"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "hue": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180,
+                          "title": "Hue Shift"
+                        },
+                        "saturation": {
+                          "type": "number",
+                          "minimum": -100,
+                          "maximum": 100,
+                          "title": "Saturation Adjustment"
+                        },
+                        "lightness": {
+                          "type": "number",
+                          "minimum": -100,
+                          "maximum": 100,
+                          "title": "Lightness Adjustment"
+                        }
+                      },
+                      "title": "HSL Parameters"
+                    },
+                    "quantization": {
+                      "type": "object",
+                      "required": [
+                        "effect",
+                        "value"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "effect": {
+                          "type": "string",
+                          "enum": [
+                            "threshold",
+                            "posterize"
+                          ]
+                        },
+                        "value": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 256
+                        }
+                      }
                     }
                   },
                   "required": [],

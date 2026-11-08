@@ -392,6 +392,10 @@ impl SnarlViewer<Node> for EffectiveViewer<'_> {
                     ui.label(tr(filter.title()));
                     ui.label(format!("{amount:.2}"));
                 }
+                NodeKind::Quantization { quantization } => {
+                    ui.label(tr(quantization.title()));
+                    ui.label(quantization.value.to_string());
+                }
                 NodeKind::Hsl { hsl } => {
                     ui.label(tr("Hue/Saturation"));
                     for (title, value) in [

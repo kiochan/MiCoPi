@@ -1,0 +1,6 @@
+{"id":"new","action":"canvas.new","args":{"width":4,"height":4}}
+{"id":"fill","action":"layer.fill_color","args":{"color":"#20406080"}}
+{"id":"source","action":"graph.set","args":{"graph":{"enabled":true,"linked":true,"nodes":[{"id":11,"kind":"layer","index":0,"position":[0,0]},{"id":22,"kind":"quantization","node_type":"compositing.posterize","quantization":{"effect":"posterize","value":4},"position":[200,0]},{"id":33,"kind":"output","position":[400,0]}],"edges":[{"from":11,"to":22,"input":0},{"from":22,"to":33,"input":0}]}}}
+{"id":"adjustment","action":"adjustment.create","args":{"node_type":"compositing.threshold","parameters":{"quantization":{"value":60}}}}
+{"id":"histogram","action":"histogram.query","args":{}}
+{"id":"verify","action":"replay.verify","args":{}}

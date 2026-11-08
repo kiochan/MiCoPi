@@ -119,6 +119,7 @@ impl Definition {
                     "levels" => &["parameters"],
                     "curves" => &["curves"],
                     "hsl" => &["hsl"],
+                    "quantization" => &["quantization"],
                     "blend" => &["mode", "opacity"],
                     "mix" => &["opacity"],
                     "output" | "transparent" => &[],
@@ -143,6 +144,7 @@ impl Definition {
                     NodeKind::Levels { parameters } => parameters.validate()?,
                     NodeKind::Curves { curves } => curves.validate()?,
                     NodeKind::Hsl { hsl } => hsl.validate()?,
+                    NodeKind::Quantization { quantization } => quantization.validate()?,
                     NodeKind::Layer { index } if index >= 16 => {
                         return Err("Default layer index is out of range".into())
                     }
