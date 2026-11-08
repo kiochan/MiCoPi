@@ -7,7 +7,7 @@ These instructions apply throughout this repository. Explicit maintainer instruc
 - Read [README](README.md), [Architecture](docs/architecture.md), [Philosophy](docs/philosophy.md) and [Contributing](CONTRIBUTING.md) before changing a subsystem.
 - Use [ROADMAP](ROADMAP.md) for planned work and [CHANGELOG](CHANGELOG.md) for implemented behavior. Do not describe planned features as available.
 - Inspect Git status before editing; preserve unrelated work. Keep changes focused and commit coherent features separately.
-- For this maintainer's workflow, work directly on `main`. Do not create branches unless asked. The maintainer authorizes routine commits and pushes after coherent feature increments; follow any later session restriction. Never force-push or rewrite published history.
+- For agreed parallel development, use one independent worktree and one `codex/<feature>` branch per task; only the designated integrator updates `main`. Solo maintenance may continue directly on `main` when directed by the maintainer. Follow the [parallel development protocol](#parallel-agent-development) and existing commit/push authorization; never force-push or rewrite published history.
 - Use repository-local Git identity and credentials. Do not change global Git configuration or substitute another account. Verify the configured remote before pushing.
 
 ## Product direction
@@ -41,6 +41,58 @@ These instructions apply throughout this repository. Explicit maintainer instruc
 | `target/`, `dist/`, `artworks/` | Ignored local builds, test output, release artifacts and personal artwork |
 
 Keep `src/plugins/` host integration separate from root `plugins/` feature packages. The legacy GDI frontend under `src/platform/windows/` remains a regression reference. Update this map and the detailed structure guide when moving responsibilities; avoid directory-only refactors mixed into feature commits.
+
+## Parallel agent development
+
+These rules govern agreed parallel tasks; they do not launch agents, expand product scope or restart a cancelled goal. Start with two bounded feature tasks and one integrator when practical. Assign responsibilities before implementation; adding more agents does not remove shared-core dependencies.
+
+### Worktree and branch isolation
+
+- Give each active task its own Git worktree and unique `codex/<feature>` branch, based on an explicitly recorded integration commit. Keep `main` checked out only in the integration worktree. A feature agent must not switch, reset, stage, commit, merge or write files in another agent's checkout.
+- Before work and before staging, verify the current worktree path, branch, base/head commit and Git status. Use `git worktree list` to identify existing checkouts; never reuse a dirty checkout or assume another agent's uncommitted files belong to the task. Preserve unrelated work.
+- Place feature worktrees outside the main checkout so repository scans and packaging do not traverse nested repositories. Creating/removing a worktree must respect the environment's filesystem permissions. Do not copy a checkout or share a writable source directory as a substitute for worktree isolation.
+- Use the repository-local identity and existing credentials. Linked worktrees share repository configuration and refs: do not change remote URLs, credentials or shared Git settings to solve a task-local problem. Verify the remote and explicit destination ref before each authorized push.
+- Keep generated build outputs, staged DLLs, profiles, session endpoints, screenshots and test artifacts isolated per worktree/run. Do not point concurrent builds at a common writable target, plugin staging directory or `dist/`. A reusable installed toolchain may be shared without mutating it.
+
+### Task contracts and file ownership
+
+The integrator records a short assignment in the task/issue or handoff before work starts:
+
+| Assignment field | Required content |
+| --- | --- |
+| Scope | Artist outcome, exclusions and acceptance criteria from ROADMAP |
+| Checkout | Agent/task owner, worktree path, feature branch and exact base commit |
+| Ownership | Exact files/directories the agent may edit, reserved shared files and other owners |
+| Contracts | Action/state IDs, input/output schemas, ABI/capability changes, revisions, locks, Undo/replay and performance budgets |
+| Dependencies | Prerequisite commits, consumers, integration order and unresolved decisions |
+| Validation | Tests to author, focused local checks, required CI/runtime evidence and remaining device/capture gates |
+
+- One active owner per file by default. A plugin directory is not automatically exclusive: Brush and Liquify, for example, share the painting package. Name the actual files, including manifests, tests and feature-owned UI adapters. Request an ownership handoff before editing outside the assignment; the integrator can reassign ownership without involving the maintainer in routine implementation decisions.
+- The integrator coordinates shared contracts before competing implementations begin. Land a common prerequisite first, or explicitly assign its minimal wiring to one feature branch. Keep feature branches buildable against their declared prerequisites; do not rely on a future merge to supply missing types or registration.
+- Contract changes must be communicated to affected owners with the new schema/signature and prerequisite commit. Do not invent a second Session, document mutation path, history model or incompatible ABI merely to avoid a shared-file dependency.
+- Each feature owns its tests, English guide/examples and relevant Unreleased changelog entry. Every authored commit includes its summary; the integrator consolidates overlapping entries and reconciles roadmap status without presenting unverified source as accepted behavior. Shared root guides and locale files still require assigned ownership.
+
+Coordinate these common conflict points explicitly; this table is not an exhaustive lock list:
+
+| Shared surface | Integration responsibility |
+| --- | --- |
+| `src/application/actions.rs`, `session.rs`, `atomic.rs`, replay and admission boundaries | Shared execution, operation registration, revision/transaction/contact semantics |
+| `src/engine/document.rs`, history, composition and persistence modules | Document invariants, grouped edits, project/recording compatibility |
+| `src/plugins/native.rs`, `registry.rs`, `mod.rs`, `crates/plugin-api/` | Host dispatch, optional ABI negotiation, contribution ownership and SDK layout fixtures |
+| `src/desktop/mod.rs`, shared canvas input, docking and configuration | UI lifecycle, routing, source fences, settings and appearance metrics |
+| Shared package manifests, `locales/*.json`, `Cargo.toml`, `Cargo.lock`, CI/build scripts | Discoverability, catalogs, dependencies and reproducible validation/staging |
+| `AGENTS.md`, root READMEs, `ROADMAP.md`, `CHANGELOG.md`, structure guides | Consistent policy, scope, evidence and ownership documentation |
+
+### Unified integration and handoff
+
+1. The integrator establishes the base commit and file assignments, resolves shared-contract prerequisites and orders dependent features. Independent work can proceed while another task waits for its prerequisite or CI.
+2. Feature agents implement bounded increments in their own worktrees, author relevant tests, run the focused local checks and commit with an English body and Unreleased summary. Push only within maintainer authorization. Report the exact head, changed files, contract changes, checks actually run, CI links/status and known limitations; include unresolved ownership or dependency issues.
+3. Before accepting a handoff, the integrator reviews the complete diff for scope, cross-feature contracts, compatibility, drawing-path costs and rollback/replay behavior. File separation and a clean textual merge are not evidence of semantic compatibility. If a branch needs a newer integration base, merge that prerequisite/main into the feature branch and resolve conflicts with the affected owner; do not rewrite published commits.
+4. Integrate one coherent feature at a time into the clean integration worktree. Prefer ordinary merges that retain the feature commits; do not also cherry-pick the same change. Resolve shared registration, locale and changelog conflicts deliberately, preserving both features. Never use blanket ours/theirs resolution or remove a failing assertion to make the merge pass. Every authored integration/fix commit follows the changelog and commit-body rules below.
+5. Validate the combined head, including interactions affected by both features. Stage matching DLLs from that same source revision before native checks. Follow CI-first verification: focused local checks, authorized push, then track the exact integrated commit's CI. Work can continue while CI runs, but report pending/failed validation separately from accepted behavior and fix regressions in follow-up commits. Do not cancel another task's running CI merely to accelerate your branch.
+6. Report the integrated feature commits, resulting `main` head, push status, checks and open acceptance gates. Release ownership only after handoff is acknowledged. Remove task branches/worktrees only after their commits are integrated, the worktree is clean and cleanup is authorized; preserve unmerged work, diagnostics and user files.
+
+Local resource limits apply across all worktrees together: one build/test worker at a time, below normal priority, at most two logical CPUs, Cargo `-j 1` and tests `--test-threads=1`. The integrator coordinates a single local worker slot; other agents may edit and review concurrently. Do not mistake separate worktrees for permission to run several heavy local suites. CI workers retain their own concurrency policy.
 
 ## Architecture and performance
 

@@ -42,7 +42,9 @@ Keep each PR focused. Describe the problem, resulting behavior and validation. E
 
 ## Git workflow
 
-Keep `main` reviewable. Follow explicit maintainer instructions: current maintainer-directed agent work commits directly to `main` without creating branches. External contributions normally use focused branches and PRs. Commit a coherent change after its relevant checks pass; use short, descriptive messages such as `docs: explain the execution model` or `fix: preserve pen pressure on release`. Use repository-local identity and credentials when projects use different accounts.
+Keep `main` reviewable. For agreed parallel agent work, use an independent worktree and a unique `codex/<feature>` branch for each task; the designated integrator alone updates `main`. Solo maintenance can use `main` when directed by the maintainer. External contributions normally use focused branches and PRs. Follow the [parallel development protocol](AGENTS.md#parallel-agent-development) for exact base commits, file ownership, shared contracts, handoff evidence and sequential integration. Commit coherent changes with the relevant focused checks, using descriptive messages such as `docs: explain the execution model` or `fix: preserve pen pressure on release`. Use repository-local identity and credentials.
+
+Worktree isolation does not isolate machine resources or repository configuration. Keep generated outputs, staged DLLs and test profiles separate; share one locally limited build/test worker across all agents. Every feature branch carries its tests and Unreleased notes. Review and validate the combined integration head, preserving both features when resolving shared-file conflicts; branch-level CI alone does not verify their interaction. Continue independent work while CI runs and report its exact head/status without treating pending validation as passed.
 
 ### Change summaries for every commit
 
@@ -64,7 +66,7 @@ Validation:
 - State any remaining interactive or hardware checks.
 ```
 
-After committing, report the commit hash, a brief change summary and validation to the maintainer. Distinguish a local commit from a push; publishing still requires an explicit request.
+After committing, report the commit hash, a brief change summary and validation to the maintainer. Distinguish a local commit from a push; publishing requires an explicit or standing maintainer instruction covering the destination ref.
 
 Do not rewrite published history or commit built DLLs, release archives, personal settings or generated test output. Keep `Cargo.lock`, SDK headers, source assets and selected documentation screenshots tracked. Annotated `vX.Y.Z` tags identify reviewed application versions. Commit and tag locally before an explicitly requested push; creating a local version does not publish it.
 
