@@ -1635,5 +1635,8 @@
   "Finish the current contact before mirroring the view": "보기를 반전하기 전에 현재 입력을 마치세요",
   "Flip Canvas View Vertically": "캔버스 보기 상하 반전",
   "Horizontal View Mirror": "보기 좌우 반전",
-  "Vertical View Mirror": "보기 상하 반전"
+  "Vertical View Mirror": "보기 상하 반전",
+  "Distribute Horizontal Spacing": "가로 간격 균등 분포",
+  "Distribute Vertical Spacing": "세로 간격 균등 분포",
+  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "세 개 이상 레이어의 가장자리 간격을 균등하게 배치합니다. 음수 간격은 레이어를 겹치며 양 끝 레이어는 고정됩니다."
 }

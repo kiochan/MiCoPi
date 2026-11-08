@@ -1635,5 +1635,8 @@
   "Finish the current contact before mirroring the view": "Finish the current contact before mirroring the view",
   "Flip Canvas View Vertically": "Flip Canvas View Vertically",
   "Horizontal View Mirror": "Horizontal View Mirror",
-  "Vertical View Mirror": "Vertical View Mirror"
+  "Vertical View Mirror": "Vertical View Mirror",
+  "Distribute Horizontal Spacing": "Distribute Horizontal Spacing",
+  "Distribute Vertical Spacing": "Distribute Vertical Spacing",
+  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed."
 }

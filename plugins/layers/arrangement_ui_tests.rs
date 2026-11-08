@@ -340,6 +340,7 @@ fn arrangement_reference_enables_single_layer_canvas_alignment_and_distribution_
     open(&mut app, &ctx, size, 1.);
     assert!(!control(&ctx, "left").1);
     assert!(!control(&ctx, "distribute_horizontal_centers").1);
+    assert!(!control(&ctx, "distribute_horizontal_gaps").1);
     let canvas = ctx
         .data_mut(|data| data.get_temp::<Rect>(Id::new(("layer-arrangement-reference", "canvas"))))
         .unwrap();
@@ -357,6 +358,7 @@ fn arrangement_reference_enables_single_layer_canvas_alignment_and_distribution_
     );
     assert!(control(&ctx, "left").1);
     assert!(!control(&ctx, "distribute_horizontal_centers").1);
+    assert!(!control(&ctx, "distribute_horizontal_gaps").1);
     let source = app.editor.session.doc.layers[1].pixels.clone();
     click(&mut app, &ctx, size, control(&ctx, "left").0.center(), 4.);
     assert_eq!(
@@ -489,6 +491,41 @@ fn arrangement_plan_menu_and_rejection_preserve_local_external_brush_hand_contac
                 .pointer(pointer(tool, PointerPhase::Up, 500))
                 .unwrap();
             assert_eq!(samples(&mut app).len(), transcript.len() + 1);
+        }
+    }
+}
+
+#[test]
+fn spacing_controls_move_only_the_middle_owner_and_follow_linked_masks() {
+    for (mode, dx, dy) in [
+        ("distribute_horizontal_gaps", 3, 0),
+        ("distribute_vertical_gaps", 0, 0),
+    ] {
+        let mut app = app(true);
+        assert!(app.editor.core(
+            "layer.selection.set",
+            json!({"layer_ids":[1,2,3],"active_layer_id":2})
+        ));
+        let ctx = ctx(&app);
+        let size = vec2(420., 1000.);
+        warm(&mut app, &ctx, size, 0.);
+        let before = Before::capture(&app);
+        open(&mut app, &ctx, size, 1.);
+        let (rect, enabled) = control(&ctx, mode);
+        assert!(enabled);
+        click(&mut app, &ctx, size, rect.center(), 2.);
+        assert_eq!(app.editor.session.doc.composition(), before.composition);
+        for (index, shift) in [(0, (0, 0)), (1, (dx, dy)), (2, (0, 0))] {
+            assert_eq!(
+                app.editor.session.doc.layers[index].pixels,
+                shifted(&before.pixels[index], shift.0, shift.1, 0)
+            );
+        }
+        assert_eq!(raw(&app, 1), shifted(&before.raw[0].1, dx, dy, 255));
+        assert_eq!(raw(&app, 2), before.raw[1].1);
+        if dx != 0 || dy != 0 {
+            assert!(app.editor.core("history.undo", json!({})));
+            before.document(&app);
         }
     }
 }

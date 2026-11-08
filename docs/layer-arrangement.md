@@ -1,6 +1,6 @@
 # Layer alignment and distribution
 
-This source increment adds explicit raster alignment and center distribution
+This source increment adds explicit raster alignment, center distribution and equal edge spacing
 through the shared command pipeline. Runtime verification is pending CI.
 It reuses the existing native bounds and integer movement callbacks, with no
 new dependency or ABI requirement.
@@ -26,8 +26,10 @@ uses the current frame and permits a single raster. Omitting `reference` means
 
 `distribute_horizontal_centers` and `distribute_vertical_centers` require at
 least three targets and a `targets` reference. They distribute centers, rather
-than gaps between edges. Canvas distribution and key-layer references are not
-part of this contract.
+than gaps between edges. `distribute_horizontal_gaps` and
+`distribute_vertical_gaps` provide equal edge spacing with the same minimum
+count and `targets`-only reference. Canvas distribution and key-layer references
+are not part of this contract.
 
 ## Integer placement
 
@@ -50,6 +52,34 @@ round_away_at_half((first_center2 * D
 The other axis stays fixed. Input order does not break center ties; when all
 centers coincide, every translation is a deterministic no-op. Plans retain the caller's
 target order even when distribution uses a separate sorted ordering.
+
+### Equal edge spacing
+
+Gap distribution sorts by the original leading edge (`x0` or `y0`), then stable
+raster ID. The first and last rasters in that order stay fixed. Their outer
+edges define the available span; other rasters retain their widths/heights.
+Nested/overlapping boxes use this same ordering, including tied leading edges.
+The last raster is the last in leading-edge order, not necessarily the raster
+with the greatest trailing edge. No selected raster is omitted.
+
+For `N` targets with widths/heights `w[i]`, the ideal gap is:
+
+```text
+gap = (last_trailing_edge - first_leading_edge - sum(w)) / (N - 1)
+start[i] = first_leading_edge + sum(w[0..i]) + i * gap
+```
+
+Here the prefix sum excludes item `i`. Round `start[i] - original_start[i]`
+once, independently for each target, with the signed half-away rule above.
+Both endpoints therefore remain exact, and integer gaps can differ by one
+pixel. There is no iterative movement or accumulated rounding error. When the
+available span is too small, the gap is negative and rasters overlap; this is
+reported by the same explicit offsets and explained in the menu tooltip.
+The operation does not resize or redistribute pixels within an owner.
+
+For example, horizontal boxes `[0,2]`, `[4,7]`, `[8,9]`, `[14,18]` have an ideal
+gap of `8/3`. Their translations are `0`, `+1`, `+2`, `0`, producing integer
+gaps `3`, `2`, `3` while retaining both endpoint rasters.
 
 ## Masks, admission and history
 
@@ -103,3 +133,17 @@ The Layers panel's Arrange menu captures selected raster IDs and its source
 revision once. Reopen a stale menu after another edit. Command search and
 configurable shortcuts expose the same registered operations. All spacing uses
 the configured appearance metrics.
+
+## Verification status
+
+Authored cases cover unequal sizes, signed half ties, negative gaps, tied edges,
+caller-order permutations and fractional thirds in both axes. Session cases
+compare independent coordinates and native RGBA/linked A8 outputs, read-only
+plans, contact rejection, Undo/Redo, failed atomic/journal publication and
+DLL-free verified restoration. Actual egui clicks cover both spacing controls;
+the existing four-language narrow/wide layout test covers all ten modes. Tiny
+JSONL/MCP cases use an independent rational reference for all distribution modes.
+These extensions await CI; native screenshot review, large-document costs and
+physical-device behavior are separate outstanding gates. Gap planning allocates
+only bounded ID/index/width/offset descriptors for at most sixteen targets;
+pixel staging, the 192 MiB ceiling and native movement are unchanged.

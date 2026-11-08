@@ -1635,5 +1635,8 @@
   "Finish the current contact before mirroring the view": "表示を反転する前に現在の入力を終了してください",
   "Flip Canvas View Vertically": "キャンバス表示を上下反転",
   "Horizontal View Mirror": "表示の左右反転",
-  "Vertical View Mirror": "表示の上下反転"
+  "Vertical View Mirror": "表示の上下反転",
+  "Distribute Horizontal Spacing": "水平方向に等間隔で分布",
+  "Distribute Vertical Spacing": "垂直方向に等間隔で分布",
+  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "3 つ以上のレイヤーの端の間隔を均等にします。間隔が負の場合は重なります。両端のレイヤーは移動しません。"
 }

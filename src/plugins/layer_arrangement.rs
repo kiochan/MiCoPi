@@ -15,9 +15,11 @@ enum Mode {
     Bottom,
     DistributeHorizontalCenters,
     DistributeVerticalCenters,
+    DistributeHorizontalGaps,
+    DistributeVerticalGaps,
 }
 impl Mode {
-    const ALL: [Self; 8] = [
+    const ALL: [Self; 10] = [
         Self::Left,
         Self::HorizontalCenter,
         Self::Right,
@@ -26,17 +28,32 @@ impl Mode {
         Self::Bottom,
         Self::DistributeHorizontalCenters,
         Self::DistributeVerticalCenters,
+        Self::DistributeHorizontalGaps,
+        Self::DistributeVerticalGaps,
     ];
     fn distribution(self) -> bool {
         matches!(
             self,
-            Self::DistributeHorizontalCenters | Self::DistributeVerticalCenters
+            Self::DistributeHorizontalCenters
+                | Self::DistributeVerticalCenters
+                | Self::DistributeHorizontalGaps
+                | Self::DistributeVerticalGaps
+        )
+    }
+    fn gaps(self) -> bool {
+        matches!(
+            self,
+            Self::DistributeHorizontalGaps | Self::DistributeVerticalGaps
         )
     }
     fn vertical(self) -> bool {
         matches!(
             self,
-            Self::Top | Self::VerticalCenter | Self::Bottom | Self::DistributeVerticalCenters
+            Self::Top
+                | Self::VerticalCenter
+                | Self::Bottom
+                | Self::DistributeVerticalCenters
+                | Self::DistributeVerticalGaps
         )
     }
 }
@@ -73,7 +90,7 @@ fn inputs(args: &Value) -> Result<(Vec<u64>, Mode, Reference), ActionError> {
     if mode.distribution() {
         if reference != Reference::Targets || ids.len() < 3 {
             return Err(invalid(
-                "Center distribution requires at least three targets and the targets reference",
+                "Distribution requires at least three targets and the targets reference",
             ));
         }
     } else if reference == Reference::Targets && ids.len() < 2 {
@@ -158,7 +175,30 @@ fn layout(
     };
     let mut offsets = vec![(0, 0); ids.len()];
     let axis = usize::from(mode.vertical());
-    if mode.distribution() {
+    if mode.gaps() {
+        let mut order: Vec<_> = (0..ids.len()).collect();
+        order.sort_by_key(|index| (bounds[*index][axis], ids[*index]));
+        let first = bounds[order[0]][axis] as i64;
+        let last = bounds[*order.last().unwrap()][axis + 2] as i64;
+        let widths: Vec<_> = order
+            .iter()
+            .map(|index| (bounds[*index][axis + 2] - bounds[*index][axis]) as i64)
+            .collect();
+        let space = last - first - widths.iter().sum::<i64>();
+        let divisor = (ids.len() - 1) as i64;
+        let mut prefix = 0;
+        for (position, index) in order.into_iter().enumerate() {
+            // Round each translation from the immutable original bounds. This
+            // prevents cumulative error and keeps both endpoint rasters fixed.
+            let delta = round_ratio(
+                (first + prefix - bounds[index][axis] as i64) * divisor + space * position as i64,
+                divisor,
+            );
+            let delta = i32::try_from(delta).map_err(|_| "Layer arrangement offset overflow")?;
+            offsets[index] = if axis == 0 { (delta, 0) } else { (0, delta) };
+            prefix += widths[position];
+        }
+    } else if mode.distribution() {
         let center = |index: usize| bounds[index][axis] as i64 + bounds[index][axis + 2] as i64;
         let mut order: Vec<_> = (0..ids.len()).collect();
         order.sort_by_key(|index| (center(*index), ids[*index]));
@@ -452,11 +492,83 @@ mod tests {
         }
     }
     #[test]
+    fn spacing_matches_independent_float_reference_in_both_axes_and_caller_orders() {
+        for first in 0..4usize {
+            for middle in 0..4usize {
+                for last in 0..4usize {
+                    for widths in [[1, 1, 1], [1, 3, 2], [4, 2, 3]] {
+                        let starts = [first, middle, last];
+                        for vertical in [false, true] {
+                            let axis = usize::from(vertical);
+                            let ids = [9, 1, 5];
+                            let boxes: Vec<_> = (0..3)
+                                .map(|i| {
+                                    let mut b = [0, 0, 1, 1];
+                                    b[axis] = starts[i];
+                                    b[axis + 2] = starts[i] + widths[i];
+                                    b
+                                })
+                                .collect();
+                            let mode = if vertical {
+                                Mode::DistributeVerticalGaps
+                            } else {
+                                Mode::DistributeHorizontalGaps
+                            };
+                            let (_, actual) =
+                                layout(&ids, &boxes, mode, Reference::Targets, [8, 8]).unwrap();
+                            let mut order = [0usize, 1, 2];
+                            order.sort_by_key(|i| (starts[*i], ids[*i]));
+                            let gap = (boxes[order[2]][axis + 2] as f64
+                                - starts[order[0]] as f64
+                                - widths.iter().sum::<usize>() as f64)
+                                / 2.;
+                            let mut destination = starts[order[0]] as f64;
+                            for index in order {
+                                let delta = (destination - starts[index] as f64).round() as i32;
+                                assert_eq!(
+                                    actual[index],
+                                    if vertical { (0, delta) } else { (delta, 0) },
+                                    "{boxes:?} {mode:?}"
+                                );
+                                destination += widths[index] as f64 + gap;
+                            }
+                            assert_eq!(actual[order[0]], (0, 0));
+                            assert_eq!(actual[order[2]], (0, 0));
+                            let reverse_ids: Vec<_> = ids.into_iter().rev().collect();
+                            let reverse_boxes: Vec<_> = boxes.into_iter().rev().collect();
+                            let (_, reverse) = layout(
+                                &reverse_ids,
+                                &reverse_boxes,
+                                mode,
+                                Reference::Targets,
+                                [8, 8],
+                            )
+                            .unwrap();
+                            assert_eq!(reverse.into_iter().rev().collect::<Vec<_>>(), actual);
+                        }
+                    }
+                }
+            }
+        }
+        // Four uneven widths give fractional thirds, without cumulative drift.
+        let (_, offsets) = layout(
+            &[1, 2, 3, 4],
+            &[[0, 0, 2, 1], [4, 0, 7, 1], [8, 0, 9, 1], [14, 0, 18, 1]],
+            Mode::DistributeHorizontalGaps,
+            Reference::Targets,
+            [18, 1],
+        )
+        .unwrap();
+        assert_eq!(offsets, [(0, 0), (1, 0), (2, 0), (0, 0)]);
+    }
+    #[test]
     fn literal_counts_domains_and_normalized_duplicates_reject_before_execution() {
         for args in [
             json!({"layer_ids":[1],"mode":"left"}),
             json!({"layer_ids":[1,1.0],"mode":"left"}),
             json!({"layer_ids":[1,2],"mode":"distribute_horizontal_centers"}),
+            json!({"layer_ids":[1,2],"mode":"distribute_horizontal_gaps"}),
+            json!({"layer_ids":[1,2,3],"mode":"distribute_vertical_gaps","reference":"canvas"}),
             json!({"layer_ids":[1,2,3],"mode":"distribute_horizontal_centers","reference":"canvas"}),
             json!({"layer_ids":[1],"mode":"unknown","reference":"canvas"}),
         ] {

@@ -2,7 +2,7 @@
 use super::*;
 
 const DRAFT: &str = "layer-arrangement-draft";
-const MODES: [(&str, &str); 8] = [
+const MODES: [(&str, &str); 10] = [
     ("left", "Align Left"),
     ("horizontal_center", "Align Horizontal Centers"),
     ("right", "Align Right"),
@@ -14,6 +14,11 @@ const MODES: [(&str, &str); 8] = [
         "Distribute Horizontal Centers",
     ),
     ("distribute_vertical_centers", "Distribute Vertical Centers"),
+    (
+        "distribute_horizontal_gaps",
+        "Distribute Horizontal Spacing",
+    ),
+    ("distribute_vertical_gaps", "Distribute Vertical Spacing"),
 ];
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Reference {
@@ -51,7 +56,7 @@ fn eligible(count: usize, reference: Reference, index: usize) -> bool {
     }
 }
 fn glyph(painter: &Painter, rect: Rect, index: usize, color: Color32) {
-    let horizontal = matches!(index, 0 | 1 | 2 | 6);
+    let horizontal = matches!(index, 0 | 1 | 2 | 6 | 8);
     let start = if horizontal { rect.left() } else { rect.top() };
     let extent = if horizontal {
         rect.width()
@@ -66,6 +71,15 @@ fn glyph(painter: &Painter, rect: Rect, index: usize, color: Color32) {
             pos2(rect.left() + across * rect.width(), start + along * extent)
         }
     };
+    if index >= 8 {
+        let mut along = 0.05;
+        for length in [0.16, 0.28, 0.22] {
+            let shape = Rect::from_two_pos(point(along, 0.25), point(along + length, 0.75));
+            painter.rect_stroke(shape, 1., stroke, StrokeKind::Inside);
+            along += length + 0.12;
+        }
+        return;
+    }
     let centers = if index >= 6 {
         [0.15, 0.5, 0.85]
     } else if matches!(index, 0 | 3) {
@@ -134,7 +148,7 @@ impl Editor {
                 }
             });
             ui.add_space(a.item_spacing);
-            for row in [0..3,3..6,6..8] {
+            for row in [0..3,3..6,6..8,8..10] {
                 if row.start==0 {ui.label(tr("Align"));}
                 if row.start==6 {ui.separator();ui.label(tr("Distribute"));}
                 ui.horizontal(|ui|{
@@ -150,7 +164,7 @@ impl Editor {
                             response.widget_info(||egui::WidgetInfo::labeled(egui::WidgetType::Button,enabled,localize(title)));
                             (rect,response)
                         }).inner;
-                        let hint=if index>=6 {"Distribute at least three selected layers by their centers. The two outer layers stay fixed."}else{"Align painted layer bounds. Masks and filters do not change these bounds."};
+                        let hint=if index>=8 {"Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed."}else if index>=6 {"Distribute at least three selected layers by their centers. The two outer layers stay fixed."}else{"Align painted layer bounds. Masks and filters do not change these bounds."};
                         let tooltip=format!("{}\n{}",localize(title),localize(hint));
                         let response=response.on_hover_text(tooltip.as_str()).on_disabled_hover_text(tooltip);
                         #[cfg(test)] ui.data_mut(|data|data.insert_temp(Id::new(("layer-arrangement-control",mode)),(rect,enabled)));

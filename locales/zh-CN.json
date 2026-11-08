@@ -1635,5 +1635,8 @@
   "Finish the current contact before mirroring the view": "请先结束当前接触，再镜像视图",
   "Flip Canvas View Vertically": "垂直镜像画布视图",
   "Horizontal View Mirror": "水平视图镜像",
-  "Vertical View Mirror": "垂直视图镜像"
+  "Vertical View Mirror": "垂直视图镜像",
+  "Distribute Horizontal Spacing": "水平等间距分布",
+  "Distribute Vertical Spacing": "垂直等间距分布",
+  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "在至少三个图层之间分配相等的边缘间距。负间距会使图层重叠；两端图层保持不动。"
 }

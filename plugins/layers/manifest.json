@@ -2091,7 +2091,9 @@
               "vertical_center",
               "bottom",
               "distribute_horizontal_centers",
-              "distribute_vertical_centers"
+              "distribute_vertical_centers",
+              "distribute_horizontal_gaps",
+              "distribute_vertical_gaps"
             ]
           },
           "reference": {
@@ -2257,7 +2259,9 @@
               "vertical_center",
               "bottom",
               "distribute_horizontal_centers",
-              "distribute_vertical_centers"
+              "distribute_vertical_centers",
+              "distribute_horizontal_gaps",
+              "distribute_vertical_gaps"
             ]
           },
           "reference": {

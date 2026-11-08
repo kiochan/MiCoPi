@@ -220,14 +220,16 @@ fn reference(mode: &str, canvas: bool, ids: &[u64]) -> BTreeMap<u64, (i32, i32)>
                 .unwrap(),
         ]
     };
-    let horizontal = mode == "distribute_horizontal_centers";
-    let vertical = mode == "distribute_vertical_centers";
+    let horizontal =
+        mode == "distribute_horizontal_centers" || mode == "distribute_horizontal_gaps";
+    let vertical = mode == "distribute_vertical_centers" || mode == "distribute_vertical_gaps";
+    let gaps = mode.ends_with("_gaps");
     let mut sorted = ids.to_vec();
     let axis = usize::from(vertical);
     if horizontal || vertical {
         sorted.sort_by_key(|id| {
             let b = BOXES[*id as usize - 1];
-            (b[axis] + b[axis + 2], *id)
+            (if gaps { b[axis] } else { b[axis] + b[axis + 2] }, *id)
         });
     }
     ids.iter()
@@ -246,6 +248,27 @@ fn reference(mode: &str, canvas: bool, ids: &[u64]) -> BTreeMap<u64, (i32, i32)>
                     0,
                     rounded(i64::from(bounds[1] + bounds[3] - b[1] - b[3]), 2),
                 ),
+                _ if gaps => {
+                    let first = BOXES[sorted[0] as usize - 1];
+                    let last = BOXES[*sorted.last().unwrap() as usize - 1];
+                    let width = |id: &u64| {
+                        let b = BOXES[*id as usize - 1];
+                        (b[axis + 2] - b[axis]) as f64
+                    };
+                    let total: f64 = sorted.iter().map(width).sum();
+                    let gap =
+                        (f64::from(last[axis + 2] - first[axis]) - total) / (ids.len() - 1) as f64;
+                    let mut target = f64::from(first[axis]);
+                    for previous in sorted.iter().take_while(|v| *v != id) {
+                        target += width(previous) + gap;
+                    }
+                    let delta = (target - f64::from(b[axis])).round() as i32;
+                    if horizontal {
+                        (delta, 0)
+                    } else {
+                        (0, delta)
+                    }
+                }
                 _ => {
                     let first = BOXES[sorted[0] as usize - 1];
                     let last = BOXES[*sorted.last().unwrap() as usize - 1];
@@ -296,6 +319,8 @@ fn layer_arrangement_plans_and_raw_outputs_follow_independent_alignment_and_dist
         "bottom",
         "distribute_horizontal_centers",
         "distribute_vertical_centers",
+        "distribute_horizontal_gaps",
+        "distribute_vertical_gaps",
     ] {
         let mut s = fixture();
         let before = content(&s);
@@ -402,6 +427,8 @@ fn layer_arrangement_invalid_literals_precede_macro_prefix_and_empty_or_locked_n
         json!({"layer_ids":[1],"mode":"left"}),
         json!({"layer_ids":[1,1.0],"mode":"left"}),
         json!({"layer_ids":[1,2],"mode":"distribute_horizontal_centers"}),
+        json!({"layer_ids":[1,2],"mode":"distribute_horizontal_gaps"}),
+        json!({"layer_ids":[1,2,3],"mode":"distribute_vertical_gaps","reference":"canvas"}),
         json!({"layer_ids":[1,2,3],"mode":"distribute_vertical_centers","reference":"canvas"}),
         json!({"layer_ids":[1,2],"mode":"unknown"}),
         json!({"layer_ids":[],"mode":"left"}),
@@ -514,14 +541,14 @@ fn layer_arrangement_plans_preserve_chunked_brush_hand_and_apply_keeps_idle_guar
         let plan = call(
             &mut s,
             "layer.arrange.plan",
-            json!({"layer_ids":IDS,"mode":"left"}),
+            json!({"layer_ids":IDS,"mode":"distribute_horizontal_gaps"}),
         );
         assert_eq!(plan["contact_active"], true);
         assert_eq!(plan["can_apply"], false);
         assert_eq!(
             s.apply(Action::new(
                 "layer.arrange",
-                json!({"layer_ids":IDS,"mode":"left"})
+                json!({"layer_ids":IDS,"mode":"distribute_horizontal_gaps"})
             ))
             .unwrap_err()
             .code,
@@ -580,7 +607,7 @@ fn layer_arrangement_late_native_atomic_and_partial_journal_failures_restore_eve
         &mut s,
         "pipeline.run",
         json!({"atomic":true,"steps":[
-        {"id":"arrange","action":"layer.arrange","args":{"layer_ids":IDS,"mode":"bottom"}},
+        {"id":"arrange","action":"layer.arrange","args":{"layer_ids":IDS,"mode":"distribute_horizontal_gaps"}},
         {"id":"fail","action":"layer.select","args":{"index":15}}]}),
     );
     assert_eq!(result["rolled_back"], true);
@@ -593,7 +620,7 @@ fn layer_arrangement_late_native_atomic_and_partial_journal_failures_restore_eve
     assert!(s
         .apply(Action::new(
             "layer.arrange",
-            json!({"layer_ids":IDS,"mode":"left"})
+            json!({"layer_ids":IDS,"mode":"distribute_horizontal_gaps"})
         ))
         .is_err());
     assert_eq!(content(&s), before);

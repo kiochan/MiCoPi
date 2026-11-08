@@ -1,6 +1,6 @@
 """Verify bounded raster alignment/distribution through JSONL, MCP and replay.
 
-Five 10x8 cases use independent raw-alpha bounds, rational layout, coordinate
+Seven 10x8 cases use independent raw-alpha bounds, rational layout, coordinate
 translations and coverage/composite references. No GUI or local stress runs.
 """
 import argparse
@@ -37,13 +37,20 @@ def layout(case):
     reference = ([0, 0, WIDTH, HEIGHT] if case['args'].get('reference') == 'canvas' else
                  [min(BOXES[i][0] for i in ids), min(BOXES[i][1] for i in ids),
                   max(BOXES[i][2] for i in ids), max(BOXES[i][3] for i in ids)])
-    vertical = mode in ['top', 'bottom', 'vertical_center', 'distribute_vertical_centers']
+    vertical = mode in ['top', 'bottom', 'vertical_center', 'distribute_vertical_centers', 'distribute_vertical_gaps']
     axis = int(vertical)
     center = lambda identity: Fraction(BOXES[identity][axis]+BOXES[identity][axis+2], 2)
-    order = sorted(ids, key=lambda identity: (center(identity), identity))
+    gaps = mode.endswith('_gaps')
+    order = sorted(ids, key=lambda identity: (BOXES[identity][axis] if gaps else center(identity), identity))
     result = {}
     for identity in ids:
-        if mode.startswith('distribute_'):
+        if gaps:
+            sizes = {i: BOXES[i][axis+2]-BOXES[i][axis] for i in ids}
+            gap = Fraction(BOXES[order[-1]][axis+2]-BOXES[order[0]][axis]-sum(sizes.values()),len(ids)-1)
+            rank = order.index(identity)
+            target = BOXES[order[0]][axis]+sum(sizes[i] for i in order[:rank])+gap*rank
+            delta = rounded(target-BOXES[identity][axis])
+        elif mode.startswith('distribute_'):
             target = center(order[0])+(center(order[-1])-center(order[0]))*Fraction(order.index(identity), len(order)-1)
             delta = rounded(target-center(identity))
         elif mode in ['left', 'top']:
@@ -244,7 +251,7 @@ def main():
     path = output/'source.mcp'
     model = fixture(foundation.read_project(output/'seed.mcp'), path)
     cases = [dict(name=mode, args=dict(layer_ids=[3, 1, 2], mode=mode)) for mode in
-             ['left', 'right', 'distribute_horizontal_centers', 'distribute_vertical_centers']]
+             ['left', 'right', 'distribute_horizontal_centers', 'distribute_vertical_centers', 'distribute_horizontal_gaps', 'distribute_vertical_gaps']]
     cases.append(dict(name='canvas-center', args=dict(layer_ids=[2.0, 1], mode='horizontal_center', reference='canvas')))
     expected_outcomes = None
     for prefix, runner in [('jsonl', lambda p: geometry.run_jsonl(cli, flags, p, output/'arrangement.jsonl')),
