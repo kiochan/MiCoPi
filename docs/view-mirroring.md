@@ -73,3 +73,11 @@ Canvas mirrors in four languages and checks that committed PNG output stays unch
 this increment and is not part of standard CI. Runtime regressions, native capture
 review, actual multi-monitor/DPI behavior, driver compatibility and end-to-end costs
 remain pending. Synthetic pen packets do not prove physical tablet compatibility.
+
+CI for `4d0e7c6` passed the horizontal Session guards/serialization and Canvas
+coordinate/UV/zoom/cursor/synthetic-pressure cases within 1,250 successful desktop
+tests (nine ignored). Its Navigator test failed while loading the Material icon
+font, before its click assertions. The fixture now installs the production font
+set before rendering; all coordinate assertions remain. The vertical/combined
+extension and this fixture repair require fresh exact-head CI; the earlier run
+stopped before native/headless/transport stages and is not a full passing baseline.

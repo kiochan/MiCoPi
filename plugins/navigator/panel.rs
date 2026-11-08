@@ -94,6 +94,7 @@ mod mirror_tests {
         for (mirrored, vertical) in [(false, false), (true, false), (false, true), (true, true)] {
             let mut app = crate::desktop::tests::studio();
             let ctx = Context::default();
+            theme::fonts(&ctx);
             app.editor
                 .core("canvas.new", serde_json::json!({"width":12,"height":8}));
             app.editor.zoom = 3.;
