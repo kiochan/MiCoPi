@@ -1422,3 +1422,98 @@ mod transform_layout_tests {
         assert_eq!(BLEND_MODES_ALL, 0x03ff_ffff);
     }
 }
+
+/// Independent cached inverse-field and region-sampling interface. Handles are
+/// owned by this DLL; calls are synchronous and serialized for each handle.
+pub const LIQUIFY_SYMBOL: &[u8] = b"micopi_liquify_v1\0";
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct LiquifyConfig {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub width: u32,
+    pub height: u32,
+    pub spacing: u32,
+    pub reserved: u32,
+    pub budget_bytes: u64,
+}
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LiquifyPush {
+    pub x: f32,
+    pub y: f32,
+    pub dx: f32,
+    pub dy: f32,
+    pub radius: f32,
+    pub strength: f32,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct LiquifyUpdate {
+    pub regions: [Region; 4],
+    pub count: u32,
+    pub reserved: u32,
+}
+impl Default for LiquifyUpdate {
+    fn default() -> Self {
+        Self {
+            regions: [Region {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+            }; 4],
+            count: 0,
+            reserved: 0,
+        }
+    }
+}
+/// Source is full-frame immutable. Output is a nonempty in-frame ROI with a
+/// document origin; source/output/metadata/field storage must not alias.
+/// Method0 is nearest, method1 is premultiplied Q16 bilinear; raw A8 uses
+/// scalar Q16 interpolation and reveal-white exterior. Identity pixels retain
+/// their exact stored words. No source/output pointer survives the callback.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct LiquifyApi {
+    pub abi_version: u32,
+    pub struct_size: u32,
+    pub create: Option<unsafe extern "C" fn(*const LiquifyConfig) -> *mut c_void>,
+    pub destroy: Option<unsafe extern "C" fn(*mut c_void)>,
+    pub clear: Option<unsafe extern "C" fn(*mut c_void) -> i32>,
+    pub push: Option<
+        unsafe extern "C" fn(*mut c_void, *const LiquifyPush, usize, *mut LiquifyUpdate) -> i32,
+    >,
+    pub pixels: Option<unsafe extern "C" fn(*const c_void, u32, *const Pixels, *mut Pixels) -> i32>,
+    pub mask: Option<
+        unsafe extern "C" fn(*const c_void, u32, *const CompositeMask, *mut A8Pixels) -> i32,
+    >,
+}
+pub type LiquifyEntry = unsafe extern "C" fn() -> *const LiquifyApi;
+
+#[cfg(test)]
+mod liquify_layout_tests {
+    use super::*;
+    use std::mem::{offset_of, size_of};
+    #[test]
+    fn independent_liquify_layout_preserves_existing_tables() {
+        assert_eq!(size_of::<LiquifyConfig>(), 32);
+        assert_eq!(offset_of!(LiquifyConfig, budget_bytes), 24);
+        assert_eq!(size_of::<LiquifyPush>(), 24);
+        assert_eq!(size_of::<LiquifyUpdate>(), 72);
+        assert_eq!(offset_of!(LiquifyUpdate, count), 64);
+        assert_eq!(size_of::<LiquifyApi>(), 56);
+        for (actual, expected) in [
+            (offset_of!(LiquifyApi, create), 8),
+            (offset_of!(LiquifyApi, destroy), 16),
+            (offset_of!(LiquifyApi, clear), 24),
+            (offset_of!(LiquifyApi, push), 32),
+            (offset_of!(LiquifyApi, pixels), 40),
+            (offset_of!(LiquifyApi, mask), 48),
+        ] {
+            assert_eq!(actual, expected);
+        }
+        assert_eq!(size_of::<AffineApi>(), 32);
+        assert_eq!(size_of::<ToolOptionsTip>(), 80);
+    }
+}

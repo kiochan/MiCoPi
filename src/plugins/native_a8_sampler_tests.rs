@@ -96,6 +96,7 @@ fn stub(api: Option<abi::A8SamplerApi>) -> NativePlugin {
         histogram_plan: None,
         hsl: None,
         quantization: None,
+        liquify: None,
         mask_effect_instance: Default::default(),
         _module: Module { handle: 0 },
     }

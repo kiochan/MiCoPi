@@ -1,5 +1,5 @@
 //! Bounded inverse deformation field for shared-owner Liquify. No host pointers.
-//! The native sampler/Session/UI integration is a subsequent delivery stage.
+//! Shared by the optional immutable-source RGBA/A8 sampler ABI.
 const MAX_NODES: usize = 2_097_152;
 const MAX_BYTES: usize = 64 * 1024 * 1024;
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -60,6 +60,21 @@ impl Field {
             values,
             scratch,
         })
+    }
+    pub fn dimensions(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
+    pub fn storage(&self) -> [(*const u8, usize); 2] {
+        [
+            (
+                self.values.as_ptr().cast(),
+                self.values.capacity() * std::mem::size_of::<[f32; 2]>(),
+            ),
+            (
+                self.scratch.as_ptr().cast(),
+                self.scratch.capacity() * std::mem::size_of::<(usize, [f32; 2])>(),
+            ),
+        ]
     }
     pub fn clear(&mut self) {
         self.values.fill([0.; 2]);

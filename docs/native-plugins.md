@@ -539,3 +539,10 @@ The affine `bounds` callback receives immutable full-frame raw pixels and writes
 The callback inverts once before rasterization and inverse-gathers from immutable frame/mask descriptors. It shares the established affine descriptor validation, padding, identity preservation, nearest/bilinear premultiplied-alpha sampling, selected extraction/clear/source-over and dense mask loops. Those generic loops specialize the affine coordinate closure; no virtual function call, per-pixel allocation or JSON lookup is added to the old path. Projective coordinate mapping uses one reciprocal per output sample and rejects the back face/horizon before sampling. Descriptor dimensions, origins, length and disjointness rules match affine; pixel callback rejects kind 2 and mask callback rejects kind 0. Output staging, mask encoding, alpha locks, history and replay remain host responsibilities.
 
 The API uses neither egui objects nor plugin instance creation per sample. Old hosts ignore this export; new hosts with old painting DLLs keep affine support and explicitly report missing projective sampling. New perspective metadata requires a reader that understands its optional denominator row; reading new perspective projects with an old application is not promised. Supported older project/recording fixtures retain their validation hashes.
+
+## Optional Liquify field and sampling
+
+The independent `micopi_liquify_v1` table and cached handle provide bounded joint
+inverse-field updates and immutable RGBA/raw A8 ROI sampling. See the
+[Liquify contract](liquify-design.md#optional-native-sampler-contract) for pixel
+arithmetic, alias/lifetime rules, budgets and pending Session/UI delivery gates.

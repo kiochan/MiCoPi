@@ -548,6 +548,27 @@ const MicopiHslApi *micopi_hsl_v1(void);
 typedef MicopiHslApi MicopiQuantizationApi;
 const MicopiQuantizationApi *micopi_quantization_v1(void);
 
+/* Optional independent cached Liquify field. Serialize calls per handle; never
+   retain source/output/descriptor pointers. Method0 nearest, method1 Q16
+   premultiplied RGBA / scalar A8. A8 exterior255, RGBA exterior0. ROI outputs
+   preserve document origins and must not alias source, descriptors or field. */
+typedef struct {
+    uint32_t abi_version, struct_size, width, height, spacing, reserved;
+    uint64_t budget_bytes;
+} MicopiLiquifyConfig;
+typedef struct { float x, y, dx, dy, radius, strength; } MicopiLiquifyPush;
+typedef struct { MicopiRegion regions[4]; uint32_t count, reserved; } MicopiLiquifyUpdate;
+typedef struct {
+    uint32_t abi_version, struct_size;
+    void *(*create)(const MicopiLiquifyConfig *);
+    void (*destroy)(void *);
+    int32_t (*clear)(void *);
+    int32_t (*push)(void *, const MicopiLiquifyPush *, size_t, MicopiLiquifyUpdate *);
+    int32_t (*pixels)(const void *, uint32_t, const MicopiPixels *, MicopiPixels *);
+    int32_t (*mask)(const void *, uint32_t, const MicopiCompositeMask *, MicopiA8Pixels *);
+} MicopiLiquifyApi;
+const MicopiLiquifyApi *micopi_liquify_v1(void);
+
 #ifdef __cplusplus
 }
 #endif

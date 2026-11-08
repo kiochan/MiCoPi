@@ -1,10 +1,10 @@
 # Multi-layer Liquify delivery design
 
 R1 in [Painting-first Requirements](painting-requirements.md) is the acceptance
-baseline. The first source increment is an internal native inverse-field
-primitive; it does not export a Liquify ABI, register an editing command, deform
-image pixels or provide a desktop tool yet. Its tests await CI. Do not infer
-usable multi-layer Liquify from this prerequisite.
+baseline. Source now includes the bounded inverse field, immutable-source RGBA/A8 region
+samplers and optional cached DLL ABI. These prerequisites do not yet register
+an editing command or provide a desktop tool. Runtime tests await CI; usable
+multi-layer Liquify still requires the Session/preview/history integration below.
 
 ## Reuse the owner contract
 
@@ -40,8 +40,8 @@ F_new(q) = F_old(H(q))
 The stored displacement is `F(q) - q`. Compose against the immutable old field;
 adding offsets without resampling the old mapping would produce a different
 result after multiple pushes. Bilinear field interpolation uses f64 intermediates
-and stores finite f32 node displacements. Future RGBA/A8 samplers will separately
-define pixel interpolation, identity/hidden-RGB behavior and exterior fill.
+and stores finite f32 node displacements. RGBA/A8 interpolation, identity/hidden-RGB behavior and exterior fill are
+defined by the sampler contract below.
 
 One update accepts one to four joint arms. Duplicate push records contribute once.
 Symmetric corrections can reflect both centers and displacement vectors. Joint
@@ -73,18 +73,50 @@ with interpolation halos, rather than forcing a single span between distant arms
   reuse these buffers. Clearing resets the field while preserving allocations.
 
 No image, host pointer, document owner, JSON transport or disk state lives in the
-field. No dependency, SDK layout or public capability changes in this increment.
+field. No dependencies or existing API table layouts change. The sampler adds a separate
+optional symbol without changing the tool or affine ABI.
 Pointer/capacity assertions cover buffer reuse, not end-to-end latency or allocator
 instrumentation. Native benchmarks and real tablet evidence remain pending.
+
+## Optional native sampler contract
+
+`micopi_liquify_v1` exposes a version-1 table: create, destroy, clear, joint push,
+RGBA pixels and raw A8 mask sampling. The SDK mirrors Rust/C layouts and the
+host negotiates a complete callback prefix once during DLL loading. A cached
+handle retains its DLL and owns only the field/workspace. Serialize calls for
+one live handle; destroy it exactly once. Callbacks retain no caller pointers.
+An absent symbol remains compatible and reports unavailable when requested.
+
+Sources are immutable complete frames; output is a nonempty document-coordinate
+ROI with independent stride. Method 0 is nearest, method 1 uses Q16 bilinear
+weights with encoded-color premultiplied RGBA arithmetic shared with the existing
+affine sampler. Identity pixels copy their raw words, including hidden RGB.
+RGBA exterior is transparent zero; raw scalar A8 exterior is reveal (255).
+Dense and uniform raw masks share the same coordinates. Sampling applies neither
+mask effects nor selection coverage; owner composition remains a host concern.
+
+Validate dimensions, spans, strides, method, ROI and source/output/descriptor/
+field-storage aliases before writing. Rejected pushes leave both the field and
+update report unchanged. Sampling writes only ROI pixel cells, preserving output
+padding. It performs no image allocation, registry lookup or deformation rebuild.
+One handle samples every captured owner, preserving identical deformation across
+layers. Private outputs must be discarded on callback failure; document publication
+belongs to Session. Native DLLs are trusted process code, not a memory sandbox.
+
+Rust/C/C++ layout assertions, host prefix/lifecycle checks, independent Q16 RGBA
+and scalar A8 references, raw identity/clear, padding/ROI parity, explicit exterior,
+malformed inputs and alias rejection are authored for CI. They have not yet passed
+runtime validation; latency, allocation instrumentation and peak memory remain open.
 
 ## Remaining delivery stages
 
 - [x] Implement bounded internal inverse-field update/interpolation in source.
 - [ ] Verify its independent numeric, identity/partial-cell, compound, symmetry,
   duplicate, local-ROI, rejection/budget and workspace-reuse cases in CI.
-- [ ] Add independent native RGBA and dense/uniform A8 region samplers, identity
+- [x] Implement independent native RGBA and dense/uniform A8 region samplers, identity
   fast paths, alpha/exterior references, source/alias validation and optional ABI
-  negotiation with C/Rust conformance. Do not rerun deformation per target owner.
+  negotiation with C/Rust conformance tests in source. Runtime validation awaits CI;
+  do not rerun deformation per target owner.
 - [ ] Add captured multi-owner admission, selection/mask policy, cost plans, one
   transactional grouped history/outcome and failure rollback through Session.
 - [ ] Add schema-described public actions/state, node/MCP/headless execution,

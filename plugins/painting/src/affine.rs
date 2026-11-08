@@ -74,12 +74,12 @@ fn cleared(p: u32, c: u8) -> u32 {
         (p & 0xffffff) | (a << 24)
     }
 }
-struct Source<'a> {
-    pixels: &'a [u32],
-    mask: Option<(&'a [u8], usize)>,
-    width: usize,
-    height: usize,
-    stride: usize,
+pub(super) struct Source<'a> {
+    pub(super) pixels: &'a [u32],
+    pub(super) mask: Option<(&'a [u8], usize)>,
+    pub(super) width: usize,
+    pub(super) height: usize,
+    pub(super) stride: usize,
 }
 impl Source<'_> {
     fn at(&self, x: i64, y: i64) -> u32 {
@@ -93,7 +93,7 @@ impl Source<'_> {
             p
         }
     }
-    fn sample(&self, method: u32, x: f64, y: f64) -> u32 {
+    pub(super) fn sample(&self, method: u32, x: f64, y: f64) -> u32 {
         if method == 0 {
             return self.at(x.floor() as i64, y.floor() as i64);
         }

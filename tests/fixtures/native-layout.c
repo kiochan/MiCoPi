@@ -215,6 +215,14 @@ static int32_t a8_affine_bounds(const MicopiCompositeMask *source, uint32_t widt
 }
 #endif
 
+ABI_ASSERT(sizeof(MicopiLiquifyConfig) == 32, "Liquify config layout");
+ABI_ASSERT(offsetof(MicopiLiquifyConfig, budget_bytes) == 24, "Liquify budget offset");
+ABI_ASSERT(sizeof(MicopiLiquifyPush) == 24, "Liquify push layout");
+ABI_ASSERT(sizeof(MicopiLiquifyUpdate) == 72, "Liquify ROI result layout");
+ABI_ASSERT(offsetof(MicopiLiquifyUpdate, count) == 64, "Liquify ROI count offset");
+ABI_ASSERT(sizeof(MicopiLiquifyApi) == 56, "Liquify API layout");
+ABI_ASSERT(offsetof(MicopiLiquifyApi, create) == 8, "Liquify create offset");
+ABI_ASSERT(offsetof(MicopiLiquifyApi, mask) == 48, "Liquify A8 sampler offset");
 int main(void) {
     MicopiCompositeRenderMaskedFn callback = masked;
     MicopiToolHostA8 host;

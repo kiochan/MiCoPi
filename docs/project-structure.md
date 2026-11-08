@@ -1,5 +1,10 @@
 # Project Structure and Ownership
 
+`src/plugins/native_liquify.rs` negotiates the optional Liquify table and owns cached
+DLL handles. `plugins/painting/src/liquify.rs` owns immutable RGBA/A8 region sampling;
+`liquify_tests.rs` covers sampler references and ABI rejection. Session/UI integration
+remains pending.
+
 `plugins/painting/src/liquify_field.rs` owns bounded inverse-field updates and
 interpolation; `liquify_field_tests.rs` owns independent scalar/ROI/budget/reuse
 references. This internal prerequisite has no exported Liquify ABI or Session/UI

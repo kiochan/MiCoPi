@@ -7,10 +7,13 @@ mod histogram;
 mod hsl;
 #[path = "native_levels.rs"]
 mod levels;
+#[path = "native_liquify.rs"]
+mod liquify;
 #[path = "native_quantization.rs"]
 mod quantization;
 use super::PixelAccess;
 use crate::application::{Action, ActionError, ActionResult, Session};
+pub(crate) use liquify::NativeLiquify;
 use micopi_plugin_api as abi;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -623,6 +626,7 @@ pub struct NativePlugin {
     histogram_plan: Option<abi::HistogramPlanFn>,
     hsl: Option<(abi::HslRenderFn, abi::HslHistogramFn)>,
     quantization: Option<(abi::HslRenderFn, abi::HslHistogramFn)>,
+    liquify: Option<abi::LiquifyApi>,
     mask_effect_instance: std::sync::Mutex<Option<MaskEffectInstance>>,
     _module: Module,
 }
@@ -888,6 +892,7 @@ impl NativePlugin {
         let tools = unsafe { module.tool_api()? };
         let hsl = unsafe { module.hsl_api()? };
         let quantization = unsafe { module.quantization_api()? };
+        let liquify = unsafe { module.liquify_api()? };
         let (histogram, histogram_plan) = match unsafe { module.histogram_api()? } {
             Some((sample, plan)) => (Some(sample), plan),
             None => (None, None),
@@ -971,6 +976,7 @@ impl NativePlugin {
                 histogram_plan,
                 hsl,
                 quantization,
+                liquify,
                 mask_effect_instance: Default::default(),
                 _module: module,
             }),
