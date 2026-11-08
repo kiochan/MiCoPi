@@ -31,7 +31,7 @@ impl Draft {
                 layer_id: s.doc.layer_id(s.doc.active),
                 hsl,
             },
-            layer_name: s.doc.layers[s.doc.active].name.clone(),
+            layer_name: s.doc.layer_name(s.doc.active),
             preview: true,
             observed: hsl,
             changed: Instant::now(),
@@ -63,7 +63,7 @@ impl Draft {
         self.request.document_identity = s.doc.identity;
         self.request.document_revision = s.revision;
         self.request.layer_id = s.doc.layer_id(s.doc.active);
-        self.layer_name = s.doc.layers[s.doc.active].name.clone();
+        self.layer_name = s.doc.layer_name(s.doc.active);
         self.attempted = None;
         self.painted = None;
         self.texture = None;
