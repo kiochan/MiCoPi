@@ -302,9 +302,14 @@ fn parameter_output_alias_and_legacy_renderers_reject_hsl_without_writes() {
         stride: 4,
         max_samples: 4,
     };
+    let histogram = unsafe { &*crate::histogram::micopi_histogram_v1() };
+    assert_eq!(histogram.abi_version, 1);
+    assert!(histogram.struct_size >= std::mem::size_of::<abi::HistogramApiPlan>() as u32);
+    let histogram =
+        unsafe { &*(histogram as *const abi::HistogramApi).cast::<abi::HistogramApiPlan>() };
     assert_eq!(
         unsafe {
-            crate::histogram::plan::sample_plan(
+            histogram.sample_plan.unwrap()(
                 &request,
                 nodes.as_ptr(),
                 3,
