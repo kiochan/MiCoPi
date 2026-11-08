@@ -50,12 +50,24 @@ fn all_plugin_actions_states_and_image_definitions_are_discovered_without_invoca
             "compositing.filter",
             "compositing.levels",
             "compositing.curves",
+            "compositing.hsl",
             "compositing.blend",
             "compositing.mix",
             "compositing.output",
             "compositing.transparent",
         ])
     );
+    let hsl = nodes.iter().find(|n| n["id"] == "compositing.hsl").unwrap();
+    assert_eq!(
+        hsl["defaults"]["hsl"],
+        json!({"hue":0,"saturation":0,"lightness":0})
+    );
+    let parameters = &hsl["parameters_schema"]["properties"]["hsl"];
+    for (name, limit) in [("hue", 180), ("saturation", 100), ("lightness", 100)] {
+        assert_eq!(parameters["properties"][name]["type"], "number");
+        assert_eq!(parameters["properties"][name]["minimum"], -limit);
+        assert_eq!(parameters["properties"][name]["maximum"], limit);
+    }
     let transparent = nodes
         .iter()
         .find(|n| n["id"] == "compositing.transparent")

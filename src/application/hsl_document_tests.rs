@@ -209,12 +209,19 @@ fn hsl_adjustment_partial_patches_masks_groups_and_dll_free_persistence_agree() 
     call(&mut s, "mask.fill", json!({"mask_id":mask,"value":255}));
     let composite = s.doc.composite.clone();
     let composition = s.doc.composition();
+    let revision = s.revision;
     let result = call(
         &mut s,
         "pipeline.run",
-        json!({"atomic":true,"steps":[{"action":"adjustment.set","args":{"adjustment_id":id,"parameters":{"hsl":{"hue":0}}}},{"action":"layer.select","args":{"index":15}}]}),
+        json!({"atomic":true,"steps":[{"id":"change","action":"adjustment.set","args":{"adjustment_id":id,"parameters":{"hsl":{"hue":0}}}},{"id":"reject","action":"layer.select","args":{"index":15}}]}),
     );
+    assert_eq!(result["ok"], false);
     assert_eq!(result["rolled_back"], true);
+    assert_eq!(result["failed_step"], "reject");
+    assert_eq!(result["error"]["code"], "invalid_layer");
+    assert_eq!(result["completed"], json!(["change"]));
+    assert_eq!(result["committed"], json!([]));
+    assert_eq!(s.revision, revision);
     assert_eq!(s.doc.composition(), composition);
     assert_eq!(s.doc.composite, composite);
     let directory = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(

@@ -183,9 +183,13 @@ def validate(values, pairs):
 
     private_report = envelope(values[2])
     private = private_report['results']['private']
-    # The DLL deliberately forwards its inner pipeline report before its own
-    # outer native action publication. Its JSON remains extension-owned.
-    assert private['result']['revision'] < private['revision']
+    # Native-root publication folds provisional child increments into one
+    # revision. The DLL's forwarded report remains its historical observation.
+    native_start = private_report['results']['new']['revision']
+    assert private['revision'] == native_start+1
+    assert private['result']['results']['before']['revision'] == native_start
+    assert private['result']['results']['paint']['revision'] == native_start+2
+    assert private['result']['revision'] == native_start+2
     assert private['result']['revision'] == private['result']['results']['after']['revision']
     assert envelope(private_report['results']['query'])['revision'] == private['revision']
     assert private_report['results']['context']['result']['revision'] == private['revision']

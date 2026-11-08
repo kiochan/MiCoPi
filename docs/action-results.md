@@ -46,6 +46,11 @@ Do not infer field ownership from the spelling `revision` or the shape of a valu
   from the Session response. `workflow.state` likewise returns the provider's
   value without rewriting it. Host actions called by a DLL still follow their
   ordinary Session response contracts.
+- A standalone document-atomic native action folds provisional child/loan
+  increments into one outer publication. Forwarded provider reports keep their
+  observed versions, which can exceed the final outer version. They are
+  historical observations, not optimistic preconditions for a later edit; use
+  the outer response revision instead. This does not rewrite older recordings.
 - Captured review preconditions, nested export source plans and replay metadata
   describe the state they captured. Never replace those revisions with the latest
   Session version. See [Selected-only Merge](selected-merge.md) and [Replay](replay.md).

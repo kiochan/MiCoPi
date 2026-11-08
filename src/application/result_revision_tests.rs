@@ -243,6 +243,8 @@ fn published_terminal_macro_operations_are_classified_without_rewriting_native_r
         json!([{"action":"assistant.checkerboard","args":{"cell":2}}]),
     );
     for action in ["assistant.checkerboard", "test.native_macro"] {
+        call(&mut s, "canvas.new", json!({"width":8,"height":6}));
+        let before = s.revision;
         let value = response(
             &mut s,
             action,
@@ -259,10 +261,12 @@ fn published_terminal_macro_operations_are_classified_without_rewriting_native_r
             report["results"]["after"]["result"]["revision"],
             report["revision"]
         );
-        assert!(
-            report["revision"].as_u64().unwrap() < value["revision"].as_u64().unwrap(),
-            "Native-owned revision must remain the DLL's observed version"
-        );
+        // The nested paint loan and action expose two provisional increments.
+        // The native root publishes one revision, without rewriting DLL JSON.
+        assert_eq!(value["revision"], before + 1);
+        assert_eq!(report["results"]["before"]["revision"], before);
+        assert_eq!(report["results"]["paint"]["revision"], before + 2);
+        assert_eq!(report["revision"], before + 2);
     }
     check(&mut s);
 }
