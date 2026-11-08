@@ -212,10 +212,10 @@ fn symmetry_settings_presets_projects_and_atomic_rollback_keep_exact_intent() {
         json!({"symmetry_x":0.25,"symmetry_y":0.75}),
     );
     let preferences = crate::configuration::PaintingPreferences::from(&s.parameters);
-    let mut settings = Settings::default();
+    let mut settings = Settings::defaults(PathBuf::new());
     settings.painting = preferences.clone();
-    let raw = serde_json::to_value(&settings).unwrap();
-    let decoded = Settings::decode(&raw.to_string(), PathBuf::new()).unwrap();
+    let raw = settings.encode().unwrap();
+    let decoded = Settings::decode(&raw, PathBuf::new()).unwrap();
     assert_eq!(decoded.painting, preferences);
     let captured = PresetParameters::capture(&s.parameters).unwrap();
     let id=call(&mut s,"brush.presets.upsert",json!({"name":"Symmetric ink","owner":"painting","tool_id":"brush","parameters":captured.value().unwrap()}))["preset_id"].as_u64().unwrap();
