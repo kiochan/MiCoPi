@@ -239,11 +239,30 @@ impl Editor {
                 ui.spacing_mut().item_spacing = vec2(a.item_spacing, a.item_spacing);
                 ui.label(tr("Drag on the canvas to reshape the captured layers."));
                 ui.label(tr("Whole layers; pixel selection is preserved."));
-                ui.label(format!(
-                    "{}: {:?}",
+                CollapsingHeader::new(format!(
+                    "{} · {}",
                     localize("Layers"),
                     d.native.request.layer_ids.len()
-                ));
+                ))
+                .id_salt("liquify-captured-targets")
+                .default_open(true)
+                .show(ui, |ui| {
+                    ScrollArea::vertical()
+                        .max_height(a.control_height * 4.)
+                        .show(ui, |ui| {
+                            for id in &d.native.request.layer_ids {
+                                if let Some(index) = self.session.doc.layer_index(*id) {
+                                    // Layer names are artist content, not localization keys.
+                                    ui.label(self.session.doc.layer_name(index));
+                                } else {
+                                    ui.weak(format!("#{id}"));
+                                }
+                            }
+                        });
+                    ui.weak(tr(
+                        "Linked masks follow their layers; unlinked masks stay in place.",
+                    ));
+                });
                 ui.add(
                     Slider::new(&mut d.radius, d.native.request.spacing as f32..=2048.)
                         .logarithmic(true)

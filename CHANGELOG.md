@@ -6,6 +6,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Painting and document editing
 
+- Refine Liquify contact costs by partitioning the four admitted dirty unions into exact disjoint row bands/runs before immutable-owner sampling, avoiding repeated pixel work at overlapping/symmetry-axis regions without spanning distant arms. Store each one-to-four-arm intent inline and reserve its bounded transcript once, retaining existing JSON wire arrays and reporting transcript payload separately; Reset reuses storage. Show the captured artist layer names and linked-mask policy. Add independent rectangle coverage, sparse/overlap/wire, transcript-reuse and batched/incremental preview parity gates. Runtime and measured latency remain pending CI; full preview composition/upload remains full-frame in this stage.
+
 - Seed the Liquify test fixture's directly written raster tiles into its verified journal before rollback/outcome assertions, and assert the baseline replay matches the document. Latest CI passed 1,269 tests but three Liquify cases restored the fixture's stale all-zero journal sources; retain their full raw/history/rollback assertions. Corrected runtime verification awaits CI.
 
 - Correct the new Liquify smoke step's workflow indentation so GitHub can schedule its runtime validation. The initial integration push failed before creating jobs; no runtime result was produced by that run.

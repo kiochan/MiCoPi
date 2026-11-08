@@ -288,3 +288,53 @@ fn liquify_plan_observes_live_contact_while_preview_apply_and_open_preserve_it()
     .unwrap();
     check(&mut s);
 }
+
+#[test]
+fn liquify_batch_and_incremental_sampling_match_with_reused_inline_transcript() {
+    let s = fixture();
+    let mut r = request(&s);
+    r.steps.clear();
+    let before = raw(&s);
+    let mut batch = Draft::begin(&s, r.clone()).unwrap();
+    let mut incremental = Draft::begin(&s, r.clone()).unwrap();
+    let pointer = batch.request.steps.as_ptr();
+    let capacity = batch.request.steps.capacity();
+    assert!(capacity >= 8192);
+    let arms = [
+        Push {
+            x: 3.,
+            y: 3.,
+            dx: 0.25,
+            dy: 0.125,
+            radius: 4.,
+            strength: 0.1,
+        },
+        Push {
+            x: 9.,
+            y: 3.,
+            dx: -0.25,
+            dy: 0.125,
+            radius: 4.,
+            strength: 0.1,
+        },
+    ];
+    for _ in 0..32 {
+        batch.push_deferred(&s, &arms).unwrap();
+        incremental.push(&s, &arms).unwrap();
+        assert_eq!(batch.request.steps.as_ptr(), pointer);
+        assert_eq!(batch.request.steps.capacity(), capacity);
+    }
+    assert!(batch.preview(&s).is_err());
+    batch.flush(&s).unwrap();
+    assert_eq!(batch.preview(&s).unwrap(), incremental.preview(&s).unwrap());
+    assert_eq!(json!(batch.request.steps), json!(vec![arms.to_vec(); 32]));
+    batch.reset(&s).unwrap();
+    assert!(batch.request.steps.is_empty());
+    assert_eq!(batch.request.steps.as_ptr(), pointer);
+    assert_eq!(batch.request.steps.capacity(), capacity);
+    assert_eq!(
+        batch.preview(&s).unwrap(),
+        Draft::begin(&s, r).unwrap().preview(&s).unwrap()
+    );
+    assert_eq!(raw(&s), before);
+}
