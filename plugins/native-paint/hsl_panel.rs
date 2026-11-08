@@ -554,9 +554,13 @@ mod tests {
     fn tonal_controls_preview_reuse_reset_apply_undo_and_cancel_share_one_draft() {
         let mut app = studio();
         let ctx = Context::default();
+        // Fill composites over existing pixels; start with a transparent source.
+        app.editor
+            .core("canvas.new", json!({"width":12,"height":8}));
         app.editor
             .core("layer.fill_color", json!({"color":"#20406080"}));
         let raw = app.editor.session.doc.layers[0].pixels.clone();
+        assert_eq!(raw, vec![0x80204060; 96]);
         let revision = app.editor.session.revision;
         let events = app.editor.session.journal.as_ref().unwrap().entries.len();
         app.editor.begin_plugin_command_with_args(
