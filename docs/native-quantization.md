@@ -81,3 +81,12 @@ bounded histogram grids. It uses exported callbacks, independent pixels/bins,
 source immutability, output reuse and a Rust allocation counter. Per-call native
 table preparation is included; Session/PNG/GPU, physical input and process peak
 are excluded. This is instrumentation in source, with actual results awaiting CI.
+
+## Inactive adjustment admission
+
+The host checks every HSL/quantization adjustment declaration before selecting
+visible effective nodes, including hidden and zero-opacity items. A cache of only
+visible effects is insufficient to establish renderer capability. Existing
+`require=false` restoration paths retain verified outcomes without demanding a
+renderer; editing/project publication requires complete admission. The targeted
+failure cases retain metadata/history/revision checks and await CI revalidation.

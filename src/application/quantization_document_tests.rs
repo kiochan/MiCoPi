@@ -226,10 +226,22 @@ fn unsupported_hidden_disabled_and_unused_quantization_reject_before_publication
             assert_eq!(s.revision, revision);
             assert_eq!(s.doc.history_bytes(), history);
         }
-        let error=s.apply(Action::new("adjustment.create",json!({"node_type":format!("compositing.{effect}"),"visible":false,"parameters":{"quantization":{"value":value}}}))).unwrap_err();
-        assert!(error.message.contains("quantization"), "{}", error.message);
-        assert_eq!(s.doc.composition(), composition);
-        assert_eq!(s.revision, revision);
+        for (node_type, parameters, label) in [
+            (
+                format!("compositing.{effect}"),
+                json!({"quantization":{"value":value}}),
+                "quantization",
+            ),
+            ("compositing.hsl".into(), json!({"hsl":{"hue":120}}), "HSL"),
+        ] {
+            for (visible, opacity) in [(false, 1.), (true, 0.), (true, 1.)] {
+                let error=s.apply(Action::new("adjustment.create",json!({"node_type":node_type,"visible":visible,"opacity":opacity,"parameters":parameters}))).unwrap_err();
+                assert!(error.message.contains(label), "{}", error.message);
+                assert_eq!(s.doc.composition(), composition);
+                assert_eq!(s.revision, revision);
+                assert_eq!(s.doc.history_bytes(), history);
+            }
+        }
     }
 }
 

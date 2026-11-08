@@ -242,6 +242,23 @@ impl Document {
         require: bool,
     ) -> Result<GroupPlan, String> {
         validate_layer_links(metadata)?;
+        // Capability admission covers declarations, not only the visible plan.
+        // Hidden/disabled adjustments can be absent from the prepared cache.
+        if require
+            && groups.is_some_and(|tree| tree.adjustments.iter().any(|a| a.quantization.is_some()))
+            && self
+                .renderer
+                .as_ref()
+                .is_none_or(|r| !r.supports_quantization())
+        {
+            return Err("The compositor does not support quantization adjustments".into());
+        }
+        if require
+            && groups.is_some_and(|tree| tree.adjustments.iter().any(|a| a.hsl.is_some()))
+            && self.renderer.as_ref().is_none_or(|r| !r.supports_hsl())
+        {
+            return Err("The compositor does not support HSL adjustments".into());
+        }
         if require
             && groups.is_some_and(|tree| tree.adjustments.iter().any(|a| a.curves.is_some()))
             && self.renderer.as_ref().is_none_or(|r| !r.supports_curves())
