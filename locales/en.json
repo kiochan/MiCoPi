@@ -1628,5 +1628,9 @@
   "Open Posterize Controls": "Open Posterize Controls",
   "Document changed; reopen Threshold.": "Document changed; reopen Threshold.",
   "Document changed; reopen Posterize.": "Document changed; reopen Posterize.",
-  "Native quantization preview is unavailable": "Native quantization preview is unavailable"
+  "Native quantization preview is unavailable": "Native quantization preview is unavailable",
+  "Flip Canvas View Horizontally": "Flip Canvas View Horizontally",
+  "Mirrored View": "Mirrored View",
+  "Canvas view mirroring requires the desktop; document pixels stay unchanged": "Canvas view mirroring requires the desktop; document pixels stay unchanged",
+  "Finish the current contact before mirroring the view": "Finish the current contact before mirroring the view"
 }

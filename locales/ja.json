@@ -1628,5 +1628,9 @@
   "Open Posterize Controls": "ポスタリゼーションの操作を開く",
   "Document changed; reopen Threshold.": "ドキュメントが変更されました。しきい値を開き直してください。",
   "Document changed; reopen Posterize.": "ドキュメントが変更されました。ポスタリゼーションを開き直してください。",
-  "Native quantization preview is unavailable": "ネイティブ量子化プレビューを利用できません"
+  "Native quantization preview is unavailable": "ネイティブ量子化プレビューを利用できません",
+  "Flip Canvas View Horizontally": "キャンバス表示を左右反転",
+  "Mirrored View": "左右反転表示",
+  "Canvas view mirroring requires the desktop; document pixels stay unchanged": "表示の反転にはデスクトップが必要です。ドキュメントの画素は変わりません",
+  "Finish the current contact before mirroring the view": "表示を反転する前に現在の入力を終了してください"
 }

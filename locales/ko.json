@@ -1628,5 +1628,9 @@
   "Open Posterize Controls": "포스터화 컨트롤 열기",
   "Document changed; reopen Threshold.": "문서가 변경되었습니다. 임계값을 다시 여세요.",
   "Document changed; reopen Posterize.": "문서가 변경되었습니다. 포스터화를 다시 여세요.",
-  "Native quantization preview is unavailable": "네이티브 양자화 미리 보기를 사용할 수 없습니다"
+  "Native quantization preview is unavailable": "네이티브 양자화 미리 보기를 사용할 수 없습니다",
+  "Flip Canvas View Horizontally": "캔버스 보기 좌우 반전",
+  "Mirrored View": "좌우 반전 보기",
+  "Canvas view mirroring requires the desktop; document pixels stay unchanged": "보기 반전에는 데스크톱이 필요합니다. 문서 픽셀은 변경되지 않습니다",
+  "Finish the current contact before mirroring the view": "보기를 반전하기 전에 현재 입력을 마치세요"
 }

@@ -154,7 +154,7 @@ impl Editor {
         let Some(g) = &self.selection_gesture else {
             return;
         };
-        let screen = |q: Pos2| self.image_rect.min + q.to_vec2() * self.zoom;
+        let screen = |q: Pos2| self.document_screen_position(q);
         for stroke in [
             Stroke::new(3., Color32::BLACK),
             Stroke::new(1., Color32::WHITE),

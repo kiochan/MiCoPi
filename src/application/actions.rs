@@ -223,6 +223,7 @@ pub enum Operation {
     SimilarSelection,
     Pick,
     View,
+    MirrorView,
     Ui,
     WindowCommand,
     WindowState,
@@ -317,6 +318,7 @@ impl Operation {
             || matches!(
                 self,
                 Self::DuplicateLayer
+                    | Self::MirrorView
                     | Self::HslDialog
                     | Self::TonalDialog
                     | Self::GrayscaleDialog
@@ -384,6 +386,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::MirrorView {
+            return json!({"type":"object","additionalProperties":false});
+        }
         use crate::engine::quantization::Effect;
         match self {
             Self::ThresholdPreview => {
@@ -665,7 +670,7 @@ impl Operation {
             ),
             Self::Pick => (json!({"x":number,"y":number}), vec!["x", "y"]),
             Self::View => (
-                json!({"zoom":{"type":"number","minimum":0.02,"maximum":32},"pan_x":{"type":"number","minimum":-1000000,"maximum":1000000},"pan_y":{"type":"number","minimum":-1000000,"maximum":1000000},"fit":{"type":"boolean"}}),
+                json!({"zoom":{"type":"number","minimum":0.02,"maximum":32},"pan_x":{"type":"number","minimum":-1000000,"maximum":1000000},"pan_y":{"type":"number","minimum":-1000000,"maximum":1000000},"fit":{"type":"boolean"},"mirror_x":{"type":"boolean"}}),
                 vec![],
             ),
             Self::Ui => (json!({"id":{"type":"string"},"value":{}}), vec!["id"]),

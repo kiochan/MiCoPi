@@ -222,12 +222,17 @@ impl Pointer {
         }
     }
 }
+fn view_mirror_is_off(value: &bool) -> bool {
+    !*value
+}
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct View {
     pub zoom: f32,
     pub pan_x: f32,
     pub pan_y: f32,
     pub fit: bool,
+    #[serde(default, skip_serializing_if = "view_mirror_is_off")]
+    pub mirror_x: bool,
 }
 impl Default for View {
     fn default() -> Self {
@@ -236,6 +241,7 @@ impl Default for View {
             pan_x: 0.,
             pan_y: 0.,
             fit: true,
+            mirror_x: false,
         }
     }
 }

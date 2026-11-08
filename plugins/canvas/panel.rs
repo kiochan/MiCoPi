@@ -65,6 +65,8 @@ impl Editor {
                 if room > 24. {
                     let status = if self.pen_active {
                         format!("Windows Ink · Pressure {:.0}%", self.pressure * 100.)
+                    } else if self.session.view.mirror_x {
+                        format!("{} · {}", localize("Mirrored View"), self.status)
                     } else {
                         self.status.clone()
                     };
@@ -170,16 +172,45 @@ impl Editor {
         }
     }
     pub(super) fn document_position(&self, p: Pos2) -> Pos2 {
+        let x = (p.x - self.image_rect.left()) / self.zoom;
         pos2(
-            (p.x - self.image_rect.left()) / self.zoom,
+            if self.session.view.mirror_x {
+                self.session.doc.width as f32 - x
+            } else {
+                x
+            },
             (p.y - self.image_rect.top()) / self.zoom,
         )
+    }
+    pub(super) fn document_screen_position(&self, p: Pos2) -> Pos2 {
+        let x = if self.session.view.mirror_x {
+            self.session.doc.width as f32 - p.x
+        } else {
+            p.x
+        };
+        self.image_rect.min + vec2(x, p.y) * self.zoom
+    }
+    pub(super) fn document_screen_rect(&self, rect: Rect) -> Rect {
+        Rect::from_two_pos(
+            self.document_screen_position(rect.min),
+            self.document_screen_position(rect.max),
+        )
+    }
+    pub(super) fn canvas_uv(&self) -> Rect {
+        if self.session.view.mirror_x {
+            Rect::from_min_max(pos2(1., 0.), pos2(0., 1.))
+        } else {
+            Rect::from_min_max(Pos2::ZERO, pos2(1., 1.))
+        }
     }
     pub(super) fn zoom_at(&mut self, p: Pos2, factor: f32) {
         if !self.canvas.is_positive() {
             return;
         }
-        let before = self.document_position(p);
+        let mut before = self.document_position(p);
+        if self.session.view.mirror_x {
+            before.x = self.session.doc.width as f32 - before.x;
+        }
         self.fit = false;
         self.zoom = (self.zoom * factor).clamp(0.02, 32.);
         let size = vec2(
@@ -572,7 +603,7 @@ impl Editor {
             painter.image(
                 texture.id(),
                 self.image_rect,
-                Rect::from_min_max(Pos2::ZERO, pos2(1., 1.)),
+                self.canvas_uv(),
                 Color32::WHITE,
             );
         }
@@ -583,14 +614,14 @@ impl Editor {
             painter.image(
                 texture.id(),
                 self.image_rect,
-                Rect::from_min_max(Pos2::ZERO, pos2(1., 1.)),
+                self.canvas_uv(),
                 Color32::WHITE,
             );
         }
         self.transform_outline(&painter, c.accent);
         if !self.blocked {
             if let Some((a, b)) = self.area_drag {
-                let screen = |q: Pos2| self.image_rect.min + q.to_vec2() * self.zoom;
+                let screen = |q: Pos2| self.document_screen_position(q);
                 painter.line_segment([screen(a), screen(b)], Stroke::new(2., c.accent));
             }
             let p = self.pen_hover.or_else(|| ctx.pointer_hover_pos());
@@ -615,7 +646,11 @@ impl Editor {
                         "brush-tip-cursor",
                         parameters.tip_shape,
                         parameters.tip_roundness,
-                        parameters.tip_angle,
+                        if self.session.view.mirror_x {
+                            -parameters.tip_angle
+                        } else {
+                            parameters.tip_angle
+                        },
                         radius,
                     );
                     contour.outline(

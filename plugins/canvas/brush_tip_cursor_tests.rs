@@ -175,3 +175,98 @@ fn brush_tip_canvas_rotated_rectangle_and_ellipse_follow_pressure_zoom_and_cache
         pen(&mut app, &ctx, PenPhase::Up, center, 0.5, 4100);
     }
 }
+
+#[test]
+fn mirrored_view_coordinates_zoom_and_rectangles_preserve_document_state() {
+    let mut app = fixture();
+    let ctx = context(&app);
+    for i in 0..3 {
+        frame(&mut app, &ctx, vec![], i as f64);
+    }
+    let raw = app.editor.session.doc.layers[0].pixels.clone();
+    let composition = app.editor.session.doc.composition();
+    let revision = app.editor.session.revision;
+    assert!(app.editor.core("view.mirror_horizontal", json!({})));
+    assert_eq!(app.editor.session.revision, revision + 1);
+    for q in [pos2(0., 0.), pos2(3.25, 4.75), pos2(12., 8.), pos2(-2., 9.)] {
+        let p = app.editor.document_screen_position(q);
+        assert!(app.editor.document_position(p).distance(q) < 0.0001);
+    }
+    let rectangle = app
+        .editor
+        .document_screen_rect(Rect::from_min_max(pos2(1., 2.), pos2(5., 6.)));
+    assert!((rectangle.width() - 4. * app.editor.zoom).abs() < 0.001);
+    assert!(
+        (rectangle.left() - (app.editor.image_rect.left() + 7. * app.editor.zoom)).abs() < 0.001
+    );
+    assert_eq!(
+        app.editor.canvas_uv(),
+        Rect::from_min_max(pos2(1., 0.), pos2(0., 1.))
+    );
+    let anchor = app.editor.image_rect.center() + vec2(13., 17.);
+    let before = app.editor.document_position(anchor);
+    app.editor.zoom_at(anchor, 1.25);
+    assert!(app.editor.document_position(anchor).distance(before) < 0.0001);
+    assert_eq!(app.editor.session.doc.layers[0].pixels, raw);
+    assert_eq!(app.editor.session.doc.composition(), composition);
+}
+#[test]
+fn mirrored_pen_input_matches_document_strokes_and_reflects_rotated_tip_feedback() {
+    let mut pixels = None;
+    let mut contour: Option<Vec<Vec2>> = None;
+    for mirrored in [false, true] {
+        let mut app = fixture();
+        let ctx = context(&app);
+        assert!(app.editor.core("brush.set",json!({"radius":2,"pressure_size":false,"pressure_opacity":true,"pressure_gamma":1,"stabilizer":0.35,"tip_shape":"round","tip_roundness":0.25,"tip_angle":30})));
+        assert!(app.editor.core("view.set", json!({"mirror_x":mirrored})));
+        app.editor.sync_from_session();
+        for i in 0..3 {
+            frame(&mut app, &ctx, vec![], i as f64);
+        }
+        let start = app.editor.document_screen_position(pos2(3.5, 4.5));
+        let hover = frame(&mut app, &ctx, vec![Event::PointerMoved(start)], 3.);
+        fn image_corner(shape: &Shape, texture: TextureId, corner: Pos2, u: f32) -> bool {
+            match shape {
+                Shape::Mesh(mesh) if mesh.texture_id == texture => mesh.vertices.iter().any(|v| {
+                    v.pos.distance(corner) < 0.001 && (v.uv.x - u).abs() < 0.0001 && v.uv.y == 0.
+                }),
+                Shape::Vec(shapes) => shapes.iter().any(|s| image_corner(s, texture, corner, u)),
+                _ => false,
+            }
+        }
+        let texture = app.editor.texture.as_ref().unwrap().id();
+        assert!(hover.shapes.iter().any(|shape| image_corner(
+            &shape.shape,
+            texture,
+            app.editor.image_rect.left_top(),
+            if mirrored { 1. } else { 0. }
+        )));
+        let actual = paths(&hover)
+            .into_iter()
+            .next()
+            .unwrap()
+            .into_iter()
+            .map(|p| p - start)
+            .collect::<Vec<_>>();
+        if let Some(original) = &contour {
+            for p in original {
+                assert!(actual
+                    .iter()
+                    .any(|q| (*q - vec2(-p.x, p.y)).length() < 0.02));
+            }
+        } else {
+            contour = Some(actual);
+        }
+        let end = app.editor.document_screen_position(pos2(7.5, 2.5));
+        pen(&mut app, &ctx, PenPhase::Down, start, 0.3, 4000);
+        pen(&mut app, &ctx, PenPhase::Move, end, 0.8, 4016);
+        pen(&mut app, &ctx, PenPhase::Up, end, 0.8, 4032);
+        assert!(!app.editor.session.stroke.active());
+        if let Some(original) = &pixels {
+            assert_eq!(&app.editor.session.doc.layers[0].pixels, original);
+        } else {
+            pixels = Some(app.editor.session.doc.layers[0].pixels.clone());
+        }
+        assert!(app.editor.core("replay.verify", json!({})));
+    }
+}

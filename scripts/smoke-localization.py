@@ -174,6 +174,11 @@ def main():
                 assert call('canvas.state', {})['revision']==preview_revision
                 assert base64.b64decode(call('canvas.snapshot', {})['data'])==expected
                 call('ui.dispatch', dict(id='command', value='Cancel'))
+            call('view.mirror_horizontal', {})
+            time.sleep(.15)
+            screenshot(f'{language}-mirrored-view.png')
+            assert base64.b64decode(call('canvas.snapshot', {})['data'])==expected
+            call('view.mirror_horizontal', {})
             call('canvas.resize',dict(width=320,height=256,anchor='center'))
             call('ui.dispatch',dict(id='command',value=dict(UiCommand=10174)))
             time.sleep(.15)

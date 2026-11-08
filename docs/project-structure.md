@@ -1,5 +1,10 @@
 # Project Structure and Ownership
 
+`application::View` owns the optional mirror flag. The workbench registers the
+view toggle and the shared painting/view adapter validates desktop/contact scope.
+`plugins/canvas/panel.rs` owns forward/inverse screen mapping and texture UVs;
+selection, crop, Move and transform overlays reuse those helpers.
+
 `plugins/compositing/src/quantization_cost.rs` owns the opt-in quantization
 callback cost matrix. It is a child of the existing test-only histogram cost
 module, sharing its allocator and padded-ROI instrumentation; production DLLs

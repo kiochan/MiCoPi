@@ -296,10 +296,10 @@ impl Editor {
                 && d.identity == self.session.doc.identity
                 && d.source == [self.session.doc.width, self.session.doc.height]
             {
-                let r = Rect::from_min_size(
-                    self.image_rect.min + vec2(d.x as f32, d.y as f32) * self.zoom,
-                    vec2(d.width as f32, d.height as f32) * self.zoom,
-                );
+                let r = self.document_screen_rect(Rect::from_min_size(
+                    pos2(d.x as f32, d.y as f32),
+                    vec2(d.width as f32, d.height as f32),
+                ));
                 painter.rect_stroke(r, 0, Stroke::new(2., color), StrokeKind::Inside);
                 for t in [1. / 3., 2. / 3.] {
                     painter.line_segment(

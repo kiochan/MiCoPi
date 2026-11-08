@@ -1628,5 +1628,9 @@
   "Open Posterize Controls": "打开色调分离控件",
   "Document changed; reopen Threshold.": "文档已更改，请重新打开阈值。",
   "Document changed; reopen Posterize.": "文档已更改，请重新打开色调分离。",
-  "Native quantization preview is unavailable": "原生量化预览不可用"
+  "Native quantization preview is unavailable": "原生量化预览不可用",
+  "Flip Canvas View Horizontally": "水平镜像画布视图",
+  "Mirrored View": "镜像视图",
+  "Canvas view mirroring requires the desktop; document pixels stay unchanged": "画布视图镜像需要桌面，文档像素保持不变",
+  "Finish the current contact before mirroring the view": "请先结束当前接触，再镜像视图"
 }

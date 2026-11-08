@@ -571,7 +571,11 @@ impl Editor {
                     if d.params.quad.is_some() {
                         CursorIcon::Crosshair
                     } else {
-                        CursorIcon::ResizeNwSe
+                        if self.session.view.mirror_x {
+                            CursorIcon::ResizeNeSw
+                        } else {
+                            CursorIcon::ResizeNwSe
+                        }
                     }
                 } else if quad(d.params, d.bounds).is_some_and(|corners| {
                     (0..4).any(|i| edge(corners, i).distance(q) * self.zoom < size * 0.4)
@@ -610,7 +614,7 @@ impl Editor {
         let Some(q) = quad(d.params, d.bounds) else {
             return;
         };
-        let screen = |p: Pos2| self.image_rect.min + p.to_vec2() * self.zoom;
+        let screen = |p: Pos2| self.document_screen_position(p);
         let size = self.settings.ui.icon_size * 0.3;
         for i in 0..4 {
             painter.line_segment(

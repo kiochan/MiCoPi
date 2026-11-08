@@ -91,7 +91,18 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             s.pick(x, y)?;
             Ok(json!({"color":s.parameters.color}))
         }
+        MirrorView => {
+            require_mirror_change(s)?;
+            s.view.mirror_x = !s.view.mirror_x;
+            let mut value = serde_json::to_value(s.view)?;
+            value["mirror_x"] = json!(s.view.mirror_x);
+            Ok(value)
+        }
         View => {
+            if args.get("mirror_x").is_some() {
+                require_mirror_change(s)?;
+            }
+
             for (key, dst) in [
                 ("zoom", &mut s.view.zoom),
                 ("pan_x", &mut s.view.pan_x),
@@ -100,6 +111,9 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 if let Some(n) = args[key].as_f64() {
                     *dst = n as f32;
                 }
+            }
+            if let Some(mirror) = args["mirror_x"].as_bool() {
+                s.view.mirror_x = mirror;
             }
             if let Some(fit) = args["fit"].as_bool() {
                 s.view.fit = fit;
@@ -112,4 +126,20 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             "operation routed to wrong plugin",
         )),
     }
+}
+
+fn require_mirror_change(s: &Session) -> Result<(), ActionError> {
+    if s.runtime != "desktop" {
+        return Err(ActionError::new(
+            "ui_unavailable",
+            "Canvas view mirroring requires the desktop; document pixels stay unchanged",
+        ));
+    }
+    if s.stroke.active() || s.pointer_checkpoint.is_some() {
+        return Err(ActionError::new(
+            "stroke_active",
+            "Finish the current contact before mirroring the view",
+        ));
+    }
+    Ok(())
 }

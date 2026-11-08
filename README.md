@@ -1,5 +1,7 @@
 # MiCoPi
 
+[Horizontal canvas view mirroring](docs/view-mirroring.md) now adds a searchable, bindable desktop command with reflected pen input, brush contours and edit overlays, preserving document pixels, export and Undo. Runtime/UI validation and native capture review remain pending.
+
 [Threshold and Posterize](docs/quantization.md) share native direct edits, non-destructive nodes and adjustment layers. Fenced PNG queries and cached desktop drafts now add guarded Apply/Cancel, default/reset controls and a 256-level identity fast path. New runtime/UI checks and native screenshot review remain pending.
 
 [Direct weighted grayscale](docs/grayscale.md) adds native active-layer strength controls with preserved alpha, selection/locks, Undo and verified replay. Fenced PNG previews and cached desktop Strength/Reset/Apply/Cancel controls now share the color-draft pipeline. Runtime validation and native screenshot review remain pending.

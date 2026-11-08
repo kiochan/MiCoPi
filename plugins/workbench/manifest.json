@@ -431,6 +431,41 @@
           "request_id"
         ]
       }
+    },
+    {
+      "id": "view.mirror_horizontal",
+      "title": "Flip Canvas View Horizontally",
+      "operation": "mirror_view",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "zoom",
+          "pan_x",
+          "pan_y",
+          "fit",
+          "mirror_x"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "zoom": {
+            "type": "number"
+          },
+          "pan_x": {
+            "type": "number"
+          },
+          "pan_y": {
+            "type": "number"
+          },
+          "fit": {
+            "type": "boolean"
+          },
+          "mirror_x": {
+            "type": "boolean"
+          }
+        }
+      },
+      "pixel_access": "none",
+      "requires_idle": true
     }
   ],
   "panels": [],

@@ -1,5 +1,9 @@
 # Documentation
 
+[Horizontal view mirroring](view-mirroring.md) keeps document pixels unchanged
+while reflecting Canvas display, input and edit overlays. Runtime/UI validation
+and native captures remain pending.
+
 [Native quantization](native-quantization.md) documents the optional rendering/
 observation prerequisite. Typed source nodes/adjustments now share local controls
 and persistence. Fenced PNG/direct cached previews now share immutable color

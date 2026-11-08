@@ -178,18 +178,16 @@ impl Editor {
         let Some(g) = &self.movement_gesture else {
             return;
         };
-        let r = Rect::from_min_max(
-            self.image_rect.min
-                + vec2(
-                    g.bounds[0] as f32 + g.delta[0] as f32,
-                    g.bounds[1] as f32 + g.delta[1] as f32,
-                ) * self.zoom,
-            self.image_rect.min
-                + vec2(
-                    g.bounds[2] as f32 + g.delta[0] as f32,
-                    g.bounds[3] as f32 + g.delta[1] as f32,
-                ) * self.zoom,
-        );
+        let r = self.document_screen_rect(Rect::from_min_max(
+            pos2(
+                g.bounds[0] as f32 + g.delta[0] as f32,
+                g.bounds[1] as f32 + g.delta[1] as f32,
+            ),
+            pos2(
+                g.bounds[2] as f32 + g.delta[0] as f32,
+                g.bounds[3] as f32 + g.delta[1] as f32,
+            ),
+        ));
         painter.rect_stroke(r, 0., Stroke::new(1.5, color), StrokeKind::Inside);
         painter.text(
             r.left_top() + vec2(6., 6.),

@@ -181,3 +181,5 @@ mod quantization_preview_tests;
 #[cfg(test)]
 mod quantize_tests;
 pub(crate) mod units;
+#[cfg(test)]
+mod view_tests;
