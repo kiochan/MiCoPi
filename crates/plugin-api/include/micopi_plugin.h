@@ -530,6 +530,13 @@ typedef struct { uint32_t abi_version, struct_size;
 } MicopiHslApi;
 const MicopiHslApi *micopi_hsl_v1(void);
 
+/* Optional independent superset with unchanged callback signatures.
+   Kind 12: Threshold, mode=level 0..255. Kind 13: Posterize, mode=levels
+   2..256. Both: a=earlier image, b=0, amount=1. Existing tables reject them.
+   Both callbacks are mandatory; use size/version checks before reading. */
+typedef MicopiHslApi MicopiQuantizationApi;
+const MicopiQuantizationApi *micopi_quantization_v1(void);
+
 #ifdef __cplusplus
 }
 #endif

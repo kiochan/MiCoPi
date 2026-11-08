@@ -56,6 +56,14 @@ pub struct HslApi {
 }
 pub type HslEntry = unsafe extern "C" fn() -> *const HslApi;
 
+/// Independent optional superset, negotiated only through its own symbol.
+/// Adds kind 12 Threshold (mode=level 0..255) and kind 13 Posterize
+/// (mode=levels 2..256); both use a=earlier image, b=0, amount=1.
+/// The unchanged callback signatures retain existing HSL records and LUTs.
+pub const QUANTIZATION_SYMBOL: &[u8] = b"micopi_quantization_v1\0";
+pub type QuantizationApi = HslApi;
+pub type QuantizationEntry = unsafe extern "C" fn() -> *const QuantizationApi;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -69,5 +77,9 @@ mod tests {
         assert_eq!(offset_of!(HslApi, render), 8);
         assert_eq!(offset_of!(HslApi, histogram), 16);
         assert_eq!(HSL_SYMBOL, b"micopi_hsl_v1\0");
+        assert_eq!(size_of::<QuantizationApi>(), 24);
+        assert_eq!(offset_of!(QuantizationApi, render), 8);
+        assert_eq!(offset_of!(QuantizationApi, histogram), 16);
+        assert_eq!(QUANTIZATION_SYMBOL, b"micopi_quantization_v1\0");
     }
 }

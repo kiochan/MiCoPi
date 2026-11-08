@@ -48,7 +48,7 @@ unsafe fn draw(
         origin_x: 0,
         origin_y: 0,
     };
-    render(
+    render::<false>(
         nodes.as_ptr(),
         nodes.len(),
         layers.as_ptr(),
@@ -80,7 +80,7 @@ unsafe fn sample(
         stride: 4,
         max_samples: 4,
     };
-    histogram(
+    histogram::<false>(
         &request,
         nodes.as_ptr(),
         nodes.len(),
@@ -249,7 +249,7 @@ fn parameter_output_alias_and_legacy_renderers_reject_hsl_without_writes() {
     };
     assert_eq!(
         unsafe {
-            render(
+            render::<false>(
                 nodes.as_ptr(),
                 3,
                 layers.as_ptr(),
@@ -346,7 +346,7 @@ fn null_excess_parameters_and_cropped_padded_output_keep_loan_boundaries() {
     for (pointer, count) in [(std::ptr::null(), 1), (&parameter as *const _, 65)] {
         assert_eq!(
             unsafe {
-                render(
+                render::<false>(
                     nodes.as_ptr(),
                     3,
                     layers.as_ptr(),
@@ -368,7 +368,7 @@ fn null_excess_parameters_and_cropped_padded_output_keep_loan_boundaries() {
     }
     assert_eq!(
         unsafe {
-            render(
+            render::<false>(
                 nodes.as_ptr(),
                 3,
                 layers.as_ptr(),

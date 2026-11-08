@@ -89,7 +89,40 @@ pub(super) unsafe fn render_color_plan(
     curves: bool,
     hsl: &[crate::hsl_math::Parameters],
 ) -> i32 {
-    if hsl.len() > 64
+    render_quantized_plan(
+        nodes,
+        count,
+        layers,
+        layer_count,
+        masks,
+        mask_count,
+        width,
+        height,
+        output,
+        luts,
+        curves,
+        hsl,
+        &[],
+    )
+}
+
+pub(super) unsafe fn render_quantized_plan(
+    nodes: *const abi::CompositeNode,
+    count: usize,
+    layers: *const abi::CompositeLayer,
+    layer_count: usize,
+    masks: *const abi::CompositeMask,
+    mask_count: usize,
+    width: u32,
+    height: u32,
+    output: *mut abi::Pixels,
+    luts: &[abi::CompositeLut],
+    curves: bool,
+    hsl: &[crate::hsl_math::Parameters],
+    quantization: &[crate::quantize_math::Quantize],
+) -> i32 {
+    if (!quantization.is_empty() && quantization.len() != count)
+        || hsl.len() > 64
         || output.is_null()
         || !aligned(output)
         || layers.is_null()
@@ -212,6 +245,20 @@ pub(super) unsafe fn render_color_plan(
                             .is_some_and(|end| end <= luts.len())
                 }
                 11 => image(n.a) && n.b == 0 && n.amount == 1. && (n.mode as usize) < hsl.len(),
+                12 => {
+                    !quantization.is_empty()
+                        && image(n.a)
+                        && n.b == 0
+                        && n.amount == 1.
+                        && n.mode <= 255
+                }
+                13 => {
+                    !quantization.is_empty()
+                        && image(n.a)
+                        && n.b == 0
+                        && n.amount == 1.
+                        && (2..=256).contains(&n.mode)
+                }
                 _ => false,
             };
         if !valid {
@@ -241,12 +288,13 @@ pub(super) unsafe fn render_color_plan(
         let global_y = out.origin_y as usize + y;
         for x in 0..w {
             let global_x = out.origin_x as usize + x;
-            pixels[y * stride + x] = evaluate_color(
+            pixels[y * stride + x] = evaluate_quantized(
                 nodes,
                 layers,
                 masks,
                 luts,
                 hsl,
+                quantization,
                 width,
                 global_x,
                 global_y,
@@ -260,12 +308,13 @@ pub(super) unsafe fn render_color_plan(
 /// Internal evaluator for already-validated image plans. Coverage remains a
 /// separate typed slot; callers must reject empty plans and coverage outputs.
 #[inline(always)]
-pub(super) unsafe fn evaluate_color(
+pub(super) unsafe fn evaluate_quantized(
     nodes: &[abi::CompositeNode],
     layers: &[abi::CompositeLayer],
     masks: &[abi::CompositeMask],
     luts: &[abi::CompositeLut],
     hsl: &[crate::hsl_math::Parameters],
+    quantization: &[crate::quantize_math::Quantize],
     width: u32,
     global_x: usize,
     global_y: usize,
@@ -319,6 +368,7 @@ pub(super) unsafe fn evaluate_color(
                 super::curves::apply_channels(&luts[n.mode as usize..][..3], values[n.a as usize])
             }
             11 => hsl[n.mode as usize].apply(values[n.a as usize]),
+            12 | 13 => quantization[i].apply(values[n.a as usize]),
             _ => unreachable!(),
         };
     }

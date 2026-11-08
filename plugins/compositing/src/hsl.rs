@@ -31,7 +31,7 @@ unsafe fn prepare(
     }
     Some(prepared)
 }
-unsafe extern "C" fn render(
+unsafe extern "C" fn render<const QUANTIZE: bool>(
     nodes: *const abi::CompositeNode,
     count: usize,
     layers: *const abi::CompositeLayer,
@@ -67,7 +67,15 @@ unsafe extern "C" fn render(
     } else {
         std::slice::from_raw_parts(luts, lut_count)
     };
-    crate::masks::render_color_plan(
+    let quantization = if QUANTIZE {
+        match crate::quantization::prepare(nodes, count) {
+            Some(value) => Some(value),
+            None => return abi::ERROR,
+        }
+    } else {
+        None
+    };
+    crate::masks::render_quantized_plan(
         nodes,
         count,
         layers,
@@ -80,9 +88,10 @@ unsafe extern "C" fn render(
         luts,
         true,
         &prepared[..parameter_count],
+        quantization.as_ref().map_or(&[], |v| &v[..count]),
     )
 }
-unsafe extern "C" fn histogram(
+unsafe extern "C" fn histogram<const QUANTIZE: bool>(
     request: *const abi::HistogramRequest,
     nodes: *const abi::CompositeNode,
     count: usize,
@@ -102,7 +111,15 @@ unsafe extern "C" fn histogram(
     let Some(prepared) = prepare(parameters, parameter_count, destination, destination) else {
         return abi::ERROR;
     };
-    crate::histogram::plan::sample_color_plan(
+    let quantization = if QUANTIZE {
+        match crate::quantization::prepare(nodes, count) {
+            Some(value) => Some(value),
+            None => return abi::ERROR,
+        }
+    } else {
+        None
+    };
+    crate::histogram::plan::sample_quantized_plan(
         request,
         nodes,
         count,
@@ -114,13 +131,14 @@ unsafe extern "C" fn histogram(
         lut_count,
         output,
         &prepared[..parameter_count],
+        quantization.as_ref().map_or(&[], |v| &v[..count]),
     )
 }
 static API: abi::HslApi = abi::HslApi {
     abi_version: 1,
     struct_size: std::mem::size_of::<abi::HslApi>() as u32,
-    render: Some(render),
-    histogram: Some(histogram),
+    render: Some(render::<false>),
+    histogram: Some(histogram::<false>),
 };
 #[no_mangle]
 pub extern "C" fn micopi_hsl_v1() -> *const abi::HslApi {
@@ -130,3 +148,14 @@ pub extern "C" fn micopi_hsl_v1() -> *const abi::HslApi {
 #[cfg(test)]
 #[path = "hsl_tests.rs"]
 mod tests;
+
+static QUANTIZATION_API: abi::QuantizationApi = abi::QuantizationApi {
+    abi_version: 1,
+    struct_size: std::mem::size_of::<abi::QuantizationApi>() as u32,
+    render: Some(render::<true>),
+    histogram: Some(histogram::<true>),
+};
+#[no_mangle]
+pub extern "C" fn micopi_quantization_v1() -> *const abi::QuantizationApi {
+    &QUANTIZATION_API
+}

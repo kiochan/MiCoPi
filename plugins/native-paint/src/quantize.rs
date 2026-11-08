@@ -1,10 +1,7 @@
 //! Integer threshold and cold posterization tables for direct raster edits.
 use serde_json::Value;
 
-pub(super) enum Quantize {
-    Threshold(u32),
-    Posterize([u8; 256]),
-}
+pub(super) use crate::quantize_math::Quantize;
 pub(super) fn parse(handler: &str, args: &Value) -> Result<Quantize, String> {
     let (key, min, max, default) = match handler {
         "threshold" => ("level", 0, 255, 128),
@@ -24,40 +21,11 @@ pub(super) fn parse(handler: &str, args: &Value) -> Result<Quantize, String> {
             .ok_or_else(|| format!("Invalid {key}"))?,
     };
     if handler == "threshold" {
-        Ok(Quantize::Threshold(number * 256))
+        crate::quantize_math::threshold(number)
     } else {
-        let intervals = number - 1;
-        Ok(Quantize::Posterize(std::array::from_fn(|byte| {
-            let bucket = (byte as u32 * intervals + 127) / 255;
-            ((bucket * 255 + intervals / 2) / intervals) as u8
-        })))
+        crate::quantize_math::posterize(number)
     }
-}
-impl Quantize {
-    #[inline]
-    pub(super) fn apply(&self, pixel: u32) -> u32 {
-        if pixel >> 24 == 0 {
-            return pixel;
-        }
-        let r = (pixel >> 16) & 255;
-        let g = (pixel >> 8) & 255;
-        let b = pixel & 255;
-        let rgb = match self {
-            Self::Threshold(cutoff) => {
-                if 54 * r + 183 * g + 19 * b >= *cutoff {
-                    0xffffff
-                } else {
-                    0
-                }
-            }
-            Self::Posterize(table) => {
-                (table[r as usize] as u32) << 16
-                    | (table[g as usize] as u32) << 8
-                    | table[b as usize] as u32
-            }
-        };
-        (pixel & 0xff000000) | rgb
-    }
+    .ok_or_else(|| "Invalid quantization parameter".into())
 }
 #[cfg(test)]
 mod tests {

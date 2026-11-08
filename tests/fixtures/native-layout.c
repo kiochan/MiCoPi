@@ -278,3 +278,6 @@ ABI_ASSERT(offsetof(MicopiHslParameters, lightness) == 16, "HSL lightness offset
 ABI_ASSERT(sizeof(MicopiHslApi) == 24, "Independent HSL API");
 ABI_ASSERT(offsetof(MicopiHslApi, render) == 8, "HSL render callback");
 ABI_ASSERT(offsetof(MicopiHslApi, histogram) == 16, "HSL observation callback");
+ABI_ASSERT(sizeof(MicopiQuantizationApi) == 24, "Independent quantization API");
+ABI_ASSERT(offsetof(MicopiQuantizationApi, render) == 8, "Quantization render callback");
+ABI_ASSERT(offsetof(MicopiQuantizationApi, histogram) == 16, "Quantization observation callback");

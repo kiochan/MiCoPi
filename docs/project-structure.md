@@ -1,5 +1,11 @@
 # Project Structure and Ownership
 
+`plugins/native-paint/src/quantize_math.rs` owns shared pure integer kernels,
+independently compiled into both native DLLs. `plugins/compositing/src/quantization.rs`
+prepares instruction-indexed kernels; optional callbacks share validated plan/
+histogram evaluation. `src/plugins/native_quantization.rs` owns startup negotiation
+and native inventory, with document integration still planned.
+
 `plugins/native-paint/src/quantize.rs` owns direct Threshold cutoff parsing and
 Posterize table preparation/pixel lookup. DLL descriptors register their schemas;
 Session retains permission, selection, Undo and replay ownership.

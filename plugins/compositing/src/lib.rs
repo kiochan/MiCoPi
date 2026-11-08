@@ -17,6 +17,9 @@ mod mask_tests;
 mod masks;
 #[cfg(test)]
 mod mix_tests;
+mod quantization;
+#[path = "../../native-paint/src/quantize_math.rs"]
+mod quantize_math;
 pub fn over(dst: u32, src: u32, mode: u32) -> u32 {
     if mode >= abi::BLEND_COLOR_BURN {
         return blends::over(dst, src, mode);

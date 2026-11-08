@@ -12,6 +12,7 @@ mod grayscale;
 mod hsl_math;
 mod hue_saturation;
 mod quantize;
+mod quantize_math;
 mod spatial;
 #[derive(Default)]
 struct Instance {

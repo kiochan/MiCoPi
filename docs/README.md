@@ -1,5 +1,8 @@
 # Documentation
 
+[Native quantization](native-quantization.md) documents the optional rendering/
+observation prerequisite; document node/preview integration remains planned.
+
 [Threshold and Posterize](quantization.md) describes native direct byte policies,
 shared execution, reference tests and pending preview/non-destructive variants.
 

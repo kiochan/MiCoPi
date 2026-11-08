@@ -1,5 +1,9 @@
 # Native DLL Plugins and ABI v1
 
+[Native quantization](native-quantization.md) adds independently negotiated
+Threshold/Posterize plan rendering and bounded observations with cached startup
+discovery. It does not yet enable editable source/adjustment nodes.
+
 The independent [HSL plan prerequisite](native-hsl.md) adds an optional complete
 24-byte API, fixed-stride binary64 intent, render/observation callbacks and cached
 startup discovery. Existing tables keep rejecting HSL instructions. Typed document

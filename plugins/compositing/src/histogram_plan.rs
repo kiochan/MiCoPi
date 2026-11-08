@@ -41,6 +41,36 @@ pub(crate) unsafe fn sample_color_plan(
     output: *mut abi::HistogramResult,
     hsl: &[crate::hsl_math::Parameters],
 ) -> i32 {
+    sample_quantized_plan(
+        request,
+        nodes,
+        count,
+        layers,
+        layer_count,
+        masks,
+        mask_count,
+        luts,
+        lut_count,
+        output,
+        hsl,
+        &[],
+    )
+}
+
+pub(crate) unsafe fn sample_quantized_plan(
+    request: *const abi::HistogramRequest,
+    nodes: *const abi::CompositeNode,
+    count: usize,
+    layers: *const abi::CompositeLayer,
+    layer_count: usize,
+    masks: *const abi::CompositeMask,
+    mask_count: usize,
+    luts: *const abi::CompositeLut,
+    lut_count: usize,
+    output: *mut abi::HistogramResult,
+    hsl: &[crate::hsl_math::Parameters],
+    quantization: &[crate::quantize_math::Quantize],
+) -> i32 {
     if request.is_null()
         || output.is_null()
         || nodes.is_null()
@@ -100,7 +130,7 @@ pub(crate) unsafe fn sample_color_plan(
         origin_x: 0,
         origin_y: 0,
     };
-    if crate::masks::render_color_plan(
+    if crate::masks::render_quantized_plan(
         nodes,
         count,
         layers,
@@ -113,6 +143,7 @@ pub(crate) unsafe fn sample_color_plan(
         luts,
         true,
         hsl,
+        quantization,
     ) != abi::OK
     {
         return abi::ERROR;
@@ -145,12 +176,13 @@ pub(crate) unsafe fn sample_color_plan(
         let y = (2 * row as usize + 1) * p.height as usize / (2 * gh as usize);
         for col in 0..gw {
             let x = (2 * col as usize + 1) * p.width as usize / (2 * gw as usize);
-            let pixel = crate::masks::evaluate_color(
+            let pixel = crate::masks::evaluate_quantized(
                 nodes,
                 layers,
                 masks,
                 luts,
                 hsl,
+                quantization,
                 p.width,
                 x,
                 y,

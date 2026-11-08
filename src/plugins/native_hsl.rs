@@ -1,7 +1,7 @@
 //! Startup-only negotiation for optional HSL plan callbacks.
 use super::*;
 type Callbacks = (abi::HslRenderFn, abi::HslHistogramFn);
-unsafe fn decode(pointer: *const abi::HslApi) -> Result<Callbacks, String> {
+pub(super) unsafe fn decode(pointer: *const abi::HslApi) -> Result<Callbacks, String> {
     if pointer.is_null() {
         return Err("Null HSL API table".into());
     }
