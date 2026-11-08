@@ -1,5 +1,7 @@
 # MiCoPi
 
+[Multi-layer Liquify](docs/liquify-design.md) now connects a shared native deformation to independent raster/linked-mask outputs, reversible canvas previews and one Undo through registered actions. Desktop pressure/symmetry controls and MCP/headless contracts are implemented in source; exact-head runtime checks, native captures and measured large-canvas performance remain pending.
+
 Current priorities follow the [painting-first requirements](docs/painting-requirements.md): multi-layer Liquify, shared adjustments bound to layers, convenient groups/search and symmetry editing. The former exhaustive PS feature goal has been stopped; these requirements do not claim the features are verified.
 
 [Brush symmetry](docs/native-brush-symmetry.md) now shares vertical/horizontal/two-axis painting across native Brush/Eraser, commands, settings, presets, nodes, MCP and headless. Four-language controls and view-aware axis/cursor feedback are implemented in source; runtime, reviewed native captures and performance gates remain pending.

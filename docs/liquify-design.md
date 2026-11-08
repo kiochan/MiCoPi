@@ -1,10 +1,11 @@
 # Multi-layer Liquify delivery design
 
 R1 in [Painting-first Requirements](painting-requirements.md) is the acceptance
-baseline. Source now includes the bounded inverse field, immutable-source RGBA/A8 region
-samplers and optional cached DLL ABI. These prerequisites do not yet register
-an editing command or provide a desktop tool. Runtime tests await CI; usable
-multi-layer Liquify still requires the Session/preview/history integration below.
+baseline. Source now connects the bounded native field and RGBA/A8 region samplers to
+captured multi-owner Session actions, private previews, one grouped Undo/outcome
+and desktop canvas controls. New runtime/transport/UI tests await CI. Performance
+measurements, reviewed native captures and the wider R1 artist matrix remain
+open; source integration is not a completed acceptance claim.
 
 ## Reuse the owner contract
 
@@ -108,24 +109,83 @@ and scalar A8 references, raw identity/clear, padding/ROI parity, explicit exter
 malformed inputs and alias rejection are authored for CI. They have not yet passed
 runtime validation; latency, allocation instrumentation and peak memory remain open.
 
-## Remaining delivery stages
+## Shared execution and artist controls
 
-- [x] Implement bounded internal inverse-field update/interpolation in source.
-- [ ] Verify its independent numeric, identity/partial-cell, compound, symmetry,
-  duplicate, local-ROI, rejection/budget and workspace-reuse cases in CI.
-- [x] Implement independent native RGBA and dense/uniform A8 region samplers, identity
-  fast paths, alpha/exterior references, source/alias validation and optional ABI
-  negotiation with C/Rust conformance tests in source. Runtime validation awaits CI;
-  do not rerun deformation per target owner.
-- [ ] Add captured multi-owner admission, selection/mask policy, cost plans, one
-  transactional grouped history/outcome and failure rollback through Session.
-- [ ] Add schema-described public actions/state, node/MCP/headless execution,
-  strict project/replay data and DLL-free outcome restoration.
-- [ ] Add cached reversible multi-layer previews and artist controls, preserving
-  pressure, view coordinates, source fences and configured four-language spacing.
-- [ ] Measure first/warm pushes, sampler and commit cost, preview uploads, raw
-  staging/history/journal growth and representative multi-owner memory. Review
-  native captures and named devices before closing the artist-workflow requirement.
+The painting package registers `canvas.liquify.plan` (read-only),
+`canvas.liquify.preview` (read-only PNG), `canvas.liquify` (atomic edit) and
+`canvas.liquify.open` (desktop-only controls). Generated action nodes, command
+search, key bindings, JSONL, MCP and headless clients share their schemas.
+The [tiny JSONL example](../examples/automation/liquify.jsonl) demonstrates the flow.
+Read `graph.read` for `document_identity` and `revision`; capture these along
+with one through sixteen exact `layer_ids`. A request also carries `spacing`
+(default 4), `method` (default bilinear) and at most 8192 ordered `steps`, each
+containing one through four joint `{x,y,dx,dy,radius,strength}` arms. The PNG
+response supplies a revision-guarded Apply action. Inspect plans without finishing
+live contacts; preview, Apply and opening controls require idle admission.
 
-Intermediate phases are reviewable commits, not replacements for the full R1
-workflow. Preserve explicit scope and open gates in ROADMAP and CHANGELOG.
+Targets are whole visible rasters and their currently linked raw masks, including
+disabled linked masks. Preserve unlinked masks, ancestor/group/adjustment masks,
+all hierarchy, source filters, selection/Reselect and the active painting layer.
+Pixel selection does not clip this explicit whole-owner operation. Reject pixel
+or position locks; staged output validation also enforces alpha locks. There is
+no implicit link/group expansion, group-mask deformation, mask-only Liquify or
+off-canvas retained storage in this first contract. Existing ancestor composition
+remains in place. Future group expansion needs a reviewed explicit owner policy.
+
+A draft caches one DLL field and initialized owner outputs. Accepted typed pushes
+record compact bounded intent and accumulate up to four dirty unions; a packet
+batch updates the field first and samples each owner once per union. Sources stay
+immutable. Headless execution likewise accumulates the full requested sequence
+before owner sampling. No per-MOVE JSON, DLL instance creation, registry lookup,
+file I/O or full-source copying occurs. Reset clears and refills existing buffers;
+Cancel drops the private draft. Failed native updates/sampling poison the draft
+until reset/cancel; no partial owner set is published.
+
+Before publication, revalidate the source fence, exact owner/mask pairings and
+all outputs. Publish changed raw RGBA/A8 owners under one bounded history group,
+without replacing the independent affine Repeat recipe. Session owns atomic
+checkpoint/rollback, one revision and the verified outcome. Replay restores tiles
+and verified surfaces without invoking Liquify or loading its original DLL. No
+journal event is emitted per draft pointer point. Intent has a hard step bound;
+existing tiled/compressed outcome persistence remains the recording format.
+
+Select rasters in Layers and search **Multi-layer Liquify…** in the command
+palette. Drag on the ordinary canvas. Controls expose radius, strength, optional
+pressure strength and Reset/Cancel/Apply. The adapter uses native packet pressure,
+existing stabilization intent and document/view reflection. Captured symmetry
+axes reflect both centers and displacement vectors, with joint native evaluation.
+The normal Brush/Eraser path is unchanged. A circular canvas cursor shows radius.
+UI spacing derives from appearance metrics and labels have four-language catalogs.
+
+Full preview composition and texture upload remain synchronous and are throttled
+to at most one attempt per 100 ms with texture reuse. Owner sampling uses ROI
+writes; composition/upload still process a complete bounded preview frame. This
+is not an allocation-free presentation or a measured large-canvas latency claim.
+Changing the source revision invalidates the draft rather than rebasing edits.
+Apply drops the private native/output cache before executing the shared action,
+avoiding simultaneous duplicate owner staging. Field/workspace has a 64 MiB cap,
+owner outputs a 192 MiB cap; preview uses existing separate composite/effect caps.
+These payload ceilings do not describe process peak memory or graphics overhead.
+
+## Verification and remaining acceptance
+
+Authored CI gates cover independent native scalar/region/exterior references,
+SDK prefix/layout/lifecycle, owner preview/PNG versus Apply, selection/unlinked
+mask preservation, unchanged affine recipe, one Undo/Redo, missing capabilities,
+late native failure and post-publication renderer rollback. Typed synthetic pen
+input covers pressure, mirrored mapping and an idle committed canvas; desktop
+controls cover texture reuse, Reset/Cancel/Apply. Tiny JSONL/MCP smoke exercises
+preview/Apply parity, generated nodes and verified outcomes. These new gates have
+not yet returned a passing CI result. Synthetic input does not certify devices.
+
+- [x] Connect field, samplers, captured owners, private previews and grouped
+  publication in source, with registered contracts and desktop controls.
+- [ ] Pass exact-head native, desktop, headless and JSONL/MCP/replay gates.
+- [ ] Review actual English/CJK captures, narrow/wide metrics and multiple native
+  viewports; no new screenshots have been promoted as evidence.
+- [ ] Measure first/warm pushes, sampler/commit cost, full preview composition
+  and uploads, staging/history/journal growth and representative owner memory.
+- [ ] Verify the required group/mask/adjustment/alpha-lock artist matrix, undo
+  after project round-trips and DLL-free replay; add named tablet evidence.
+
+Keep these gates open in ROADMAP until supported by the corresponding evidence.

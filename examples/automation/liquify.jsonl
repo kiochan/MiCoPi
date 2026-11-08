@@ -1,0 +1,7 @@
+{"action":"canvas.new","args":{"width":12,"height":8}}
+{"action":"native.checkerboard","args":{"cell":2}}
+{"action":"layer.duplicate","args":{"layer_id":1}}
+{"action":"pipeline.run","args":{"atomic":true,"steps":[{"id":"read","action":"graph.read","args":{}},{"id":"preview","action":"canvas.liquify.preview","args":{"document_identity":{"$ref":"read#/result/document_identity"},"document_revision":{"$ref":"read#/result/revision"},"layer_ids":[2,1],"spacing":1,"steps":[[{"x":5,"y":4,"dx":1,"dy":0.5,"radius":4,"strength":0.8}]]}},{"id":"apply","action":"canvas.liquify","args":{"$ref":"preview#/result/apply/args"}}]}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}
+{"action":"replay.verify","args":{}}

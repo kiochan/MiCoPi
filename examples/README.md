@@ -1,5 +1,7 @@
 # Examples
 
+[Multi-layer Liquify](automation/liquify.jsonl) captures a source fence, previews two independent layers, applies the returned intent atomically and checks one Undo/Redo plus verified replay. Runtime checks for this new example await CI.
+
 - [Selection commands](automation/selection.jsonl): native shape/combine geometry, pressure strokes, clipped filters and verified outcomes.
 
 [Canvas framing](automation/canvas-framing.jsonl) demonstrates transparent canvas expansion, exact crop, undo/redo and verified replay. Run it from the repository root with the CLI and loaded native plugins; it exports `target/canvas-framing.png`.

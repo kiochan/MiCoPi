@@ -87,6 +87,8 @@ jobs:
         run: python scripts/smoke-linked-movement.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify linked owner affine scopes, masks and atomic repeat outcomes
         run: python scripts/smoke-owner-affine.py --skip-gui --cli target/release/micopi-cli.exe
+        - name: Verify multi-layer Liquify previews and grouped Undo outcomes
+          run: python scripts/smoke-liquify.py --cli target/release/micopi-cli.exe
       - name: Verify capped stroke opacity, independent Flow and outcome replay
         run: python scripts/smoke-stroke-opacity.py --skip-gui --cli target/release/micopi-cli.exe
       - name: Verify analytic brush tips, preset compatibility and outcome replay

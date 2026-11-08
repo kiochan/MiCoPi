@@ -263,7 +263,7 @@ mod tests {
         .unwrap();
         let plugin = &registry.native_plugins["compositing"];
         assert!(plugin.supports_hsl());
-        assert!(!registry.native_plugins["native_paint"].supports_hsl());
+        assert!(!registry.native_plugins["painting"].supports_hsl());
         let callbacks = plugin.hsl.unwrap();
         let pixel = 0x80ff0000;
         let layer = abi::CompositeLayer {

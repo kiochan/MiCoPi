@@ -943,10 +943,10 @@ fn owner_affine_missing_capabilities_and_late_native_failure_publish_no_partial_
     outcome(&mut s);
 }
 
-struct FailRender {
-    native: Arc<dyn Renderer>,
-    armed: Cell<bool>,
-    failures: Cell<usize>,
+pub(super) struct FailRender {
+    pub(super) native: Arc<dyn Renderer>,
+    pub(super) armed: Cell<bool>,
+    pub(super) failures: Cell<usize>,
 }
 impl Renderer for FailRender {
     fn supports_masks(&self) -> bool {

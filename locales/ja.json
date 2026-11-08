@@ -1655,5 +1655,17 @@
   "Enable Vertical Brush Symmetry": "ブラシの垂直軸対称描画を有効にする",
   "Enable Horizontal Brush Symmetry": "ブラシの水平軸対称描画を有効にする",
   "Enable Both Brush Symmetry Axes": "ブラシの両軸対称描画を有効にする",
-  "Off": "オフ"
+  "Off": "オフ",
+  "Apply Multi-layer Liquify": "複数レイヤーのゆがみを適用",
+  "Inspect Multi-layer Liquify": "複数レイヤーのゆがみを確認",
+  "Preview Multi-layer Liquify": "複数レイヤーのゆがみをプレビュー",
+  "Multi-layer Liquify…": "複数レイヤーのゆがみ…",
+  "Multi-layer Liquify": "複数レイヤーのゆがみ",
+  "Drag on the canvas to reshape the captured layers.": "キャンバスをドラッグして対象レイヤーを変形します。",
+  "Whole layers; pixel selection is preserved.": "レイヤー全体が対象です。選択範囲は保持されます。",
+  "Pressure controls strength": "筆圧で強さを調整",
+  "Liquify source changed; cancel and reopen.": "元の画像が変更されました。キャンセルして開き直してください。",
+  "Radius": "半径",
+  "Strength": "強さ",
+  "Stabilization": "手ブレ補正"
 }

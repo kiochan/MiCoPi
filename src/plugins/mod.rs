@@ -46,6 +46,7 @@ pub(crate) mod layer_links;
 mod layer_transfer;
 mod layers;
 mod linked_movement;
+pub(crate) mod liquify;
 mod mask_geometry;
 pub(crate) mod movement;
 pub(crate) mod owner_affine;
@@ -69,6 +70,10 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        Liquify => liquify::execute(session, args),
+        LiquifyPlan => liquify::describe(session, args),
+        LiquifyPreview => liquify::preview(session, args),
+        LiquifyDialog => liquify::request_dialog(session),
         HslPreview => hsl_preview::execute(session, args),
         TonalPreview => tonal_preview::execute(session, args),
         TonalDialog => tonal_preview::request_dialog(session, args),

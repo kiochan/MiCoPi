@@ -122,6 +122,10 @@ pub enum Operation {
     TransformPixels,
     TransformPreview,
     TransformPlan,
+    Liquify,
+    LiquifyPlan,
+    LiquifyPreview,
+    LiquifyDialog,
     TransformRepeat,
     TransformRepeatCopy,
     TransformState,
@@ -388,6 +392,15 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::LiquifyDialog {
+            return json!({"type":"object","additionalProperties":false});
+        }
+        if matches!(
+            self,
+            Self::Liquify | Self::LiquifyPlan | Self::LiquifyPreview
+        ) {
+            return crate::plugins::liquify::schema();
+        }
         if matches!(self, Self::MirrorView | Self::MirrorViewVertical) {
             return json!({"type":"object","additionalProperties":false});
         }
@@ -750,6 +763,8 @@ impl Operation {
                 | Self::TrimBounds
                 | Self::TransformState
                 | Self::TransformPlan
+                | Self::LiquifyPlan
+                | Self::LiquifyPreview
                 | Self::ReadSelection
                 | Self::ClipboardState
                 | Self::SystemClipboardState

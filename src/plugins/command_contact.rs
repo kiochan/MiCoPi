@@ -87,6 +87,8 @@ fn operation_policy(operation: Operation) -> CommandContactPolicy {
                 | Operation::MovePixels
                 | Operation::Nudge
                 | Operation::TransformPixels
+                | Operation::Liquify
+                | Operation::LiquifyDialog
                 | Operation::TransformPreview
                 | Operation::TransformRepeat
                 | Operation::TransformRepeatCopy
@@ -352,6 +354,8 @@ mod tests {
             ImageSize,
             DocumentResolution,
             TransformPixels,
+            Liquify,
+            LiquifyDialog,
             TransformPreview,
             TransformRepeat,
             TransformRepeatCopy,
@@ -428,6 +432,8 @@ mod tests {
             MaskSnapshot,
             MergeSelectedLayersPlan,
             TransformPlan,
+            LiquifyPlan,
+            LiquifyPreview,
             ImageSizePlan,
             ExportPlan,
             WorkflowState,

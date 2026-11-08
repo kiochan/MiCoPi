@@ -41,7 +41,7 @@ mod tests {
         .unwrap();
         let plugin = &registry.native_plugins["compositing"];
         assert!(plugin.supports_quantization());
-        assert!(!registry.native_plugins["native_paint"].supports_quantization());
+        assert!(!registry.native_plugins["painting"].supports_quantization());
         let (render, histogram) = plugin.quantization.unwrap();
         let source = [0x80ff0000];
         let layers = [abi::CompositeLayer {

@@ -56,6 +56,13 @@ impl Drop for NativeLiquify {
     }
 }
 impl NativePlugin {
+    #[cfg(test)]
+    pub(crate) fn replace_liquify_for_test(
+        &mut self,
+        api: Option<abi::LiquifyApi>,
+    ) -> Option<abi::LiquifyApi> {
+        std::mem::replace(&mut self.liquify, api)
+    }
     pub(crate) fn supports_liquify(&self) -> bool {
         self.liquify.is_some()
     }
@@ -90,6 +97,115 @@ impl NativePlugin {
     }
 }
 impl NativeLiquify {
+    pub(crate) fn pixels_frame_region(
+        &self,
+        source: &[u32],
+        method: u32,
+        region: abi::Region,
+        output: &mut [u32],
+    ) -> Result<(), String> {
+        let area = self.width as usize * self.height as usize;
+        if source.len() != area
+            || output.len() != area
+            || region.width == 0
+            || region.height == 0
+            || region
+                .x
+                .checked_add(region.width)
+                .is_none_or(|n| n > self.width)
+            || region
+                .y
+                .checked_add(region.height)
+                .is_none_or(|n| n > self.height)
+        {
+            return Err("Invalid Liquify frame region".into());
+        }
+        let offset = region.y as usize * self.width as usize + region.x as usize;
+        let src = abi::Pixels {
+            data: source.as_ptr().cast_mut(),
+            len: area,
+            width: self.width,
+            height: self.height,
+            stride: self.width,
+            origin_x: 0,
+            origin_y: 0,
+        };
+        let mut dst = abi::Pixels {
+            data: output[offset..].as_mut_ptr(),
+            len: area - offset,
+            width: region.width,
+            height: region.height,
+            stride: self.width,
+            origin_x: region.x,
+            origin_y: region.y,
+        };
+        if unsafe {
+            (self.api.pixels.unwrap())(self.state as *const c_void, method, &src, &mut dst)
+        } != abi::OK
+        {
+            return Err("Native Liquify region sampling failed".into());
+        }
+        Ok(())
+    }
+    pub(crate) fn mask_frame_region(
+        &self,
+        source: crate::engine::raster_masks::PlaneView<'_>,
+        method: u32,
+        region: abi::Region,
+        output: &mut [u8],
+    ) -> Result<(), String> {
+        use crate::engine::raster_masks::PlaneView;
+        let area = self.width as usize * self.height as usize;
+        if output.len() != area
+            || region.width == 0
+            || region.height == 0
+            || region
+                .x
+                .checked_add(region.width)
+                .is_none_or(|n| n > self.width)
+            || region
+                .y
+                .checked_add(region.height)
+                .is_none_or(|n| n > self.height)
+        {
+            return Err("Invalid Liquify mask region".into());
+        }
+        let src = match source {
+            PlaneView::Uniform(v) => abi::CompositeMask {
+                data: std::ptr::null(),
+                len: 0,
+                stride: 0,
+                constant: u32::from(v),
+            },
+            PlaneView::Dense(v) => {
+                if v.len() != area {
+                    return Err("Invalid Liquify mask source extent".into());
+                }
+                abi::CompositeMask {
+                    data: v.as_ptr(),
+                    len: v.len(),
+                    stride: self.width,
+                    constant: 0,
+                }
+            }
+        };
+        let offset = region.y as usize * self.width as usize + region.x as usize;
+        let mut dst = abi::A8Pixels {
+            data: output[offset..].as_mut_ptr(),
+            len: area - offset,
+            width: region.width,
+            height: region.height,
+            stride: self.width,
+            origin_x: region.x,
+            origin_y: region.y,
+        };
+        if unsafe { (self.api.mask.unwrap())(self.state as *const c_void, method, &src, &mut dst) }
+            != abi::OK
+        {
+            return Err("Native Liquify mask region sampling failed".into());
+        }
+        Ok(())
+    }
     pub(crate) fn clear(&mut self) -> Result<(), String> {
         if unsafe { (self.api.clear.unwrap())(self.state as *mut c_void) } != abi::OK {
             return Err("Cannot clear Liquify field".into());
@@ -205,7 +321,7 @@ mod tests {
             &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("plugins"),
         )
         .unwrap();
-        let plugin = &registry.native_plugins["native_paint"];
+        let plugin = &registry.native_plugins["painting"];
         assert!(plugin.supports_liquify());
         assert!(!registry.native_plugins["compositing"].supports_liquify());
         let mut api = plugin.liquify.unwrap();

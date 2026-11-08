@@ -1655,5 +1655,17 @@
   "Enable Vertical Brush Symmetry": "Enable Vertical Brush Symmetry",
   "Enable Horizontal Brush Symmetry": "Enable Horizontal Brush Symmetry",
   "Enable Both Brush Symmetry Axes": "Enable Both Brush Symmetry Axes",
-  "Off": "Off"
+  "Off": "Off",
+  "Apply Multi-layer Liquify": "Apply Multi-layer Liquify",
+  "Inspect Multi-layer Liquify": "Inspect Multi-layer Liquify",
+  "Preview Multi-layer Liquify": "Preview Multi-layer Liquify",
+  "Multi-layer Liquify…": "Multi-layer Liquify…",
+  "Multi-layer Liquify": "Multi-layer Liquify",
+  "Drag on the canvas to reshape the captured layers.": "Drag on the canvas to reshape the captured layers.",
+  "Whole layers; pixel selection is preserved.": "Whole layers; pixel selection is preserved.",
+  "Pressure controls strength": "Pressure controls strength",
+  "Liquify source changed; cancel and reopen.": "Liquify source changed; cancel and reopen.",
+  "Radius": "Radius",
+  "Strength": "Strength",
+  "Stabilization": "Stabilization"
 }

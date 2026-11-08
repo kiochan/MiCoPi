@@ -77,6 +77,8 @@ pub(crate) mod layer_query;
 #[cfg(test)]
 mod linked_graph_tests;
 #[cfg(test)]
+mod liquify_tests;
+#[cfg(test)]
 mod mask_canvas_geometry_tests;
 #[cfg(test)]
 mod mask_group_delete_tests;

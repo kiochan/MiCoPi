@@ -380,7 +380,7 @@ impl Editor {
                 self.session.doc.height as f32,
             ) * self.zoom,
         );
-        let (events, mods, time) =
+        let (mut events, mods, time) =
             ui.input(|i| (i.events.clone(), i.modifiers, (i.time * 1000.) as u32));
         if !self.selection_preview_valid() || (self.blocked && self.selection_gesture.is_some()) {
             self.finish_stroke();
@@ -399,6 +399,11 @@ impl Editor {
         let layer = ui.layer_id();
         let ctx = ui.ctx().clone();
         let on_canvas = |p: Pos2| bounds.contains(p) && ctx.layer_id_at(p) == Some(layer);
+        if self.liquify.is_some() {
+            self.liquify_input(ui, bounds, layer, &events);
+            self.packets.clear();
+            events.clear();
+        }
         if self.transform.is_some()
             && !(self.guarded_transform_modal() && self.backend_contact_active())
         {
@@ -586,6 +591,7 @@ impl Editor {
         painter.rect_filled(bounds, 0, c.stage);
         if let Some(texture) = self
             .color_preview_texture()
+            .or_else(|| self.liquify_texture())
             .or_else(|| self.transform_texture())
             .or(self.texture.as_ref())
         {
@@ -620,6 +626,7 @@ impl Editor {
             );
         }
         self.transform_outline(&painter, c.accent);
+        self.liquify_cursor(&painter, c.accent);
         if !self.blocked {
             if let Some((a, b)) = self.area_drag {
                 let screen = |q: Pos2| self.document_screen_position(q);

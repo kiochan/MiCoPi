@@ -11,6 +11,19 @@ impl Session {
         operation: Option<Operation>,
         args: &Value,
     ) -> Result<(), ActionError> {
+        if operation == Some(Operation::LiquifyDialog) {
+            return crate::plugins::owner_affine::require_idle(self);
+        }
+        if matches!(
+            operation,
+            Some(Operation::Liquify | Operation::LiquifyPlan | Operation::LiquifyPreview)
+        ) {
+            return crate::plugins::liquify::admit(
+                self,
+                args,
+                operation != Some(Operation::LiquifyPlan),
+            );
+        }
         if operation == Some(Operation::TransformPreview) && self.runtime != "desktop" {
             return Err(ActionError::new("ui_unavailable","Free Transform controls require the desktop; use canvas.transform for headless editing"));
         }

@@ -117,9 +117,9 @@ Historical checkboxes below and in the comparison guide do not override this tab
 - [ ] Restore exact-head CI after the symmetry settings fixture compile failure;
   preserve regression assertions and repair subsequent failures before calling it green.
 - [x] Add the internal native inverse-field source prerequisite for R1, with checked
-  node/workspace budgets, joint symmetric pushes and local dirty regions. Native
-  CI validation, pixel sampling, ABI, multi-owner Session/preview/history and
-  end-to-end artist acceptance remain open; see [Liquify design](docs/liquify-design.md).
+  node/workspace budgets, joint symmetric pushes and local dirty regions. Source now connects optional ABI/pixel sampling,
+  captured multi-owner Session previews/grouped history and desktop input. New
+  exact-head CI, measured costs and end-to-end artist acceptance remain open; see [Liquify design](docs/liquify-design.md).
 - [ ] Deliver R1 multi-layer Liquify end to end: read-only explicit target/lock/mask
   admission, bounded native deformation, cached reversible previews, one committed
   owner group/outcome, project/replay and public automation, then measured costs.

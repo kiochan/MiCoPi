@@ -165,6 +165,8 @@ impl Session {
             )
         {
             self.transform_event.take()
+        } else if success && op == Some(Operation::Liquify) {
+            result.map(|result| serde_json::json!({"liquify":result}))
         } else if success && op.is_some_and(Operation::is_brush_preset) {
             result.map(|result| serde_json::json!({"brush_presets":result}))
         } else if success && op == Some(Operation::ArrangeLayers) {

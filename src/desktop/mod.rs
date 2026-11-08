@@ -11,6 +11,8 @@ mod canvas;
 mod canvas_export;
 #[path = "../../plugins/canvas/geometry.rs"]
 mod canvas_geometry;
+#[path = "../../plugins/canvas/liquify.rs"]
+mod canvas_liquify;
 #[path = "../../plugins/canvas/movement.rs"]
 mod canvas_movement;
 #[path = "../../plugins/canvas/new_document.rs"]
@@ -142,6 +144,7 @@ pub(super) struct Editor {
     area_mode: u8,
     movement_gesture: Option<canvas_movement::Gesture>,
     transform: Option<canvas_transform::Draft>,
+    liquify: Option<canvas_liquify::Draft>,
     selected_merge: Option<layers::SelectedMergeDraft>,
     selection_gesture: Option<selection_gesture::Gesture>,
     selection_combine: &'static str,
@@ -303,6 +306,7 @@ impl Editor {
             area_mode: 0,
             movement_gesture: None,
             transform: None,
+            liquify: None,
             selected_merge: None,
             selection_gesture: None,
             selection_combine: "replace",
@@ -451,7 +455,8 @@ impl Editor {
         }
     }
     fn command_sync_blocked(&self) -> bool {
-        self.command_sync_suspended
+        self.liquify.is_some()
+            || self.command_sync_suspended
             || self.command_palette_open()
             || self.guarded_command_form()
             || self.guarded_transform_modal()
@@ -991,6 +996,7 @@ impl Studio {
                     }
                 }
                 Some("transform.open") => self.editor.open_transform(),
+                Some("liquify.open") => self.editor.receive_liquify(&effect),
                 Some("hsl.open") => self.editor.receive_hsl_draft(&effect),
                 Some("tonal.open") => self.editor.receive_tonal_draft(&effect),
                 Some("grayscale.open") => self.editor.receive_grayscale_draft(&effect),
@@ -1291,6 +1297,7 @@ impl Studio {
             || self.editor.geometry.is_some()
             || self.editor.export_draft.is_some()
             || self.editor.transform.is_some()
+            || self.editor.liquify.is_some()
             || self.editor.command_form.is_some()
             || self.replay.open;
         self.editor.contact_draft_allowed = self.editor.contact_draft_modal()
@@ -1413,6 +1420,7 @@ impl Studio {
         self.editor.canvas_geometry_window(ctx);
         self.editor.export_window(ctx);
         self.editor.transform_window(ctx);
+        self.editor.liquify_window(ctx);
         self.editor.selected_merge_window(ctx);
         self.run_actions(ctx);
         if !ctx.input(|i| i.focused)

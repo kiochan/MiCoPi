@@ -820,6 +820,196 @@
           }
         }
       ]
+    },
+    {
+      "id": "canvas.liquify",
+      "title": "Apply Multi-layer Liquify",
+      "operation": "liquify",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "changed": {
+            "type": "boolean"
+          },
+          "layer_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "mask_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "steps": {
+            "type": "integer"
+          },
+          "selection_policy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "changed",
+          "layer_ids",
+          "mask_ids",
+          "steps",
+          "selection_policy"
+        ]
+      }
+    },
+    {
+      "id": "canvas.liquify.plan",
+      "title": "Inspect Multi-layer Liquify",
+      "operation": "liquify_plan",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "document_identity": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "owner_scope": {
+            "type": "object"
+          },
+          "layer_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "mask_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "field_bytes": {
+            "type": "integer"
+          },
+          "staged_bytes": {
+            "type": "integer"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "contact_active": {
+            "type": "boolean"
+          },
+          "selection_policy": {
+            "type": "string"
+          },
+          "exterior_rgba": {
+            "type": "string"
+          },
+          "exterior_a8": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_identity",
+          "revision",
+          "owner_scope",
+          "layer_ids",
+          "mask_ids",
+          "field_bytes",
+          "staged_bytes",
+          "width",
+          "height",
+          "contact_active",
+          "selection_policy",
+          "exterior_rgba",
+          "exterior_a8"
+        ]
+      }
+    },
+    {
+      "id": "canvas.liquify.preview",
+      "title": "Preview Multi-layer Liquify",
+      "operation": "liquify_preview",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "document_identity": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "layer_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "mask_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "field_bytes": {
+            "type": "integer"
+          },
+          "staged_bytes": {
+            "type": "integer"
+          },
+          "preview_cost": {
+            "type": "object"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          },
+          "apply": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "document_identity",
+          "revision",
+          "layer_ids",
+          "mask_ids",
+          "width",
+          "height",
+          "field_bytes",
+          "staged_bytes",
+          "preview_cost",
+          "mimeType",
+          "data",
+          "apply"
+        ]
+      }
+    },
+    {
+      "id": "canvas.liquify.open",
+      "title": "Multi-layer Liquify…",
+      "operation": "liquify_dialog",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "queued"
+        ]
+      }
     }
   ],
   "library": "micopi_painting_tools.dll",

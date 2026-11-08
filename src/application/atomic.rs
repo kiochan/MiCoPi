@@ -127,6 +127,7 @@ impl Operation {
                 | Self::CanvasSize
                 | Self::MovePixels
                 | Self::TransformPixels
+                | Self::Liquify
                 | Self::TransformRepeat
                 | Self::TransformRepeatCopy
                 | Self::Nudge

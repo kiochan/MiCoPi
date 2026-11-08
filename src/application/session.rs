@@ -640,6 +640,7 @@ impl Session {
                                     | Operation::CaptureWorkspace
                                     | Operation::WindowCapture
                                     | Operation::TransformPreview
+                                    | Operation::LiquifyDialog
                                     | Operation::HslDialog
                                     | Operation::TonalDialog
                                     | Operation::GrayscaleDialog

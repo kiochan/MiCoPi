@@ -363,6 +363,43 @@ fn owner_transform_raw_pairs_and_repeat_metadata_share_one_undo_without_unrelate
 }
 
 #[test]
+fn deformation_publication_keeps_affine_recipe_and_groups_raw_owners_once() {
+    let mut doc = fixture();
+    let scope = doc.capture_owner_transform_scope(&[2, 1], None).unwrap();
+    let before = doc.composition();
+    let rgba: Vec<_> = doc.layers.iter().map(|l| l.pixels.clone()).collect();
+    let mask = raw(&doc, 1);
+    let outputs = vec![
+        (2, vec![0xffabcdef; 6], None),
+        (1, vec![0xff123456; 6], Some((1, SamplePlane::Uniform(255)))),
+    ];
+    assert!(doc.apply_owner_deformation(outputs, scope).unwrap());
+    assert_eq!(doc.composition(), before);
+    assert_eq!(doc.undo.len(), 1);
+    assert!(doc.undo[0]
+        .group
+        .as_ref()
+        .unwrap()
+        .edits
+        .iter()
+        .all(|e| e.composition.is_none()));
+    doc.undo();
+    assert_eq!(doc.composition(), before);
+    assert_eq!(
+        doc.layers
+            .iter()
+            .map(|l| l.pixels.clone())
+            .collect::<Vec<_>>(),
+        rgba
+    );
+    assert_eq!(raw(&doc, 1), mask);
+    doc.redo();
+    assert_eq!(doc.layers[0].pixels, vec![0xff123456; 6]);
+    assert_eq!(doc.layers[1].pixels, vec![0xffabcdef; 6]);
+    assert_eq!(doc.composition(), before);
+}
+
+#[test]
 fn owner_transform_mask_only_retains_other_raw_domains_and_ignores_owner_pixel_alpha_locks() {
     let mut doc = fixture();
     doc.layer_metadata[1].pixel_locked = true;

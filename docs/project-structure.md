@@ -1,14 +1,14 @@
 # Project Structure and Ownership
 
-`src/plugins/native_liquify.rs` negotiates the optional Liquify table and owns cached
-DLL handles. `plugins/painting/src/liquify.rs` owns immutable RGBA/A8 region sampling;
-`liquify_tests.rs` covers sampler references and ABI rejection. Session/UI integration
-remains pending.
-
-`plugins/painting/src/liquify_field.rs` owns bounded inverse-field updates and
-interpolation; `liquify_field_tests.rs` owns independent scalar/ROI/budget/reuse
-references. This internal prerequisite has no exported Liquify ABI or Session/UI
-operation yet; [delivery design](liquify-design.md) records the remaining stages.
+`src/plugins/liquify.rs` owns captured requests, cost/lock admission, typed cached
+multi-owner drafts and shared preview/Apply handlers. `src/plugins/native_liquify.rs`
+negotiates the optional DLL table and owns cached handles. Pixel field/sampling
+stays in `plugins/painting/src/liquify_field.rs` and `liquify.rs`, with independent
+native references. `plugins/canvas/liquify.rs` owns compiled desktop controls and
+typed canvas input; `src/engine/owner_affine.rs` shares grouped raw publication
+without replacing the affine Repeat recipe. Session, engine, UI and transport
+regressions accompany the source integration; [Liquify delivery gates](liquify-design.md)
+remain open until verified.
 
 `docs/painting-requirements.md` owns current artist outcomes and acceptance;
 `ROADMAP.md` maps delivery scope, while `docs/photoshop-essentials.md` retains

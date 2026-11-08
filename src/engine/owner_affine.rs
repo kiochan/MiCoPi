@@ -114,6 +114,25 @@ impl Document {
         let scope = recipe
             .owners
             .ok_or("Owner transform recipe has no captured scope")?;
+        self.apply_owner_outputs(outputs, mask_only, scope, Some(recipe))
+    }
+
+    /// Publish a deformation without replacing the independent affine Repeat recipe.
+    pub(crate) fn apply_owner_deformation(
+        &mut self,
+        outputs: Vec<(u64, Vec<u32>, Option<(u64, SamplePlane)>)>,
+        scope: OwnerScope,
+    ) -> Result<bool, String> {
+        self.apply_owner_outputs(outputs, None, scope, None)
+    }
+
+    fn apply_owner_outputs(
+        &mut self,
+        outputs: Vec<(u64, Vec<u32>, Option<(u64, SamplePlane)>)>,
+        mask_only: Option<(u64, SamplePlane)>,
+        scope: OwnerScope,
+        recipe: Option<Recipe>,
+    ) -> Result<bool, String> {
         if self.stroke.is_some() || self.mask_contact.is_some() || self.history_group.is_some() {
             return Err("Finish the current contact before transforming raster owners".into());
         }
@@ -163,7 +182,7 @@ impl Document {
                 plans.push((plan, rgba, a8));
             }
         }
-        let recipe_changed = self.last_transform != Some(recipe);
+        let recipe_changed = recipe.is_some() && self.last_transform != recipe;
         let raw_changed = plans.iter().any(|(_, rgba, a8)| *rgba || *a8)
             || mask_plan.as_ref().is_some_and(|(_, changed)| *changed);
         if !recipe_changed && !raw_changed {
@@ -180,7 +199,7 @@ impl Document {
         }
         if recipe_changed {
             let before = self.composition();
-            self.last_transform = Some(recipe);
+            self.last_transform = recipe;
             self.commit_composition(before, None);
         }
         self.end_history_group()
