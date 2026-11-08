@@ -1,5 +1,9 @@
 # Documentation
 
+[Painting-first Requirements](painting-requirements.md) defines the current
+artist outcomes and acceptance gates. The former exhaustive PS parity goal was
+cancelled; its comparison checklist remains reference material.
+
 [Horizontal/vertical view mirroring](view-mirroring.md) keeps document pixels unchanged
 while reflecting Canvas display, input and edit overlays. Runtime/UI validation
 and native captures remain pending.

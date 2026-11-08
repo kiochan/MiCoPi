@@ -258,6 +258,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Documentation and contribution workflow
 
+- Replace exhaustive PS-common parity as the product acceptance baseline with maintainer-defined painting requirements: multi-layer Liquify, shared adjustments bound to explicit layers, convenient groups, layer search and symmetry editing. Preserve the prior comparison checklist as reference and existing implementations/compatibility. Define target/operator/preview/Undo/replay and performance evidence gates, align the roadmap, four READMEs and agent/ownership guides, and keep replacement autonomous execution inactive pending explicit direction. This is planning, not implementation or runtime validation of the requested tools.
+
 - Prefer CI-backed continuous development: author tests with complete feature increments, keep local checks focused, commit/push reviewable changes and continue independent work while full CI runs. Track exact-commit failures and repair them without presenting pending checks as passed; retain separate screenshot/tablet evidence. Document the maintainer's standing push authorization and cancel superseded branch CI runs.
 
 - Prioritize illustration workflows in the roadmap and Photoshop-common plan: reliable blending/masks, linked multi-layer movement/transforms, ordered adjustment layers, brush quality and bounded native Liquify. Retain text, complex photography and layered interchange as later backlog work; specify shared execution, undo/replay and performance gates without marking planned features available.

@@ -1,6 +1,12 @@
-# Photoshop-common editing plan
+# Photoshop-common reference backlog
 
-This is the implementation checklist for the maintainer's request to bring applicable PhotoCraft/Photoshop-common editing features to MiCoPi. Work proceeds continuously in dependency order, with small, verified commits on `main`. Unchecked items are planned, not available features.
+The former exhaustive implementation goal was cancelled by the maintainer on
+2026-11-08. [Painting-first Requirements](painting-requirements.md) now controls
+priorities and acceptance: multi-layer Liquify, shared targeted adjustments,
+convenient groups, layer search and symmetry editing. This document preserves
+functional references, completed work and possible future features; unchecked
+items are not an obligation to implement them all. They are not available
+features. Keep the existing compatibility and independently authored code.
 
 ## Reference and boundaries
 
@@ -23,12 +29,12 @@ The target is the common editing workflow of an anime/manga illustrator. The che
 | Workspace | Independent/docked/tabbed windows, Tools/Options, searchable settings and shortcuts | Guides, snapping, view rotation and multiple documents |
 | Automation | Schemas, public state, nodes, JSONL, MCP and GUI attachment | Extend the same contracts with every new operation |
 
-## Execution order
+## Historical illustration-priority breakdown
 
-The next slices prioritize illustration work. P1–P8 remain stable backlog labels;
+The prior illustration-priority breakdown is retained below as reference. P1–P8 remain stable backlog labels;
 they do not require finishing text or photographic interchange before improving
-painting. Shared admission, ownership, history and performance gates apply to
-every slice.
+painting. The new painting requirements supersede the priority table below. Shared
+admission, ownership, history and performance gates remain relevant to selected work.
 
 | Priority | Next usable slice | Dependency and delivery boundary |
 | --- | --- | --- |

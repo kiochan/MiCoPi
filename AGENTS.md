@@ -13,6 +13,7 @@ These instructions apply throughout this repository. Explicit maintainer instruc
 ## Product direction
 
 - Build a small, responsive native Rust painting studio for anime and manga illustrators. Prioritize drawing, clear tool feedback and a calm, configurable workspace. See [Interface Design](docs/interface-design.md).
+- Follow [Painting-first Requirements](docs/painting-requirements.md) for scope and acceptance. The former exhaustive PS feature goal was cancelled; retain its comparison checklist as a reference, not a requirement to complete every unchecked item. Prioritize multi-layer Liquify, explicitly bound shared adjustments, grouping/search and symmetry editing. Do not restart the old goal or create a replacement without explicit maintainer direction.
 - AI readiness means discoverable actions, schemas, public state and shared execution through plugins, MCP and headless clients. Keep document operations accessible through those contracts; presentation-only commands must explicitly report headless unavailability.
 - Put implemented behavior in [CHANGELOG](CHANGELOG.md), intended work and acceptance criteria in [ROADMAP](ROADMAP.md), and module ownership in [Project Structure](docs/project-structure.md). Keep these guides consistent rather than treating plans as completed work.
 

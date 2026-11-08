@@ -1,5 +1,10 @@
 # Project Structure and Ownership
 
+`docs/painting-requirements.md` owns current artist outcomes and acceptance;
+`ROADMAP.md` maps delivery scope, while `docs/photoshop-essentials.md` retains
+the former comparison backlog. Keep product requirements separate from claims
+of implemented or verified behavior in `CHANGELOG.md` and feature guides.
+
 `plugins/painting/src/symmetry.rs` owns fixed-size native dab reflection, while
 `raster.rs` shares the existing per-stamp deposits and capped influence cache.
 `ToolOptionsSymmetry` is an optional SDK/C-header tail; `src/application/brush_symmetry.rs` supplies scalar intent; Session, configuration

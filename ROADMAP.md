@@ -19,32 +19,35 @@ This roadmap starts from the **0.21.0 implementation and subsequent work on main
 
 Current boundaries include one document per Session, in-process native plugins, no crash-recovery workflow, and no verified system-clipboard interoperability or off-canvas layer storage. Raster masks support public painting/effects, document-wide geometry, plain single-layer owner copy/delete, owner-preserving group creation/hierarchy movement and mask-aware subtree copying/deletion; integer raster-owner movement and owner/exact-set affine Free Transform are supported, while owner/group perspective, masked selection/outline affine, owner Copy Repeat, group-mask movement and selected-pixel transfers, ungrouping, batches, merge/clipboard integration and clipping masks remain incomplete. Atomic document execution does not roll back arbitrary file, network or plugin-private effects. See [Architecture](docs/architecture.md), [Replay](docs/replay.md) and [Atomic Operations](docs/atomic-operations.md) for the exact contracts.
 
-## Delivery order
+## Painting-first delivery requirements
 
-| Milestone | Priority | Depends on | Outcome |
-| --- | --- | --- | --- |
-| M1 — Reliable document foundation | Next | Current baseline | Recoverable, bounded and consistently atomic editing |
-| M2 — Essential painting and editing | High | M1 transaction/history contracts | Complete a small illustration without leaving the application |
-| M3 — Plugin, node and AI authoring | High | M1 stable execution contracts | An independent author or AI client can build a useful extension |
-| M4 — Brush and tablet refinement | High | M1 measurement infrastructure; M2 tool primitives | Better stroke quality across tested devices |
-| M5 — Multiple documents and workspace | Later | M1; stable document/layer identifiers from M2 | Several canvases with explicit automation targets |
-| M6 — Replay production and release readiness | Later | M1; M2–M4 daily-use validation | Shareable time-lapses and a dependable public alpha |
+The maintainer cancelled the exhaustive PS-common feature goal on 2026-11-08.
+[Painting-first Requirements](docs/painting-requirements.md) now defines the
+acceptance baseline: multi-layer Liquify, shared adjustments bound to explicit
+layers, convenient groups, layer search and symmetry editing. Preserve existing
+code and compatibility; source implementations still need their documented
+verification. No replacement autonomous implementation goal is active yet.
 
-M2, M3 and M4 can progress independently after their foundation requirements are met. Every new editing feature must support actions, schemas, undo, recording and headless execution when introduced; AI integration is not deferred to a later rewrite.
+| Delivery focus | Required outcome |
+| --- | --- |
+| Multi-layer Liquify | One bounded deformation across independent captured owners, reversible previews and one Undo/outcome |
+| Shared targeted adjustments | One parameter controller bound to multiple explicit layers with defined per-source composition |
+| Grouping and search | Find, select and organize illustration parts through normal layer interactions |
+| Symmetry editing | Consistent supported drawing/correction tools around visible document axes |
 
-Within that foundation, the next editing slices prioritize anime/manga painting:
-reliable blend/mask behavior, linked multi-layer align/distribute,
-non-destructive affect-below adjustment layers, brush flow/tips/dynamics/presets
-and stabilization, then bounded Liquify corrections. The 26 color blend modes
-are delivered; deterministic Dissolve remains pending in the
-[editing checklist](docs/photoshop-essentials.md#p4--layer-organization-and-masks).
-Editable text, complex photographic features and layered interchange remain
-later backlog work. P1–P8 identify areas of that checklist rather than a strict
-requirement to finish every earlier area first.
+Audit and reuse existing foundations, then implement complete artist-facing
+vertical slices with tests and measured limits. Multi-layer target capture,
+mask/lock ownership, preview cancellation, rollback, persistence and verified
+replay are requirements within each slice. Exact operator order and target
+semantics must be defined before exposing shared adjustments or Liquify.
 
-The next plugin increment should build on the existing registry: an authoring kit and conformance runner, clearer package diagnostics and upgrade guidance. Locale edits already hot-reload; package activation, contribution changes and DLL replacement still require restart. Do not present runtime DLL unloading or a plugin marketplace as available. Reliability measurement and selection contracts remain priorities alongside plugin authoring.
-
-The maintainer's expanded [Photoshop-common editing plan](docs/photoshop-essentials.md) breaks the PhotoCraft-inspired functional work into P1–P8 increments. Follow its dependency order and acceptance checks while preserving the architecture and reliability gates above; unchecked entries remain planned work.
+The older M1–M6 sections below retain architectural backlog and implementation
+history. Their headings and unchecked entries are not a mandate to finish every
+item. The [PS comparison checklist](docs/photoshop-essentials.md) is reference
+material; consult it only for a feature serving the painting requirements.
+Keep implemented behavior in [CHANGELOG](CHANGELOG.md) and explicit evidence in
+feature guides. Native plugin activation still requires restart; retained
+extension plans do not imply runtime DLL unloading or marketplace availability.
 
 ## M1 — Reliable document foundation
 
