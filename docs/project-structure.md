@@ -4,12 +4,16 @@
 the exact integer full-strength path. Partial strength calls the shared legacy
 filter source; Session retains clipping, permission/history and outcome ownership.
 
-`plugins/native-paint/hsl_panel.rs` now hosts typed HSL and tonal draft variants
+`plugins/native-paint/hsl_panel.rs` now hosts typed HSL, tonal and grayscale draft variants
 with one shared cache, guarded scope and Apply/Cancel lifecycle.
 `plugins/native-paint/tonal_controls.rs` owns the local percent sliders/numeric
-fields. Both open actions use `color_preview.rs` queue admission; feature-owned
+fields, including grayscale default/reset at 100%. All three open actions use `color_preview.rs` queue admission; feature-owned
 delivery guards reject stale requests before showing controls. These UI sources
 compile into the host and do not cross the C ABI.
+
+`src/plugins/grayscale_preview.rs` owns grayscale parameter/schema adaptation,
+native filter-plan construction, fenced PNG results and desktop queue requests.
+It delegates immutable staging to the shared color pipeline.
 
 `src/plugins/color_preview.rs` owns the admitted immutable color-preview loan,
 bounded private raster, selection mix and final borrowed owner composition.

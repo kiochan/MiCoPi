@@ -10,6 +10,106 @@ fn fixture() -> Session {
     s
 }
 #[test]
+fn grayscale_preview_is_immutable_fenced_and_matches_soft_selection_masked_apply() {
+    use crate::plugins::grayscale_preview::{self, Parameters, Request};
+    let mut s = fixture();
+    let mask = call(
+        &mut s,
+        "mask.create",
+        json!({"owner":{"kind":"layer","id":1}}),
+    )["mask_id"]
+        .as_u64()
+        .unwrap();
+    call(&mut s, "mask.fill", json!({"mask_id":mask,"value":127}));
+    call(
+        &mut s,
+        "mask.target",
+        json!({"target":{"kind":"layer_pixels"}}),
+    );
+    call(
+        &mut s,
+        "layer.set",
+        json!({"position_locked":true,"alpha_locked":true}),
+    );
+    call(
+        &mut s,
+        "selection.shape",
+        json!({"kind":"rectangle","x":2,"y":1,"width":6,"height":5}),
+    );
+    call(&mut s, "selection.feather", json!({"radius":1}));
+    let request = Request {
+        document_identity: s.doc.identity,
+        document_revision: s.revision,
+        layer_id: 1,
+        parameters: Parameters { amount: 50. },
+    };
+    let state = s.state();
+    let raw = s.doc.layers[0].pixels.clone();
+    let composite = s.doc.composite.clone();
+    let events = s.journal.as_ref().unwrap().entries.len();
+    let history = s.doc.history_bytes();
+    let (preview, cost) = grayscale_preview::render(&s, request).unwrap();
+    assert_eq!(cost.pixel_scratch_bytes, 96 * 4 * 2);
+    let result = call(&mut s, "layer.grayscale.preview", json!(request));
+    let bytes = crate::application::png_io::encode(
+        12,
+        8,
+        preview.iter().copied(),
+        s.doc.info().export_density(),
+    )
+    .unwrap();
+    assert_eq!(result["data"], codec::base64(&bytes));
+    assert_eq!(s.state(), state);
+    assert_eq!(s.doc.layers[0].pixels, raw);
+    assert_eq!(s.doc.composite, composite);
+    assert_eq!(s.doc.history_bytes(), history);
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), events);
+    let action: Action = serde_json::from_value(result["apply"].clone()).unwrap();
+    assert_eq!(action.action, "layer.grayscale");
+    assert_eq!(action.expected_revision, Some(request.document_revision));
+    s.apply(action).unwrap();
+    assert_eq!(s.doc.composite, preview);
+    assert_eq!(s.revision, request.document_revision + 1);
+    assert_eq!(
+        s.apply(Action::new("layer.grayscale.preview", json!(request)))
+            .unwrap_err()
+            .code,
+        "revision_conflict"
+    );
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(s.doc.layers[0].pixels, raw);
+    assert_eq!(s.doc.composite, composite);
+    check(&mut s);
+}
+#[test]
+fn grayscale_dialog_has_full_default_preserves_revision_and_rejects_headless_atomic_use() {
+    let mut s = fixture();
+    assert_eq!(
+        s.apply(Action::new("layer.grayscale.open", json!({})))
+            .unwrap_err()
+            .code,
+        "ui_unavailable"
+    );
+    assert!(s.ui_effects.is_empty());
+    s.runtime = "desktop";
+    let state = s.state();
+    call(&mut s, "layer.grayscale.open", json!({}));
+    assert_eq!(s.state(), state);
+    let effect = s.ui_effects.pop_front().unwrap();
+    assert_eq!(effect["id"], "grayscale.open");
+    assert_eq!(effect["value"], json!({"amount":100.}));
+    assert_eq!(
+        s.apply(Action::new(
+            "pipeline.run",
+            json!({"atomic":true,"steps":[{"id":"open","action":"layer.grayscale.open","args":{}}]})
+        ))
+        .unwrap_err()
+        .code,
+        "non_atomic_action"
+    );
+    assert!(s.ui_effects.is_empty());
+}
+#[test]
 fn grayscale_selection_alpha_locks_one_undo_and_post_edit_rollback_agree() {
     let mut s = fixture();
     call(
@@ -159,6 +259,20 @@ fn grayscale_invalid_locks_mask_target_and_contact_reject_before_dispatch() {
     assert_eq!(s.revision, revision);
     assert_eq!(s.doc.layers[0].pixels, pixels);
     assert_eq!(s.native_instances.len(), instances);
+    let events = s.journal.as_ref().unwrap().entries.len();
+    assert_eq!(
+        s.apply(Action::new(
+            "layer.grayscale.preview",
+            json!({"document_identity":s.doc.identity,
+        "document_revision":s.revision,"layer_id":1,"parameters":{"amount":100}})
+        ))
+        .unwrap_err()
+        .code,
+        "stroke_active"
+    );
+    assert!(s.stroke.active());
+    assert_eq!(s.revision, revision);
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), events);
     s.pointer(Pointer {
         phase: PointerPhase::Move,
         time: 2,

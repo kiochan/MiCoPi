@@ -392,6 +392,176 @@
           }
         }
       }
+    },
+    {
+      "id": "layer.grayscale.preview",
+      "title": "Grayscale: Preview Active Layer",
+      "operation": "grayscale_preview",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "document_identity",
+          "revision",
+          "layer_id",
+          "parameters",
+          "width",
+          "height",
+          "mimeType",
+          "data",
+          "cost",
+          "apply"
+        ],
+        "properties": {
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/png"
+            ]
+          },
+          "data": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "object",
+            "required": [
+              "source_scratch_bytes",
+              "composite_bytes",
+              "mask_effect_bytes",
+              "pixel_scratch_bytes"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "source_scratch_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "composite_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "mask_effect_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "pixel_scratch_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              }
+            }
+          },
+          "apply": {
+            "type": "object",
+            "required": [
+              "action",
+              "args",
+              "expected_revision"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "layer.grayscale"
+                ]
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "amount"
+                ],
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100,
+                    "title": "Grayscale Strength"
+                  }
+                }
+              },
+              "expected_revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "amount"
+            ],
+            "properties": {
+              "amount": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "title": "Grayscale Strength"
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.grayscale.open",
+      "title": "Open Grayscale Controls",
+      "operation": "grayscale_dialog",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "queued",
+          "document_identity",
+          "revision",
+          "layer_id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          },
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        }
+      }
     }
   ],
   "action_access": {

@@ -84,7 +84,14 @@ def commands():
     p.add('tonal-workflow-result', 'histogram.query', source='layer', layer_id=1)
     p.add('gray-new', 'canvas.new', width=4, height=4)
     p.add('gray-fill', 'layer.fill_color', color='#ff000080')
+    p.add('gray-preview', 'pipeline.run', steps=[
+        dict(id='read', action='graph.read', args={}),
+        dict(id='draft', action='layer.grayscale.preview', args=dict(
+            document_identity={'$ref': 'read#/result/document_identity'},
+            document_revision={'$ref': 'read#/result/revision'}, layer_id=1,
+            parameters=dict(amount=50)))])
     p.add('gray-partial', 'layer.grayscale', amount=50)
+    p.add('gray-image', 'canvas.snapshot')
     p.add('gray-partial-bins', 'histogram.query', source='layer', layer_id=1)
     p.add('gray-undo', 'history.undo')
     p.add('gray-original-bins', 'histogram.query', source='layer', layer_id=1)
@@ -140,6 +147,10 @@ def validate(values, plan):
     assert at('dry')['ok'] and at('run')['ok'] and at('verify')['valid']
     assert at('tonal-run')['ok'] and at('tonal-edit')['implementation'] == 'independent Rust DLL'
     assert at('gray-run')['ok'] and at('gray-partial')['implementation'] == 'independent Rust DLL'
+    gray_preview = at('gray-preview')
+    assert gray_preview['ok']
+    assert gray_preview['results']['draft']['result']['data'] == at('gray-image')['data']
+    assert gray_preview['results']['draft']['result']['apply']['action'] == 'layer.grayscale'
     tonal_preview = at('tonal-preview')
     assert tonal_preview['ok']
     assert tonal_preview['results']['draft']['result']['data'] == at('tonal-image')['data']

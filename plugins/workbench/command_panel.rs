@@ -242,6 +242,7 @@ impl Editor {
             Some(
                 crate::application::Operation::HslDialog
                     | crate::application::Operation::TonalDialog
+                    | crate::application::Operation::GrayscaleDialog
             )
         ) {
             self.core(action, initial);

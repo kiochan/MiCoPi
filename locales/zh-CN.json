@@ -1610,5 +1610,8 @@
   "Open Brightness/Contrast Controls": "打开亮度／对比度调整",
   "Document changed; reopen Brightness/Contrast.": "画布已改变，请重新打开亮度／对比度调整。",
   "Grayscale: Active Layer": "灰度：当前图层",
-  "Grayscale Strength": "灰度强度"
+  "Grayscale Strength": "灰度强度",
+  "Grayscale: Preview Active Layer": "灰度：预览当前图层",
+  "Open Grayscale Controls": "打开灰度调整",
+  "Document changed; reopen Grayscale.": "画布已改变，请重新打开灰度调整。"
 }

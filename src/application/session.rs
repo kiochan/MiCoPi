@@ -612,6 +612,7 @@ impl Session {
                                     | Operation::TransformPreview
                                     | Operation::HslDialog
                                     | Operation::TonalDialog
+                                    | Operation::GrayscaleDialog
                                     | Operation::AdjustmentInspect
                                     | Operation::ExportDialog
                                     | Operation::OpenSelectedMerge

@@ -1,6 +1,6 @@
 # MiCoPi
 
-[Direct weighted grayscale](docs/grayscale.md) adds native active-layer strength controls with preserved alpha, selection/locks, Undo and verified replay. Runtime validation and dedicated preview controls remain pending.
+[Direct weighted grayscale](docs/grayscale.md) adds native active-layer strength controls with preserved alpha, selection/locks, Undo and verified replay. Fenced PNG previews and cached desktop Strength/Reset/Apply/Cancel controls now share the color-draft pipeline. Runtime validation and native screenshot review remain pending.
 
 [Direct Brightness/Contrast](docs/brightness-contrast.md) now provides native active-layer editing with a prepared byte table, selection/locks, Undo and verified replay. Read-only PNG previews now share the validated HSL staging pipeline. Runtime checks await CI; coupled desktop sliders, cached previews and Apply/Cancel are implemented in source, with new UI validation and native captures pending.
 

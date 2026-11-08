@@ -5,7 +5,7 @@ use crate::{
     engine::hsl::Hsl,
     plugins::{
         color_preview::{Cost, Scope},
-        hsl_preview, tonal_preview,
+        grayscale_preview, hsl_preview, tonal_preview,
     },
 };
 use std::time::Duration;
@@ -18,6 +18,7 @@ const SETTLE: Duration = Duration::from_millis(150);
 enum Effect {
     Hsl(Hsl),
     Tonal(tonal_preview::Parameters),
+    Grayscale(grayscale_preview::Parameters),
 }
 impl Effect {
     fn parse(action: &str, args: &serde_json::Value) -> Option<Self> {
@@ -26,6 +27,9 @@ impl Effect {
             "layer.brightness_contrast" => {
                 serde_json::from_value(args.clone()).ok().map(Self::Tonal)
             }
+            "layer.grayscale" => serde_json::from_value(args.clone())
+                .ok()
+                .map(Self::Grayscale),
             _ => None,
         }
     }
@@ -33,24 +37,28 @@ impl Effect {
         match self {
             Self::Hsl(_) => "layer.hue_saturation",
             Self::Tonal(_) => "layer.brightness_contrast",
+            Self::Grayscale(_) => "layer.grayscale",
         }
     }
     fn title(self) -> &'static str {
         match self {
             Self::Hsl(_) => "Hue/Saturation",
             Self::Tonal(_) => "Brightness/Contrast",
+            Self::Grayscale(_) => "Grayscale",
         }
     }
     fn window_id(self) -> &'static str {
         match self {
             Self::Hsl(_) => "hsl-color-draft-window",
             Self::Tonal(_) => "tonal-color-draft-window",
+            Self::Grayscale(_) => "grayscale-color-draft-window",
         }
     }
     fn neutral(self) -> bool {
         match self {
             Self::Hsl(value) => value == Hsl::default(),
             Self::Tonal(value) => value == tonal_preview::Parameters::default(),
+            Self::Grayscale(value) => value.amount == 0.,
         }
     }
     fn edit(&mut self, ui: &mut Ui, id: Id) {
@@ -61,6 +69,9 @@ impl Effect {
             Self::Tonal(value) => {
                 tonal_controls::edit(ui, id, value);
             }
+            Self::Grayscale(value) => {
+                tonal_controls::grayscale(ui, id, value);
+            }
         }
     }
     fn apply_action(self, scope: Scope) -> crate::application::Action {
@@ -70,6 +81,7 @@ impl Effect {
             args: match self {
                 Self::Hsl(value) => serde_json::json!(value),
                 Self::Tonal(value) => serde_json::json!(value),
+                Self::Grayscale(value) => serde_json::json!(value),
             },
         }
     }
@@ -91,6 +103,15 @@ impl Effect {
             Self::Tonal(parameters) => tonal_preview::render(
                 s,
                 tonal_preview::Request {
+                    document_identity: scope.document_identity,
+                    document_revision: scope.document_revision,
+                    layer_id: scope.layer_id,
+                    parameters,
+                },
+            ),
+            Self::Grayscale(parameters) => grayscale_preview::render(
+                s,
+                grayscale_preview::Request {
                     document_identity: scope.document_identity,
                     document_revision: scope.document_revision,
                     layer_id: scope.layer_id,
@@ -244,6 +265,13 @@ impl Editor {
             effect,
             "layer.brightness_contrast",
             "Document changed; reopen Brightness/Contrast.",
+        );
+    }
+    pub(super) fn receive_grayscale_draft(&mut self, effect: &serde_json::Value) {
+        self.receive_color_draft(
+            effect,
+            "layer.grayscale",
+            "Document changed; reopen Grayscale.",
         );
     }
     fn receive_color_draft(&mut self, effect: &serde_json::Value, action: &str, stale: &str) {
@@ -435,6 +463,92 @@ mod tests {
                 ],
             );
         }
+    }
+    #[test]
+    fn grayscale_default_reset_apply_and_cancel_share_the_cached_draft() {
+        let mut app = studio();
+        let ctx = Context::default();
+        let raw = app.editor.session.doc.layers[0].pixels.clone();
+        let revision = app.editor.session.revision;
+        let events = app.editor.session.journal.as_ref().unwrap().entries.len();
+        app.editor.begin_plugin_command("layer.grayscale");
+        assert_eq!(
+            draft(&mut app).effect,
+            Effect::Grayscale(grayscale_preview::Parameters { amount: 100. })
+        );
+        settle(&mut app, &ctx);
+        assert_eq!(draft(&mut app).renders, 1);
+        assert!(app.editor.color_preview_texture().is_some());
+        draft(&mut app).effect = Effect::Grayscale(grayscale_preview::Parameters { amount: 0. });
+        frame(&mut app, &ctx, vec2(1000., 900.), vec![]);
+        settle(&mut app, &ctx);
+        assert!(app.editor.color_preview_texture().is_none());
+        assert_eq!(draft(&mut app).renders, 1);
+        click(&mut app, &ctx, "grayscale-reset");
+        settle(&mut app, &ctx);
+        assert_eq!(
+            draft(&mut app).effect,
+            Effect::Grayscale(grayscale_preview::Parameters { amount: 100. })
+        );
+        assert_eq!(draft(&mut app).renders, 2);
+        assert_eq!(app.editor.session.doc.layers[0].pixels, raw);
+        assert_eq!(app.editor.session.revision, revision);
+        assert_eq!(
+            app.editor.session.journal.as_ref().unwrap().entries.len(),
+            events
+        );
+        click(&mut app, &ctx, "hsl-apply");
+        assert!(app.editor.command_form.is_none());
+        assert_eq!(
+            app.editor.session.doc.layers[0].pixels,
+            vec![0x80363636; 96]
+        );
+        assert_eq!(app.editor.session.revision, revision + 1);
+        assert_eq!(
+            app.editor.session.journal.as_ref().unwrap().entries.len(),
+            events + 1
+        );
+        app.editor.core("history.undo", json!({}));
+        assert_eq!(app.editor.session.doc.layers[0].pixels, raw);
+        let before = app.editor.session.state();
+        app.editor.begin_plugin_command("layer.grayscale");
+        settle(&mut app, &ctx);
+        click(&mut app, &ctx, "hsl-cancel");
+        assert_eq!(app.editor.session.state(), before);
+    }
+    #[test]
+    fn grayscale_open_delivery_preserves_defaults_and_discards_stale_requests() {
+        let mut app = studio();
+        let ctx = Context::default();
+        app.editor.session.ui_effects.clear();
+        let before = app.editor.session.state();
+        app.editor.begin_plugin_command("layer.grayscale.open");
+        assert!(app.editor.command_form.is_none());
+        app.consume_ui_effects(&ctx);
+        assert_eq!(
+            draft(&mut app).effect,
+            Effect::Grayscale(grayscale_preview::Parameters { amount: 100. })
+        );
+        assert_eq!(app.editor.session.state(), before);
+        settle(&mut app, &ctx);
+        click(&mut app, &ctx, "hsl-cancel");
+        app.editor
+            .session
+            .apply(crate::application::Action::new(
+                "layer.grayscale.open",
+                json!({}),
+            ))
+            .unwrap();
+        app.editor
+            .session
+            .apply(crate::application::Action::new(
+                "layer.rename",
+                json!({"name":"New source"}),
+            ))
+            .unwrap();
+        app.consume_ui_effects(&ctx);
+        assert!(app.editor.command_form.is_none());
+        assert_eq!(app.editor.status, "Document changed; reopen Grayscale.");
     }
     #[test]
     fn tonal_controls_preview_reuse_reset_apply_undo_and_cancel_share_one_draft() {
@@ -725,6 +839,8 @@ mod tests {
                 ("layer.hue_saturation", 960.),
                 ("layer.brightness_contrast", 320.),
                 ("layer.brightness_contrast", 960.),
+                ("layer.grayscale", 320.),
+                ("layer.grayscale", 960.),
             ] {
                 for large in [false, true] {
                     app.editor.settings.ui = crate::configuration::Appearance::default();
@@ -732,7 +848,14 @@ mod tests {
                         app.editor.settings.ui.font_size = 22.;
                         app.editor.settings.ui.control_height = 48.;
                     }
-                    app.editor.begin_plugin_command(action);
+                    app.editor.begin_plugin_command_with_args(
+                        action,
+                        if action == "layer.grayscale" {
+                            json!({"amount":0})
+                        } else {
+                            json!({})
+                        },
+                    );
                     let ctx = Context::default();
                     theme::fonts(&ctx);
                     theme::apply(&ctx, &app.editor.settings.ui);

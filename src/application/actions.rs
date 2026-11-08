@@ -98,6 +98,8 @@ pub enum Operation {
     TonalPreview,
     HslDialog,
     TonalDialog,
+    GrayscalePreview,
+    GrayscaleDialog,
     GraphSet,
     GraphCatalog,
     Describe,
@@ -313,6 +315,7 @@ impl Operation {
                 Self::DuplicateLayer
                     | Self::HslDialog
                     | Self::TonalDialog
+                    | Self::GrayscaleDialog
                     | Self::BrushAngleAdjust
                     | Self::BrushPresetUpsert
                     | Self::BrushPresetDelete
@@ -375,6 +378,14 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::GrayscalePreview {
+            return crate::plugins::grayscale_preview::schema();
+        }
+        if self == Self::GrayscaleDialog {
+            let mut parameters = crate::plugins::grayscale_preview::Parameters::schema();
+            parameters.as_object_mut().unwrap().remove("required");
+            return json!({"type":"object","additionalProperties":false,"properties":{"parameters":parameters}});
+        }
         if self == Self::TonalDialog {
             let mut parameters = crate::plugins::tonal_preview::Parameters::schema();
             parameters.as_object_mut().unwrap().remove("required");
@@ -688,6 +699,7 @@ impl Operation {
                 | Self::HistogramQuery
                 | Self::HslPreview
                 | Self::TonalPreview
+                | Self::GrayscalePreview
                 | Self::GraphCatalog
                 | Self::Describe
                 | Self::ContextRead

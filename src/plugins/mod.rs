@@ -36,6 +36,7 @@ mod compositing;
 mod document;
 pub(crate) mod export;
 mod geometry;
+pub(crate) mod grayscale_preview;
 pub(crate) mod groups;
 pub(crate) mod histogram;
 pub(crate) mod hsl_preview;
@@ -70,6 +71,8 @@ pub(crate) fn execute(
         HslPreview => hsl_preview::execute(session, args),
         TonalPreview => tonal_preview::execute(session, args),
         TonalDialog => tonal_preview::request_dialog(session, args),
+        GrayscalePreview => grayscale_preview::execute(session, args),
+        GrayscaleDialog => grayscale_preview::request_dialog(session, args),
         HslDialog => hsl_preview::request_dialog(session, args),
         BrushAngleAdjust => brush_tip::execute(session, args),
         BrushPresetsQuery | BrushPresetUpsert | BrushPresetDelete | BrushPresetApply
