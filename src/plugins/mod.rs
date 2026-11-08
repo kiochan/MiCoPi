@@ -70,6 +70,12 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        // Public registration and the handler land together in the adjustment
+        // feature branch; this negotiated operation is an integration prerequisite.
+        AdjustmentPreview => Err(crate::application::ActionError::new(
+            "feature_pending",
+            "Adjustment preview is not registered in this build",
+        )),
         Liquify => liquify::execute(session, args),
         LiquifyPlan => liquify::describe(session, args),
         LiquifyPreview => liquify::preview(session, args),

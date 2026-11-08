@@ -194,6 +194,7 @@ pub enum Operation {
     LayerBatch,
     GroupQuery,
     AdjustmentCatalog,
+    AdjustmentPreview,
     AdjustmentQuery,
     AdjustmentRead,
     AdjustmentCreate,
@@ -726,6 +727,7 @@ impl Operation {
             Self::NodeCatalog
                 | Self::BrushPresetsQuery
                 | Self::AdjustmentCatalog
+                | Self::AdjustmentPreview
                 | Self::AdjustmentQuery
                 | Self::AdjustmentRead
                 | Self::ReplayStatus
@@ -810,6 +812,7 @@ impl Operation {
         matches!(
             self,
             Self::AdjustmentCatalog
+                | Self::AdjustmentPreview
                 | Self::AdjustmentQuery
                 | Self::AdjustmentRead
                 | Self::AdjustmentCreate
