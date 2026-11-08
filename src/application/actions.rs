@@ -100,6 +100,10 @@ pub enum Operation {
     TonalDialog,
     GrayscalePreview,
     GrayscaleDialog,
+    ThresholdPreview,
+    PosterizePreview,
+    ThresholdDialog,
+    PosterizeDialog,
     GraphSet,
     GraphCatalog,
     Describe,
@@ -316,6 +320,8 @@ impl Operation {
                     | Self::HslDialog
                     | Self::TonalDialog
                     | Self::GrayscaleDialog
+                    | Self::ThresholdDialog
+                    | Self::PosterizeDialog
                     | Self::BrushAngleAdjust
                     | Self::BrushPresetUpsert
                     | Self::BrushPresetDelete
@@ -378,6 +384,23 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        use crate::engine::quantization::Effect;
+        match self {
+            Self::ThresholdPreview => {
+                return crate::plugins::quantization_preview::schema(Effect::Threshold, false)
+            }
+            Self::PosterizePreview => {
+                return crate::plugins::quantization_preview::schema(Effect::Posterize, false)
+            }
+            Self::ThresholdDialog => {
+                return crate::plugins::quantization_preview::schema(Effect::Threshold, true)
+            }
+            Self::PosterizeDialog => {
+                return crate::plugins::quantization_preview::schema(Effect::Posterize, true)
+            }
+            _ => {}
+        }
+
         if self == Self::GrayscalePreview {
             return crate::plugins::grayscale_preview::schema();
         }
@@ -700,6 +723,8 @@ impl Operation {
                 | Self::HslPreview
                 | Self::TonalPreview
                 | Self::GrayscalePreview
+                | Self::ThresholdPreview
+                | Self::PosterizePreview
                 | Self::GraphCatalog
                 | Self::Describe
                 | Self::ContextRead

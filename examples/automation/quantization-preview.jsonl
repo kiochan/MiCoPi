@@ -1,0 +1,3 @@
+{"action":"canvas.new","args":{"width":16,"height":16}}
+{"action":"layer.fill_color","args":{"color":"#20406080"}}
+{"action":"pipeline.run","args":{"steps":[{"id":"scope","action":"graph.read","args":{}},{"id":"threshold","action":"layer.threshold.preview","args":{"document_identity":{"$ref":"scope#/result/document_identity"},"document_revision":{"$ref":"scope#/result/revision"},"layer_id":1,"parameters":{"level":60}}},{"id":"posterize","action":"layer.posterize.preview","args":{"document_identity":{"$ref":"scope#/result/document_identity"},"document_revision":{"$ref":"scope#/result/revision"},"layer_id":1,"parameters":{"levels":4}}}]}}

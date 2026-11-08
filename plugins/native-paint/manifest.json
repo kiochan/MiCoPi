@@ -562,6 +562,350 @@
           }
         }
       }
+    },
+    {
+      "id": "layer.threshold.preview",
+      "title": "Threshold: Preview Active Layer",
+      "operation": "threshold_preview",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "document_identity",
+          "revision",
+          "layer_id",
+          "parameters",
+          "width",
+          "height",
+          "mimeType",
+          "data",
+          "cost",
+          "apply"
+        ],
+        "properties": {
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/png"
+            ]
+          },
+          "data": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "object",
+            "required": [
+              "source_scratch_bytes",
+              "composite_bytes",
+              "mask_effect_bytes",
+              "pixel_scratch_bytes"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "source_scratch_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "composite_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "mask_effect_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "pixel_scratch_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              }
+            }
+          },
+          "apply": {
+            "type": "object",
+            "required": [
+              "action",
+              "args",
+              "expected_revision"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "layer.threshold"
+                ]
+              },
+              "args": {
+                "type": "object",
+                "required": [
+                  "level"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "level": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255,
+                    "default": 128,
+                    "title": "Threshold Level"
+                  }
+                }
+              },
+              "expected_revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "required": [
+              "level"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "level": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255,
+                "default": 128,
+                "title": "Threshold Level"
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.threshold.open",
+      "title": "Open Threshold Controls",
+      "operation": "threshold_dialog",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "queued",
+          "document_identity",
+          "revision",
+          "layer_id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          },
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        }
+      }
+    },
+    {
+      "id": "layer.posterize.preview",
+      "title": "Posterize: Preview Active Layer",
+      "operation": "posterize_preview",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "document_identity",
+          "revision",
+          "layer_id",
+          "parameters",
+          "width",
+          "height",
+          "mimeType",
+          "data",
+          "cost",
+          "apply"
+        ],
+        "properties": {
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/png"
+            ]
+          },
+          "data": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "object",
+            "required": [
+              "source_scratch_bytes",
+              "composite_bytes",
+              "mask_effect_bytes",
+              "pixel_scratch_bytes"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "source_scratch_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "composite_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "mask_effect_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "pixel_scratch_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              }
+            }
+          },
+          "apply": {
+            "type": "object",
+            "required": [
+              "action",
+              "args",
+              "expected_revision"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "layer.posterize"
+                ]
+              },
+              "args": {
+                "type": "object",
+                "required": [
+                  "levels"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "levels": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 256,
+                    "default": 4,
+                    "title": "Posterize Levels"
+                  }
+                }
+              },
+              "expected_revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "required": [
+              "levels"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "levels": {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 256,
+                "default": 4,
+                "title": "Posterize Levels"
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "layer.posterize.open",
+      "title": "Open Posterize Controls",
+      "operation": "posterize_dialog",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "queued",
+          "document_identity",
+          "revision",
+          "layer_id"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "queued": {
+            "type": "boolean"
+          },
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          }
+        }
+      }
     }
   ],
   "action_access": {

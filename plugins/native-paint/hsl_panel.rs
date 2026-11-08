@@ -5,7 +5,7 @@ use crate::{
     engine::hsl::Hsl,
     plugins::{
         color_preview::{Cost, Scope},
-        grayscale_preview, hsl_preview, tonal_preview,
+        grayscale_preview, hsl_preview, quantization_preview, tonal_preview,
     },
 };
 use std::time::Duration;
@@ -19,6 +19,7 @@ enum Effect {
     Hsl(Hsl),
     Tonal(tonal_preview::Parameters),
     Grayscale(grayscale_preview::Parameters),
+    Quantization(crate::engine::quantization::Quantization),
 }
 impl Effect {
     fn parse(action: &str, args: &serde_json::Value) -> Option<Self> {
@@ -30,6 +31,16 @@ impl Effect {
             "layer.grayscale" => serde_json::from_value(args.clone())
                 .ok()
                 .map(Self::Grayscale),
+            "layer.threshold" => {
+                quantization_preview::parse(crate::engine::quantization::Effect::Threshold, args)
+                    .ok()
+                    .map(Self::Quantization)
+            }
+            "layer.posterize" => {
+                quantization_preview::parse(crate::engine::quantization::Effect::Posterize, args)
+                    .ok()
+                    .map(Self::Quantization)
+            }
             _ => None,
         }
     }
@@ -38,6 +49,7 @@ impl Effect {
             Self::Hsl(_) => "layer.hue_saturation",
             Self::Tonal(_) => "layer.brightness_contrast",
             Self::Grayscale(_) => "layer.grayscale",
+            Self::Quantization(value) => quantization_preview::action(value.effect),
         }
     }
     fn title(self) -> &'static str {
@@ -45,6 +57,7 @@ impl Effect {
             Self::Hsl(_) => "Hue/Saturation",
             Self::Tonal(_) => "Brightness/Contrast",
             Self::Grayscale(_) => "Grayscale",
+            Self::Quantization(value) => value.title(),
         }
     }
     fn window_id(self) -> &'static str {
@@ -52,6 +65,10 @@ impl Effect {
             Self::Hsl(_) => "hsl-color-draft-window",
             Self::Tonal(_) => "tonal-color-draft-window",
             Self::Grayscale(_) => "grayscale-color-draft-window",
+            Self::Quantization(value) => match value.effect {
+                crate::engine::quantization::Effect::Threshold => "threshold-color-draft-window",
+                crate::engine::quantization::Effect::Posterize => "posterize-color-draft-window",
+            },
         }
     }
     fn neutral(self) -> bool {
@@ -59,6 +76,9 @@ impl Effect {
             Self::Hsl(value) => value == Hsl::default(),
             Self::Tonal(value) => value == tonal_preview::Parameters::default(),
             Self::Grayscale(value) => value.amount == 0.,
+            Self::Quantization(value) => {
+                value.effect == crate::engine::quantization::Effect::Posterize && value.value == 256
+            }
         }
     }
     fn edit(&mut self, ui: &mut Ui, id: Id) {
@@ -68,6 +88,9 @@ impl Effect {
             }
             Self::Tonal(value) => {
                 tonal_controls::edit(ui, id, value);
+            }
+            Self::Quantization(value) => {
+                nodes::quantization_ui::edit(ui, id, value);
             }
             Self::Grayscale(value) => {
                 tonal_controls::grayscale(ui, id, value);
@@ -82,6 +105,7 @@ impl Effect {
                 Self::Hsl(value) => serde_json::json!(value),
                 Self::Tonal(value) => serde_json::json!(value),
                 Self::Grayscale(value) => serde_json::json!(value),
+                Self::Quantization(value) => quantization_preview::arguments(value),
             },
         }
     }
@@ -91,6 +115,7 @@ impl Effect {
         scope: Scope,
     ) -> Result<(Vec<u32>, Cost), crate::application::ActionError> {
         match self {
+            Self::Quantization(value) => quantization_preview::render(s, scope, value),
             Self::Hsl(hsl) => hsl_preview::render(
                 s,
                 hsl_preview::Request {
@@ -272,6 +297,25 @@ impl Editor {
             effect,
             "layer.grayscale",
             "Document changed; reopen Grayscale.",
+        );
+    }
+    pub(super) fn receive_quantization_draft(
+        &mut self,
+        effect: &serde_json::Value,
+        posterize: bool,
+    ) {
+        self.receive_color_draft(
+            effect,
+            if posterize {
+                "layer.posterize"
+            } else {
+                "layer.threshold"
+            },
+            if posterize {
+                "Document changed; reopen Posterize."
+            } else {
+                "Document changed; reopen Threshold."
+            },
         );
     }
     fn receive_color_draft(&mut self, effect: &serde_json::Value, action: &str, stale: &str) {
@@ -515,6 +559,138 @@ mod tests {
         settle(&mut app, &ctx);
         click(&mut app, &ctx, "hsl-cancel");
         assert_eq!(app.editor.session.state(), before);
+    }
+    #[test]
+    fn quantization_controls_reuse_preview_reset_apply_undo_and_discard_cancel() {
+        use crate::engine::quantization::{Effect as Kind, Quantization};
+        for (action, effect, default, expected) in [
+            ("layer.threshold", Kind::Threshold, 128, 0x80000000),
+            ("layer.posterize", Kind::Posterize, 4, 0x80005555),
+        ] {
+            let mut app = studio();
+            let ctx = Context::default();
+            app.editor
+                .core("canvas.new", json!({"width":12,"height":8}));
+            app.editor
+                .core("layer.fill_color", json!({"color":"#20406080"}));
+            let raw = app.editor.session.doc.layers[0].pixels.clone();
+            assert_eq!(raw, vec![0x80204060; 96]);
+            let revision = app.editor.session.revision;
+            let events = app.editor.session.journal.as_ref().unwrap().entries.len();
+            app.editor.begin_plugin_command(action);
+            settle(&mut app, &ctx);
+            assert_eq!(
+                draft(&mut app).effect,
+                Effect::Quantization(Quantization {
+                    effect,
+                    value: default
+                })
+            );
+            assert_eq!(draft(&mut app).renders, 1);
+            let texture = app.editor.color_preview_texture().unwrap().id();
+            draft(&mut app).effect = Effect::Quantization(Quantization { effect, value: 2 });
+            frame(&mut app, &ctx, vec2(1000., 900.), vec![]);
+            settle(&mut app, &ctx);
+            assert_eq!(draft(&mut app).renders, 2);
+            assert_eq!(app.editor.color_preview_texture().unwrap().id(), texture);
+            let position = ctx
+                .data_mut(|d| {
+                    d.get_temp::<Rect>(Id::new(("direct-color-controls", action)).with("reset"))
+                        .unwrap()
+                })
+                .center();
+            for pressed in [true, false] {
+                frame(
+                    &mut app,
+                    &ctx,
+                    vec2(1000., 900.),
+                    vec![
+                        Event::PointerMoved(position),
+                        Event::PointerButton {
+                            pos: position,
+                            button: PointerButton::Primary,
+                            pressed,
+                            modifiers: Modifiers::NONE,
+                        },
+                    ],
+                );
+            }
+            settle(&mut app, &ctx);
+            assert_eq!(
+                draft(&mut app).effect,
+                Effect::Quantization(Quantization {
+                    effect,
+                    value: default
+                })
+            );
+            assert_eq!(app.editor.session.doc.layers[0].pixels, raw);
+            assert_eq!(app.editor.session.revision, revision);
+            assert_eq!(
+                app.editor.session.journal.as_ref().unwrap().entries.len(),
+                events
+            );
+            click(&mut app, &ctx, "hsl-apply");
+            assert!(app.editor.command_form.is_none());
+            assert_eq!(app.editor.session.doc.layers[0].pixels, vec![expected; 96]);
+            assert_eq!(app.editor.session.revision, revision + 1);
+            assert_eq!(
+                app.editor.session.journal.as_ref().unwrap().entries.len(),
+                events + 1
+            );
+            app.editor.core("history.undo", json!({}));
+            assert_eq!(app.editor.session.doc.layers[0].pixels, raw);
+            let before = app.editor.session.state();
+            app.editor.begin_plugin_command(action);
+            settle(&mut app, &ctx);
+            click(&mut app, &ctx, "hsl-cancel");
+            assert_eq!(app.editor.session.state(), before);
+        }
+    }
+    #[test]
+    fn posterize_identity_skips_render_and_quantization_open_discards_stale_delivery() {
+        use crate::engine::quantization::{Effect as Kind, Quantization};
+        let mut app = studio();
+        let ctx = Context::default();
+        app.editor
+            .begin_plugin_command_with_args("layer.posterize", json!({"levels":256}));
+        settle(&mut app, &ctx);
+        assert_eq!(draft(&mut app).renders, 0);
+        assert!(app.editor.color_preview_texture().is_none());
+        click(&mut app, &ctx, "hsl-cancel");
+        for (action, posterize, effect, value) in [
+            ("layer.threshold.open", false, Kind::Threshold, 128),
+            ("layer.posterize.open", true, Kind::Posterize, 4),
+        ] {
+            app.editor.session.ui_effects.clear();
+            let before = app.editor.session.state();
+            app.editor.begin_plugin_command(action);
+            app.consume_ui_effects(&ctx);
+            assert_eq!(
+                draft(&mut app).effect,
+                Effect::Quantization(Quantization { effect, value })
+            );
+            assert_eq!(app.editor.session.state(), before);
+            settle(&mut app, &ctx);
+            click(&mut app, &ctx, "hsl-cancel");
+            app.editor
+                .session
+                .apply(crate::application::Action::new(action, json!({})))
+                .unwrap();
+            app.editor.core(
+                "layer.rename",
+                json!({"name":format!("Changed source {action}")}),
+            );
+            app.consume_ui_effects(&ctx);
+            assert!(app.editor.command_form.is_none());
+            assert_eq!(
+                app.editor.status,
+                if posterize {
+                    "Document changed; reopen Posterize."
+                } else {
+                    "Document changed; reopen Threshold."
+                }
+            );
+        }
     }
     #[test]
     fn grayscale_open_delivery_preserves_defaults_and_discards_stale_requests() {
@@ -845,6 +1021,10 @@ mod tests {
                 ("layer.brightness_contrast", 960.),
                 ("layer.grayscale", 320.),
                 ("layer.grayscale", 960.),
+                ("layer.threshold", 320.),
+                ("layer.threshold", 960.),
+                ("layer.posterize", 320.),
+                ("layer.posterize", 960.),
             ] {
                 for large in [false, true] {
                     app.editor.settings.ui = crate::configuration::Appearance::default();
@@ -856,10 +1036,15 @@ mod tests {
                         action,
                         if action == "layer.grayscale" {
                             json!({"amount":0})
+                        } else if action == "layer.posterize" {
+                            json!({"levels":256})
                         } else {
                             json!({})
                         },
                     );
+                    if action == "layer.threshold" {
+                        draft(&mut app).preview = false;
+                    }
                     let ctx = Context::default();
                     theme::fonts(&ctx);
                     theme::apply(&ctx, &app.editor.settings.ui);

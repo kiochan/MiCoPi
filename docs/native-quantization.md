@@ -5,7 +5,8 @@ Threshold/Posterize and immutable direct-operation previews. The direct
 [document commands](quantization.md) already have separate registered contracts.
 Typed source nodes and adjustment layers are now integrated in source, with
 shared local controls and verified persistence contracts; runtime checks await CI.
-Direct-operation cached previews remain planned.
+Direct-operation fenced PNG previews and cached desktop controls now share the
+immutable color pipeline; new runtime/UI verification remains pending.
 
 ## Independent negotiation
 
@@ -68,5 +69,6 @@ remain enabled after extracting the pure math source.
 Only source/format/repository checks run locally; runtime/ABI checks await CI.
 No latency, binary-size or process-peak measurements are claimed. Typed source/adjustment intent, all-declaration renderer admission, separate
 intent slots, persistence/Undo/replay and shared controls are now implemented in
-source. Fenced direct PNG previews and persistent native prepared tables remain
-planned; keep the corresponding feature checklist items unchecked pending all gates.
+source. Fenced direct PNG previews now share the immutable color pipeline, pending
+runtime validation. Persistent native prepared tables and measured costs remain
+planned; keep corresponding feature checklist items unchecked pending all gates.

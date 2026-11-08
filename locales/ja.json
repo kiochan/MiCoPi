@@ -1621,5 +1621,12 @@
   "Threshold": "しきい値",
   "Posterize": "ポスタリゼーション",
   "Quantization Parameters": "量子化パラメーター",
-  "Quantization Effect": "量子化効果"
+  "Quantization Effect": "量子化効果",
+  "Threshold: Preview Active Layer": "しきい値：現在のレイヤーをプレビュー",
+  "Posterize: Preview Active Layer": "ポスタリゼーション：現在のレイヤーをプレビュー",
+  "Open Threshold Controls": "しきい値の操作を開く",
+  "Open Posterize Controls": "ポスタリゼーションの操作を開く",
+  "Document changed; reopen Threshold.": "ドキュメントが変更されました。しきい値を開き直してください。",
+  "Document changed; reopen Posterize.": "ドキュメントが変更されました。ポスタリゼーションを開き直してください。",
+  "Native quantization preview is unavailable": "ネイティブ量子化プレビューを利用できません"
 }

@@ -1,5 +1,11 @@
 # Project Structure and Ownership
 
+`src/plugins/quantization_preview.rs` owns direct Threshold/Posterize parameter
+adaptation, fenced PNG results and presentation queue requests. It reuses the
+shared immutable color loan and native quantization renderer. The compiled
+`plugins/native-paint/hsl_panel.rs` cache now also hosts typed quantization drafts
+with the shared compositing integer controls; UI objects never cross the DLL ABI.
+
 `plugins/native-paint/src/quantize_math.rs` owns shared pure integer kernels,
 independently compiled into both native DLLs. `plugins/compositing/src/quantization.rs`
 prepares instruction-indexed kernels; optional callbacks share validated plan/

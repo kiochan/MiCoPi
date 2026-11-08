@@ -11,8 +11,8 @@ Command search, schema parameter forms, configurable shortcuts, action workflow
 nodes, JSONL, MCP and headless all use the same Session/native execution path.
 Typed source nodes and affect-below adjustment layers now share this native
 arithmetic, with local controls, masks, history and verified persistence. New
-integration checks await CI; direct-operation cached reversible previews remain
-planned. Editing a workflow does not execute it.
+integration checks await CI. Direct-operation PNG previews and cached reversible
+controls are now implemented in source with additional runtime/UI checks pending. Editing a workflow does not execute it.
 
 ## Byte policy
 
@@ -56,8 +56,9 @@ The kernels allocate no images. Posterize uses a cold 256-byte stack table;
 Threshold uses one integer cutoff. The existing host owns its bounded temporary
 RGBA region and history. The host region may reach 64 MiB for a 4096-square
 canvas; this excludes source, history, compositor, PNG/GUI and process peak.
-End-to-end timing and peak-memory measurements remain pending. No dependencies,
-ABI additions, legacy filter-mode IDs or project/recording format changes.
+End-to-end timing and peak-memory measurements remain pending. Direct edits need
+no new dependencies, ABI additions, legacy filter-mode IDs or recording formats;
+previews use the separately negotiated native quantization-plan capability.
 
 ## Verification
 
@@ -127,3 +128,44 @@ provider changes, contact guards, project round trips, DLL-free outcome restorat
 fenced node histograms and JSONL/MCP cases are authored. Runtime validation, reviewed
 native captures and end-to-end measurements remain pending. The full common-filter
 checklist is not complete. See [the automation example](../examples/automation/quantization-composition.jsonl).
+
+## Direct PNG previews and cached controls
+
+Search for the direct Threshold or Posterize command to open the shared color
+draft. Integer slider/numeric/Reset controls share the source-node controls;
+default/reset is 128 / 4. Parameters settle for 150 ms, then the Canvas uses a
+private cached texture. Repeated idle frames reuse it; failed parameters do not
+retry every frame. Posterize at 256 levels is identity and skips native rendering.
+Threshold has no identity parameter. Apply dispatches the existing native command
+once; Cancel, Escape or close discards the draft without Undo or recording events.
+
+`layer.threshold.open` and `layer.posterize.open` queue the same controls with
+optional `parameters: {"level":64}` or `parameters: {"levels":4}`. Queue/delivery
+capture document identity, revision and the active raster. Stale deliveries reject;
+changes after opening hide the old texture and disable Apply until explicit source
+refresh. Active pen contacts block previews/Apply without finishing input. These
+presentation commands report `ui_unavailable` headlessly and reject atomic batches.
+
+`layer.threshold.preview` / `layer.posterize.preview` require `document_identity`,
+`document_revision`, `layer_id` and a complete `parameters` object using the same
+direct parameter names. Read scope from `graph.read`. Nodes, JSONL, MCP and headless
+share these schemas. The result includes composed PNG `data`, dimensions, scope,
+parameters, scratch `cost` and the existing revision-guarded `apply` action.
+Preview never dispatches a mutating action or publishes history/revision/events.
+
+Both effects use the shared admitted immutable color loan, native quantization
+rendering, hidden-RGB restoration, once-only selection mixing and current graph/
+mask composition. Locks and native edit admission remain shared with Apply. An old
+compositor without the optional quantization API rejects before image staging.
+Navigator and automation snapshots keep committed pixels while Canvas previews.
+Source/composite/mask scratch bounds are reused; PNG/base64, GUI textures and process
+peak are excluded from reported scratch costs.
+
+Session/transport cases compare exact preview/Apply PNGs with soft selection and
+raw masks, assert unchanged state/history, reject stale/capability/contact requests
+and cover queued defaults/headless/atomic rules. Desktop cases cover texture reuse,
+actual Reset/Apply/Cancel, Undo, stale delivery, identity skipping and four-language
+narrow/wide/large-metric footers. The optional native capture script includes both
+dialogs, but it has not run for this increment and is not part of standard CI.
+Runtime validation, native screenshot review and measured end-to-end costs remain
+pending. See [the read-only example](../examples/automation/quantization-preview.jsonl).

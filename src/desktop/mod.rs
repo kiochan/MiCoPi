@@ -989,6 +989,8 @@ impl Studio {
                 Some("hsl.open") => self.editor.receive_hsl_draft(&effect),
                 Some("tonal.open") => self.editor.receive_tonal_draft(&effect),
                 Some("grayscale.open") => self.editor.receive_grayscale_draft(&effect),
+                Some("threshold.open") => self.editor.receive_quantization_draft(&effect, false),
+                Some("posterize.open") => self.editor.receive_quantization_draft(&effect, true),
                 Some("transform.parameters") => {
                     if effect.get("document_identity").is_some_and(|value| {
                         value.as_u64() != Some(self.editor.session.doc.identity)

@@ -102,7 +102,15 @@ def commands():
     for operation, parameters in [('threshold', dict(level=60)), ('posterize', dict(levels=4))]:
         p.add(operation+'-new', 'canvas.new', width=4, height=4)
         p.add(operation+'-fill', 'layer.fill_color', color='#20406080')
+        p.add(operation+'-preview', 'pipeline.run', steps=[
+            dict(id='read', action='graph.read', args={}),
+            dict(id='before', action='canvas.state', args={}),
+            dict(id='draft', action='layer.'+operation+'.preview', args=dict(
+                document_identity={'$ref':'read#/result/document_identity'},
+                document_revision={'$ref':'read#/result/revision'}, layer_id=1, parameters=parameters)),
+            dict(id='after', action='canvas.state', args={})])
         p.add(operation+'-edit', 'layer.'+operation, **parameters)
+        p.add(operation+'-image', 'canvas.snapshot')
         p.add(operation+'-bins', 'histogram.query', source='layer', layer_id=1)
         p.add(operation+'-undo', 'history.undo')
         p.add(operation+'-original', 'histogram.query', source='layer', layer_id=1)
@@ -196,6 +204,12 @@ def validate(values, plan):
         assert at(operation+'-edit')['implementation'] == 'independent Rust DLL'
         assert at(operation+'-run')['ok']
         assert at(operation+'-source-observe')['ok']
+        preview=at(operation+'-preview')
+        assert preview['ok']
+        assert preview['results']['draft']['result']['data']==at(operation+'-image')['data']
+        assert preview['results']['draft']['result']['apply']['action']=='layer.'+operation
+        assert preview['results']['before']['result']==preview['results']['after']['result']
+
         assert any(node['id'] == 'compositing.'+operation for node in at('nodes')['nodes'])
     gray_preview = at('gray-preview')
     assert gray_preview['ok']

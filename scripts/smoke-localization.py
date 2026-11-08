@@ -165,6 +165,15 @@ def main():
             assert call('canvas.state', {})['revision'] == gray_revision
             assert base64.b64decode(call('canvas.snapshot', {})['data']) == expected
             call('ui.dispatch', dict(id='command', value='Cancel'))
+            for effect in ['threshold', 'posterize']:
+                preview_revision=call('canvas.state', {})['revision']
+                queued=call('layer.'+effect+'.open', {})
+                assert queued['queued'] and queued['revision']==preview_revision
+                time.sleep(.4)
+                screenshot(f'{language}-{effect}.png')
+                assert call('canvas.state', {})['revision']==preview_revision
+                assert base64.b64decode(call('canvas.snapshot', {})['data'])==expected
+                call('ui.dispatch', dict(id='command', value='Cancel'))
             call('canvas.resize',dict(width=320,height=256,anchor='center'))
             call('ui.dispatch',dict(id='command',value=dict(UiCommand=10174)))
             time.sleep(.15)

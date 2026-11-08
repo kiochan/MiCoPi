@@ -51,6 +51,7 @@ pub(crate) mod movement;
 pub(crate) mod owner_affine;
 mod owner_movement;
 mod painting;
+pub(crate) mod quantization_preview;
 pub(crate) mod raster_masks;
 pub(crate) mod resample;
 pub(crate) mod selected_merge;
@@ -73,6 +74,26 @@ pub(crate) fn execute(
         TonalDialog => tonal_preview::request_dialog(session, args),
         GrayscalePreview => grayscale_preview::execute(session, args),
         GrayscaleDialog => grayscale_preview::request_dialog(session, args),
+        ThresholdPreview => quantization_preview::execute(
+            session,
+            args,
+            crate::engine::quantization::Effect::Threshold,
+        ),
+        PosterizePreview => quantization_preview::execute(
+            session,
+            args,
+            crate::engine::quantization::Effect::Posterize,
+        ),
+        ThresholdDialog => quantization_preview::request_dialog(
+            session,
+            args,
+            crate::engine::quantization::Effect::Threshold,
+        ),
+        PosterizeDialog => quantization_preview::request_dialog(
+            session,
+            args,
+            crate::engine::quantization::Effect::Posterize,
+        ),
         HslDialog => hsl_preview::request_dialog(session, args),
         BrushAngleAdjust => brush_tip::execute(session, args),
         BrushPresetsQuery | BrushPresetUpsert | BrushPresetDelete | BrushPresetApply

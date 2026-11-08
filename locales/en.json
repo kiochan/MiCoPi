@@ -1621,5 +1621,12 @@
   "Threshold": "Threshold",
   "Posterize": "Posterize",
   "Quantization Parameters": "Quantization Parameters",
-  "Quantization Effect": "Quantization Effect"
+  "Quantization Effect": "Quantization Effect",
+  "Threshold: Preview Active Layer": "Threshold: Preview Active Layer",
+  "Posterize: Preview Active Layer": "Posterize: Preview Active Layer",
+  "Open Threshold Controls": "Open Threshold Controls",
+  "Open Posterize Controls": "Open Posterize Controls",
+  "Document changed; reopen Threshold.": "Document changed; reopen Threshold.",
+  "Document changed; reopen Posterize.": "Document changed; reopen Posterize.",
+  "Native quantization preview is unavailable": "Native quantization preview is unavailable"
 }

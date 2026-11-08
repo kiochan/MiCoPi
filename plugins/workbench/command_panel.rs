@@ -243,6 +243,8 @@ impl Editor {
                 crate::application::Operation::HslDialog
                     | crate::application::Operation::TonalDialog
                     | crate::application::Operation::GrayscaleDialog
+                    | crate::application::Operation::ThresholdDialog
+                    | crate::application::Operation::PosterizeDialog
             )
         ) {
             self.core(action, initial);

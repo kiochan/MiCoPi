@@ -1621,5 +1621,12 @@
   "Threshold": "임계값",
   "Posterize": "포스터화",
   "Quantization Parameters": "양자화 매개변수",
-  "Quantization Effect": "양자화 효과"
+  "Quantization Effect": "양자화 효과",
+  "Threshold: Preview Active Layer": "임계값: 현재 레이어 미리 보기",
+  "Posterize: Preview Active Layer": "포스터화: 현재 레이어 미리 보기",
+  "Open Threshold Controls": "임계값 컨트롤 열기",
+  "Open Posterize Controls": "포스터화 컨트롤 열기",
+  "Document changed; reopen Threshold.": "문서가 변경되었습니다. 임계값을 다시 여세요.",
+  "Document changed; reopen Posterize.": "문서가 변경되었습니다. 포스터화를 다시 여세요.",
+  "Native quantization preview is unavailable": "네이티브 양자화 미리 보기를 사용할 수 없습니다"
 }

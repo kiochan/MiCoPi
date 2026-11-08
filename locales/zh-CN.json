@@ -1621,5 +1621,12 @@
   "Threshold": "阈值",
   "Posterize": "色调分离",
   "Quantization Parameters": "量化参数",
-  "Quantization Effect": "量化效果"
+  "Quantization Effect": "量化效果",
+  "Threshold: Preview Active Layer": "阈值：预览当前图层",
+  "Posterize: Preview Active Layer": "色调分离：预览当前图层",
+  "Open Threshold Controls": "打开阈值控件",
+  "Open Posterize Controls": "打开色调分离控件",
+  "Document changed; reopen Threshold.": "文档已更改，请重新打开阈值。",
+  "Document changed; reopen Posterize.": "文档已更改，请重新打开色调分离。",
+  "Native quantization preview is unavailable": "原生量化预览不可用"
 }
