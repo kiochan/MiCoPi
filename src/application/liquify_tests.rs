@@ -338,3 +338,103 @@ fn liquify_batch_and_incremental_sampling_match_with_reused_inline_transcript() 
     );
     assert_eq!(raw(&s), before);
 }
+
+#[test]
+fn liquify_masked_group_project_and_imported_outcome_preserve_independent_raw_owners() {
+    let mut s = fixture();
+    call(
+        &mut s,
+        "group.create",
+        json!({"name":"Ink and colors","members":[{"kind":"layer","id":1},{"kind":"layer","id":2}]}),
+    );
+    call(&mut s, "group.set", json!({"group_id":1,"opacity":0.75}));
+    let r = request(&s);
+    let before = raw(&s);
+    s.apply(r.apply_action()).unwrap();
+    let changed = raw(&s);
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(raw(&s), before);
+    call(&mut s, "history.redo", json!({}));
+    assert_eq!(raw(&s), changed);
+    let directory = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+        "target/test-output/liquify-project/{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&directory).unwrap();
+    let path = directory.join("raw-owners.mcp");
+    call(&mut s, "document.save", json!({"path":path}));
+    let composition = s.doc.composition();
+    let expected = raw(&s);
+    let archive = s.journal.as_mut().unwrap().bytes(None).unwrap();
+    let mut opened = fixture();
+    call(&mut opened, "document.open", json!({"path":path}));
+    assert_eq!(raw(&opened), expected);
+    assert_eq!(opened.doc.composition(), composition);
+    let mut journal = crate::engine::replay::Journal::import(&archive).unwrap();
+    assert_eq!(journal.verify(None).unwrap()["valid"], true);
+    let state = journal.preview(journal.entries.len() - 1).unwrap();
+    let mut restored = crate::engine::Document::new(1, 1);
+    state.restore_document(&mut restored);
+    assert!(restored.renderer.is_none());
+    assert_eq!(restored.composition(), composition);
+    assert_eq!(restored.composite, s.doc.composite);
+    for i in 0..restored.layers.len() {
+        assert_eq!(restored.layers[i].pixels, s.doc.layers[i].pixels);
+    }
+    for m in &restored.mask_state().items {
+        assert_eq!(
+            (0..96)
+                .map(|i| restored.mask_plane(m.id).unwrap().sample(i))
+                .collect::<Vec<_>>(),
+            (0..96)
+                .map(|i| s.doc.mask_plane(m.id).unwrap().sample(i))
+                .collect::<Vec<_>>()
+        );
+    }
+    check(&mut s);
+    check(&mut opened);
+}
+
+#[test]
+fn liquify_noop_records_and_locked_or_hidden_targets_preserve_all_sources() {
+    let s = fixture();
+    let mut r = request(&s);
+    r.steps.clear();
+    let before = raw(&s);
+    let mut draft = Draft::begin(&s, r).unwrap();
+    assert!(!draft
+        .push_deferred(
+            &s,
+            &[Push {
+                x: 3.,
+                y: 3.,
+                dx: 1.,
+                dy: 0.,
+                radius: 4.,
+                strength: 0.
+            }]
+        )
+        .unwrap());
+    assert!(draft.request.steps.is_empty());
+    assert!(draft.preview(&s).is_ok());
+    assert_eq!(raw(&s), before);
+    for property in ["pixel_locked", "position_locked", "alpha_locked", "visible"] {
+        let mut s = fixture();
+        let mut args = json!({"layer_id":1});
+        args[property] = json!(property != "visible");
+        call(&mut s, "layer.set", args);
+        let mut r = request(&s);
+        r.steps = serde_json::from_value(
+            json!([[{"x":0.,"y":0.,"dx":2.,"dy":0.,"radius":4.,"strength":1.}]]),
+        )
+        .unwrap();
+        let before = raw(&s);
+        let public = s.state();
+        let history = s.doc.history_bytes();
+        assert!(s.apply(r.apply_action()).is_err(), "{property}");
+        assert_eq!(raw(&s), before);
+        assert_eq!(s.state(), public);
+        assert_eq!(s.doc.history_bytes(), history);
+        check(&mut s);
+    }
+}

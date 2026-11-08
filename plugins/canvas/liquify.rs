@@ -2,6 +2,9 @@
 use super::*;
 use crate::platform::windows::desktop_bridge::PenPhase;
 use crate::plugins::liquify::{self, Push, Request};
+#[path = "liquify_preview.rs"]
+mod preview;
+use preview::{DisplayCache, Upload};
 
 pub(super) struct Draft {
     native: liquify::Draft,
@@ -10,6 +13,7 @@ pub(super) struct Draft {
     pressure: bool,
     previous: Option<(Pos2, u32)>,
     texture: Option<TextureHandle>,
+    display: DisplayCache,
     dirty: bool,
     last_preview: Instant,
     error: String,
@@ -59,6 +63,7 @@ impl Editor {
                     pressure: true,
                     previous: None,
                     texture: None,
+                    display: DisplayCache::default(),
                     dirty: true,
                     last_preview: Instant::now() - Duration::from_secs(1),
                     error: String::new(),
@@ -146,11 +151,13 @@ impl Editor {
                                 },
                         };
                         let (pushes, n) = arms(p, d.symmetry);
-                        if let Err(e) = d.native.push_deferred(&editor.session, &pushes[..n]) {
-                            d.error = e;
-                            break;
+                        match d.native.push_deferred(&editor.session, &pushes[..n]) {
+                            Ok(changed) => d.dirty |= changed,
+                            Err(e) => {
+                                d.error = e;
+                                break;
+                            }
                         }
-                        d.dirty = true;
                     }
                 }
                 d.previous = if phase == 2 { None } else { Some((q, time)) };
@@ -314,6 +321,7 @@ impl Editor {
                     d.previous = None;
                     d.error.clear();
                     d.dirty = true;
+                    d.last_preview = Instant::now() - Duration::from_millis(100);
                 }
                 Err(e) => d.error = e,
             }
@@ -331,35 +339,36 @@ impl Editor {
             return;
         }
         if d.dirty && !stale && d.error.is_empty() {
-            // Full composition/texture upload is bounded and throttled; typed
+            // Full composition is bounded and throttled; exact display changes
+            // use partial texture uploads. Typed
             // field/owner ROI updates do not wait for this presentation step.
             if d.last_preview.elapsed() >= Duration::from_millis(100) {
                 match d.native.preview(&self.session) {
                     Ok(pixels) => {
                         let w = self.session.doc.width;
                         let h = self.session.doc.height;
-                        let colors = pixels
-                            .into_iter()
-                            .enumerate()
-                            .map(|(i, p)| {
-                                let bg = if (i % w / 12 + i / w / 12) % 2 == 0 {
-                                    0xfffdfdfd
+                        match d.display.prepare(&pixels, [w, h]) {
+                            Ok(Upload::Unchanged) => {}
+                            Ok(Upload::Full(image)) => {
+                                if let Some(texture) = &mut d.texture {
+                                    texture.set(image, TextureOptions::LINEAR);
                                 } else {
-                                    0xfff3f5f7
-                                };
-                                let p = crate::engine::over(bg, p);
-                                Color32::from_rgb((p >> 16) as u8, (p >> 8) as u8, p as u8)
-                            })
-                            .collect();
-                        let image = ColorImage::new([w, h], colors);
-                        if let Some(t) = &mut d.texture {
-                            t.set(image, TextureOptions::LINEAR);
-                        } else {
-                            d.texture = Some(ctx.load_texture(
-                                "liquify-preview",
-                                image,
-                                TextureOptions::LINEAR,
-                            ));
+                                    d.texture = Some(ctx.load_texture(
+                                        "liquify-preview",
+                                        image,
+                                        TextureOptions::LINEAR,
+                                    ));
+                                }
+                            }
+                            Ok(Upload::Partial { origin, image }) => {
+                                if let Some(texture) = &mut d.texture {
+                                    texture.set_partial(origin, image, TextureOptions::LINEAR);
+                                } else {
+                                    d.error = "Liquify preview texture was lost; cancel and reopen"
+                                        .into();
+                                }
+                            }
+                            Err(e) => d.error = e,
                         }
                         d.dirty = false;
                         d.last_preview = Instant::now();
@@ -651,5 +660,86 @@ mod tests {
             }
         }
         crate::i18n::set_language(crate::i18n::Language::English);
+    }
+
+    #[test]
+    fn liquify_uploads_only_changed_display_bounds_and_reset_refreshes_immediately() {
+        let mut app = studio();
+        let ctx = Context::default();
+        theme::fonts(&ctx);
+        open(&mut app);
+        let draw = |app: &mut Studio| {
+            ctx.run(
+                RawInput {
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(1000., 800.))),
+                    focused: true,
+                    ..Default::default()
+                },
+                |ctx| app.editor.liquify_window(ctx),
+            )
+        };
+        for _ in 0..3 {
+            drop(draw(&mut app));
+        }
+        let texture = app
+            .editor
+            .liquify
+            .as_ref()
+            .unwrap()
+            .texture
+            .as_ref()
+            .unwrap()
+            .id();
+        {
+            let d = app.editor.liquify.as_mut().unwrap();
+            d.dirty = true;
+            d.last_preview = Instant::now() - Duration::from_secs(1);
+        }
+        let unchanged = draw(&mut app);
+        assert!(unchanged
+            .textures_delta
+            .set
+            .iter()
+            .all(|(id, _)| *id != texture));
+        drop(unchanged);
+        deform(&mut app);
+        let changed = draw(&mut app);
+        let delta = &changed
+            .textures_delta
+            .set
+            .iter()
+            .find(|(id, _)| *id == texture)
+            .unwrap()
+            .1;
+        assert!(delta.pos.is_some());
+        assert!(delta.image.width() * delta.image.height() < 12 * 8);
+        drop(changed);
+        for _ in 0..2 {
+            drop(draw(&mut app));
+        }
+        click(&mut app, &ctx, "liquify-reset");
+        {
+            let d = app.editor.liquify.as_mut().unwrap();
+            let source = d.native.preview(&app.editor.session).unwrap();
+            assert!(matches!(
+                d.display.prepare(&source, [12, 8]).unwrap(),
+                Upload::Unchanged
+            ));
+        }
+        let pixels = app.editor.session.doc.layers[0].pixels.clone();
+        assert!(app
+            .editor
+            .core("layer.rename", json!({"layer_id":1,"name":"New name"})));
+        let d = app.editor.liquify.as_mut().unwrap();
+        d.dirty = true;
+        d.last_preview = Instant::now() - Duration::from_secs(1);
+        let stale = draw(&mut app);
+        assert!(stale
+            .textures_delta
+            .set
+            .iter()
+            .all(|(id, _)| *id != texture));
+        assert!(app.editor.liquify_texture().is_none());
+        assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
     }
 }

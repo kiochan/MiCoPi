@@ -302,7 +302,7 @@ impl Draft {
     }
     /// Accumulate typed field changes and four conservative dirty unions. A
     /// packet batch samples each owner once per union, instead of per raw packet.
-    pub(crate) fn push_deferred(&mut self, s: &Session, arms: &[Push]) -> Result<(), String> {
+    pub(crate) fn push_deferred(&mut self, s: &Session, arms: &[Push]) -> Result<bool, String> {
         self.check_source(s)?;
         if !(1..=4).contains(&arms.len()) || self.request.steps.len() >= MAX_STEPS {
             return Err("Liquify contact exceeds the step/arm limit; apply or cancel".into());
@@ -332,7 +332,7 @@ impl Draft {
         let update = self.field.push(&native[..arms.len()])?;
         if update.count == 0 {
             self.valid = true;
-            return Ok(());
+            return Ok(false);
         }
         for (slot, r) in update.regions[..update.count as usize].iter().enumerate() {
             self.pending[slot] = Some(match self.pending[slot] {
@@ -351,7 +351,7 @@ impl Draft {
         }
         self.request.steps.push(record);
         self.valid = true;
-        Ok(())
+        Ok(true)
     }
     pub(crate) fn flush(&mut self, s: &Session) -> Result<(), String> {
         self.check_source(s)?;
