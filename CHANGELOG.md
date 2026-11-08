@@ -6,6 +6,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Painting and document editing
 
+- Correct the new Liquify smoke step's workflow indentation so GitHub can schedule its runtime validation. The initial integration push failed before creating jobs; no runtime result was produced by that run.
+
 - Connect multi-layer Liquify source integration through registered plan/PNG-preview/atomic Apply actions, generated nodes, MCP/headless and a desktop open command. Capture exact raster IDs and linked raw masks with source revision, lock, renderer and bounded cost admission; preserve selection, unlinked masks, hierarchy and affine Repeat. Cache one native field and initialized outputs, batch typed input into up to four dirty unions, sample immutable owners into reused ROI storage, reset in place and publish one history group/revision/verified outcome with rollback. Add themed four-language canvas controls, native packet pressure/stabilization, reflected view/symmetry displacement, radius feedback, throttled full-frame preview texture reuse and Reset/Cancel/Apply. Add owner/history/preview/late-native/post-render rollback, synthetic input/control and JSONL/MCP CI gates. Align optional capability tests with the painting package key and expose sampler discovery. New runtime validation, native captures, group/mask artist matrix and measured large-canvas costs remain pending; synchronous preview composition/upload is still full-frame.
 
 - Fix the remaining brush-preset rejection test to use the shared required-key constant after its rename. Latest CI stopped compiling that test before runtime checks; this correction retains the same twelve-key rejection coverage. Runtime revalidation awaits CI.
