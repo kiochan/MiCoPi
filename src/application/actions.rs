@@ -95,6 +95,7 @@ pub enum Operation {
     GraphRead,
     HistogramQuery,
     HslPreview,
+    HslDialog,
     GraphSet,
     GraphCatalog,
     Describe,
@@ -308,6 +309,7 @@ impl Operation {
             || matches!(
                 self,
                 Self::DuplicateLayer
+                    | Self::HslDialog
                     | Self::BrushAngleAdjust
                     | Self::BrushPresetUpsert
                     | Self::BrushPresetDelete
@@ -370,6 +372,11 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::HslDialog {
+            let mut parameters = crate::engine::hsl::Hsl::schema();
+            parameters.as_object_mut().unwrap().remove("required");
+            return json!({"type":"object","additionalProperties":false,"properties":{"parameters":parameters}});
+        }
         if self == Self::HslPreview {
             return crate::plugins::hsl_preview::schema();
         }

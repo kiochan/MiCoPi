@@ -1601,5 +1601,7 @@
   "Preview keeps the document unchanged until Apply.": "Preview keeps the document unchanged until Apply.",
   "Document Changed; Refresh Preview Source": "Document Changed; Refresh Preview Source",
   "Refresh Preview Source": "Refresh Preview Source",
-  "Finish the current contact before requesting a color preview": "Finish the current contact before requesting a color preview"
+  "Finish the current contact before requesting a color preview": "Finish the current contact before requesting a color preview",
+  "Open Hue/Saturation Controls": "Open Hue/Saturation Controls",
+  "Document changed; reopen Hue/Saturation.": "Document changed; reopen Hue/Saturation."
 }

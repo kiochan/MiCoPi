@@ -20,6 +20,72 @@ fn request(s: &Session) -> Request {
     }
 }
 #[test]
+fn hsl_dialog_is_desktop_only_fenced_bounded_and_non_atomic() {
+    let mut s = session();
+    assert_eq!(
+        s.apply(Action::new("layer.hue_saturation.open", json!({})))
+            .unwrap_err()
+            .code,
+        "ui_unavailable"
+    );
+    assert!(s.ui_effects.is_empty());
+    s.runtime = "desktop";
+    let state = s.state();
+    let history = s.doc.history_bytes();
+    let result = call(
+        &mut s,
+        "layer.hue_saturation.open",
+        json!({"parameters":{"hue":120}}),
+    );
+    assert_eq!(result["queued"], true);
+    assert_eq!(result["revision"], s.revision);
+    let effect = s.ui_effects.pop_front().unwrap();
+    assert_eq!(effect["id"], "hsl.open");
+    assert_eq!(effect["document_identity"], s.doc.identity);
+    assert_eq!(effect["layer_id"], s.doc.layer_id(s.doc.active));
+    assert_eq!(
+        effect["value"],
+        json!({"hue":120.,"saturation":0.,"lightness":0.})
+    );
+    assert_eq!(s.state(), state);
+    assert_eq!(s.doc.history_bytes(), history);
+    assert_eq!(s.apply(Action::new("pipeline.run", json!({"atomic":true,"steps":[{"id":"open","action":"layer.hue_saturation.open","args":{}}]}))).unwrap_err().code, "non_atomic_action");
+    assert!(s.ui_effects.is_empty());
+    for _ in 0..128 {
+        s.ui_effects.push_back(effect.clone());
+    }
+    assert_eq!(
+        s.apply(Action::new("layer.hue_saturation.open", json!({})))
+            .unwrap_err()
+            .code,
+        "presentation_queue_full"
+    );
+    assert_eq!(s.ui_effects.len(), 128);
+    assert_eq!(s.state(), state);
+    s.ui_effects.clear();
+    call(
+        &mut s,
+        "canvas.pointer",
+        json!({"phase":"down","x":2,"y":2,"pressure":0.3,"pen":true,"time":1,"tool_override":"brush"}),
+    );
+    let revision = s.revision;
+    let pixels = s.doc.layers[0].pixels.clone();
+    call(
+        &mut s,
+        "layer.hue_saturation.open",
+        json!({"parameters":{"hue":120}}),
+    );
+    assert!(s.stroke.active());
+    assert_eq!(s.revision, revision);
+    assert_eq!(s.doc.layers[0].pixels, pixels);
+    call(
+        &mut s,
+        "canvas.pointer",
+        json!({"phase":"up","x":5,"y":3,"pressure":0.8,"pen":true,"time":2,"tool_override":"brush"}),
+    );
+    check(&mut s);
+}
+#[test]
 fn hsl_preview_has_independent_primary_pixels_and_preserves_hidden_rgb_under_lock() {
     let mut s = session();
     call(&mut s, "layer.fill_color", json!({"color":"#ff000080"}));

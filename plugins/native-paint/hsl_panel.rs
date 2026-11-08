@@ -136,6 +136,17 @@ impl Draft {
     }
 }
 impl Editor {
+    pub(super) fn receive_hsl_draft(&mut self, effect: &serde_json::Value) {
+        if effect["document_identity"].as_u64() != Some(self.session.doc.identity)
+            || effect["revision"].as_u64() != Some(self.session.revision)
+            || effect["layer_id"].as_u64()
+                != Some(self.session.doc.layer_id(self.session.doc.active))
+        {
+            self.status = "Document changed; reopen Hue/Saturation.".into();
+            return;
+        }
+        self.begin_plugin_command_with_args("layer.hue_saturation", effect["value"].clone());
+    }
     pub(super) fn hsl_command_window(&mut self, ctx: &Context, draft: &mut Draft) -> bool {
         let a = &self.settings.ui;
         let frame = Frame::window(&ctx.style()).inner_margin(Margin::same(a.panel_padding as i8));
@@ -317,6 +328,44 @@ mod tests {
                 ],
             );
         }
+    }
+    #[test]
+    fn hsl_open_command_queues_parameterized_controls_and_rejects_stale_effects() {
+        let mut app = studio();
+        let ctx = Context::default();
+        app.editor.session.ui_effects.clear();
+        let before = app.editor.session.state();
+        app.editor.begin_plugin_command_with_args(
+            "layer.hue_saturation.open",
+            json!({"parameters":{"hue":120}}),
+        );
+        assert!(app.editor.command_form.is_none());
+        assert_eq!(app.editor.session.ui_effects.len(), 1);
+        app.consume_ui_effects(&ctx);
+        assert_eq!(draft(&mut app).request.hsl.hue, 120.);
+        assert_eq!(app.editor.session.state(), before);
+        settle(&mut app, &ctx);
+        click(&mut app, &ctx, "hsl-cancel");
+        app.editor
+            .session
+            .apply(crate::application::Action::new(
+                "layer.hue_saturation.open",
+                json!({}),
+            ))
+            .unwrap();
+        app.editor
+            .session
+            .apply(crate::application::Action::new(
+                "layer.rename",
+                json!({"name":"Changed after queue"}),
+            ))
+            .unwrap();
+        app.consume_ui_effects(&ctx);
+        assert!(app.editor.command_form.is_none());
+        assert_eq!(
+            app.editor.status,
+            "Document changed; reopen Hue/Saturation."
+        );
     }
     #[test]
     fn hsl_draft_debounces_reuses_texture_and_cancel_keeps_document_unchanged() {

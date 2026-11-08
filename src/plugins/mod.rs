@@ -66,6 +66,7 @@ pub(crate) fn execute(
     use crate::application::Operation::*;
     match op {
         HslPreview => hsl_preview::execute(session, args),
+        HslDialog => hsl_preview::request_dialog(session, args),
         BrushAngleAdjust => brush_tip::execute(session, args),
         BrushPresetsQuery | BrushPresetUpsert | BrushPresetDelete | BrushPresetApply
         | BrushPresetsImport | BrushPresetsExport | BrushPresetsReload => {

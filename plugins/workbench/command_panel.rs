@@ -237,6 +237,12 @@ impl Editor {
             self.release_command_sync();
             return;
         };
+        if def.operation == Some(crate::application::Operation::HslDialog) {
+            self.core(action, initial);
+            self.sync_from_session();
+            self.release_command_sync();
+            return;
+        }
         let mut schema = def.schema();
         if matches!(
             def.operation,

@@ -22,6 +22,40 @@ pub(crate) fn schema() -> Value {
             "layer_id":{"type":"integer","minimum":1,"maximum":4294967295u64},
             "hsl":Hsl::schema()}})
 }
+/// Presentation-only request. Opening controls never invokes the pixel action;
+/// a captured scope prevents a queued request from silently rebasing later.
+pub(crate) fn request_dialog(s: &mut Session, args: Value) -> ActionResult {
+    if s.runtime != "desktop" {
+        return Err(ActionError::new("ui_unavailable", "Hue/Saturation controls require the desktop; use layer.hue_saturation for headless editing"));
+    }
+    let hsl: Hsl =
+        serde_json::from_value(args.get("parameters").cloned().unwrap_or_else(|| json!({})))?;
+    hsl.validate().map_err(failure)?;
+    s.validate_action(&Action::new("layer.hue_saturation", json!(hsl)))?;
+    if !s
+        .registry
+        .native_actions
+        .contains_key("layer.hue_saturation")
+    {
+        return Err(ActionError::new(
+            "native_missing",
+            "Native HSL action is not loaded",
+        ));
+    }
+    if s.ui_effects.len() >= 128 {
+        return Err(ActionError::new(
+            "presentation_queue_full",
+            "Wait for queued presentation commands before retrying",
+        ));
+    }
+    let scope = json!({"queued":true,"document_identity":s.doc.identity,
+        "revision":s.revision,"layer_id":s.doc.layer_id(s.doc.active)});
+    let mut effect = scope.clone();
+    effect["id"] = json!("hsl.open");
+    effect["value"] = json!(hsl);
+    s.ui_effects.push_back(effect);
+    Ok(scope)
+}
 fn failure(message: impl Into<String>) -> ActionError {
     ActionError::new("hsl_preview", message)
 }

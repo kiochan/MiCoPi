@@ -21,6 +21,10 @@ admission distinct. Pixel math and selection mixing remain in native DLLs.
 private texture, captured-source refresh and Apply/Cancel controls. The shared
 Workbench command form hosts that adapter and Canvas consumes only valid draft
 textures; neither owns a second writable document.
+The same package registers the desktop-only open action. The host queues its
+captured scope in `hsl_preview.rs`; the feature UI adapter validates delivery
+before opening controls. Localization capture automation uses this registered
+entry point rather than hard-coding mouse coordinates.
 SDK Rust/C contracts and fixtures describe this native prerequisite; the typed
 document integration is implemented in source, pending CI. See [Native HSL](native-hsl.md).
 Its DLL contribution declares schemas, pixel access, atomic support and idle-only

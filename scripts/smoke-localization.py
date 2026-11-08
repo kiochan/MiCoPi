@@ -139,6 +139,16 @@ def main():
                 time.sleep(.15)
                 screenshot(f'{language}-{action}.png')
                 call('ui.dispatch',dict(id='command',value='Cancel'))
+            # Open the feature-owned color draft through its registered action.
+            # Its private Canvas texture must not alter public document pixels.
+            color_revision = call('canvas.state', {})['revision']
+            color = call('layer.hue_saturation.open', dict(parameters=dict(hue=120, saturation=15, lightness=10)))
+            assert color['queued'] and color['revision'] == color_revision
+            time.sleep(.4)
+            screenshot(f'{language}-hue-saturation.png')
+            assert call('canvas.state', {})['revision'] == color_revision
+            assert base64.b64decode(call('canvas.snapshot', {})['data']) == expected
+            call('ui.dispatch', dict(id='command', value='Cancel'))
             call('canvas.resize',dict(width=320,height=256,anchor='center'))
             call('ui.dispatch',dict(id='command',value=dict(UiCommand=10174)))
             time.sleep(.15)

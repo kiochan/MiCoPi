@@ -1601,5 +1601,7 @@
   "Preview keeps the document unchanged until Apply.": "適用するまで、プレビューは文書を変更しません。",
   "Document Changed; Refresh Preview Source": "文書が変更されました。プレビュー元を更新してください",
   "Refresh Preview Source": "プレビュー元を更新",
-  "Finish the current contact before requesting a color preview": "現在のストロークを終了してから色をプレビューしてください"
+  "Finish the current contact before requesting a color preview": "現在のストロークを終了してから色をプレビューしてください",
+  "Open Hue/Saturation Controls": "色相・彩度の調整を開く",
+  "Document changed; reopen Hue/Saturation.": "文書が変更されました。色相・彩度を開き直してください。"
 }

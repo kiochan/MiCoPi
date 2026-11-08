@@ -37,6 +37,20 @@ the shared command admission/synchronization guards. Apply dispatches the
 existing revision-guarded native action and closes only on success: one changed
 edit uses one revision, Undo group and recorded outcome.
 
+Automation can open these same controls with
+`layer.hue_saturation.open`, for example
+`{"parameters":{"hue":120,"saturation":15,"lightness":10}}`.
+Omitted parameters default to zero. The action queues only a presentation
+request, captures document/revision/raster identity and does not run a pixel
+operation, end an active contact or increment the document revision. A stale
+queued request is rejected by the desktop instead of silently opening on a
+different source. Queue capacity is 128; document-atomic pipelines reject this
+presentation effect. Headless callers receive `ui_unavailable` and should use
+the direct action or read-only PNG preview instead. Opening controls is not
+equivalent to Apply, nor does an accepted queued response certify a rendered
+window. The localization smoke requests a reviewed-capture candidate through
+this action and checks committed PNG/revision invariance in all four languages.
+
 The feature-owned `plugins/native-paint/hsl_panel.rs` compiles into the desktop
 host; no egui object crosses the DLL ABI. It calls the same typed read-only
 preview service as the public PNG action below, then uploads the private texture

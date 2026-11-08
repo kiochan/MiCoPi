@@ -610,6 +610,7 @@ impl Session {
                                     | Operation::CaptureWorkspace
                                     | Operation::WindowCapture
                                     | Operation::TransformPreview
+                                    | Operation::HslDialog
                                     | Operation::AdjustmentInspect
                                     | Operation::ExportDialog
                                     | Operation::OpenSelectedMerge
