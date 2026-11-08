@@ -404,6 +404,16 @@ discovery adds `tip_geometry`; it does not infer hardware tilt support. See
 [Analytic Brush Tips](brush-tips.md) for coverage approximations, persistence,
 presets and pending-CI measurement scope.
 
+### Native brush symmetry prerequisite
+
+The optional `TOOL_OPTION_SYMMETRY` (`0x20`) feature adds a complete 96-byte
+`ToolOptionsSymmetry` tail after the unchanged analytic tip prefix. Axes and
+normalized document anchors are frozen before DOWN. The native DLL reflects
+spaced dabs after one pressure/stabilization pass, retaining shared selection,
+Flow, capped influence and local host loans. Old prefixes reset symmetry off;
+no Session/desktop mode is exposed yet. See [Native Brush Symmetry](native-brush-symmetry.md)
+for offsets, overlap semantics, compatibility, pending CI and host integration gates.
+
 ### Selection capability and kernels
 
 `TOOL_OPTION_SELECTION` / `MICOPI_TOOL_OPTION_SELECTION` uses bit `0x2`. Supporting tools receive `ToolOptionsSelection`, which appends `Coverage` to the existing `ToolOptionsExt` prefix. Only inspect it when `struct_size` covers the whole tail and the flag is present. The host retains the immutable full-canvas byte buffer across the contact; copy the descriptor, not the bytes. A prefix-only configure or absent flag resets selection to unrestricted. Reject truncated tails, invalid strides/dimensions, null active masks and sample/canvas dimension mismatches before painting. Configure still runs only before DOWN. Older DLLs without the capability reject selected contacts.

@@ -149,6 +149,7 @@ Acceptance: parameter units/ranges and alpha/color behavior are documented; dete
 - [ ] Add sampled/textured tips, accurate tip shape/rotation feedback and deterministic spacing/size/opacity/color dynamics through cached native tools.
 - [ ] Add brush preset editing/import/export within a bounded, versioned MiCoPi format.
 - [ ] Add straight-line/angle-assisted strokes, symmetry and configurable smoothing/stabilization modes with explicit latency and pressure-continuity behavior.
+  - The [native symmetry prerequisite](native-brush-symmetry.md) adds a compatible optional options tail and fixed-size reflected dabs after shared filtering/spacing, including destination selection, A8/RGBA, Flow and shared capped influence. SDK/layout/native cases are authored, pending CI. Host scalar intent, settings/presets, public state/commands/MCP/headless, axis feedback, Undo/outcome integration and measured costs remain open; the painting mode is not yet exposed.
 - [ ] Add clone stamp and measured blur/sharpen/smudge tools through native plugins.
 - [ ] Surface tilt/rotation/device capability data with explicit unsupported-device fallbacks.
 - [ ] Evaluate external brush/palette/pattern formats individually with compatibility fixtures.

@@ -1,5 +1,7 @@
 use super::*;
 use crate::{configure, Raster, State};
+#[path = "symmetry_tests.rs"]
+mod symmetry_tests;
 #[path = "tip_tests.rs"]
 mod tip_tests;
 

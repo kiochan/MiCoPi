@@ -11,6 +11,7 @@ mod raster;
 mod resample;
 mod selection;
 mod stroke;
+mod symmetry;
 mod tip;
 mod trim;
 use input::{Dynamics, Sample, Stabilizer};
@@ -37,6 +38,7 @@ struct State {
     stroke_opacity: bool,
     stroke_cache: stroke::Coverage,
     tip: tip::Tip,
+    symmetry: symmetry::Symmetry,
 }
 impl Default for State {
     fn default() -> Self {
@@ -52,6 +54,7 @@ impl Default for State {
             stroke_opacity: false,
             stroke_cache: Default::default(),
             tip: Default::default(),
+            symmetry: Default::default(),
         }
     }
 }
@@ -172,6 +175,7 @@ impl State {
                         spacing: self.spacing,
                         flow: self.flow,
                         tip: self.tip,
+                        symmetry: self.symmetry.resolve(p.width, p.height),
                         stroke: if capped {
                             Some(std::mem::take(&mut self.stroke_cache))
                         } else {
@@ -378,13 +382,38 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
                 | abi::TOOL_OPTION_SELECTION
                 | abi::TOOL_OPTION_A8_TARGET
                 | abi::TOOL_OPTION_STROKE_OPACITY
-                | abi::TOOL_OPTION_TIP_GEOMETRY)
+                | abi::TOOL_OPTION_TIP_GEOMETRY
+                | abi::TOOL_OPTION_SYMMETRY)
             != 0
         || flags & (abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_A8_TARGET)
             == (abi::TOOL_OPTION_ALPHA_LOCK | abi::TOOL_OPTION_A8_TARGET)
     {
         return abi::ERROR;
     }
+    let complete_symmetry =
+        header.struct_size >= std::mem::size_of::<abi::ToolOptionsSymmetry>() as u32;
+    if (flags & abi::TOOL_OPTION_SYMMETRY != 0 && !complete_symmetry)
+        || (header.struct_size > std::mem::size_of::<abi::ToolOptionsTip>() as u32
+            && !complete_symmetry)
+    {
+        return abi::ERROR;
+    }
+    let symmetry = if complete_symmetry {
+        let extended = std::ptr::read_unaligned(options.cast::<abi::ToolOptionsSymmetry>());
+        let Some(value) =
+            symmetry::Symmetry::new(extended.axes, extended.anchor_x, extended.anchor_y)
+        else {
+            return abi::ERROR;
+        };
+        if extended.reserved != 0
+            || (flags & abi::TOOL_OPTION_SYMMETRY == 0 && value != symmetry::Symmetry::default())
+        {
+            return abi::ERROR;
+        }
+        value
+    } else {
+        symmetry::Symmetry::default()
+    };
     let complete_stroke =
         header.struct_size >= std::mem::size_of::<abi::ToolOptionsStroke>() as u32;
     let complete_tip = header.struct_size >= std::mem::size_of::<abi::ToolOptionsTip>() as u32;
@@ -462,6 +491,7 @@ unsafe extern "C" fn configure(state: *mut c_void, options: *const abi::ToolOpti
     state.a8_target = flags & abi::TOOL_OPTION_A8_TARGET != 0;
     state.selection = mask;
     state.tip = tip;
+    state.symmetry = symmetry;
     abi::OK
 }
 static OPTIONS: abi::ToolOptionsApiExt = abi::ToolOptionsApiExt {
@@ -474,7 +504,8 @@ static OPTIONS: abi::ToolOptionsApiExt = abi::ToolOptionsApiExt {
         | abi::TOOL_OPTION_SELECTION
         | abi::TOOL_OPTION_A8_TARGET
         | abi::TOOL_OPTION_STROKE_OPACITY
-        | abi::TOOL_OPTION_TIP_GEOMETRY,
+        | abi::TOOL_OPTION_TIP_GEOMETRY
+        | abi::TOOL_OPTION_SYMMETRY,
 };
 #[no_mangle]
 pub extern "C" fn micopi_tool_options_v1() -> *const abi::ToolOptionsApi {

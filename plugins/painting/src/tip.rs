@@ -44,6 +44,25 @@ impl Tip {
             sine,
         })
     }
+    pub fn reflected(self, odd_axes: bool) -> Self {
+        // Both tip shapes are centrally symmetric. Cardinal orientations and
+        // legacy circles (and diagonal full squares) retain the same footprint.
+        if odd_axes
+            && !self.legacy()
+            && self.sine != 0.
+            && self.cosine != 0.
+            && !(self.shape == abi::TIP_SQUARE
+                && self.roundness == 1.
+                && self.cosine.abs() == self.sine.abs())
+        {
+            Self {
+                sine: -self.sine,
+                ..self
+            }
+        } else {
+            self
+        }
+    }
     pub fn legacy(self) -> bool {
         self.shape == abi::TIP_ROUND && self.roundness == 1.
     }

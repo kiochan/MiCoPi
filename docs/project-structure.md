@@ -1,5 +1,10 @@
 # Project Structure and Ownership
 
+`plugins/painting/src/symmetry.rs` owns fixed-size native dab reflection, while
+`raster.rs` shares the existing per-stamp deposits and capped influence cache.
+`ToolOptionsSymmetry` is an optional SDK/C-header tail; host intent/UI integration
+is still pending. `symmetry_tests.rs` reuses the padded native loan harness.
+
 `application::View` owns the optional horizontal/vertical mirror flags. The workbench registers
 both view toggles and the shared painting/view adapter validates desktop/contact scope.
 `plugins/canvas/panel.rs` owns forward/inverse screen mapping and texture UVs;

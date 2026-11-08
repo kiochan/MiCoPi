@@ -138,6 +138,9 @@ const MicopiToolOptionsApi *micopi_tool_options_v1(void);
 #define MICOPI_TOOL_OPTION_STROKE_OPACITY 8u
 /* Fixed analytic geometry, complete 80-byte MicopiToolOptionsTip required. */
 #define MICOPI_TOOL_OPTION_TIP_GEOMETRY 16u
+#define MICOPI_TOOL_OPTION_SYMMETRY 32u
+#define MICOPI_SYMMETRY_X 1u
+#define MICOPI_SYMMETRY_Y 2u
 #define MICOPI_TIP_ROUND 0u
 #define MICOPI_TIP_SQUARE 1u
 typedef struct {
@@ -161,6 +164,14 @@ typedef struct {
     MicopiToolOptionsStroke base;
     uint32_t tip_shape; float roundness, angle; uint32_t reserved;
 } MicopiToolOptionsTip;
+/* Complete 96-byte tail, finite anchors0..1 in pixel-edge canvas fractions.
+   X reflects x around anchor_x*width; Y reflects y around anchor_y*height.
+   Reserved0; old prefixes reset axes0/anchors(.5,.5). Freeze before DOWN.
+   Filter/spacing is shared; identical stamps on an axis are deposited once. */
+typedef struct {
+    MicopiToolOptionsTip base;
+    uint32_t axes; float anchor_x, anchor_y; uint32_t reserved;
+} MicopiToolOptionsSymmetry;
 typedef struct {
     uint32_t kind, mode; float bounds[4];
     const float (*points)[2]; size_t count;

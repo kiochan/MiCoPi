@@ -15,6 +15,7 @@ pub struct Raster {
     pub flow: f32,
     pub stroke: Option<crate::stroke::Coverage>,
     pub(crate) tip: crate::tip::Tip,
+    pub(crate) symmetry: crate::symmetry::Symmetry,
 }
 impl Default for Raster {
     fn default() -> Self {
@@ -32,6 +33,7 @@ impl Default for Raster {
             flow: 1.,
             stroke: None,
             tip: Default::default(),
+            symmetry: Default::default(),
         }
     }
 }
@@ -84,7 +86,23 @@ impl Raster {
         self.last_brush = Some(b);
     }
 
-    fn dab(&mut self, host: &abi::ToolHost, x: f32, y: f32, mut b: Brush) {
+    fn dab(&mut self, host: &abi::ToolHost, x: f32, y: f32, b: Brush) {
+        if self.symmetry.axes == 0 {
+            self.dab_one(host, x, y, b);
+            return;
+        }
+        let original = self.tip;
+        let (stamps, count) = self.symmetry.stamps(x, y, original);
+        for stamp in &stamps[..count] {
+            self.tip = stamp.tip;
+            self.dab_one(host, stamp.x, stamp.y, b);
+            if self.failed {
+                break;
+            }
+        }
+        self.tip = original;
+    }
+    fn dab_one(&mut self, host: &abi::ToolHost, x: f32, y: f32, mut b: Brush) {
         if self.failed || b.opacity <= 0. || b.radius <= 0. {
             return;
         }

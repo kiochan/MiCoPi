@@ -78,6 +78,15 @@ ABI_ASSERT(offsetof(MicopiToolOptionsTip, reserved) == 76, "Tip reserved offset"
 ABI_ASSERT(MICOPI_TOOL_OPTION_TIP_GEOMETRY == 16, "Independent analytic tip feature");
 ABI_ASSERT((MICOPI_TOOL_OPTION_TIP_GEOMETRY & (MICOPI_TOOL_OPTION_ALPHA_LOCK | MICOPI_TOOL_OPTION_SELECTION | MICOPI_TOOL_OPTION_A8_TARGET | MICOPI_TOOL_OPTION_STROKE_OPACITY)) == 0, "Tip preserves existing feature bits");
 ABI_ASSERT(MICOPI_TIP_ROUND == 0 && MICOPI_TIP_SQUARE == 1, "Stable analytic shape IDs");
+ABI_ASSERT(sizeof(MicopiToolOptionsSymmetry) == 96, "Complete symmetry options tail");
+ABI_ASSERT(offsetof(MicopiToolOptionsSymmetry, base) == 0, "Symmetry preserves tip prefix");
+ABI_ASSERT(offsetof(MicopiToolOptionsSymmetry, axes) == 80, "Symmetry axes offset");
+ABI_ASSERT(offsetof(MicopiToolOptionsSymmetry, anchor_x) == 84, "Symmetry X anchor offset");
+ABI_ASSERT(offsetof(MicopiToolOptionsSymmetry, anchor_y) == 88, "Symmetry Y anchor offset");
+ABI_ASSERT(offsetof(MicopiToolOptionsSymmetry, reserved) == 92, "Symmetry reserved offset");
+ABI_ASSERT(MICOPI_TOOL_OPTION_SYMMETRY == 32, "Stable symmetry feature bit");
+ABI_ASSERT((MICOPI_TOOL_OPTION_SYMMETRY & (MICOPI_TOOL_OPTION_ALPHA_LOCK | MICOPI_TOOL_OPTION_SELECTION | MICOPI_TOOL_OPTION_A8_TARGET | MICOPI_TOOL_OPTION_STROKE_OPACITY | MICOPI_TOOL_OPTION_TIP_GEOMETRY)) == 0, "Symmetry preserves feature bits");
+ABI_ASSERT(MICOPI_SYMMETRY_X == 1 && MICOPI_SYMMETRY_Y == 2, "Stable symmetry axes");
 ABI_ASSERT(sizeof(MicopiToolHostStroke) == 64, "Complete origin host tail");
 ABI_ASSERT(offsetof(MicopiToolHostStroke, base) == 0, "Stroke host preserves A8 prefix");
 ABI_ASSERT(offsetof(MicopiToolHostStroke, features) == 40, "Origin host features offset");

@@ -317,6 +317,11 @@ pub const TOOL_OPTION_STROKE_OPACITY: u32 = 8;
 /// Optional analytic tip geometry in a complete ToolOptionsTip. The flag marks
 /// the tail as meaningful; capability absence permits only legacy round tips.
 pub const TOOL_OPTION_TIP_GEOMETRY: u32 = 16;
+/// Optional complete ToolOptionsSymmetry tail. Axes are document-space reflection
+/// flags, anchors are finite canvas fractions 0..1. Freeze once before DOWN.
+pub const TOOL_OPTION_SYMMETRY: u32 = 32;
+pub const SYMMETRY_X: u32 = 1;
+pub const SYMMETRY_Y: u32 = 2;
 pub const TIP_ROUND: u32 = 0;
 pub const TIP_SQUARE: u32 = 1;
 /// Borrowed full-canvas 8-bit coverage, frozen until the contact ends.
@@ -372,6 +377,18 @@ pub struct ToolOptionsTip {
     pub tip_shape: u32,
     pub roundness: f32,
     pub angle: f32,
+    pub reserved: u32,
+}
+/// Additive symmetry configuration. X reflects across x=anchor_x*width and Y
+/// across y=anchor_y*height (pixel-edge coordinates). Reserved must be zero;
+/// old prefixes reset to axes0, anchors(.5,.5). Reflections reuse one filtered
+/// contact and spacing schedule; identical stamps at an axis are deposited once.
+#[repr(C)]
+pub struct ToolOptionsSymmetry {
+    pub base: ToolOptionsTip,
+    pub axes: u32,
+    pub anchor_x: f32,
+    pub anchor_y: f32,
     pub reserved: u32,
 }
 /// Optional cold-path selection blending. Both pixel regions share coordinates;
@@ -1297,6 +1314,27 @@ mod transform_layout_tests {
         assert_eq!(size_of::<ToolOptionsSelection>(), 56);
         assert_eq!(size_of::<ToolOptionsStroke>(), 64);
         assert_eq!(size_of::<ToolHostStroke>(), 64);
+    }
+    #[test]
+    fn symmetry_tail_preserves_tip_and_all_previous_prefix_layouts() {
+        assert_eq!(size_of::<ToolOptionsSymmetry>(), 96);
+        assert_eq!(offset_of!(ToolOptionsSymmetry, base), 0);
+        assert_eq!(offset_of!(ToolOptionsSymmetry, axes), 80);
+        assert_eq!(offset_of!(ToolOptionsSymmetry, anchor_x), 84);
+        assert_eq!(offset_of!(ToolOptionsSymmetry, anchor_y), 88);
+        assert_eq!(offset_of!(ToolOptionsSymmetry, reserved), 92);
+        assert_eq!(TOOL_OPTION_SYMMETRY, 32);
+        assert_eq!(
+            TOOL_OPTION_SYMMETRY
+                & (TOOL_OPTION_ALPHA_LOCK
+                    | TOOL_OPTION_SELECTION
+                    | TOOL_OPTION_A8_TARGET
+                    | TOOL_OPTION_STROKE_OPACITY
+                    | TOOL_OPTION_TIP_GEOMETRY),
+            0
+        );
+        assert_eq!((SYMMETRY_X, SYMMETRY_Y), (1, 2));
+        assert_eq!(size_of::<ToolOptionsTip>(), 80);
     }
     #[test]
     fn optional_a8_bounds_callback_uses_the_published_scalar_descriptor_and_output() {
