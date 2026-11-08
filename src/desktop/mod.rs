@@ -987,6 +987,7 @@ impl Studio {
                 }
                 Some("transform.open") => self.editor.open_transform(),
                 Some("hsl.open") => self.editor.receive_hsl_draft(&effect),
+                Some("tonal.open") => self.editor.receive_tonal_draft(&effect),
                 Some("transform.parameters") => {
                     if effect.get("document_identity").is_some_and(|value| {
                         value.as_u64() != Some(self.editor.session.doc.identity)

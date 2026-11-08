@@ -1605,5 +1605,8 @@
   "Open Hue/Saturation Controls": "色相・彩度の調整を開く",
   "Document changed; reopen Hue/Saturation.": "文書が変更されました。色相・彩度を開き直してください。",
   "Brightness/Contrast: Active Layer": "明るさ・コントラスト：現在のレイヤー",
-  "Brightness/Contrast: Preview Active Layer": "明るさ・コントラスト：現在のレイヤーをプレビュー"
+  "Brightness/Contrast: Preview Active Layer": "明るさ・コントラスト：現在のレイヤーをプレビュー",
+  "Brightness/Contrast": "明るさ・コントラスト",
+  "Open Brightness/Contrast Controls": "明るさ・コントラストの調整を開く",
+  "Document changed; reopen Brightness/Contrast.": "文書が変更されました。明るさ・コントラストを開き直してください。"
 }

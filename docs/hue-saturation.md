@@ -50,6 +50,9 @@ the direct action or read-only PNG preview instead. Opening controls is not
 equivalent to Apply, nor does an accepted queued response certify a rendered
 window. The localization smoke requests a reviewed-capture candidate through
 this action and checks committed PNG/revision invariance in all four languages.
+Standard CI currently skips native GUI smokes and does not run that capture
+script. Actual screenshot production and review remain pending on a compatible
+interactive Windows/OpenGL environment.
 
 The feature-owned `plugins/native-paint/hsl_panel.rs` compiles into the desktop
 host; no egui object crosses the DLL ABI. It calls the same typed read-only

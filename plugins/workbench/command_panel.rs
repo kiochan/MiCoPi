@@ -237,7 +237,13 @@ impl Editor {
             self.release_command_sync();
             return;
         };
-        if def.operation == Some(crate::application::Operation::HslDialog) {
+        if matches!(
+            def.operation,
+            Some(
+                crate::application::Operation::HslDialog
+                    | crate::application::Operation::TonalDialog
+            )
+        ) {
             self.core(action, initial);
             self.sync_from_session();
             self.release_command_sync();
@@ -299,9 +305,7 @@ impl Editor {
                 args[key] = value.clone();
             }
         }
-        let hsl = (action == "layer.hue_saturation")
-            .then(|| hsl_preview_ui::Draft::new(&self.session, &args))
-            .flatten();
+        let hsl = hsl_preview_ui::Draft::new(&self.session, action, &args);
         self.command_form = Some(CommandForm {
             action: action.into(),
             contact_policy: policy,
@@ -359,7 +363,7 @@ impl Editor {
             form.revision = self.session.revision;
         }
         if let Some(mut draft) = form.hsl.take() {
-            if self.hsl_command_window(ctx, &mut draft) {
+            if self.color_command_window(ctx, &mut draft) {
                 form.hsl = Some(draft);
                 self.command_form = Some(form);
             }

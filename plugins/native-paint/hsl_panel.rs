@@ -1,39 +1,132 @@
-//! Artist-facing local HSL draft. Only Apply publishes a document operation.
+//! Shared local color drafts. Only Apply publishes a document operation.
 use super::*;
 use crate::{
     application::Session,
     engine::hsl::Hsl,
-    plugins::hsl_preview::{self, Request},
+    plugins::{
+        color_preview::{Cost, Scope},
+        hsl_preview, tonal_preview,
+    },
 };
 use std::time::Duration;
 
+#[path = "tonal_controls.rs"]
+mod tonal_controls;
+
 const SETTLE: Duration = Duration::from_millis(150);
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Effect {
+    Hsl(Hsl),
+    Tonal(tonal_preview::Parameters),
+}
+impl Effect {
+    fn parse(action: &str, args: &serde_json::Value) -> Option<Self> {
+        match action {
+            "layer.hue_saturation" => serde_json::from_value(args.clone()).ok().map(Self::Hsl),
+            "layer.brightness_contrast" => {
+                serde_json::from_value(args.clone()).ok().map(Self::Tonal)
+            }
+            _ => None,
+        }
+    }
+    fn action(self) -> &'static str {
+        match self {
+            Self::Hsl(_) => "layer.hue_saturation",
+            Self::Tonal(_) => "layer.brightness_contrast",
+        }
+    }
+    fn title(self) -> &'static str {
+        match self {
+            Self::Hsl(_) => "Hue/Saturation",
+            Self::Tonal(_) => "Brightness/Contrast",
+        }
+    }
+    fn window_id(self) -> &'static str {
+        match self {
+            Self::Hsl(_) => "hsl-color-draft-window",
+            Self::Tonal(_) => "tonal-color-draft-window",
+        }
+    }
+    fn neutral(self) -> bool {
+        match self {
+            Self::Hsl(value) => value == Hsl::default(),
+            Self::Tonal(value) => value == tonal_preview::Parameters::default(),
+        }
+    }
+    fn edit(&mut self, ui: &mut Ui, id: Id) {
+        match self {
+            Self::Hsl(value) => {
+                nodes::hsl_ui::edit(ui, id, value);
+            }
+            Self::Tonal(value) => {
+                tonal_controls::edit(ui, id, value);
+            }
+        }
+    }
+    fn apply_action(self, scope: Scope) -> crate::application::Action {
+        crate::application::Action {
+            action: self.action().into(),
+            expected_revision: Some(scope.document_revision),
+            args: match self {
+                Self::Hsl(value) => serde_json::json!(value),
+                Self::Tonal(value) => serde_json::json!(value),
+            },
+        }
+    }
+    fn render(
+        self,
+        s: &Session,
+        scope: Scope,
+    ) -> Result<(Vec<u32>, Cost), crate::application::ActionError> {
+        match self {
+            Self::Hsl(hsl) => hsl_preview::render(
+                s,
+                hsl_preview::Request {
+                    document_identity: scope.document_identity,
+                    document_revision: scope.document_revision,
+                    layer_id: scope.layer_id,
+                    hsl,
+                },
+            ),
+            Self::Tonal(parameters) => tonal_preview::render(
+                s,
+                tonal_preview::Request {
+                    document_identity: scope.document_identity,
+                    document_revision: scope.document_revision,
+                    layer_id: scope.layer_id,
+                    parameters,
+                },
+            ),
+        }
+    }
+}
 pub(super) struct Draft {
-    request: Request,
+    request: Scope,
+    effect: Effect,
     layer_name: String,
     preview: bool,
-    observed: Hsl,
+    observed: Effect,
     changed: Instant,
-    attempted: Option<Hsl>,
-    painted: Option<Hsl>,
+    attempted: Option<Effect>,
+    painted: Option<Effect>,
     texture: Option<TextureHandle>,
     message: String,
     #[cfg(test)]
     renders: usize,
 }
 impl Draft {
-    pub(super) fn new(s: &Session, args: &serde_json::Value) -> Option<Self> {
-        let hsl: Hsl = serde_json::from_value(args.clone()).ok()?;
+    pub(super) fn new(s: &Session, action: &str, args: &serde_json::Value) -> Option<Self> {
+        let effect = Effect::parse(action, args)?;
         Some(Self {
-            request: Request {
+            request: Scope {
                 document_identity: s.doc.identity,
                 document_revision: s.revision,
                 layer_id: s.doc.layer_id(s.doc.active),
-                hsl,
             },
+            effect,
             layer_name: s.doc.layer_name(s.doc.active),
             preview: true,
-            observed: hsl,
+            observed: effect,
             changed: Instant::now(),
             attempted: None,
             painted: None,
@@ -55,7 +148,7 @@ impl Draft {
         (self.preview
             && self.source_matches(s)
             && !Self::contact(s)
-            && self.painted == Some(self.request.hsl))
+            && self.painted == Some(self.effect))
         .then_some(self.texture.as_ref())
         .flatten()
     }
@@ -71,8 +164,8 @@ impl Draft {
         self.changed = Instant::now();
     }
     fn update_preview(&mut self, ctx: &Context, s: &Session) {
-        if self.observed != self.request.hsl {
-            self.observed = self.request.hsl;
+        if self.observed != self.effect {
+            self.observed = self.effect;
             self.changed = Instant::now();
             self.attempted = None;
             self.message.clear();
@@ -80,7 +173,7 @@ impl Draft {
         if !self.preview
             || !self.source_matches(s)
             || Self::contact(s)
-            || self.attempted == Some(self.request.hsl)
+            || self.attempted == Some(self.effect)
         {
             return;
         }
@@ -88,11 +181,11 @@ impl Draft {
             ctx.request_repaint_after(SETTLE.saturating_sub(self.changed.elapsed()));
             return;
         }
-        self.attempted = Some(self.request.hsl);
+        self.attempted = Some(self.effect);
         // A neutral draft already has the committed surface. Avoid rendering
         // and uploading a second whole-canvas texture merely to open controls.
-        if self.request.hsl == Hsl::default() {
-            self.painted = Some(self.request.hsl);
+        if self.effect.neutral() {
+            self.painted = Some(self.effect);
             self.texture = None;
             return;
         }
@@ -100,7 +193,7 @@ impl Draft {
         {
             self.renders += 1;
         }
-        match hsl_preview::render(s, self.request) {
+        match self.effect.render(s, self.request) {
             Ok((pixels, _)) => {
                 let width = s.doc.width;
                 let colors = pixels
@@ -121,10 +214,13 @@ impl Draft {
                 if let Some(texture) = &mut self.texture {
                     texture.set(image, TextureOptions::LINEAR);
                 } else {
-                    self.texture =
-                        Some(ctx.load_texture("hsl-color-draft", image, TextureOptions::LINEAR));
+                    self.texture = Some(ctx.load_texture(
+                        self.effect.window_id(),
+                        image,
+                        TextureOptions::LINEAR,
+                    ));
                 }
-                self.painted = Some(self.request.hsl);
+                self.painted = Some(self.effect);
                 self.message.clear();
             }
             Err(error) => {
@@ -137,17 +233,31 @@ impl Draft {
 }
 impl Editor {
     pub(super) fn receive_hsl_draft(&mut self, effect: &serde_json::Value) {
+        self.receive_color_draft(
+            effect,
+            "layer.hue_saturation",
+            "Document changed; reopen Hue/Saturation.",
+        );
+    }
+    pub(super) fn receive_tonal_draft(&mut self, effect: &serde_json::Value) {
+        self.receive_color_draft(
+            effect,
+            "layer.brightness_contrast",
+            "Document changed; reopen Brightness/Contrast.",
+        );
+    }
+    fn receive_color_draft(&mut self, effect: &serde_json::Value, action: &str, stale: &str) {
         if effect["document_identity"].as_u64() != Some(self.session.doc.identity)
             || effect["revision"].as_u64() != Some(self.session.revision)
             || effect["layer_id"].as_u64()
                 != Some(self.session.doc.layer_id(self.session.doc.active))
         {
-            self.status = "Document changed; reopen Hue/Saturation.".into();
+            self.status = stale.into();
             return;
         }
-        self.begin_plugin_command_with_args("layer.hue_saturation", effect["value"].clone());
+        self.begin_plugin_command_with_args(action, effect["value"].clone());
     }
-    pub(super) fn hsl_command_window(&mut self, ctx: &Context, draft: &mut Draft) -> bool {
+    pub(super) fn color_command_window(&mut self, ctx: &Context, draft: &mut Draft) -> bool {
         let a = &self.settings.ui;
         let frame = Frame::window(&ctx.style()).inner_margin(Margin::same(a.panel_padding as i8));
         let available =
@@ -159,8 +269,8 @@ impl Editor {
         let mut open = true;
         let mut apply = false;
         let mut cancel = false;
-        Window::new(tr_for(Some("native_paint"), "Hue/Saturation"))
-            .id(Id::new("hsl-color-draft-window"))
+        Window::new(tr_for(Some("native_paint"), draft.effect.title()))
+            .id(Id::new(draft.effect.window_id()))
             .open(&mut open)
             .collapsible(false)
             .frame(frame)
@@ -186,11 +296,8 @@ impl Editor {
                             .max(a.control_height * 2.),
                     )
                     .show(ui, |ui| {
-                        nodes::hsl_ui::edit(
-                            ui,
-                            Id::new("direct-hsl-controls"),
-                            &mut draft.request.hsl,
-                        );
+                        let id = Id::new(("direct-color-controls", draft.effect.action()));
+                        draft.effect.edit(ui, id);
                         if stale {
                             ui.weak(tr("Document Changed; Refresh Preview Source"));
                             let refresh =
@@ -243,7 +350,7 @@ impl Editor {
         }
         if apply {
             let previous = self.backend_contact_stamp();
-            let result = self.session.apply(draft.request.apply_action());
+            let result = self.session.apply(draft.effect.apply_action(draft.request));
             self.reconcile_command_contact(previous);
             self.sync_from_session();
             match result {
@@ -330,6 +437,111 @@ mod tests {
         }
     }
     #[test]
+    fn tonal_controls_preview_reuse_reset_apply_undo_and_cancel_share_one_draft() {
+        let mut app = studio();
+        let ctx = Context::default();
+        app.editor
+            .core("layer.fill_color", json!({"color":"#20406080"}));
+        let raw = app.editor.session.doc.layers[0].pixels.clone();
+        let revision = app.editor.session.revision;
+        let events = app.editor.session.journal.as_ref().unwrap().entries.len();
+        app.editor.begin_plugin_command_with_args(
+            "layer.brightness_contrast",
+            json!({"brightness":25,"contrast":100}),
+        );
+        settle(&mut app, &ctx);
+        assert_eq!(draft(&mut app).renders, 1);
+        let texture = app.editor.color_preview_texture().unwrap().id();
+        draft(&mut app).effect = Effect::Tonal(tonal_preview::Parameters {
+            brightness: 50.,
+            contrast: 0.,
+        });
+        frame(&mut app, &ctx, vec2(1000., 900.), vec![]);
+        assert!(app.editor.color_preview_texture().is_none());
+        settle(&mut app, &ctx);
+        assert_eq!(app.editor.color_preview_texture().unwrap().id(), texture);
+        assert_eq!(draft(&mut app).renders, 2);
+        click(&mut app, &ctx, "tonal-reset");
+        settle(&mut app, &ctx);
+        assert!(draft(&mut app).effect.neutral());
+        assert!(app.editor.color_preview_texture().is_none());
+        assert_eq!(draft(&mut app).renders, 2);
+        assert_eq!(app.editor.session.doc.layers[0].pixels, raw);
+        assert_eq!(app.editor.session.revision, revision);
+        assert_eq!(
+            app.editor.session.journal.as_ref().unwrap().entries.len(),
+            events
+        );
+        draft(&mut app).effect = Effect::Tonal(tonal_preview::Parameters {
+            brightness: 25.,
+            contrast: 100.,
+        });
+        frame(&mut app, &ctx, vec2(1000., 900.), vec![]);
+        settle(&mut app, &ctx);
+        click(&mut app, &ctx, "hsl-apply");
+        assert!(app.editor.command_form.is_none());
+        assert_eq!(
+            app.editor.session.doc.layers[0].pixels,
+            vec![0x800282ff; 96]
+        );
+        assert_eq!(app.editor.session.revision, revision + 1);
+        assert_eq!(
+            app.editor.session.journal.as_ref().unwrap().entries.len(),
+            events + 1
+        );
+        app.editor.core("history.undo", json!({}));
+        assert_eq!(app.editor.session.doc.layers[0].pixels, raw);
+        let before = app.editor.session.state();
+        app.editor
+            .begin_plugin_command_with_args("layer.brightness_contrast", json!({"brightness":50}));
+        settle(&mut app, &ctx);
+        click(&mut app, &ctx, "hsl-cancel");
+        assert_eq!(app.editor.session.state(), before);
+    }
+    #[test]
+    fn tonal_open_request_uses_the_shared_fenced_delivery_path() {
+        let mut app = studio();
+        let ctx = Context::default();
+        app.editor.session.ui_effects.clear();
+        let before = app.editor.session.state();
+        app.editor.begin_plugin_command_with_args(
+            "layer.brightness_contrast.open",
+            json!({"parameters":{"brightness":25}}),
+        );
+        assert!(app.editor.command_form.is_none());
+        app.consume_ui_effects(&ctx);
+        assert_eq!(
+            draft(&mut app).effect,
+            Effect::Tonal(tonal_preview::Parameters {
+                brightness: 25.,
+                contrast: 0.
+            })
+        );
+        assert_eq!(app.editor.session.state(), before);
+        settle(&mut app, &ctx);
+        click(&mut app, &ctx, "hsl-cancel");
+        app.editor
+            .session
+            .apply(crate::application::Action::new(
+                "layer.brightness_contrast.open",
+                json!({}),
+            ))
+            .unwrap();
+        app.editor
+            .session
+            .apply(crate::application::Action::new(
+                "layer.rename",
+                json!({"name":"New source"}),
+            ))
+            .unwrap();
+        app.consume_ui_effects(&ctx);
+        assert!(app.editor.command_form.is_none());
+        assert_eq!(
+            app.editor.status,
+            "Document changed; reopen Brightness/Contrast."
+        );
+    }
+    #[test]
     fn hsl_open_command_queues_parameterized_controls_and_rejects_stale_effects() {
         let mut app = studio();
         let ctx = Context::default();
@@ -342,7 +554,13 @@ mod tests {
         assert!(app.editor.command_form.is_none());
         assert_eq!(app.editor.session.ui_effects.len(), 1);
         app.consume_ui_effects(&ctx);
-        assert_eq!(draft(&mut app).request.hsl.hue, 120.);
+        assert_eq!(
+            draft(&mut app).effect,
+            Effect::Hsl(Hsl {
+                hue: 120.,
+                ..Default::default()
+            })
+        );
         assert_eq!(app.editor.session.state(), before);
         settle(&mut app, &ctx);
         click(&mut app, &ctx, "hsl-cancel");
@@ -385,7 +603,10 @@ mod tests {
         let texture = app.editor.color_preview_texture().unwrap().id();
         settle(&mut app, &ctx);
         assert_eq!(draft(&mut app).renders, 1);
-        draft(&mut app).request.hsl.hue = -120.;
+        draft(&mut app).effect = Effect::Hsl(Hsl {
+            hue: -120.,
+            ..Default::default()
+        });
         frame(&mut app, &ctx, vec2(1000., 900.), vec![]);
         assert!(app.editor.color_preview_texture().is_none());
         settle(&mut app, &ctx);
@@ -499,14 +720,19 @@ mod tests {
         let mut app = studio();
         for language in crate::i18n::Language::ALL {
             crate::i18n::set_language(language);
-            for width in [320., 960.] {
+            for (action, width) in [
+                ("layer.hue_saturation", 320.),
+                ("layer.hue_saturation", 960.),
+                ("layer.brightness_contrast", 320.),
+                ("layer.brightness_contrast", 960.),
+            ] {
                 for large in [false, true] {
                     app.editor.settings.ui = crate::configuration::Appearance::default();
                     if large {
                         app.editor.settings.ui.font_size = 22.;
                         app.editor.settings.ui.control_height = 48.;
                     }
-                    app.editor.begin_plugin_command("layer.hue_saturation");
+                    app.editor.begin_plugin_command(action);
                     let ctx = Context::default();
                     theme::fonts(&ctx);
                     theme::apply(&ctx, &app.editor.settings.ui);
@@ -522,7 +748,7 @@ mod tests {
                                 && rect.right() <= width + 1.
                                 && rect.top() >= 0.
                                 && rect.bottom() <= 1000.,
-                            "{language:?}/{width}/{large}/{name}: {rect:?}"
+                            "{action}/{language:?}/{width}/{large}/{name}: {rect:?}"
                         );
                     }
                 }

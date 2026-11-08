@@ -149,6 +149,14 @@ def main():
             assert call('canvas.state', {})['revision'] == color_revision
             assert base64.b64decode(call('canvas.snapshot', {})['data']) == expected
             call('ui.dispatch', dict(id='command', value='Cancel'))
+            tonal_revision = call('canvas.state', {})['revision']
+            tonal = call('layer.brightness_contrast.open', dict(parameters=dict(brightness=15, contrast=30)))
+            assert tonal['queued'] and tonal['revision'] == tonal_revision
+            time.sleep(.4)
+            screenshot(f'{language}-brightness-contrast.png')
+            assert call('canvas.state', {})['revision'] == tonal_revision
+            assert base64.b64decode(call('canvas.snapshot', {})['data']) == expected
+            call('ui.dispatch', dict(id='command', value='Cancel'))
             call('canvas.resize',dict(width=320,height=256,anchor='center'))
             call('ui.dispatch',dict(id='command',value=dict(UiCommand=10174)))
             time.sleep(.15)

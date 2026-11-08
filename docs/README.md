@@ -2,8 +2,8 @@
 
 [Direct Brightness/Contrast](brightness-contrast.md) adds a native active-raster
 command with a cold 256-byte table and the existing source-filter arithmetic.
-Runtime/transport checks await CI; dedicated coupled preview controls remain
-planned.
+Runtime/transport and new coupled desktop control checks await CI. Actual native
+captures and manual visual review remain separate pending checks.
 
 [Direct Hue/Saturation](hue-saturation.md) describes the native active-raster
 command, selection/lock/idle admission and shared workflow/MCP/headless path.

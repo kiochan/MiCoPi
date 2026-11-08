@@ -69,6 +69,7 @@ pub(crate) fn execute(
     match op {
         HslPreview => hsl_preview::execute(session, args),
         TonalPreview => tonal_preview::execute(session, args),
+        TonalDialog => tonal_preview::request_dialog(session, args),
         HslDialog => hsl_preview::request_dialog(session, args),
         BrushAngleAdjust => brush_tip::execute(session, args),
         BrushPresetsQuery | BrushPresetUpsert | BrushPresetDelete | BrushPresetApply

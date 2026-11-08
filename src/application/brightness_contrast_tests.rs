@@ -10,6 +10,32 @@ fn fixture() -> Session {
     s
 }
 #[test]
+fn tonal_dialog_is_desktop_only_normalizes_parameters_and_rejects_atomic_groups() {
+    let mut s = fixture();
+    assert_eq!(
+        s.apply(Action::new("layer.brightness_contrast.open", json!({})))
+            .unwrap_err()
+            .code,
+        "ui_unavailable"
+    );
+    assert!(s.ui_effects.is_empty());
+    s.runtime = "desktop";
+    let state = s.state();
+    let result = call(
+        &mut s,
+        "layer.brightness_contrast.open",
+        json!({"parameters":{"brightness":25}}),
+    );
+    assert_eq!(result["queued"], true);
+    assert_eq!(result["revision"], s.revision);
+    let effect = s.ui_effects.pop_front().unwrap();
+    assert_eq!(effect["id"], "tonal.open");
+    assert_eq!(effect["value"], json!({"brightness":25.,"contrast":0.}));
+    assert_eq!(s.state(), state);
+    assert_eq!(s.apply(Action::new("pipeline.run", json!({"atomic":true,"steps":[{"id":"open","action":"layer.brightness_contrast.open","args":{}}]}))).unwrap_err().code, "non_atomic_action");
+    assert!(s.ui_effects.is_empty());
+}
+#[test]
 fn tonal_preview_is_fenced_read_only_and_matches_selected_masked_apply() {
     use crate::plugins::tonal_preview::{self, Parameters, Request};
     let mut s = fixture();

@@ -1,8 +1,39 @@
 //! Immutable pixel-preview pipeline shared by native color commands.
-use crate::application::{Action, ActionError, Session};
+use crate::application::{Action, ActionError, ActionResult, Session};
 use crate::engine::graph::Renderer;
 use micopi_plugin_api as abi;
 use serde::Serialize;
+use serde_json::json;
+
+/// Queue controls, never pixel execution. Delivery retains the captured source.
+pub(crate) fn queue_dialog(s: &mut Session, action: Action, id: &str) -> ActionResult {
+    if s.runtime != "desktop" {
+        return Err(ActionError::new(
+            "ui_unavailable",
+            "Color controls require the desktop",
+        ));
+    }
+    s.validate_action(&action)?;
+    if !s.registry.native_actions.contains_key(&action.action) {
+        return Err(ActionError::new(
+            "native_missing",
+            "Native color action is not loaded",
+        ));
+    }
+    if s.ui_effects.len() >= 128 {
+        return Err(ActionError::new(
+            "presentation_queue_full",
+            "Wait for queued presentation commands before retrying",
+        ));
+    }
+    let scope = json!({"queued":true,"document_identity":s.doc.identity,
+        "revision":s.revision,"layer_id":s.doc.layer_id(s.doc.active)});
+    let mut effect = scope.clone();
+    effect["id"] = json!(id);
+    effect["value"] = action.args;
+    s.ui_effects.push_back(effect);
+    Ok(scope)
+}
 
 #[derive(Clone, Copy)]
 pub(crate) struct Scope {

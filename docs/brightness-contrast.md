@@ -3,9 +3,9 @@
 `layer.brightness_contrast` edits the active raster through the independent
 native painting DLL. Command search and schema-derived parameter forms,
 configurable bindings, workflow nodes, pipelines, JSONL and MCP share the action.
-This source increment and its runtime/transport regressions await CI. A dedicated
-coupled slider/preview dialog remains planned; the current desktop entry uses
-the shared command parameter form.
+This source increment and its runtime/transport regressions await CI. The desktop
+entry now opens coupled sliders and numeric percent controls with Reset, cached
+Preview, Apply and Cancel, sharing the HSL draft lifecycle.
 
 ```json
 {"action":"layer.brightness_contrast","args":{"brightness":25,"contrast":100}}
@@ -60,7 +60,7 @@ independent RGBA witness, selection/locks/masks, contact continuity, Undo/Redo,
 post-edit rollback, source-filter parity and verified outcomes. The existing
 tiny `scripts/smoke-hue-saturation.py` also checks this command's independent
 bins, Undo and workflow/JSONL/MCP parity, sharing its isolated process setup.
-Complete CI, dedicated preview controls, visual review and measurements remain
+Complete CI, actual window captures, visual review and measurements remain
 pending. See the [feature checklist](photoshop-essentials.md).
 
 ## Read-only preview
@@ -85,5 +85,28 @@ outcome events unchanged. Active contacts reject without sample flushing or
 completion; stale scope and invalid parameters reject before staging. The
 existing native HSL failure/output-preservation cases now exercise the same
 private staging path. New tonal soft-selection/mask/position-lock, PNG/Apply/Undo,
-fence/contact and JSONL/MCP parity checks await CI. Dedicated desktop coupled
-controls, reviewed screenshots and end-to-end costs remain planned.
+fence/contact and JSONL/MCP parity checks await CI. New desktop control regressions,
+reviewed screenshots and end-to-end costs remain pending.
+
+## Desktop draft
+
+Command search opens the coupled Brightness/Contrast controls. Editing parameters
+changes only the local draft. Previews settle for 150 ms, reuse their private
+Canvas texture and keep Navigator/automation on committed pixels. Neutral Reset
+uses the existing Canvas texture without a native render. Cancel/close/Escape
+discard the draft; Apply uses the existing native action once. External edits
+hide the old texture and require explicit source refresh before Apply.
+
+`layer.brightness_contrast.open` opens the same controls for attached desktop
+clients, with optional `parameters` such as `{"brightness":25,"contrast":100}`.
+The shared queued delivery validates captured document/revision/raster identity;
+an accepted request is not proof of a rendered window. Active contacts remain
+unfinished. Headless returns `ui_unavailable`; atomic document groups reject this
+presentation effect. Sliders, numeric fields and the footer derive sizes/spacing
+from appearance settings and use all four language catalogs.
+
+The native capture cases in `scripts/smoke-localization.py` include both color
+dialogs and committed PNG/revision invariance. Standard CI currently skips GUI
+smokes and does not run this script. Actual screenshot production and review
+require a compatible interactive Windows/OpenGL environment; passing egui unit
+tests alone does not prove those native captures or physical-device behavior.

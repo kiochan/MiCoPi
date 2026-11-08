@@ -18,6 +18,18 @@ impl Parameters {
             "contrast":{"type":"number","minimum":-100,"maximum":100,"title":"Contrast"}}})
     }
 }
+pub(crate) fn request_dialog(s: &mut Session, args: Value) -> ActionResult {
+    if s.runtime != "desktop" {
+        return Err(ActionError::new("ui_unavailable", "Brightness/Contrast controls require the desktop; use layer.brightness_contrast for headless editing"));
+    }
+    let parameters: Parameters =
+        serde_json::from_value(args.get("parameters").cloned().unwrap_or_else(|| json!({})))?;
+    color_preview::queue_dialog(
+        s,
+        Action::new("layer.brightness_contrast", json!(parameters)),
+        "tonal.open",
+    )
+}
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Request {

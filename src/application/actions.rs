@@ -97,6 +97,7 @@ pub enum Operation {
     HslPreview,
     TonalPreview,
     HslDialog,
+    TonalDialog,
     GraphSet,
     GraphCatalog,
     Describe,
@@ -311,6 +312,7 @@ impl Operation {
                 self,
                 Self::DuplicateLayer
                     | Self::HslDialog
+                    | Self::TonalDialog
                     | Self::BrushAngleAdjust
                     | Self::BrushPresetUpsert
                     | Self::BrushPresetDelete
@@ -373,6 +375,11 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::TonalDialog {
+            let mut parameters = crate::plugins::tonal_preview::Parameters::schema();
+            parameters.as_object_mut().unwrap().remove("required");
+            return json!({"type":"object","additionalProperties":false,"properties":{"parameters":parameters}});
+        }
         if self == Self::TonalPreview {
             return crate::plugins::tonal_preview::schema();
         }

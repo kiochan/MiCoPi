@@ -31,30 +31,11 @@ pub(crate) fn request_dialog(s: &mut Session, args: Value) -> ActionResult {
     let hsl: Hsl =
         serde_json::from_value(args.get("parameters").cloned().unwrap_or_else(|| json!({})))?;
     hsl.validate().map_err(failure)?;
-    s.validate_action(&Action::new("layer.hue_saturation", json!(hsl)))?;
-    if !s
-        .registry
-        .native_actions
-        .contains_key("layer.hue_saturation")
-    {
-        return Err(ActionError::new(
-            "native_missing",
-            "Native HSL action is not loaded",
-        ));
-    }
-    if s.ui_effects.len() >= 128 {
-        return Err(ActionError::new(
-            "presentation_queue_full",
-            "Wait for queued presentation commands before retrying",
-        ));
-    }
-    let scope = json!({"queued":true,"document_identity":s.doc.identity,
-        "revision":s.revision,"layer_id":s.doc.layer_id(s.doc.active)});
-    let mut effect = scope.clone();
-    effect["id"] = json!("hsl.open");
-    effect["value"] = json!(hsl);
-    s.ui_effects.push_back(effect);
-    Ok(scope)
+    super::color_preview::queue_dialog(
+        s,
+        Action::new("layer.hue_saturation", json!(hsl)),
+        "hsl.open",
+    )
 }
 fn failure(message: impl Into<String>) -> ActionError {
     ActionError::new("hsl_preview", message)
