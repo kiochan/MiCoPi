@@ -1,5 +1,10 @@
 # Project Structure and Ownership
 
+`plugins/painting/src/liquify_field.rs` owns bounded inverse-field updates and
+interpolation; `liquify_field_tests.rs` owns independent scalar/ROI/budget/reuse
+references. This internal prerequisite has no exported Liquify ABI or Session/UI
+operation yet; [delivery design](liquify-design.md) records the remaining stages.
+
 `docs/painting-requirements.md` owns current artist outcomes and acceptance;
 `ROADMAP.md` maps delivery scope, while `docs/photoshop-essentials.md` retains
 the former comparison backlog. Keep product requirements separate from claims

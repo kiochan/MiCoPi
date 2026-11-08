@@ -5,6 +5,7 @@ mod a8_sampler;
 mod affine;
 mod geometry;
 mod input;
+mod liquify_field;
 mod movement;
 mod projective;
 mod raster;

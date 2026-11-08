@@ -4,6 +4,10 @@
 artist outcomes and acceptance gates. The former exhaustive PS parity goal was
 cancelled; its comparison checklist remains reference material.
 
+[Multi-layer Liquify design](liquify-design.md) tracks the bounded native inverse
+field prerequisite and the remaining sampling, ownership, preview and shared
+execution stages. A usable Liquify tool is not delivered yet.
+
 [Horizontal/vertical view mirroring](view-mirroring.md) keeps document pixels unchanged
 while reflecting Canvas display, input and edit overlays. Runtime/UI validation
 and native captures remain pending.
