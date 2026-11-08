@@ -62,3 +62,28 @@ tiny `scripts/smoke-hue-saturation.py` also checks this command's independent
 bins, Undo and workflow/JSONL/MCP parity, sharing its isolated process setup.
 Complete CI, dedicated preview controls, visual review and measurements remain
 pending. See the [feature checklist](photoshop-essentials.md).
+
+## Read-only preview
+
+`layer.brightness_contrast.preview` accepts complete `parameters`, explicit
+`document_identity`, `document_revision` and the active stable `layer_id`.
+Discover scope through `graph.read`/`canvas.state`; the
+[example](../examples/automation/brightness-contrast-preview.jsonl) binds these
+values in a pipeline. Its PNG/cost/guarded Apply response follows the same
+contract as [HSL previews](hue-saturation.md#read-only-direct-preview-contract).
+
+HSL and tonal previews share one admitted immutable Session loan, source/lock
+checks, bounded private staging, transparent hidden-byte restoration, once-only
+selection clipping and borrowed document/mask composition. Tonal staging runs
+the native legacy brightness-then-contrast plan; Apply uses the native precomputed
+table with the same byte arithmetic. No HSL-specific ABI capability is required
+for the tonal primitive, although the document's own effects still require their
+declared capabilities. No pixel processing moves into the host.
+
+Preview leaves document pixels, the committed surface, history, revision and
+outcome events unchanged. Active contacts reject without sample flushing or
+completion; stale scope and invalid parameters reject before staging. The
+existing native HSL failure/output-preservation cases now exercise the same
+private staging path. New tonal soft-selection/mask/position-lock, PNG/Apply/Undo,
+fence/contact and JSONL/MCP parity checks await CI. Dedicated desktop coupled
+controls, reviewed screenshots and end-to-end costs remain planned.

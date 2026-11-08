@@ -10,6 +10,127 @@ fn fixture() -> Session {
     s
 }
 #[test]
+fn tonal_preview_is_fenced_read_only_and_matches_selected_masked_apply() {
+    use crate::plugins::tonal_preview::{self, Parameters, Request};
+    let mut s = fixture();
+    let mask = call(
+        &mut s,
+        "mask.create",
+        json!({"owner":{"kind":"layer","id":1}}),
+    )["mask_id"]
+        .as_u64()
+        .unwrap();
+    call(&mut s, "mask.fill", json!({"mask_id":mask,"value":127}));
+    call(
+        &mut s,
+        "mask.target",
+        json!({"target":{"kind":"layer_pixels"}}),
+    );
+    call(
+        &mut s,
+        "layer.set",
+        json!({"position_locked":true,"alpha_locked":true}),
+    );
+    call(
+        &mut s,
+        "selection.shape",
+        json!({"kind":"rectangle","x":2,"y":1,"width":6,"height":5}),
+    );
+    call(&mut s, "selection.feather", json!({"radius":1}));
+    let request = Request {
+        document_identity: s.doc.identity,
+        document_revision: s.revision,
+        layer_id: s.doc.layer_id(s.doc.active),
+        parameters: Parameters {
+            brightness: 25.,
+            contrast: 100.,
+        },
+    };
+    let state = s.state();
+    let raw = s.doc.layers[0].pixels.clone();
+    let composite = s.doc.composite.clone();
+    let events = s.journal.as_ref().unwrap().entries.len();
+    let history = s.doc.history_bytes();
+    let (preview, cost) = tonal_preview::render(&s, request).unwrap();
+    assert_eq!(cost.pixel_scratch_bytes, 96 * 4 * 2);
+    let result = call(&mut s, "layer.brightness_contrast.preview", json!(request));
+    let bytes = crate::application::png_io::encode(
+        12,
+        8,
+        preview.iter().copied(),
+        s.doc.info().export_density(),
+    )
+    .unwrap();
+    assert_eq!(result["data"], codec::base64(&bytes));
+    assert_eq!(result["parameters"], json!(request.parameters));
+    assert_eq!(s.state(), state);
+    assert_eq!(s.doc.layers[0].pixels, raw);
+    assert_eq!(s.doc.composite, composite);
+    assert_eq!(s.doc.history_bytes(), history);
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), events);
+    let action: Action = serde_json::from_value(result["apply"].clone()).unwrap();
+    assert_eq!(action.expected_revision, Some(request.document_revision));
+    s.apply(action).unwrap();
+    assert_eq!(s.doc.composite, preview);
+    assert_eq!(s.revision, request.document_revision + 1);
+    assert!(
+        s.apply(Action::new(
+            "layer.brightness_contrast.preview",
+            json!(request)
+        ))
+        .unwrap_err()
+        .code
+            == "revision_conflict"
+    );
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(s.doc.layers[0].pixels, raw);
+    assert_eq!(s.doc.composite, composite);
+    check(&mut s);
+}
+#[test]
+fn tonal_preview_uses_registered_access_and_reports_missing_renderer_before_staging() {
+    use crate::plugins::{
+        tonal_preview::{self, Parameters, Request},
+        PixelAccess,
+    };
+    let mut s = fixture();
+    call(&mut s, "layer.set", json!({"position_locked":true}));
+    let request = Request {
+        document_identity: s.doc.identity,
+        document_revision: s.revision,
+        layer_id: 1,
+        parameters: Parameters {
+            brightness: 25.,
+            contrast: 100.,
+        },
+    };
+    let pixels = s.doc.layers[0].pixels.clone();
+    for (access, code) in [
+        (PixelAccess::Geometry, "position_locked"),
+        (PixelAccess::None, "pixel_access"),
+    ] {
+        s.registry
+            .actions
+            .get_mut("layer.brightness_contrast")
+            .unwrap()
+            .pixel_access = Some(access);
+        assert_eq!(tonal_preview::render(&s, request).unwrap_err().code, code);
+    }
+    s.registry
+        .actions
+        .get_mut("layer.brightness_contrast")
+        .unwrap()
+        .pixel_access = Some(PixelAccess::Pixels);
+    assert!(tonal_preview::render(&s, request).is_ok());
+    s.doc.renderer = None;
+    assert_eq!(
+        tonal_preview::render(&s, request).unwrap_err().code,
+        "renderer_missing"
+    );
+    assert_eq!(s.doc.layers[0].pixels, pixels);
+    assert_eq!(s.revision, request.document_revision);
+}
+#[test]
 fn brightness_contrast_selection_locks_atomic_rollback_and_single_undo_agree() {
     let mut s = fixture();
     call(
@@ -180,6 +301,21 @@ fn brightness_contrast_invalid_locked_mask_and_contact_targets_reject_without_di
     assert_eq!(s.revision, revision);
     assert_eq!(s.doc.layers[0].pixels, pixels);
     assert_eq!(s.native_instances.len(), instances);
+    let events = s.journal.as_ref().unwrap().entries.len();
+    assert_eq!(
+        s.apply(Action::new(
+            "layer.brightness_contrast.preview",
+            json!({
+        "document_identity":s.doc.identity,"document_revision":s.revision,"layer_id":1,
+        "parameters":{"brightness":25,"contrast":100}})
+        ))
+        .unwrap_err()
+        .code,
+        "stroke_active"
+    );
+    assert!(s.stroke.active());
+    assert_eq!(s.revision, revision);
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), events);
     s.pointer(Pointer {
         phase: PointerPhase::Move,
         time: 2,

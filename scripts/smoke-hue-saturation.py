@@ -66,7 +66,14 @@ def commands():
     p.add('adjustment-green-again', 'histogram.query')
     p.add('tonal-new', 'canvas.new', width=4, height=4)
     p.add('tonal-fill', 'layer.fill_color', color='#20406080')
+    p.add('tonal-preview', 'pipeline.run', steps=[
+        dict(id='read', action='graph.read', args={}),
+        dict(id='draft', action='layer.brightness_contrast.preview', args=dict(
+            document_identity={'$ref': 'read#/result/document_identity'},
+            document_revision={'$ref': 'read#/result/revision'}, layer_id=1,
+            parameters=dict(brightness=25, contrast=100)))])
     p.add('tonal-edit', 'layer.brightness_contrast', brightness=25, contrast=100)
+    p.add('tonal-image', 'canvas.snapshot')
     p.add('tonal-result', 'histogram.query', source='layer', layer_id=1)
     p.add('tonal-undo', 'history.undo')
     p.add('tonal-original', 'histogram.query', source='layer', layer_id=1)
@@ -118,6 +125,10 @@ def validate(values, plan):
     assert observed['ok'] and observed['results']['sample']['result']['green'][255] == 16
     assert at('dry')['ok'] and at('run')['ok'] and at('verify')['valid']
     assert at('tonal-run')['ok'] and at('tonal-edit')['implementation'] == 'independent Rust DLL'
+    tonal_preview = at('tonal-preview')
+    assert tonal_preview['ok']
+    assert tonal_preview['results']['draft']['result']['data'] == at('tonal-image')['data']
+    assert tonal_preview['results']['draft']['result']['apply']['action'] == 'layer.brightness_contrast'
     return result
 
 

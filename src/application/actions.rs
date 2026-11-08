@@ -95,6 +95,7 @@ pub enum Operation {
     GraphRead,
     HistogramQuery,
     HslPreview,
+    TonalPreview,
     HslDialog,
     GraphSet,
     GraphCatalog,
@@ -372,6 +373,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::TonalPreview {
+            return crate::plugins::tonal_preview::schema();
+        }
         if self == Self::HslDialog {
             let mut parameters = crate::engine::hsl::Hsl::schema();
             parameters.as_object_mut().unwrap().remove("required");
@@ -676,6 +680,7 @@ impl Operation {
                 | Self::GraphRead
                 | Self::HistogramQuery
                 | Self::HslPreview
+                | Self::TonalPreview
                 | Self::GraphCatalog
                 | Self::Describe
                 | Self::ContextRead

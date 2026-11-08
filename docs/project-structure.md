@@ -1,5 +1,11 @@
 # Project Structure and Ownership
 
+`src/plugins/color_preview.rs` owns the admitted immutable color-preview loan,
+bounded private raster, selection mix and final borrowed owner composition.
+`hsl_preview.rs` retains its existing HSL schema/PNG adapter; `tonal_preview.rs`
+adds the Brightness/Contrast schema and legacy native-plan adapter. The host
+orchestrates native callbacks instead of implementing color arithmetic.
+
 `plugins/compositing/src/filter_math.rs` owns the unchanged pure legacy scalar
 filter function, independently compiled into both native DLLs.
 `plugins/native-paint/src/brightness_contrast.rs` prepares its 256-byte direct-edit

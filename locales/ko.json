@@ -1604,5 +1604,6 @@
   "Finish the current contact before requesting a color preview": "현재 획을 마친 후 색상을 미리 보세요",
   "Open Hue/Saturation Controls": "색조/채도 조정 열기",
   "Document changed; reopen Hue/Saturation.": "문서가 변경되었습니다. 색조/채도 조정을 다시 여세요.",
-  "Brightness/Contrast: Active Layer": "밝기/대비: 현재 레이어"
+  "Brightness/Contrast: Active Layer": "밝기/대비: 현재 레이어",
+  "Brightness/Contrast: Preview Active Layer": "밝기/대비: 현재 레이어 미리 보기"
 }

@@ -31,6 +31,7 @@ pub(crate) mod affine;
 pub(crate) mod brush_presets;
 pub(crate) mod brush_tip;
 pub(crate) mod clipboard;
+pub(crate) mod color_preview;
 mod compositing;
 mod document;
 pub(crate) mod export;
@@ -55,6 +56,7 @@ pub(crate) mod selected_merge;
 mod selection;
 mod system;
 mod system_clipboard;
+pub(crate) mod tonal_preview;
 mod trim;
 pub(crate) mod windows;
 mod workbench;
@@ -66,6 +68,7 @@ pub(crate) fn execute(
     use crate::application::Operation::*;
     match op {
         HslPreview => hsl_preview::execute(session, args),
+        TonalPreview => tonal_preview::execute(session, args),
         HslDialog => hsl_preview::request_dialog(session, args),
         BrushAngleAdjust => brush_tip::execute(session, args),
         BrushPresetsQuery | BrushPresetUpsert | BrushPresetDelete | BrushPresetApply

@@ -60,50 +60,17 @@ fn failure(message: impl Into<String>) -> ActionError {
     ActionError::new("hsl_preview", message)
 }
 impl Request {
-    fn validate(self, s: &Session) -> Result<(), ActionError> {
-        if self.document_identity != s.doc.identity || self.document_revision != s.revision {
-            return Err(ActionError::new(
-                "revision_conflict",
-                "The color preview belongs to an older document or revision",
-            ));
+    fn scope(self) -> super::color_preview::Scope {
+        super::color_preview::Scope {
+            document_identity: self.document_identity,
+            document_revision: self.document_revision,
+            layer_id: self.layer_id,
         }
-        if self.layer_id != s.doc.layer_id(s.doc.active) {
-            return Err(ActionError::new(
-                "invalid_layer",
-                "The color preview must name the active raster layer",
-            ));
-        }
-        if s.stroke.active() || s.pointer_checkpoint.is_some() {
-            return Err(ActionError::new(
-                "stroke_active",
-                "Finish the current contact before requesting a color preview",
-            ));
-        }
+    }
+    fn admission(self, s: &Session) -> Result<super::color_preview::Plan<'_>, ActionError> {
+        self.scope().check(s)?;
         self.hsl.validate().map_err(failure)?;
-        super::PixelAccess::Pixels.require(&s.doc, s.doc.active)?;
-        // Validate the exact eventual command, without invoking it or creating
-        // its instance. Presentation and automation cannot preview an absent action.
-        s.validate_action(&self.apply_action())?;
-        if !s
-            .registry
-            .native_actions
-            .contains_key("layer.hue_saturation")
-        {
-            return Err(ActionError::new(
-                "native_missing",
-                "Native HSL action is not loaded",
-            ));
-        }
-        if s.doc.has_adjustments() {
-            super::adjustments::validate_document(&s.registry, &s.doc)?;
-        }
-        if !s.doc.renderer.as_ref().is_some_and(|r| r.supports_hsl()) {
-            return Err(ActionError::new(
-                "hsl_unavailable",
-                "Native HSL preview is unavailable",
-            ));
-        }
-        Ok(())
+        super::color_preview::admit(s, self.scope(), &self.apply_action(), true, "hsl_preview")
     }
     pub(crate) fn apply_action(self) -> Action {
         Action {
@@ -114,50 +81,14 @@ impl Request {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize)]
-pub(crate) struct Cost {
-    pub source_scratch_bytes: usize,
-    pub composite_bytes: usize,
-    pub mask_effect_bytes: usize,
-    pub pixel_scratch_bytes: usize,
-}
-/// Explicit cold preflight. This does not warm caches, finish input or allocate
-/// a pixel surface. PNG/transport allocations are not included in this cost.
+pub(crate) use super::color_preview::Cost;
+/// Cold preflight without warming caches, finishing input or allocating pixels.
 pub(crate) fn plan(s: &Session, request: Request) -> Result<Cost, ActionError> {
-    request.validate(s)?;
-    let owner = s.doc.owner_preview_cost(&[]).map_err(failure)?;
-    let source_scratch_bytes = s.doc.width * s.doc.height * 4;
-    Ok(Cost {
-        source_scratch_bytes,
-        composite_bytes: owner.composite_bytes,
-        mask_effect_bytes: owner.effect_bytes,
-        pixel_scratch_bytes: source_scratch_bytes + owner.extra_bytes,
-    })
+    Ok(request.admission(s)?.cost)
 }
-
-/// Render the edited raw raster privately, clip selection once with the same
-/// DLL as Apply, then compose through the existing immutable owner-preview path.
-/// The caller owns the returned surface; dropping it cancels the draft.
+/// The common admitted pipeline retains selection, masks and private storage.
 pub(crate) fn render(s: &Session, request: Request) -> Result<(Vec<u32>, Cost), ActionError> {
-    let cost = plan(s, request)?;
-    let source = &s.doc.layers[s.doc.active].pixels;
-    let mut staged = vec![0; source.len()];
-    let mut output = abi::Pixels {
-        data: staged.as_mut_ptr(),
-        len: staged.len(),
-        width: s.doc.width as u32,
-        height: s.doc.height as u32,
-        stride: s.doc.width as u32,
-        origin_x: 0,
-        origin_y: 0,
-    };
-    let layers = [abi::CompositeLayer {
-        data: source.as_ptr(),
-        len: source.len(),
-        opacity: 255,
-        visible: 1,
-        mode: 0,
-    }];
+    let plan = request.admission(s)?;
     let nodes = [
         abi::CompositeNode {
             kind: 0,
@@ -181,34 +112,18 @@ pub(crate) fn render(s: &Session, request: Request) -> Result<(Vec<u32>, Cost), 
             amount: 1.,
         },
     ];
-    s.doc
-        .renderer
-        .as_ref()
-        .unwrap()
-        .render_hsl(
+    plan.render(|renderer, layers, output| {
+        renderer.render_hsl(
             &nodes,
-            &layers,
+            layers,
             &[],
             &[],
             &[request.hsl.parameters()],
             s.doc.width as u32,
             s.doc.height as u32,
-            &mut output,
+            output,
         )
-        .map_err(failure)?;
-    // Composition canonicalizes transparent RGB. Direct edits preserve it,
-    // including under transparency lock; restore only those immutable bytes.
-    for (before, after) in source.iter().zip(&mut staged) {
-        if before >> 24 == 0 {
-            *after = *before;
-        }
-    }
-    super::native::clip_region(s, 0, 0, s.doc.width, s.doc.height, &mut staged).map_err(failure)?;
-    let pixels = s
-        .doc
-        .preview_layer_color(request.layer_id, &staged)
-        .map_err(failure)?;
-    Ok((pixels, cost))
+    })
 }
 pub(crate) fn execute(s: &Session, args: Value) -> ActionResult {
     let request: Request = serde_json::from_value(args)?;

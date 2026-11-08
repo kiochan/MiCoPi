@@ -1,0 +1,3 @@
+{"action":"canvas.new","args":{"width":4,"height":4}}
+{"action":"layer.fill_color","args":{"color":"#20406080"}}
+{"action":"pipeline.run","args":{"steps":[{"id":"document","action":"graph.read","args":{}},{"id":"preview","action":"layer.brightness_contrast.preview","args":{"document_identity":{"$ref":"document#/result/document_identity"},"document_revision":{"$ref":"document#/result/revision"},"layer_id":1,"parameters":{"brightness":25,"contrast":100}}}]}}

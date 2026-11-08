@@ -208,6 +208,157 @@
           }
         }
       }
+    },
+    {
+      "id": "layer.brightness_contrast.preview",
+      "title": "Brightness/Contrast: Preview Active Layer",
+      "operation": "tonal_preview",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "document_identity",
+          "revision",
+          "layer_id",
+          "parameters",
+          "width",
+          "height",
+          "mimeType",
+          "data",
+          "cost",
+          "apply"
+        ],
+        "properties": {
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/png"
+            ]
+          },
+          "data": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "object",
+            "required": [
+              "source_scratch_bytes",
+              "composite_bytes",
+              "mask_effect_bytes",
+              "pixel_scratch_bytes"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "source_scratch_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "composite_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "mask_effect_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "pixel_scratch_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              }
+            }
+          },
+          "apply": {
+            "type": "object",
+            "required": [
+              "action",
+              "args",
+              "expected_revision"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "layer.brightness_contrast"
+                ]
+              },
+              "args": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "brightness",
+                  "contrast"
+                ],
+                "properties": {
+                  "brightness": {
+                    "type": "number",
+                    "minimum": -100,
+                    "maximum": 100,
+                    "title": "Brightness"
+                  },
+                  "contrast": {
+                    "type": "number",
+                    "minimum": -100,
+                    "maximum": 100,
+                    "title": "Contrast"
+                  }
+                }
+              },
+              "expected_revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "parameters": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "brightness",
+              "contrast"
+            ],
+            "properties": {
+              "brightness": {
+                "type": "number",
+                "minimum": -100,
+                "maximum": 100,
+                "title": "Brightness"
+              },
+              "contrast": {
+                "type": "number",
+                "minimum": -100,
+                "maximum": 100,
+                "title": "Contrast"
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      }
     }
   ],
   "action_access": {
