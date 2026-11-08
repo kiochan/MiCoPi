@@ -275,11 +275,13 @@ fn hsl_preview_rejects_missing_capability_and_discards_failed_private_render() {
         }
     }
     let mut s = session();
-    let before = s.state();
     let pixels = s.doc.layers[0].pixels.clone();
     let composite = s.doc.composite.clone();
     let events = s.journal.as_ref().unwrap().entries.len();
     s.doc.renderer = Some(Arc::new(Failing(false)));
+    // Installing the fixture intentionally changes advertised renderer
+    // capabilities. Compare against that source, not the original DLL's state.
+    let before = s.state();
     assert_eq!(
         hsl_preview::render(&s, request(&s)).unwrap_err().code,
         "hsl_unavailable"
