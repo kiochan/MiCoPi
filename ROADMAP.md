@@ -2,7 +2,7 @@
 
 MiCoPi aims to be a small, responsive painting application whose document operations are inspectable, replayable and accessible to artists, plugins and AI clients through one execution core.
 
-This roadmap starts from the **0.21.0 implementation and subsequent work on main**. Checked items are implemented; unchecked items describe intended work, not release dates or promises that a feature already exists. The [Changelog](CHANGELOG.md) records completed work; the [design philosophy](docs/philosophy.md) explains the principles behind these priorities.
+This roadmap starts from the **0.21.0 implementation and subsequent work on main**. Checked items record source implementations, with verification evidence in feature guides. Interpret unchecked historical items through the retain/defer/cancel decisions below; they are not release promises. The [Changelog](CHANGELOG.md) records completed work; the [design philosophy](docs/philosophy.md) explains the principles behind these priorities.
 
 ## Implemented baseline
 
@@ -26,7 +26,8 @@ The maintainer cancelled the exhaustive PS-common feature goal on 2026-11-08.
 acceptance baseline: multi-layer Liquify, shared adjustments bound to explicit
 layers, convenient groups, layer search and symmetry editing. Preserve existing
 code and compatibility; source implementations still need their documented
-verification. No replacement autonomous implementation goal is active yet.
+verification. The maintainer has authorized staged implementation and commit/push
+under the painting-first scope; this does not resume the former parity goal.
 
 | Delivery focus | Required outcome |
 | --- | --- |
@@ -48,6 +49,94 @@ material; consult it only for a feature serving the painting requirements.
 Keep implemented behavior in [CHANGELOG](CHANGELOG.md) and explicit evidence in
 feature guides. Native plugin activation still requires restart; retained
 extension plans do not imply runtime DLL unloading or marketplace availability.
+
+## Retain, defer and cancel decisions
+
+This table is authoritative for the former P1–P8 comparison checklist and the
+older M1–M6 capability backlog. **Retain** means maintain existing behavior or
+implement a requirement serving the painting workflow; it does not mean it is
+verified. **Defer** means no implementation commitment in the current delivery
+cycle. **Cancel** removes the old completion obligation; it does not delete
+working code, weaken tests, remove compatibility or mark an item complete.
+Historical checkboxes below and in the comparison guide do not override this table.
+
+### Retain
+
+| Former area | Retained requirement | Delivery role |
+| --- | --- | --- |
+| P5 / M2 | Multi-layer Liquify with independent owners, one deformation, reversible preview and one Undo/outcome | First complete new editing slice, R1 |
+| P5 adjustments | One shared adjustment controller bound to explicit raster IDs, with per-source evaluation and common controls | Second complete slice, R2 |
+| P4 / M2 | Convenient grouping, safe needed ungroup/reparent operations, hierarchy feedback and target capture | R3; support R1/R2 without a separate broad rewrite |
+| P4 / M2 | Name/metadata layer search, ancestor context and explicit result selection/grouping/binding | R4; retain existing query and improve its workflow |
+| P6 / P7 | Brush/Eraser symmetry, then supported correction tools with shared document axes and feedback | R5; verify current source first, integrate Liquify symmetry |
+| P1 / P4 | Existing layer properties, blend modes, groups, links, selected-only merge and explicit multi-layer geometry | Maintain compatibility and validate integration with R1/R2 |
+| P2 / P4 | Existing selections and masks; ownership, selection coverage and lock behavior needed by retained edits | Mandatory correctness within each new operation |
+| P4 | Clipping masks useful for coloring/shading | Retained painting follow-up after R1/R2, not a prerequisite to all Liquify work |
+| P3 | Existing crop, resize, transform, framing and PNG density/sizing | Maintain; fix real painting workflow defects |
+| P5 | Existing Levels/Curves/HSL/tonal/grayscale/quantization, previews and histogram capabilities | Reuse for shared binding; repair regressions before expanding the effect catalog |
+| P6 / M4 | Pressure, stabilization, Flow, opacity limits, analytic tips, scalar presets and practical brush-quality improvements | Preserve responsiveness; choose new tips/dynamics by observed painting need |
+| P7 / M5 | Existing pan/zoom/view mirrors, dock/native windows, search/settings/shortcuts and four-language UI | Maintain; use configurable metrics and clear feedback |
+| P8 / M1 | Native project/PNG integrity, bounded save/recovery, crash/error feedback and meaningful performance measurements | Reliability gates and focused fixes alongside editing slices |
+| M1 / M6 | Atomic rollback, one grouped Undo, compact verifiable outcomes, legacy projects/recordings and bounded caches | Mandatory shared foundation, including new multi-layer edits |
+| M3 | Existing DLL plugins, schemas/public state, nodes, MCP and headless | Preserve discoverability and one execution core; normal painting works without opening nodes |
+
+### Defer
+
+| Former area | Deferred requirement | Reason / reconsider when |
+| --- | --- | --- |
+| P2 | Remaining native/cross-application clipboard interoperability review | Keep commands and honest limitations; schedule an unrestricted Windows session when clipboard use blocks painting |
+| P3 | Off-canvas storage and Reveal All | Separate storage/history design; not required for the explicitly clipped first Liquify contract |
+| P4 | Masked perspective/Copy Repeat, group-mask motion, selected-pixel transfers, clipboard/merge/batch mask completeness beyond retained edits | Complete the specific ownership paths needed by R1/R2 first; no full mask matrix as a gate to every feature |
+| P4 | Additional arrangement/key-layer modes | Existing alignment/center/equal-gap behavior is sufficient for the current correction workflow |
+| P4 | Solid/gradient/pattern fill layers and pattern library | Reconsider for repeated coloring/material tasks |
+| P5 | New exposure/gamma/vibrance/color-balance, gradient-map and channel-mixer families | Existing effects supply the first shared-controller slice; add a family for a concrete color task |
+| P5 | Gaussian blur, sharpen/smudge and useful stroke effects | Choose an artist-facing tool after the priority correction workflow; avoid a blanket filter checklist |
+| P5 | Repeat-last-filter and broader filter/effect UI | Reconsider after shared adjustments and common commands are usable |
+| P6 | Straight-line/angle assistance, clone stamp and additional smoothing modes | Reconsider against actual line-art pain points and latency evidence |
+| P6 | External brush/palette/pattern formats and tilt/device expansion, including Wintab | Require requested formats or named hardware gaps; preserve current Windows Ink validation needs |
+| P7 | Basic text, simple shapes, rulers/guides/grid/snapping and arbitrary view rotation | Useful optional illustration aids, outside the current four delivery focuses |
+| P8 | JPEG/WebP export, TIFF/OpenRaster and a bounded PSD import/export subset | Independent interoperability work after the core workflow; no full round-trip parity promise |
+| P8 | Basic ICC/profile-aware file metadata | Reconsider with concrete color-fidelity fixtures and target displays |
+| P8 / M5 | Multiple documents, named workspaces and complete session restore | Separate session/target ownership work; keep current independent panel windows |
+| M1 / M6 | Long-history segmentation/seek expansion and advanced replay/video/range export | Retain basic verified replay; extend when actual session size or sharing needs justify it |
+| M3 | Authoring-kit/conformance packaging, advanced node editor UX, migration tooling and isolated plugin workers | Preserve existing contracts; prioritize only integration fixes needed by retained tools |
+
+### Cancel from the current product scope
+
+| Former obligation | Decision |
+| --- | --- |
+| Exhaustive PS/PhotoCraft feature, pixel and file-format parity | Cancel as a completion criterion; references remain interaction ideas |
+| Deterministic Dissolve solely to complete the PS blend catalog | Cancel the delivery obligation; retain the existing 26 color modes |
+| Complete paragraph/typesetting, pen-path and vector-mask suite | Cancel the broad suite; basic text/shapes remain a deferred separate possibility |
+| Complete noise/pixelate/photo/layer-style catalogs | Cancel catalog completion; an independently justified painting effect can be proposed later |
+| Broad print/depth/color-model and specialist photographic expansion | Keep outside this painting scope; basic file color fidelity remains deferred above |
+| Mandatory cloud AI, collaboration, marketplace, general scripting runtime or runtime DLL unloading | No current delivery commitment; retain local plugin/MCP/headless architecture |
+
+## Immediate delivery sequence
+
+- [ ] Restore exact-head CI after the symmetry settings fixture compile failure;
+  preserve regression assertions and repair subsequent failures before calling it green.
+- [ ] Deliver R1 multi-layer Liquify end to end: read-only explicit target/lock/mask
+  admission, bounded native deformation, cached reversible previews, one committed
+  owner group/outcome, project/replay and public automation, then measured costs.
+- [ ] Deliver R2 shared-target adjustment binding with stable controller/target IDs,
+  defined per-source order and reused color controls; retain ordinary affect-below items.
+- [ ] Improve grouping/search around target capture and binding, including masked
+  ownership paths that those operations actually need.
+- [ ] Extend the verified symmetry model to supported correction tools, with correct
+  reflected displacement, axis deduplication and consistent preview/Undo semantics.
+
+Commit and push coherent stages. Local checks remain light; use exact-head CI for
+heavy builds/native/headless/transport tests and keep native/hardware measurements
+separate. A passing foundational API or prototype alone does not close an R1/R2
+artist-workflow gate. Update [requirements](docs/painting-requirements.md), current
+status and Unreleased summaries as each increment is implemented and verified.
+
+## Historical capability backlog
+
+The following sections preserve implementation detail and evidence. Read their
+unchecked items through the scope decisions above, rather than as an exhaustive
+autonomous completion checklist.
 
 ## M1 — Reliable document foundation
 
@@ -171,13 +260,12 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 
 **Acceptance:** selected replay ranges export without changing the artwork, cancellation leaves the source recording intact, and the portable package works from a fresh profile. Format upgrades preserve supported old projects and recordings. Published performance claims include workload, build and hardware context.
 
-## Deliberately deferred
+## Historical deferral notes
 
 Editable text/path expansion, complex photographic processing and layered
 PSD/TIFF/OpenRaster interchange remain visible later requirements in the
-[editing checklist](docs/photoshop-essentials.md). They follow the current
-painting, linked-layer, adjustment-layer and brush priorities rather than being
-removed from scope. Ordinary file integrity and save/export fixes remain daily
+[editing checklist](docs/photoshop-essentials.md). Their current disposition is defined by the retain/defer/cancel table above;
+the former parity obligation has been removed. Ordinary file integrity and save/export fixes remain daily
 workflow requirements.
 
 Cloud accounts, mandatory online AI, real-time collaboration, a plugin marketplace, a general scripting runtime and full Photoshop compatibility are not near-term commitments. macOS/Linux support and untrusted-plugin sandboxing require separate platform and execution designs. These may be explored after the Windows editing foundation is dependable and their costs are measured.

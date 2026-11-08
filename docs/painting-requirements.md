@@ -21,9 +21,10 @@ This is requirements planning, not a declaration that these features are ready.
 Priority 2 currently means applying one shared adjustment independently to each
 bound source layer, preserving each layer's editable pixels and blend context.
 Affect-below stack adjustment and a shared-target adjustment have distinct
-semantics and must be named and exposed separately. This interpretation is
-explicit for maintainer review; compositing the target set first would be a
-different operation and must not be silently substituted.
+semantics and must be named and exposed separately. Compositing the target set first would be a different operation and must not
+be silently substituted. The maintainer has authorized staged implementation
+under the [ROADMAP scope decisions](../ROADMAP.md#retain-defer-and-cancel-decisions),
+starting with CI repair.
 
 ## R1 — Multi-layer Liquify
 
@@ -135,7 +136,8 @@ available, while normal painting tasks work without opening them.
 Use CI for heavy builds and regressions. Keep local verification light, under the
 maintainer's CPU/priority limits. Benchmark profiles and numeric targets must be
 recorded against named hardware; this plan invents no unmeasured latency guarantee.
-Do not start a replacement autonomous goal until its scope is explicitly requested.
+Proceed through maintainer-authorized coherent implementation stages and commit/push.
+Do not resume the cancelled parity goal or infer a replacement autonomous goal.
 
 ## Deferred reference backlog
 

@@ -5,7 +5,8 @@ The former exhaustive implementation goal was cancelled by the maintainer on
 priorities and acceptance: multi-layer Liquify, shared targeted adjustments,
 convenient groups, layer search and symmetry editing. This document preserves
 functional references, completed work and possible future features; unchecked
-items are not an obligation to implement them all. They are not available
+items are not an obligation to implement them all. The [ROADMAP scope decisions](../ROADMAP.md#retain-defer-and-cancel-decisions)
+classify them as retained, deferred or cancelled from the current scope. They are not available
 features. Keep the existing compatibility and independently authored code.
 
 ## Reference and boundaries
