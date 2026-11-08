@@ -24,6 +24,11 @@ fn fixture() -> Session {
             .map(|p| 0xff000000 | ((p * 3791 + i * 21761) as u32 & 0xffffff))
             .collect();
     }
+    // Direct fixture writes bypass native dirty-tile publication. Seed the
+    // journal with these source words before testing rollback or outcome restore.
+    for index in 0..s.doc.layers.len() {
+        s.doc.replay_tiles.insert((index, 0));
+    }
     s.doc.invalidate();
     s.replay_boundary().unwrap();
     let id = call(
@@ -52,6 +57,11 @@ fn fixture() -> Session {
         })
         .unwrap();
     s.replay_boundary().unwrap();
+    let last = s.replay_journal(false).unwrap().entries.len() - 1;
+    assert!(s
+        .replay_preview(last, false)
+        .unwrap()
+        .matches_document(&s.doc));
     s
 }
 fn request(s: &Session) -> Request {
