@@ -166,7 +166,9 @@ fn quantization_adjustments_masks_provider_switches_and_project_outcomes_agree()
 #[test]
 fn unsupported_hidden_disabled_and_unused_quantization_reject_before_publication() {
     use micopi_plugin_api as abi;
-    struct Legacy;
+    struct Legacy {
+        native: std::sync::Arc<crate::plugins::native::NativePlugin>,
+    }
     impl Renderer for Legacy {
         fn supports_mix(&self) -> bool {
             true
@@ -176,18 +178,35 @@ fn unsupported_hidden_disabled_and_unused_quantization_reject_before_publication
         }
         fn render(
             &self,
+            nodes: &[abi::CompositeNode],
+            layers: &[abi::CompositeLayer],
+            width: u32,
+            height: u32,
+            output: &mut abi::Pixels,
+        ) -> Result<(), String> {
+            // Atomic checkpoints/rollback may compose the existing legacy canvas.
+            assert!(!nodes.iter().any(|n| matches!(n.kind, 12 | 13)));
+            self.native.render(nodes, layers, width, height, output)
+        }
+        fn render_quantization(
+            &self,
             _: &[abi::CompositeNode],
             _: &[abi::CompositeLayer],
+            _: &[abi::CompositeMask],
+            _: &[abi::CompositeLut],
+            _: &[abi::HslParameters],
             _: u32,
             _: u32,
             _: &mut abi::Pixels,
         ) -> Result<(), String> {
-            panic!("Preflight must reject quantization")
+            panic!("Preflight must reject quantization before its renderer is invoked")
         }
     }
     for (effect, value, _) in cases() {
         let mut s = fixture();
-        s.doc.renderer = Some(std::sync::Arc::new(Legacy));
+        s.doc.renderer = Some(std::sync::Arc::new(Legacy {
+            native: s.registry.native_plugins["compositing"].clone(),
+        }));
         let composition = s.doc.composition();
         let revision = s.revision;
         let history = s.doc.history_bytes();
