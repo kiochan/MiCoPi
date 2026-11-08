@@ -169,3 +169,12 @@ narrow/wide/large-metric footers. The optional native capture script includes bo
 dialogs, but it has not run for this increment and is not part of standard CI.
 Runtime validation, native screenshot review and measured end-to-end costs remain
 pending. See [the read-only example](../examples/automation/quantization-preview.jsonl).
+
+## Callback cost probe
+
+The [bounded Release probe](histogram-performance.md#quantization-dirty-region-and-observation-probe)
+measures native Threshold/Posterize ROI and histogram callbacks with independent
+references and allocation counting. It includes per-call preparation but excludes
+Session dispatch, full-frame preview allocation/encoding, GUI/GPU and process peak.
+The test is opt-in locally and included by the existing CI measurement filter;
+actual measurements remain pending. It does not certify end-to-end drawing latency.

@@ -209,6 +209,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Reliability, performance and compatibility
 
+- Add an ignored Release quantization callback cost matrix for Threshold 54 and Posterize 4/7/256 on 1024/4096-square sources, padded 32/256-square ROIs and bounded 4096/65536 histogram grids. Reuse HSL timing/allocation instrumentation while retaining its case labels/references; verify independent RGBA/bins, source immutability, padding/descriptors and output allocation reuse with zero counted callback allocations. The existing single-threaded CI measurement filter includes the new probe without changing jobs/profiles or dependencies. Document included per-call table preparation and exclusions from Session/PNG/GPU/device/process-peak claims; actual results await CI and no probe ran locally.
+
 - Extend the exact workflow image-node discovery expectation with Threshold/Posterize. Correct the missing-capability fixture to permit legacy canvas composition during checkpoint/rollback while explicitly panicking on any quantization rendering attempt. Retain hidden/disabled/unused rejection and exact composition/history/revision assertions; runtime revalidation awaits CI.
 
 - Initialize the optional quantization capability to absent in the existing A8 sampler and mask-effect fake plugins. Restore test compilation after the native loader extension while retaining their old-capability behavior; runtime revalidation awaits CI.

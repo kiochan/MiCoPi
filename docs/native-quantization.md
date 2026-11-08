@@ -72,3 +72,12 @@ intent slots, persistence/Undo/replay and shared controls are now implemented in
 source. Fenced direct PNG previews now share the immutable color pipeline, pending
 runtime validation. Persistent native prepared tables and measured costs remain
 planned; keep corresponding feature checklist items unchecked pending all gates.
+
+## Cost instrumentation
+
+The opt-in Release [quantization cost probe](histogram-performance.md#quantization-dirty-region-and-observation-probe)
+now covers Threshold and multiple Posterize tables on padded dirty regions and
+bounded histogram grids. It uses exported callbacks, independent pixels/bins,
+source immutability, output reuse and a Rust allocation counter. Per-call native
+table preparation is included; Session/PNG/GPU, physical input and process peak
+are excluded. This is instrumentation in source, with actual results awaiting CI.

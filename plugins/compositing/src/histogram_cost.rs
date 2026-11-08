@@ -311,7 +311,16 @@ fn hsl_reference(side: usize, budget: u32) -> abi::HistogramResult {
     }
     result
 }
-fn measure_hsl_roi(side: usize, roi: usize, pixels: &[u32], callback: abi::HslRenderFn) {
+fn measure_plan_roi(
+    label: &str,
+    side: usize,
+    roi: usize,
+    pixels: &[u32],
+    callback: abi::HslRenderFn,
+    nodes: &[abi::CompositeNode],
+    parameters: &[abi::HslParameters],
+    reference: impl Fn(u32) -> u32,
+) {
     const WARM: usize = 9;
     const PADDING: u32 = 0xdeadbeef;
     let callback = black_box(callback);
@@ -324,22 +333,12 @@ fn measure_hsl_roi(side: usize, roi: usize, pixels: &[u32], callback: abi::HslRe
         visible: 1,
         mode: 0,
     };
-    let nodes = [
-        node(0, 0, 0, 0, 1.),
-        node(11, 0, 0, 0, 1.),
-        node(3, 1, 0, 0, 1.),
-    ];
-    let parameters = abi::HslParameters {
-        hue: 180.,
-        saturation: 0.,
-        lightness: 0.,
-    };
     let expected = (0..roi * stride)
         .map(|i| {
             if i % stride >= roi {
                 PADDING
             } else {
-                half_turn(pixel((origin + i / stride) * side + origin + i % stride))
+                reference(pixels[(origin + i / stride) * side + origin + i % stride])
             }
         })
         .collect::<Vec<_>>();
@@ -363,15 +362,15 @@ fn measure_hsl_roi(side: usize, roi: usize, pixels: &[u32], callback: abi::HslRe
         let status = unsafe {
             callback(
                 black_box(nodes.as_ptr()),
-                3,
+                nodes.len(),
                 black_box(&layer),
                 1,
                 std::ptr::null(),
                 0,
                 std::ptr::null(),
                 0,
-                black_box(&parameters),
-                1,
+                black_box(parameters.as_ptr()),
+                parameters.len(),
                 side as u32,
                 side as u32,
                 black_box(&mut target),
@@ -387,7 +386,7 @@ fn measure_hsl_roi(side: usize, roi: usize, pixels: &[u32], callback: abi::HslRe
             .enumerate()
             .find(|(_, (a, b))| a != b)
         {
-            panic!("HSL ROI mismatch source={side} roi={roi} index={index} actual={actual:08x} expected={wanted:08x}");
+            panic!("{label} ROI mismatch source={side} roi={roi} index={index} actual={actual:08x} expected={wanted:08x}");
         }
         assert_eq!((output.as_ptr(), output.capacity()), allocation);
         assert_eq!(
@@ -417,7 +416,30 @@ fn measure_hsl_roi(side: usize, roi: usize, pixels: &[u32], callback: abi::HslRe
         }
     }
     times.sort_by(f64::total_cmp);
-    println!("hsl_render_cost source_side={side} roi_side={roi} stride={stride} first_ms={first:.6} warm_median_ms={:.6} warm_p95_ms={:.6} callback_allocations=0 output_allocation_reused=true independent_rgba_and_padding=true",times[WARM/2],times[WARM-1]);
+    println!("{label}_render_cost source_side={side} roi_side={roi} stride={stride} first_ms={first:.6} warm_median_ms={:.6} warm_p95_ms={:.6} callback_allocations=0 output_allocation_reused=true independent_rgba_and_padding=true",times[WARM/2],times[WARM-1]);
+}
+
+fn measure_hsl_roi(side: usize, roi: usize, pixels: &[u32], callback: abi::HslRenderFn) {
+    let nodes = [
+        node(0, 0, 0, 0, 1.),
+        node(11, 0, 0, 0, 1.),
+        node(3, 1, 0, 0, 1.),
+    ];
+    let parameters = [abi::HslParameters {
+        hue: 180.,
+        saturation: 0.,
+        lightness: 0.,
+    }];
+    measure_plan_roi(
+        "hsl",
+        side,
+        roi,
+        pixels,
+        callback,
+        &nodes,
+        &parameters,
+        half_turn,
+    );
 }
 
 #[test]
@@ -495,3 +517,6 @@ fn bounded_histogram_cost_hsl_regions_and_sampling() {
             .all(|(i, p)| p == pixel(i)));
     }
 }
+
+#[path = "quantization_cost.rs"]
+mod quantization_cost;

@@ -91,6 +91,42 @@ reused output allocation. Input, references and output were allocated outside
 timers; these figures do not describe a full-frame document preview, process
 peak memory, GUI/physical-device latency or the newer shared tonal pipeline.
 
+## Quantization dirty-region and observation probe
+
+The ignored `bounded_histogram_cost_quantization_regions_and_sampling` test
+uses the negotiated `micopi_quantization_v1` exported callbacks with fixed
+Threshold level 54 and Posterize levels 4, 7 and 256. It shares the existing
+padded ROI timer/allocation instrumentation with HSL; the HSL cases, labels,
+independent references and callback contracts remain unchanged.
+
+Each 1024/4096-square immutable RGBA source is allocated once outside timers.
+For each effect, the probe measures centered 32/256-square ROIs with eight
+sentinel padding pixels per row and 4,096/65,536 centered histogram samples.
+Every case records one first call and nine warm calls, reporting median/p95
+without machine-specific time assertions. The source is checked unchanged.
+
+Expected RGBA uses independent floating-point luminance/palette arithmetic,
+including alpha-zero canonicalization. Independent grid/bin references include
+the aggregate RGB channel. Every callback must match those references and preserve
+ROI padding, output descriptors and allocation identity. The existing thread-local
+allocator counter checks zero Rust heap allocations inside the synchronous call.
+Native cutoff/table preparation, validation and evaluation are inside the timer;
+reference generation and source/expected/output allocation are outside it.
+
+The Posterize-256 case deliberately invokes its identity kernel to measure the
+callback contract; the desktop draft's identity bypass is a separate behavior.
+Native tables are prepared per callback, so these figures will not imply persistent
+native prepared-table caching. The source is at most 64 MiB; this is not a measured
+process peak or an extra-memory ceiling for Session previews. PNG/base64, mask-cache
+preparation, history/replay, GPU uploads, native window rendering, DLL loading and
+physical tablets are excluded.
+
+The existing CI `bounded_histogram_cost` filter includes this ignored Release test
+alongside the prior raw/plan/HSL probes, with one test thread. No workflow jobs,
+compiler profiles or dependencies are added. Use the existing portable build
+instructions and gentle worker limits for any explicitly needed local run; this
+increment did not run the probe locally. Actual callback results await CI.
+
 ## Evidence and limits
 
 [CI for `4ffa90d`](https://github.com/kiochan/MiCoPi/actions/runs/42420476492)

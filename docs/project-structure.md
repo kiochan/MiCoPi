@@ -1,5 +1,10 @@
 # Project Structure and Ownership
 
+`plugins/compositing/src/quantization_cost.rs` owns the opt-in quantization
+callback cost matrix. It is a child of the existing test-only histogram cost
+module, sharing its allocator and padded-ROI instrumentation; production DLLs
+contain neither the probe nor the test allocator.
+
 `src/plugins/quantization_preview.rs` owns direct Threshold/Posterize parameter
 adaptation, fenced PNG results and presentation queue requests. It reuses the
 shared immutable color loan and native quantization renderer. The compiled
