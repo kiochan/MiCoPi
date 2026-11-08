@@ -27,6 +27,8 @@ mod commands;
 mod document_texture;
 mod group_bar;
 mod group_drop;
+#[path = "../../plugins/native-paint/hsl_panel.rs"]
+mod hsl_preview_ui;
 #[path = "../../plugins/layers/panel.rs"]
 mod layers;
 mod native_windows;

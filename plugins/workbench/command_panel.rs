@@ -12,6 +12,7 @@ pub(super) struct CommandForm {
     complex: std::collections::BTreeMap<String, String>,
     revision: u64,
     message: String,
+    pub(super) hsl: Option<hsl_preview_ui::Draft>,
 }
 #[cfg(test)]
 mod color_selection_tests {
@@ -292,6 +293,9 @@ impl Editor {
                 args[key] = value.clone();
             }
         }
+        let hsl = (action == "layer.hue_saturation")
+            .then(|| hsl_preview_ui::Draft::new(&self.session, &args))
+            .flatten();
         self.command_form = Some(CommandForm {
             action: action.into(),
             contact_policy: policy,
@@ -308,7 +312,15 @@ impl Editor {
             complex: Default::default(),
             revision: self.session.revision,
             message: String::new(),
+            hsl,
         });
+    }
+    pub(super) fn color_preview_texture(&self) -> Option<&TextureHandle> {
+        self.command_form
+            .as_ref()?
+            .hsl
+            .as_ref()?
+            .texture(&self.session)
     }
     pub(super) fn guarded_command_form(&self) -> bool {
         self.command_form
@@ -339,6 +351,14 @@ impl Editor {
         }
         if form.revision == before_sync {
             form.revision = self.session.revision;
+        }
+        if let Some(mut draft) = form.hsl.take() {
+            if self.hsl_command_window(ctx, &mut draft) {
+                form.hsl = Some(draft);
+                self.command_form = Some(form);
+            }
+            self.release_command_sync();
+            return;
         }
         let mut open = true;
         let mut run = false;

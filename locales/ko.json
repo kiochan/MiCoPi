@@ -1597,5 +1597,9 @@
   "Lightness Adjustment": "명도 조정",
   "Hue/Saturation": "색조／채도",
   "HSL Parameters": "HSL 매개변수",
-  "Hue/Saturation: Preview Active Layer": "색조/채도: 현재 레이어 미리 보기"
+  "Hue/Saturation: Preview Active Layer": "색조/채도: 현재 레이어 미리 보기",
+  "Preview keeps the document unchanged until Apply.": "적용하기 전까지 미리 보기는 문서를 변경하지 않습니다.",
+  "Document Changed; Refresh Preview Source": "문서가 변경되었습니다. 미리 보기 원본을 새로 고치세요",
+  "Refresh Preview Source": "미리 보기 원본 새로 고침",
+  "Finish the current contact before requesting a color preview": "현재 획을 마친 후 색상을 미리 보세요"
 }

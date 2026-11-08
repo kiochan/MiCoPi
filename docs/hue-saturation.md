@@ -10,14 +10,46 @@ It is available through command search and its parameter form, configurable
 bindings, schema-derived action/workflow nodes, pipelines, JSONL and MCP. This
 source increment and its native/Session/transport regressions await CI. It is
 the direct pixel-editing slice; see the non-destructive path below. A dedicated
-reversible direct-operation preview and Colorize remain planned.
+desktop draft is described below; Colorize remains planned.
+
+## Desktop color draft
+
+Choose **Hue/Saturation: Active Layer** in command search, or assign its
+registered `layer.hue_saturation` command a shortcut in Settings. The desktop
+opens local Hue Shift, Saturation Adjustment and Lightness Adjustment controls
+with Reset, Preview, Apply and Cancel. Spacing, control heights and window width
+derive from configured appearance metrics; the shared HSL controls wrap in
+English, Chinese, Japanese and Korean. This UI increment awaits CI and reviewed
+captures; no default Ctrl+U binding is implied.
+
+Preview overlays the Canvas with a separate texture and keeps Navigator and
+document observations on the committed surface. Slider/numeric changes settle
+for 150 milliseconds before one preview attempt. Unchanged parameters reuse the
+texture; a neutral draft needs no extra render/upload. Preview can be toggled
+off or explicitly refreshed. A failed attempt is not retried every idle frame.
+Closing, Cancel or Escape drops the draft and shows the committed Canvas again.
+
+The draft captures document identity, revision and active raster ID/name. An
+external edit hides its texture and disables Apply until **Refresh Preview
+Source** explicitly captures the current source. An active native contact blocks
+preview/Apply without completing input. Opening and cancelling the form retain
+the shared command admission/synchronization guards. Apply dispatches the
+existing revision-guarded native action and closes only on success: one changed
+edit uses one revision, Undo group and recorded outcome.
+
+The feature-owned `plugins/native-paint/hsl_panel.rs` compiles into the desktop
+host; no egui object crosses the DLL ABI. It calls the same typed read-only
+preview service as the public PNG action below, then uploads the private texture
+without PNG/base64 encoding. Pixel buffers and display/GPU texture storage are
+separate costs; there is no claim of measured end-to-end latency or peak memory.
 
 ## Read-only direct preview contract
 
 `layer.hue_saturation.preview` now supplies the shared preview primitive for
-command/workflow, MCP and headless clients. The dedicated desktop draft window
-is still planned; this command returns a PNG, rather than replacing the visible
-canvas or opening a dialog. New runtime regressions await CI.
+command/workflow, MCP and headless clients. This command returns a PNG, rather
+than replacing the visible canvas or opening a dialog. Desktop controls use its
+same typed service with the local cache described above. New runtime regressions
+await CI.
 
 Provide complete `hsl` parameters and explicit `document_identity`,
 `document_revision` and active `layer_id`. Discover document identity/revision
@@ -51,7 +83,7 @@ Unchanged layer/mask storage and prepared color tables are borrowed, and no
 native command instance is created. `cost.pixel_scratch_bytes` includes these
 pixel buffers, not PNG/base64 encoding, metadata, retained client surfaces or
 process peak. Repeated automated queries are not free or implicitly cached;
-desktop integration must debounce/cache drafts and avoid per-frame PNG encoding.
+desktop integration debounces/caches drafts and avoids per-frame PNG encoding.
 Performance measurements and reviewed desktop captures remain separate gates.
 
 ```json
@@ -97,7 +129,7 @@ uses scalar stack state and allocates no images. The existing host edit-region
 loan stages one bounded RGBA region, at most 64 MiB for a 4096-square canvas;
 this is a logical buffer bound, not a measured process peak. The operation never
 runs during pointer MOVE or idle painting frames. Large-image latency and a
-dedicated artist-facing preview remain separate delivery gates.
+reviewed artist-facing preview captures remain separate delivery gates.
 
 Native references cover primary rotations, all grayscale bytes, alpha/hidden RGB,
 black/white endpoints and a 512-color independent integer half-turn lattice.

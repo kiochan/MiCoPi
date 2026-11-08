@@ -553,7 +553,11 @@ impl Editor {
         let painter = ui.painter().with_clip_rect(bounds);
         // A recessed stage sits inside the card between the tab row and the zoom strip.
         painter.rect_filled(bounds, 0, c.stage);
-        if let Some(texture) = self.transform_texture().or(self.texture.as_ref()) {
+        if let Some(texture) = self
+            .color_preview_texture()
+            .or_else(|| self.transform_texture())
+            .or(self.texture.as_ref())
+        {
             for (offset, blur, alpha) in [([0, 2], 6, 0.6), ([0, 14], 40, 1.)] {
                 painter.add(
                     Shadow {

@@ -17,6 +17,10 @@ while `src/plugins/native_hsl.rs` owns startup negotiation and capability invent
 and the shared PNG/Apply contract. `src/engine/owner_preview.rs` shares immutable
 composition between geometry and color overrides while keeping position-lock
 admission distinct. Pixel math and selection mixing remain in native DLLs.
+`plugins/native-paint/hsl_panel.rs` owns the compiled desktop draft, debounced
+private texture, captured-source refresh and Apply/Cancel controls. The shared
+Workbench command form hosts that adapter and Canvas consumes only valid draft
+textures; neither owns a second writable document.
 SDK Rust/C contracts and fixtures describe this native prerequisite; the typed
 document integration is implemented in source, pending CI. See [Native HSL](native-hsl.md).
 Its DLL contribution declares schemas, pixel access, atomic support and idle-only
