@@ -65,7 +65,7 @@ impl Editor {
                 if room > 24. {
                     let status = if self.pen_active {
                         format!("Windows Ink · Pressure {:.0}%", self.pressure * 100.)
-                    } else if self.session.view.mirror_x {
+                    } else if self.session.view.mirror_x || self.session.view.mirror_y {
                         format!("{} · {}", localize("Mirrored View"), self.status)
                     } else {
                         self.status.clone()
@@ -171,24 +171,27 @@ impl Editor {
             self.zoom_at(self.canvas.center(), zoom.clamp(0.02, 32.) / self.zoom);
         }
     }
-    pub(super) fn document_position(&self, p: Pos2) -> Pos2 {
-        let x = (p.x - self.image_rect.left()) / self.zoom;
+    /// Reflection is its own inverse in unscaled document coordinates.
+    pub(super) fn reflect_view_point(&self, p: Pos2) -> Pos2 {
         pos2(
             if self.session.view.mirror_x {
-                self.session.doc.width as f32 - x
+                self.session.doc.width as f32 - p.x
             } else {
-                x
+                p.x
             },
-            (p.y - self.image_rect.top()) / self.zoom,
+            if self.session.view.mirror_y {
+                self.session.doc.height as f32 - p.y
+            } else {
+                p.y
+            },
         )
     }
+    pub(super) fn document_position(&self, p: Pos2) -> Pos2 {
+        let q = (p - self.image_rect.min) / self.zoom;
+        self.reflect_view_point(pos2(q.x, q.y))
+    }
     pub(super) fn document_screen_position(&self, p: Pos2) -> Pos2 {
-        let x = if self.session.view.mirror_x {
-            self.session.doc.width as f32 - p.x
-        } else {
-            p.x
-        };
-        self.image_rect.min + vec2(x, p.y) * self.zoom
+        self.image_rect.min + self.reflect_view_point(p).to_vec2() * self.zoom
     }
     pub(super) fn document_screen_rect(&self, rect: Rect) -> Rect {
         Rect::from_two_pos(
@@ -197,20 +200,15 @@ impl Editor {
         )
     }
     pub(super) fn canvas_uv(&self) -> Rect {
-        if self.session.view.mirror_x {
-            Rect::from_min_max(pos2(1., 0.), pos2(0., 1.))
-        } else {
-            Rect::from_min_max(Pos2::ZERO, pos2(1., 1.))
-        }
+        let x = if self.session.view.mirror_x { 1. } else { 0. };
+        let y = if self.session.view.mirror_y { 1. } else { 0. };
+        Rect::from_min_max(pos2(x, y), pos2(1. - x, 1. - y))
     }
     pub(super) fn zoom_at(&mut self, p: Pos2, factor: f32) {
         if !self.canvas.is_positive() {
             return;
         }
-        let mut before = self.document_position(p);
-        if self.session.view.mirror_x {
-            before.x = self.session.doc.width as f32 - before.x;
-        }
+        let before = self.reflect_view_point(self.document_position(p));
         self.fit = false;
         self.zoom = (self.zoom * factor).clamp(0.02, 32.);
         let size = vec2(
@@ -646,7 +644,7 @@ impl Editor {
                         "brush-tip-cursor",
                         parameters.tip_shape,
                         parameters.tip_roundness,
-                        if self.session.view.mirror_x {
+                        if self.session.view.mirror_x != self.session.view.mirror_y {
                             -parameters.tip_angle
                         } else {
                             parameters.tip_angle

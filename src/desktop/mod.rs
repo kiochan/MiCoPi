@@ -594,6 +594,7 @@ impl Editor {
             pan_y: self.pan.y,
             fit: self.fit,
             mirror_x: self.session.view.mirror_x,
+            mirror_y: self.session.view.mirror_y,
         };
         if self.session.view != view {
             let before = self.session.revision;

@@ -1632,5 +1632,8 @@
   "Flip Canvas View Horizontally": "水平镜像画布视图",
   "Mirrored View": "镜像视图",
   "Canvas view mirroring requires the desktop; document pixels stay unchanged": "画布视图镜像需要桌面，文档像素保持不变",
-  "Finish the current contact before mirroring the view": "请先结束当前接触，再镜像视图"
+  "Finish the current contact before mirroring the view": "请先结束当前接触，再镜像视图",
+  "Flip Canvas View Vertically": "垂直镜像画布视图",
+  "Horizontal View Mirror": "水平视图镜像",
+  "Vertical View Mirror": "垂直视图镜像"
 }

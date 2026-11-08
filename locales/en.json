@@ -1632,5 +1632,8 @@
   "Flip Canvas View Horizontally": "Flip Canvas View Horizontally",
   "Mirrored View": "Mirrored View",
   "Canvas view mirroring requires the desktop; document pixels stay unchanged": "Canvas view mirroring requires the desktop; document pixels stay unchanged",
-  "Finish the current contact before mirroring the view": "Finish the current contact before mirroring the view"
+  "Finish the current contact before mirroring the view": "Finish the current contact before mirroring the view",
+  "Flip Canvas View Vertically": "Flip Canvas View Vertically",
+  "Horizontal View Mirror": "Horizontal View Mirror",
+  "Vertical View Mirror": "Vertical View Mirror"
 }

@@ -91,15 +91,21 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             s.pick(x, y)?;
             Ok(json!({"color":s.parameters.color}))
         }
-        MirrorView => {
+        MirrorView | MirrorViewVertical => {
             require_mirror_change(s)?;
-            s.view.mirror_x = !s.view.mirror_x;
+            let (key, flag) = if op == MirrorView {
+                ("mirror_x", &mut s.view.mirror_x)
+            } else {
+                ("mirror_y", &mut s.view.mirror_y)
+            };
+            *flag = !*flag;
+            let enabled = *flag;
             let mut value = serde_json::to_value(s.view)?;
-            value["mirror_x"] = json!(s.view.mirror_x);
+            value[key] = json!(enabled);
             Ok(value)
         }
         View => {
-            if args.get("mirror_x").is_some() {
+            if args.get("mirror_x").is_some() || args.get("mirror_y").is_some() {
                 require_mirror_change(s)?;
             }
 
@@ -114,6 +120,9 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
             }
             if let Some(mirror) = args["mirror_x"].as_bool() {
                 s.view.mirror_x = mirror;
+            }
+            if let Some(mirror) = args["mirror_y"].as_bool() {
+                s.view.mirror_y = mirror;
             }
             if let Some(fit) = args["fit"].as_bool() {
                 s.view.fit = fit;

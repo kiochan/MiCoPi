@@ -165,7 +165,7 @@ drawing workflow.
 - [ ] Add a path/shape data contract before pen-path editing, rasterization and vector masks.
 - [ ] Add rulers, guides, a configurable grid and snapping.
 - [ ] Add non-destructive view rotation, mirrored view and fit/reset commands.
-  - [Horizontal view mirroring](view-mirroring.md) now reflects Canvas textures, input and edit overlays through shared coordinates, with unchanged document pixels/export/history, desktop/contact guards, command discovery and four-language feedback. Source/UV/zoom/cursor/synthetic input and compatibility cases are authored; runtime/native capture/device validation remains pending. View rotation and vertical mirroring remain planned; keep this grouped item unchecked.
+  - [Horizontal/vertical view mirroring](view-mirroring.md) now reflects Canvas textures, input and edit overlays through shared coordinates, with unchanged document pixels/export/history, desktop/contact guards, command discovery and four-language feedback. Source/UV/zoom/cursor/synthetic input and compatibility cases are authored; runtime/native capture/device validation remains pending. Both mirror axes and their combination share the same mapping and synthetic input checks. Arbitrary view rotation remains planned; keep this grouped item unchecked.
 
 Acceptance: text/shape content remains independent of UI language; fonts and fallback behavior are explicit; snapping units and zoom/DPI transforms agree across viewports; text/vector rasterization is isolated behind a documented plugin or rendering contract.
 

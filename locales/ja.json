@@ -1632,5 +1632,8 @@
   "Flip Canvas View Horizontally": "キャンバス表示を左右反転",
   "Mirrored View": "左右反転表示",
   "Canvas view mirroring requires the desktop; document pixels stay unchanged": "表示の反転にはデスクトップが必要です。ドキュメントの画素は変わりません",
-  "Finish the current contact before mirroring the view": "表示を反転する前に現在の入力を終了してください"
+  "Finish the current contact before mirroring the view": "表示を反転する前に現在の入力を終了してください",
+  "Flip Canvas View Vertically": "キャンバス表示を上下反転",
+  "Horizontal View Mirror": "表示の左右反転",
+  "Vertical View Mirror": "表示の上下反転"
 }

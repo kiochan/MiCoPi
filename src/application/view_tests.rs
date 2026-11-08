@@ -11,6 +11,8 @@ fn view_mirror_is_desktop_only_reversible_and_preserves_document_bytes_and_histo
     let view = s.view;
     for (action, args) in [
         ("view.mirror_horizontal", json!({})),
+        ("view.mirror_vertical", json!({})),
+        ("view.set", json!({"mirror_y":true,"zoom":2})),
         ("view.set", json!({"mirror_x":true,"zoom":2})),
     ] {
         assert_eq!(
@@ -70,6 +72,8 @@ fn view_mirror_rejects_live_contact_without_partial_view_changes() {
     let revision = s.revision;
     for (action, args) in [
         ("view.mirror_horizontal", json!({})),
+        ("view.mirror_vertical", json!({})),
+        ("view.set", json!({"mirror_y":true,"zoom":2})),
         ("view.set", json!({"mirror_x":true,"zoom":2})),
     ] {
         assert_eq!(
@@ -100,5 +104,45 @@ fn legacy_view_metadata_keeps_its_serialized_shape() {
     let value = json!({"zoom":1.,"pan_x":0.,"pan_y":0.,"fit":true});
     let view: View = serde_json::from_value(value.clone()).unwrap();
     assert!(!view.mirror_x);
+    assert!(!view.mirror_y);
     assert_eq!(serde_json::to_value(view).unwrap(), value);
+}
+
+#[test]
+fn both_view_axes_toggle_independently_and_output_schemas_cover_combined_state() {
+    let mut s = session();
+    s.runtime = "desktop";
+    let raw = s.doc.layers[0].pixels.clone();
+    let history = s.doc.history_bytes();
+    let png = codec::png(&mut s.doc).unwrap();
+    let composition = s.doc.composition();
+    for (action, x, y) in [
+        ("view.mirror_vertical", false, true),
+        ("view.mirror_horizontal", true, true),
+        ("view.mirror_vertical", true, false),
+        ("view.mirror_horizontal", false, false),
+    ] {
+        let result = call(&mut s, action, json!({}));
+        crate::plugins::validate(
+            s.registry.actions[action].output_schema.as_ref().unwrap(),
+            &result,
+        )
+        .unwrap();
+        let (flag, expected) = if action == "view.mirror_horizontal" {
+            ("mirror_x", x)
+        } else {
+            ("mirror_y", y)
+        };
+        assert_eq!(result[flag], json!(expected));
+        assert_eq!((s.view.mirror_x, s.view.mirror_y), (x, y));
+        assert_eq!(s.doc.layers[0].pixels, raw);
+        assert_eq!(s.doc.history_bytes(), history);
+        assert_eq!(s.doc.composition(), composition);
+        assert_eq!(codec::png(&mut s.doc).unwrap(), png);
+        let encoded = serde_json::to_value(s.view).unwrap();
+        assert_eq!(encoded.get("mirror_x").is_some(), x);
+        assert_eq!(encoded.get("mirror_y").is_some(), y);
+        assert_eq!(serde_json::from_value::<View>(encoded).unwrap(), s.view);
+    }
+    check(&mut s);
 }

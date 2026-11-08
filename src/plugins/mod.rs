@@ -187,9 +187,8 @@ pub(crate) fn execute(
         AddLayer | RenameLayer | DuplicateLayer | MoveLayer | DeleteLayer | SelectLayer
         | LayerSelection | MergeDown | MergeVisible | FlattenImage | StampVisible
         | LayerProperties | ClearLayer => layers::execute(session, op, args),
-        SelectTool | Parameters | Pointer | Stroke | Pick | View | MirrorView => {
-            painting::execute(session, op, args)
-        }
+        SelectTool | Parameters | Pointer | Stroke | Pick | View | MirrorView
+        | MirrorViewVertical => painting::execute(session, op, args),
         WindowCommand | WindowState | WindowLayout | WindowCapture | WindowDrop => {
             windows::execute(session, op, args)
         }

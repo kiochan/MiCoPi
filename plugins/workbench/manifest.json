@@ -461,6 +461,47 @@
           },
           "mirror_x": {
             "type": "boolean"
+          },
+          "mirror_y": {
+            "type": "boolean"
+          }
+        }
+      },
+      "pixel_access": "none",
+      "requires_idle": true
+    },
+    {
+      "id": "view.mirror_vertical",
+      "title": "Flip Canvas View Vertically",
+      "operation": "mirror_view_vertical",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "zoom",
+          "pan_x",
+          "pan_y",
+          "fit",
+          "mirror_y"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "zoom": {
+            "type": "number"
+          },
+          "pan_x": {
+            "type": "number"
+          },
+          "pan_y": {
+            "type": "number"
+          },
+          "fit": {
+            "type": "boolean"
+          },
+          "mirror_x": {
+            "type": "boolean"
+          },
+          "mirror_y": {
+            "type": "boolean"
           }
         }
       },

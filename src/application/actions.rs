@@ -224,6 +224,7 @@ pub enum Operation {
     Pick,
     View,
     MirrorView,
+    MirrorViewVertical,
     Ui,
     WindowCommand,
     WindowState,
@@ -319,6 +320,7 @@ impl Operation {
                 self,
                 Self::DuplicateLayer
                     | Self::MirrorView
+                    | Self::MirrorViewVertical
                     | Self::HslDialog
                     | Self::TonalDialog
                     | Self::GrayscaleDialog
@@ -386,7 +388,7 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
-        if self == Self::MirrorView {
+        if matches!(self, Self::MirrorView | Self::MirrorViewVertical) {
             return json!({"type":"object","additionalProperties":false});
         }
         use crate::engine::quantization::Effect;
@@ -670,7 +672,7 @@ impl Operation {
             ),
             Self::Pick => (json!({"x":number,"y":number}), vec!["x", "y"]),
             Self::View => (
-                json!({"zoom":{"type":"number","minimum":0.02,"maximum":32},"pan_x":{"type":"number","minimum":-1000000,"maximum":1000000},"pan_y":{"type":"number","minimum":-1000000,"maximum":1000000},"fit":{"type":"boolean"},"mirror_x":{"type":"boolean"}}),
+                json!({"zoom":{"type":"number","minimum":0.02,"maximum":32},"pan_x":{"type":"number","minimum":-1000000,"maximum":1000000},"pan_y":{"type":"number","minimum":-1000000,"maximum":1000000},"fit":{"type":"boolean"},"mirror_x":{"type":"boolean","title":"Horizontal View Mirror"},"mirror_y":{"type":"boolean","title":"Vertical View Mirror"}}),
                 vec![],
             ),
             Self::Ui => (json!({"id":{"type":"string"},"value":{}}), vec!["id"]),

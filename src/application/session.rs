@@ -233,6 +233,8 @@ pub struct View {
     pub fit: bool,
     #[serde(default, skip_serializing_if = "view_mirror_is_off")]
     pub mirror_x: bool,
+    #[serde(default, skip_serializing_if = "view_mirror_is_off")]
+    pub mirror_y: bool,
 }
 impl Default for View {
     fn default() -> Self {
@@ -242,6 +244,7 @@ impl Default for View {
             pan_y: 0.,
             fit: true,
             mirror_x: false,
+            mirror_y: false,
         }
     }
 }

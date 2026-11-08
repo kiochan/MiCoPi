@@ -571,7 +571,7 @@ impl Editor {
                     if d.params.quad.is_some() {
                         CursorIcon::Crosshair
                     } else {
-                        if self.session.view.mirror_x {
+                        if self.session.view.mirror_x != self.session.view.mirror_y {
                             CursorIcon::ResizeNeSw
                         } else {
                             CursorIcon::ResizeNwSe

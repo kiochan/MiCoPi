@@ -53,9 +53,7 @@ impl Editor {
             .filter(|_| response.clicked() || response.dragged())
         {
             let mut q = (p - inner.min) / scale;
-            if self.session.view.mirror_x {
-                q.x = self.session.doc.width as f32 - q.x;
-            }
+            q = self.reflect_view_point(pos2(q.x, q.y)).to_vec2();
             self.fit = false;
             self.pan = (vec2(
                 self.session.doc.width as f32,
@@ -92,8 +90,8 @@ impl Editor {
 mod mirror_tests {
     use super::*;
     #[test]
-    fn navigator_click_centers_the_same_document_point_in_both_view_orientations() {
-        for mirrored in [false, true] {
+    fn navigator_click_centers_the_same_document_point_in_all_view_orientations() {
+        for (mirrored, vertical) in [(false, false), (true, false), (false, true), (true, true)] {
             let mut app = crate::desktop::tests::studio();
             let ctx = Context::default();
             app.editor
@@ -101,6 +99,7 @@ mod mirror_tests {
             app.editor.zoom = 3.;
             app.editor.fit = false;
             app.editor.session.view.mirror_x = mirrored;
+            app.editor.session.view.mirror_y = vertical;
             app.editor.canvas = Rect::from_min_size(pos2(0., 0.), vec2(1000., 800.));
             app.editor.image_rect =
                 Rect::from_center_size(app.editor.canvas.center(), vec2(36., 24.));
@@ -120,7 +119,10 @@ mod mirror_tests {
             frame(vec![]);
             let image =
                 ctx.data_mut(|data| data.get_temp::<Rect>(Id::new("navigator-image")).unwrap());
-            let p = pos2(image.left() + image.width() * 0.25, image.center().y);
+            let p = pos2(
+                image.left() + image.width() * 0.25,
+                image.top() + image.height() * 0.25,
+            );
             for pressed in [true, false] {
                 frame(vec![
                     Event::PointerMoved(p),
@@ -133,7 +135,7 @@ mod mirror_tests {
                 ]);
             }
             assert!((app.editor.pan.x - if mirrored { -9. } else { 9. }).abs() < 0.01);
-            assert!(app.editor.pan.y.abs() < 0.01);
+            assert!((app.editor.pan.y - if vertical { -6. } else { 6. }).abs() < 0.01);
         }
     }
 }

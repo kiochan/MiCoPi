@@ -1,7 +1,7 @@
 # Project Structure and Ownership
 
-`application::View` owns the optional mirror flag. The workbench registers the
-view toggle and the shared painting/view adapter validates desktop/contact scope.
+`application::View` owns the optional horizontal/vertical mirror flags. The workbench registers
+both view toggles and the shared painting/view adapter validates desktop/contact scope.
 `plugins/canvas/panel.rs` owns forward/inverse screen mapping and texture UVs;
 selection, crop, Move and transform overlays reuse those helpers.
 

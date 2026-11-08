@@ -1632,5 +1632,8 @@
   "Flip Canvas View Horizontally": "캔버스 보기 좌우 반전",
   "Mirrored View": "좌우 반전 보기",
   "Canvas view mirroring requires the desktop; document pixels stay unchanged": "보기 반전에는 데스크톱이 필요합니다. 문서 픽셀은 변경되지 않습니다",
-  "Finish the current contact before mirroring the view": "보기를 반전하기 전에 현재 입력을 마치세요"
+  "Finish the current contact before mirroring the view": "보기를 반전하기 전에 현재 입력을 마치세요",
+  "Flip Canvas View Vertically": "캔버스 보기 상하 반전",
+  "Horizontal View Mirror": "보기 좌우 반전",
+  "Vertical View Mirror": "보기 상하 반전"
 }

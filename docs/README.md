@@ -1,6 +1,6 @@
 # Documentation
 
-[Horizontal view mirroring](view-mirroring.md) keeps document pixels unchanged
+[Horizontal/vertical view mirroring](view-mirroring.md) keeps document pixels unchanged
 while reflecting Canvas display, input and edit overlays. Runtime/UI validation
 and native captures remain pending.
 
