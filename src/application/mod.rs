@@ -161,6 +161,8 @@ mod export_tests;
 #[cfg(test)]
 mod hsl_document_tests;
 #[cfg(test)]
+mod hsl_preview_tests;
+#[cfg(test)]
 mod hue_saturation_tests;
 pub(crate) mod image_size;
 pub(crate) mod output_size;

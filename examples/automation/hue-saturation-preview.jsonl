@@ -1,0 +1,3 @@
+{"action":"canvas.new","args":{"width":4,"height":4}}
+{"action":"layer.fill_color","args":{"color":"#ff000080"}}
+{"action":"pipeline.run","args":{"steps":[{"id":"document","action":"graph.read","args":{}},{"id":"preview","action":"layer.hue_saturation.preview","args":{"document_identity":{"$ref":"document#/result/document_identity"},"document_revision":{"$ref":"document#/result/revision"},"layer_id":1,"hsl":{"hue":120,"saturation":0,"lightness":0}}}]}}

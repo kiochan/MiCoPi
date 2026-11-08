@@ -18,7 +18,16 @@ def commands():
     p.add('new', 'canvas.new', width=4, height=4)
     p.add('fill', 'layer.fill_color', color='#ff000080')
     p.add('selection', 'selection.shape', kind='rectangle', x=1, y=1, width=2, height=2)
+    p.add('preview', 'pipeline.run', steps=[
+        dict(id='read', action='graph.read', args={}),
+        dict(id='before', action='canvas.state', args={}),
+        dict(id='draft', action='layer.hue_saturation.preview', args=dict(
+            document_identity={'$ref': 'read#/result/document_identity'},
+            document_revision={'$ref': 'read#/result/revision'}, layer_id=1,
+            hsl=dict(hue=120, saturation=0, lightness=0))),
+        dict(id='after', action='canvas.state', args={})])
     p.add('hue', 'layer.hue_saturation', hue=120)
+    p.add('applied-image', 'canvas.snapshot')
     p.add('green', 'histogram.query', source='layer', layer_id=1)
     p.add('undo', 'history.undo')
     p.add('red', 'histogram.query', source='layer', layer_id=1)
@@ -62,7 +71,17 @@ def commands():
 def validate(values, plan):
     at = lambda key: plan.at(values, key)
     assert any(node['id'] == 'action.layer.hue_saturation' for node in at('nodes')['nodes'])
+    assert any(node['id'] == 'action.layer.hue_saturation.preview' for node in at('nodes')['nodes'])
     assert at('hue')['implementation'] == 'independent Rust DLL'
+    preview = at('preview')
+    assert preview['ok']
+    observed = preview['results']
+    assert observed['before']['result'] == observed['after']['result']
+    draft = observed['draft']['result']
+    assert draft['mimeType'] == 'image/png' and draft['data'] == at('applied-image')['data']
+    assert draft['cost']['pixel_scratch_bytes'] == 4*4*4*2
+    assert draft['apply'] == dict(action='layer.hue_saturation',
+        args=dict(hue=120, saturation=0, lightness=0), expected_revision=observed['before']['revision'])
     result = {}
     for key, colors in [('green', [(255, 0, 0)]*12+[(0, 255, 0)]*4),
                         ('red', [(255, 0, 0)]*16),
@@ -101,7 +120,7 @@ def main():
     batch = validate(geometry.run_jsonl(cli, flags, plan, output/'hue-saturation.jsonl'), plan)
     mcp = validate(editing.run_mcp(cli, flags, plan, require_masks=False), plan)
     assert batch == mcp
-    print('Hue/Saturation: independent primary-color bins, selection, Undo/Redo, atomic workflow, replay and JSONL/MCP parity passed.')
+    print('Hue/Saturation: fenced read-only preview/Apply parity, independent primary-color bins, selection, Undo/Redo, atomic workflow, replay and JSONL/MCP parity passed.')
     print(output)
 
 

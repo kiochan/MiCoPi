@@ -1596,5 +1596,6 @@
   "Saturation Adjustment": "채도 조정",
   "Lightness Adjustment": "명도 조정",
   "Hue/Saturation": "색조／채도",
-  "HSL Parameters": "HSL 매개변수"
+  "HSL Parameters": "HSL 매개변수",
+  "Hue/Saturation: Preview Active Layer": "색조/채도: 현재 레이어 미리 보기"
 }

@@ -108,6 +108,25 @@ impl Document {
         layers: &[(u64, &'a [u32])],
         masks: &[(u64, PlaneView<'a>)],
     ) -> Result<Vec<u32>, String> {
+        self.preview_owner_pixels(layers, masks, true)
+    }
+
+    /// Color-only overrides retain position locks; all other validation and
+    /// borrowed graph/mask composition are shared with geometric previews.
+    pub(crate) fn preview_layer_color(
+        &self,
+        layer_id: u64,
+        pixels: &[u32],
+    ) -> Result<Vec<u32>, String> {
+        self.preview_owner_pixels(&[(layer_id, pixels)], &[], false)
+    }
+
+    fn preview_owner_pixels<'a>(
+        &'a self,
+        layers: &[(u64, &'a [u32])],
+        masks: &[(u64, PlaneView<'a>)],
+        geometry: bool,
+    ) -> Result<Vec<u32>, String> {
         let mask_ids = masks.iter().map(|(id, _)| *id).collect::<Vec<_>>();
         let _cost = self.owner_preview_cost(&mask_ids)?;
         let area = self.width * self.height;
@@ -123,7 +142,7 @@ impl Document {
             let index = self
                 .layer_index(*id)
                 .ok_or("Owner preview layer does not exist")?;
-            self.validate_layer_transform_pixels(index, pixels)?;
+            self.validate_layer_preview_pixels(index, pixels, geometry)?;
         }
         if masks
             .iter()

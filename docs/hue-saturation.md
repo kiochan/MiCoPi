@@ -12,6 +12,48 @@ source increment and its native/Session/transport regressions await CI. It is
 the direct pixel-editing slice; see the non-destructive path below. A dedicated
 reversible direct-operation preview and Colorize remain planned.
 
+## Read-only direct preview contract
+
+`layer.hue_saturation.preview` now supplies the shared preview primitive for
+command/workflow, MCP and headless clients. The dedicated desktop draft window
+is still planned; this command returns a PNG, rather than replacing the visible
+canvas or opening a dialog. New runtime regressions await CI.
+
+Provide complete `hsl` parameters and explicit `document_identity`,
+`document_revision` and active `layer_id`. Discover document identity/revision
+from `graph.read` and stable layer IDs from `canvas.state`. The
+[preview example](../examples/automation/hue-saturation-preview.jsonl) resolves
+those fences inside a pipeline. Stale documents/revisions, another active raster,
+pixel locks, a mask painting target, unavailable native HSL and active contacts
+reject before pixel staging. Position locks permit this color-only operation.
+
+The immutable preview renders a private raw-raster override using the same
+native scalar HSL implementation, restores transparent hidden RGB, blends pixel
+selection coverage once through the painting DLL, then borrows the document's
+existing graph, layers and effective masks for composition. Source filters,
+adjustments, group gates and raster masks remain part of the displayed result.
+The document surface, raw pixels, masks, history, revision and outcome journal
+remain unchanged, including on query failure. Dropping the result cancels it.
+
+The response includes `mimeType`, base64 PNG `data`, dimensions, captured scope,
+parameters, pixel scratch `cost` and an `apply` Action. That Action uses the
+existing `layer.hue_saturation` command with `expected_revision`; execute it only
+against the same Session/document and captured active layer. Apply recomputes
+the direct edit through its normal validation/history path. Never copy the
+preview composite into a raw layer. A changed Apply publishes one Undo/outcome;
+preview requests publish none. MCP presents a standalone successful query as
+image content with the same structured response.
+
+This is an explicit cold operation, never a pointer-MOVE callback. Pixel staging
+uses one full-canvas RGBA override (at most 64 MiB), one composed RGBA surface
+(at most 64 MiB) and up to 64 MiB of separately bounded cold mask effects.
+Unchanged layer/mask storage and prepared color tables are borrowed, and no
+native command instance is created. `cost.pixel_scratch_bytes` includes these
+pixel buffers, not PNG/base64 encoding, metadata, retained client surfaces or
+process peak. Repeated automated queries are not free or implicitly cached;
+desktop integration must debounce/cache drafts and avoid per-frame PNG encoding.
+Performance measurements and reviewed desktop captures remain separate gates.
+
 ```json
 {"action":"layer.hue_saturation","args":{"hue":120,"saturation":0,"lightness":0}}
 ```

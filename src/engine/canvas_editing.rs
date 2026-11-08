@@ -117,11 +117,19 @@ impl Document {
         index: usize,
         pixels: &[u32],
     ) -> Result<(), String> {
+        self.validate_layer_preview_pixels(index, pixels, true)
+    }
+    pub(super) fn validate_layer_preview_pixels(
+        &self,
+        index: usize,
+        pixels: &[u32],
+        geometry: bool,
+    ) -> Result<(), String> {
         let layer = self.layers.get(index).ok_or("Layer does not exist")?;
         if self.pixel_locked(index) {
             return Err("Unlock layer pixels before transforming them".into());
         }
-        if self.position_locked(index) {
+        if geometry && self.position_locked(index) {
             return Err("Unlock layer position before transforming pixels".into());
         }
         if pixels.len() != self.width * self.height {

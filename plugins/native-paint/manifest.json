@@ -2,8 +2,181 @@
   "api_version": 1,
   "id": "native_paint",
   "name": "Native Painting Plugin · Rust DLL",
-  "requires": ["core", "painting", "workbench"],
+  "requires": [
+    "core",
+    "painting",
+    "workbench"
+  ],
   "library": "micopi_native_paint.dll",
+  "actions": [
+    {
+      "id": "layer.hue_saturation.preview",
+      "title": "Hue/Saturation: Preview Active Layer",
+      "operation": "hsl_preview",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "document_identity",
+          "revision",
+          "layer_id",
+          "hsl",
+          "width",
+          "height",
+          "mimeType",
+          "data",
+          "cost",
+          "apply"
+        ],
+        "properties": {
+          "document_identity": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "layer_id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "hsl": {
+            "type": "object",
+            "required": [
+              "hue",
+              "saturation",
+              "lightness"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "hue": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180,
+                "title": "Hue Shift"
+              },
+              "saturation": {
+                "type": "number",
+                "minimum": -100,
+                "maximum": 100,
+                "title": "Saturation Adjustment"
+              },
+              "lightness": {
+                "type": "number",
+                "minimum": -100,
+                "maximum": 100,
+                "title": "Lightness Adjustment"
+              }
+            },
+            "title": "HSL Parameters"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/png"
+            ]
+          },
+          "data": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "object",
+            "required": [
+              "source_scratch_bytes",
+              "composite_bytes",
+              "mask_effect_bytes",
+              "pixel_scratch_bytes"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "source_scratch_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "composite_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "mask_effect_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              },
+              "pixel_scratch_bytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 201326592
+              }
+            }
+          },
+          "apply": {
+            "type": "object",
+            "required": [
+              "action",
+              "args",
+              "expected_revision"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "layer.hue_saturation"
+                ]
+              },
+              "args": {
+                "type": "object",
+                "required": [
+                  "hue",
+                  "saturation",
+                  "lightness"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "hue": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180,
+                    "title": "Hue Shift"
+                  },
+                  "saturation": {
+                    "type": "number",
+                    "minimum": -100,
+                    "maximum": 100,
+                    "title": "Saturation Adjustment"
+                  },
+                  "lightness": {
+                    "type": "number",
+                    "minimum": -100,
+                    "maximum": 100,
+                    "title": "Lightness Adjustment"
+                  }
+                },
+                "title": "HSL Parameters"
+              },
+              "expected_revision": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  ],
   "action_access": {
     "native.invert": "pixels",
     "native.checkerboard": "pixels",

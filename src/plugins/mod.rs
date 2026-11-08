@@ -37,6 +37,7 @@ pub(crate) mod export;
 mod geometry;
 pub(crate) mod groups;
 pub(crate) mod histogram;
+pub(crate) mod hsl_preview;
 pub(crate) mod layer_arrangement;
 pub(crate) mod layer_batch;
 pub(crate) mod layer_links;
@@ -64,6 +65,7 @@ pub(crate) fn execute(
 ) -> crate::application::ActionResult {
     use crate::application::Operation::*;
     match op {
+        HslPreview => hsl_preview::execute(session, args),
         BrushAngleAdjust => brush_tip::execute(session, args),
         BrushPresetsQuery | BrushPresetUpsert | BrushPresetDelete | BrushPresetApply
         | BrushPresetsImport | BrushPresetsExport | BrushPresetsReload => {

@@ -13,6 +13,10 @@ It calls `plugins/native-paint/src/hsl_math.rs`, a pure scalar
 source module compiled independently into both painting and compositor DLLs.
 `plugins/compositing/src/hsl.rs` owns optional HSL plan rendering/observation,
 while `src/plugins/native_hsl.rs` owns startup negotiation and capability inventory.
+`src/plugins/hsl_preview.rs` owns fenced read-only direct preview orchestration
+and the shared PNG/Apply contract. `src/engine/owner_preview.rs` shares immutable
+composition between geometry and color overrides while keeping position-lock
+admission distinct. Pixel math and selection mixing remain in native DLLs.
 SDK Rust/C contracts and fixtures describe this native prerequisite; the typed
 document integration is implemented in source, pending CI. See [Native HSL](native-hsl.md).
 Its DLL contribution declares schemas, pixel access, atomic support and idle-only

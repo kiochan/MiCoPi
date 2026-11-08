@@ -94,6 +94,7 @@ pub enum Operation {
     WorkflowState,
     GraphRead,
     HistogramQuery,
+    HslPreview,
     GraphSet,
     GraphCatalog,
     Describe,
@@ -369,6 +370,9 @@ impl Operation {
         )
     }
     pub fn schema(self) -> Value {
+        if self == Self::HslPreview {
+            return crate::plugins::hsl_preview::schema();
+        }
         if self == Self::HistogramQuery {
             return crate::plugins::histogram::schema();
         }
@@ -664,6 +668,7 @@ impl Operation {
                 | Self::WorkflowState
                 | Self::GraphRead
                 | Self::HistogramQuery
+                | Self::HslPreview
                 | Self::GraphCatalog
                 | Self::Describe
                 | Self::ContextRead
