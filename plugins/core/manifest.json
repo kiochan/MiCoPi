@@ -621,7 +621,7 @@
                       "type": "integer"
                     },
                     "node_id": {
-                      "type": "integer"
+                      "description": "Generated composition node ID, or null when this row has no single generated node (including shared controllers)."
                     },
                     "matched": {
                       "type": "boolean"
@@ -756,7 +756,7 @@
                       "type": "integer"
                     },
                     "node_id": {
-                      "type": "integer"
+                      "description": "Generated composition node ID, or null when this row has no single generated node (including shared controllers)."
                     },
                     "matched": {
                       "type": "boolean"
@@ -845,6 +845,16 @@
                       "type": "number",
                       "minimum": -1,
                       "maximum": 1
+                    },
+                    "target_layer_ids": {
+                      "type": "array",
+                      "maxItems": 16,
+                      "items": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 4294967295
+                      },
+                      "description": "Explicit raster targets when present; an empty array is an unbound controller."
                     }
                   },
                   "required": [
@@ -5472,7 +5482,7 @@
                   "type": "integer"
                 },
                 "node_id": {
-                  "type": "integer"
+                  "description": "Generated composition node ID, or null when this row has no single generated node (including shared controllers)."
                 },
                 "matched": {
                   "type": "boolean"
@@ -5607,7 +5617,7 @@
                   "type": "integer"
                 },
                 "node_id": {
-                  "type": "integer"
+                  "description": "Generated composition node ID, or null when this row has no single generated node (including shared controllers)."
                 },
                 "matched": {
                   "type": "boolean"
@@ -5750,6 +5760,16 @@
                   "type": "number",
                   "minimum": -1,
                   "maximum": 1
+                },
+                "target_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  },
+                  "description": "Explicit raster targets when present; an empty array is an unbound controller."
                 }
               },
               "required": [
@@ -13531,7 +13551,7 @@
                   "type": "integer"
                 },
                 "node_id": {
-                  "type": "integer"
+                  "description": "Generated composition node ID, or null when this row has no single generated node (including shared controllers)."
                 },
                 "matched": {
                   "type": "boolean"
@@ -13666,7 +13686,7 @@
                   "type": "integer"
                 },
                 "node_id": {
-                  "type": "integer"
+                  "description": "Generated composition node ID, or null when this row has no single generated node (including shared controllers)."
                 },
                 "matched": {
                   "type": "boolean"
@@ -13809,6 +13829,16 @@
                   "type": "number",
                   "minimum": -1,
                   "maximum": 1
+                },
+                "target_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  },
+                  "description": "Explicit raster targets when present; an empty array is an unbound controller."
                 }
               },
               "required": [

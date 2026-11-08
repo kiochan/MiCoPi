@@ -23,6 +23,33 @@ fn create(s: &mut Session) -> u64 {
     call(s,"adjustment.create",json!({"node_type":"compositing.filter","parameters":{"filter":"invert","amount":1},"target_layer_ids":[1,2]}))["adjustment_id"].as_u64().unwrap()
 }
 #[test]
+fn shared_controller_public_state_matches_workflow_and_state_schemas() {
+    let mut s = fixture();
+    let id = create(&mut s);
+    for targets in [json!([1, 2]), json!([])] {
+        call(
+            &mut s,
+            "adjustment.set",
+            json!({"adjustment_id":id,"target_layer_ids":targets}),
+        );
+        let state = call(&mut s, "canvas.state", json!({}));
+        crate::plugins::validate(&s.registry.actions["canvas.state"].output_schema, &state)
+            .unwrap();
+        crate::plugins::validate(
+            &s.registry.states["core.groups"].output_schema,
+            &state["groups"],
+        )
+        .unwrap();
+        let result = call(
+            &mut s,
+            "pipeline.run",
+            json!({"atomic":true,"steps":[{"id":"state","action":"canvas.state","args":{}}]}),
+        );
+        assert_eq!(result["ok"], true, "{result}");
+        assert_eq!(result["results"]["state"]["result"], state);
+    }
+}
+#[test]
 fn shared_controller_binding_is_explicit_unbound_and_independent_of_selection() {
     let mut s = fixture();
     let before = raw(&s);

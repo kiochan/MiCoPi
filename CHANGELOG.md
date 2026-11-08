@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix shared-controller public state schemas to admit explicit raster bindings and null generated-node IDs, including unbound controllers. Add a Session/state/workflow regression for the CI failure in shared-adjustment transport checks. Local source checks only; runtime revalidation runs in CI.
+
 Implemented changes since 0.21.0, grouped by their current behavior. Git history retains the individual commits and intermediate design iterations.
 
 ### Painting and document editing
