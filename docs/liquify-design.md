@@ -167,11 +167,31 @@ axes reflect both centers and displacement vectors, with joint native evaluation
 The normal Brush/Eraser path is unchanged. A circular canvas cursor shows radius.
 UI spacing derives from appearance metrics and labels have four-language catalogs.
 
-Full preview composition and texture upload remain synchronous and are throttled
-to at most one attempt per 100 ms with texture reuse. Owner sampling uses ROI
-writes; composition/upload still process a complete bounded preview frame. This
-is not an allocation-free presentation or a measured large-canvas latency claim.
-Changing the source revision invalidates the draft rather than rebasing edits.
+Full preview composition remains synchronous and is throttled to at most one
+attempt per 100 ms. Native no-op input, including zero strength, does not schedule
+another composition. Reset requests an immediate fresh source preview. Owner
+sampling uses disjoint ROI writes; the compositor still processes a complete
+bounded frame, including source filters and nonlocal effects.
+
+The desktop retains one converted CPU `ColorImage` with at most 64 MiB of pixel
+payload. Initial/full uploads share its immutable Arc rather than cloning it.
+Compare each fresh composed frame after checker conversion: unchanged visible
+pixels upload nothing; otherwise upload only the exact enclosing changed display
+rectangle and patch a uniquely held CPU cache in place. This comparison is over
+the complete composed image, not just deformation bounds, so filter spread and
+ancestor composition cannot leave stale texture pixels. If an earlier upload
+still shares the image, replace/upload a full new immutable image; never mutate
+an image retained by an outstanding renderer delta or trigger copy-on-write.
+
+The retained CPU display image is additional desktop storage, separate from
+`preview_cost` (compositor/effective-mask payload), field/transcript and owner
+staging. A fresh composed RGBA frame and an upload patch can coexist with it;
+each is bounded by a full-frame pixel payload, and the full-size GPU texture plus
+driver/framework overhead is separate again. These ceilings are not measured
+process peak memory. Warm uniquely owned partial updates reuse CPU frame storage,
+but composition, patches and framework uploads are not allocation-free. Exact
+comparison and lower upload area do not establish lower end-to-end latency until
+measured. Changing the source revision invalidates the draft rather than rebasing edits.
 Apply drops the private native/output cache before executing the shared action,
 avoiding simultaneous duplicate owner staging. Field/workspace has a 64 MiB cap,
 owner outputs a 192 MiB cap; preview uses existing separate composite/effect caps.
@@ -184,7 +204,9 @@ SDK prefix/layout/lifecycle, owner preview/PNG versus Apply, selection/unlinked
 mask preservation, unchanged affine recipe, one Undo/Redo, missing capabilities,
 late native failure and post-publication renderer rollback. Typed synthetic pen
 input covers pressure, mirrored mapping and an idle committed canvas; desktop
-controls cover texture reuse, Reset/Cancel/Apply. Tiny JSONL/MCP smoke exercises
+controls cover texture reuse, exact changed upload bounds, immutable shared-image
+fallback, no-op suppression, immediate Reset and stale-source behavior. Grouped
+masked project round-trips and imported DLL-free raw outcomes are authored too. Tiny JSONL/MCP smoke exercises
 preview/Apply parity, generated nodes and verified outcomes. These new gates have
 not yet returned a passing CI result. Synthetic input does not certify devices.
 
