@@ -207,6 +207,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Reliability, performance and compatibility
 
+- Initialize the optional quantization capability to absent in the existing A8 sampler and mask-effect fake plugins. Restore test compilation after the native loader extension while retaining their old-capability behavior; runtime revalidation awaits CI.
+
 - Record green CI `d27f03a` ([run 42435215434](https://github.com/kiochan/MiCoPi/actions/runs/42435215434)): 1,232 desktop, 908 headless, 72 compositor, 25 native-paint, 99 painting and 12 SDK tests passed, together with the configured ABI, bounded cost and transport checks. This validates prior grayscale/tonal UI, the transparent tonal fixture correction and direct Threshold/Posterize commands; later native quantization-plan and typed document/UI integration are excluded and await their own CI. No native-window capture or physical-tablet validation ran in this CI.
 
 - Retain running CI validation across new same-workflow/ref pushes by disabling in-progress cancellation. Document the latest-pending policy and exact-head evidence so authorized feature pushes can continue without restarting an almost-complete build. Record the first verified HSL callback/observation timing and zero-allocation baseline from green CI `4c8f19d`, with exact test counts, excluded costs and explicit lack of native GUI capture execution. New tonal/shared-draft behavior keeps its separate pending CI status; no local heavy workload or end-to-end latency/process-memory claim is introduced.
