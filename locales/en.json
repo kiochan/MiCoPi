@@ -1608,5 +1608,7 @@
   "Brightness/Contrast: Preview Active Layer": "Brightness/Contrast: Preview Active Layer",
   "Brightness/Contrast": "Brightness/Contrast",
   "Open Brightness/Contrast Controls": "Open Brightness/Contrast Controls",
-  "Document changed; reopen Brightness/Contrast.": "Document changed; reopen Brightness/Contrast."
+  "Document changed; reopen Brightness/Contrast.": "Document changed; reopen Brightness/Contrast.",
+  "Grayscale: Active Layer": "Grayscale: Active Layer",
+  "Grayscale Strength": "Grayscale Strength"
 }

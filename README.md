@@ -1,5 +1,7 @@
 # MiCoPi
 
+[Direct weighted grayscale](docs/grayscale.md) adds native active-layer strength controls with preserved alpha, selection/locks, Undo and verified replay. Runtime validation and dedicated preview controls remain pending.
+
 [Direct Brightness/Contrast](docs/brightness-contrast.md) now provides native active-layer editing with a prepared byte table, selection/locks, Undo and verified replay. Read-only PNG previews now share the validated HSL staging pipeline. Runtime checks await CI; coupled desktop sliders, cached previews and Apply/Cancel are implemented in source, with new UI validation and native captures pending.
 
 A fenced read-only HSL preview command now returns PNG and a revision-guarded Apply action through nodes, MCP and headless clients; runtime validation is pending. Desktop color drafts now add debounced cached Canvas previews and guarded Apply/Cancel controls; UI/runtime and reviewed captures await validation.

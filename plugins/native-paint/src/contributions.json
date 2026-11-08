@@ -426,6 +426,57 @@
         },
         "additionalProperties": false
       }
+    },
+    {
+      "id": "layer.grayscale",
+      "title": "Grayscale: Active Layer",
+      "native": "grayscale",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "default": 100,
+            "title": "Grayscale Strength",
+            "description": "Percent interpolation toward unrounded encoded luma (54R + 183G + 19B)/256; 100 is full grayscale."
+          }
+        }
+      },
+      "document_atomic": true,
+      "requires_idle": true,
+      "pixel_access": "pixels",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "implementation",
+          "calls",
+          "width",
+          "height"
+        ],
+        "properties": {
+          "implementation": {
+            "type": "string"
+          },
+          "calls": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          }
+        },
+        "additionalProperties": false
+      }
     }
   ],
   "panels": [

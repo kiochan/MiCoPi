@@ -1,5 +1,9 @@
 # Project Structure and Ownership
 
+`plugins/native-paint/src/grayscale.rs` owns direct weighted-gray parsing and
+the exact integer full-strength path. Partial strength calls the shared legacy
+filter source; Session retains clipping, permission/history and outcome ownership.
+
 `plugins/native-paint/hsl_panel.rs` now hosts typed HSL and tonal draft variants
 with one shared cache, guarded scope and Apply/Cancel lifecycle.
 `plugins/native-paint/tonal_controls.rs` owns the local percent sliders/numeric

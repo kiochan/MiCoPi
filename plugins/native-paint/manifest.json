@@ -407,6 +407,7 @@
     "layer.gradient": "pixels",
     "layer.fill_color": "pixels",
     "layer.hue_saturation": "pixels",
-    "layer.brightness_contrast": "pixels"
+    "layer.brightness_contrast": "pixels",
+    "layer.grayscale": "pixels"
   }
 }

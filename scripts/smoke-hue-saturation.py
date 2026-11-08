@@ -82,6 +82,16 @@ def commands():
         parameters=dict(brightness=25, contrast=100))], edges=[]))
     p.add('tonal-run', 'workflow.run', atomic=True)
     p.add('tonal-workflow-result', 'histogram.query', source='layer', layer_id=1)
+    p.add('gray-new', 'canvas.new', width=4, height=4)
+    p.add('gray-fill', 'layer.fill_color', color='#ff000080')
+    p.add('gray-partial', 'layer.grayscale', amount=50)
+    p.add('gray-partial-bins', 'histogram.query', source='layer', layer_id=1)
+    p.add('gray-undo', 'history.undo')
+    p.add('gray-original-bins', 'histogram.query', source='layer', layer_id=1)
+    p.add('gray-workflow', 'workflow.set', graph=dict(version=1, nodes=[dict(
+        id=1, type='action.layer.grayscale', position=[0, 0], parameters={})], edges=[]))
+    p.add('gray-run', 'workflow.run', atomic=True)
+    p.add('gray-full-bins', 'histogram.query', source='layer', layer_id=1)
     p.add('verify', 'replay.verify')
     return p
 
@@ -91,6 +101,7 @@ def validate(values, plan):
     assert any(node['id'] == 'action.layer.hue_saturation' for node in at('nodes')['nodes'])
     assert any(node['id'] == 'action.layer.hue_saturation.preview' for node in at('nodes')['nodes'])
     assert any(node['id'] == 'action.layer.brightness_contrast' for node in at('nodes')['nodes'])
+    assert any(node['id'] == 'action.layer.grayscale' for node in at('nodes')['nodes'])
     assert at('hue')['implementation'] == 'independent Rust DLL'
     preview = at('preview')
     assert preview['ok']
@@ -113,7 +124,10 @@ def validate(values, plan):
                         ('adjustment-green-again', [(0, 255, 0)]*16),
                         ('tonal-result', [(2, 130, 255)]*16),
                         ('tonal-original', [(32, 64, 96)]*16),
-                        ('tonal-workflow-result', [(2, 130, 255)]*16)]:
+                        ('tonal-workflow-result', [(2, 130, 255)]*16),
+                        ('gray-partial-bins', [(154, 27, 27)]*16),
+                        ('gray-original-bins', [(255, 0, 0)]*16),
+                        ('gray-full-bins', [(54, 54, 54)]*16)]:
         actual = at(key)
         assert actual['exact'] and actual['nontransparent_pixels'] == 16
         for channel, index in [('red', 0), ('green', 1), ('blue', 2)]:
@@ -125,6 +139,7 @@ def validate(values, plan):
     assert observed['ok'] and observed['results']['sample']['result']['green'][255] == 16
     assert at('dry')['ok'] and at('run')['ok'] and at('verify')['valid']
     assert at('tonal-run')['ok'] and at('tonal-edit')['implementation'] == 'independent Rust DLL'
+    assert at('gray-run')['ok'] and at('gray-partial')['implementation'] == 'independent Rust DLL'
     tonal_preview = at('tonal-preview')
     assert tonal_preview['ok']
     assert tonal_preview['results']['draft']['result']['data'] == at('tonal-image')['data']
@@ -147,7 +162,7 @@ def main():
     batch = validate(geometry.run_jsonl(cli, flags, plan, output/'hue-saturation.jsonl'), plan)
     mcp = validate(editing.run_mcp(cli, flags, plan, require_masks=False), plan)
     assert batch == mcp
-    print('Native color edits: HSL preview/Apply parity, Brightness/Contrast integer bins, selection, Undo/Redo, atomic workflow, replay and JSONL/MCP parity passed.')
+    print('Native color edits: HSL/tonal preview parity, weighted grayscale references, selection, Undo/Redo, atomic workflow, replay and JSONL/MCP parity passed.')
     print(output)
 
 

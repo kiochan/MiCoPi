@@ -1,5 +1,9 @@
 # Documentation
 
+[Direct weighted grayscale](grayscale.md) provides a native percent command with
+an exact integer full-strength path and preserved alpha/selection/history.
+Runtime checks and dedicated preview controls remain pending.
+
 [Direct Brightness/Contrast](brightness-contrast.md) adds a native active-raster
 command with a cold 256-byte table and the existing source-filter arithmetic.
 Runtime/transport and new coupled desktop control checks await CI. Actual native

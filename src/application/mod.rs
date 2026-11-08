@@ -161,6 +161,8 @@ mod brightness_contrast_tests;
 #[cfg(test)]
 mod export_tests;
 #[cfg(test)]
+mod grayscale_tests;
+#[cfg(test)]
 mod hsl_document_tests;
 #[cfg(test)]
 mod hsl_preview_tests;

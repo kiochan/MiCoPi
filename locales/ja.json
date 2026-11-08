@@ -1608,5 +1608,7 @@
   "Brightness/Contrast: Preview Active Layer": "明るさ・コントラスト：現在のレイヤーをプレビュー",
   "Brightness/Contrast": "明るさ・コントラスト",
   "Open Brightness/Contrast Controls": "明るさ・コントラストの調整を開く",
-  "Document changed; reopen Brightness/Contrast.": "文書が変更されました。明るさ・コントラストを開き直してください。"
+  "Document changed; reopen Brightness/Contrast.": "文書が変更されました。明るさ・コントラストを開き直してください。",
+  "Grayscale: Active Layer": "グレースケール：現在のレイヤー",
+  "Grayscale Strength": "グレースケールの強さ"
 }

@@ -1608,5 +1608,7 @@
   "Brightness/Contrast: Preview Active Layer": "밝기/대비: 현재 레이어 미리 보기",
   "Brightness/Contrast": "밝기/대비",
   "Open Brightness/Contrast Controls": "밝기/대비 조정 열기",
-  "Document changed; reopen Brightness/Contrast.": "문서가 변경되었습니다. 밝기/대비 조정을 다시 여세요."
+  "Document changed; reopen Brightness/Contrast.": "문서가 변경되었습니다. 밝기/대비 조정을 다시 여세요.",
+  "Grayscale: Active Layer": "회색조: 현재 레이어",
+  "Grayscale Strength": "회색조 강도"
 }

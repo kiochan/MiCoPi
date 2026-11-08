@@ -8,6 +8,7 @@ mod brightness_contrast;
 mod fill_mask;
 #[path = "../../compositing/src/filter_math.rs"]
 mod filter_math;
+mod grayscale;
 mod hsl_math;
 mod hue_saturation;
 mod spatial;
@@ -32,6 +33,7 @@ struct Kernel {
     spatial: Option<spatial::Spatial>,
     hue_saturation: Option<hue_saturation::Parameters>,
     brightness_contrast: Option<brightness_contrast::Table>,
+    grayscale: Option<grayscale::Parameters>,
 }
 unsafe extern "C" fn transform(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 {
     if user.is_null() || buffer.is_null() {
@@ -48,6 +50,12 @@ unsafe extern "C" fn transform(user: *mut c_void, buffer: *mut abi::Pixels) -> i
         return abi::ERROR;
     }
     let pixels = std::slice::from_raw_parts_mut(buffer.data, buffer.len);
+    if let Some(parameters) = kernel.grayscale {
+        for pixel in pixels {
+            *pixel = parameters.apply(*pixel);
+        }
+        return abi::OK;
+    }
     if let Some(table) = &kernel.brightness_contrast {
         for pixel in pixels {
             *pixel = table.apply(*pixel);
@@ -124,6 +132,7 @@ unsafe fn run(
         "fill_color",
         "hue_saturation",
         "brightness_contrast",
+        "grayscale",
     ]
     .contains(&handler)
     {
@@ -175,6 +184,11 @@ unsafe fn run(
     };
     let cell = args["cell"].as_f64().unwrap_or(16.).clamp(1., 256.) as usize;
     let mut kernel = Kernel {
+        grayscale: if handler == "grayscale" {
+            Some(grayscale::parse(&args)?)
+        } else {
+            None
+        },
         brightness_contrast: if handler == "brightness_contrast" {
             Some(brightness_contrast::parse(&args)?)
         } else {
