@@ -1613,5 +1613,9 @@
   "Grayscale Strength": "Grayscale Strength",
   "Grayscale: Preview Active Layer": "Grayscale: Preview Active Layer",
   "Open Grayscale Controls": "Open Grayscale Controls",
-  "Document changed; reopen Grayscale.": "Document changed; reopen Grayscale."
+  "Document changed; reopen Grayscale.": "Document changed; reopen Grayscale.",
+  "Threshold: Active Layer": "Threshold: Active Layer",
+  "Threshold Level": "Threshold Level",
+  "Posterize: Active Layer": "Posterize: Active Layer",
+  "Posterize Levels": "Posterize Levels"
 }

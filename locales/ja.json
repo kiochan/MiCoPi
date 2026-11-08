@@ -1613,5 +1613,9 @@
   "Grayscale Strength": "グレースケールの強さ",
   "Grayscale: Preview Active Layer": "グレースケール：現在のレイヤーをプレビュー",
   "Open Grayscale Controls": "グレースケール調整を開く",
-  "Document changed; reopen Grayscale.": "文書が変更されました。グレースケール調整を開き直してください。"
+  "Document changed; reopen Grayscale.": "文書が変更されました。グレースケール調整を開き直してください。",
+  "Threshold: Active Layer": "しきい値：現在のレイヤー",
+  "Threshold Level": "しきい値",
+  "Posterize: Active Layer": "ポスタリゼーション：現在のレイヤー",
+  "Posterize Levels": "ポスタリゼーション階調数"
 }

@@ -11,6 +11,7 @@ mod filter_math;
 mod grayscale;
 mod hsl_math;
 mod hue_saturation;
+mod quantize;
 mod spatial;
 #[derive(Default)]
 struct Instance {
@@ -34,6 +35,7 @@ struct Kernel {
     hue_saturation: Option<hue_saturation::Parameters>,
     brightness_contrast: Option<brightness_contrast::Table>,
     grayscale: Option<grayscale::Parameters>,
+    quantize: Option<quantize::Quantize>,
 }
 unsafe extern "C" fn transform(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 {
     if user.is_null() || buffer.is_null() {
@@ -50,6 +52,12 @@ unsafe extern "C" fn transform(user: *mut c_void, buffer: *mut abi::Pixels) -> i
         return abi::ERROR;
     }
     let pixels = std::slice::from_raw_parts_mut(buffer.data, buffer.len);
+    if let Some(operation) = &kernel.quantize {
+        for pixel in pixels {
+            *pixel = operation.apply(*pixel);
+        }
+        return abi::OK;
+    }
     if let Some(parameters) = kernel.grayscale {
         for pixel in pixels {
             *pixel = parameters.apply(*pixel);
@@ -133,6 +141,8 @@ unsafe fn run(
         "hue_saturation",
         "brightness_contrast",
         "grayscale",
+        "threshold",
+        "posterize",
     ]
     .contains(&handler)
     {
@@ -184,6 +194,11 @@ unsafe fn run(
     };
     let cell = args["cell"].as_f64().unwrap_or(16.).clamp(1., 256.) as usize;
     let mut kernel = Kernel {
+        quantize: if matches!(handler, "threshold" | "posterize") {
+            Some(quantize::parse(handler, &args)?)
+        } else {
+            None
+        },
         grayscale: if handler == "grayscale" {
             Some(grayscale::parse(&args)?)
         } else {

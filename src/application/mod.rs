@@ -174,4 +174,6 @@ pub(crate) mod output_size;
 mod physical_creation_tests;
 #[cfg(test)]
 mod physical_resample_tests;
+#[cfg(test)]
+mod quantize_tests;
 pub(crate) mod units;

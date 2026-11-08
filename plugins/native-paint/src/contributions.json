@@ -477,6 +477,48 @@
         },
         "additionalProperties": false
       }
+    },
+    {
+      "id": "layer.threshold",
+      "title": "Threshold: Active Layer",
+      "native": "threshold",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255,
+            "default": 128,
+            "title": "Threshold Level"
+          }
+        }
+      },
+      "document_atomic": true,
+      "requires_idle": true,
+      "pixel_access": "pixels"
+    },
+    {
+      "id": "layer.posterize",
+      "title": "Posterize: Active Layer",
+      "native": "posterize",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "levels": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 256,
+            "default": 4,
+            "title": "Posterize Levels"
+          }
+        }
+      },
+      "document_atomic": true,
+      "requires_idle": true,
+      "pixel_access": "pixels"
     }
   ],
   "panels": [

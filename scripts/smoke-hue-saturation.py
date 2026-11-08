@@ -99,6 +99,17 @@ def commands():
         id=1, type='action.layer.grayscale', position=[0, 0], parameters={})], edges=[]))
     p.add('gray-run', 'workflow.run', atomic=True)
     p.add('gray-full-bins', 'histogram.query', source='layer', layer_id=1)
+    for operation, parameters in [('threshold', dict(level=60)), ('posterize', dict(levels=4))]:
+        p.add(operation+'-new', 'canvas.new', width=4, height=4)
+        p.add(operation+'-fill', 'layer.fill_color', color='#20406080')
+        p.add(operation+'-edit', 'layer.'+operation, **parameters)
+        p.add(operation+'-bins', 'histogram.query', source='layer', layer_id=1)
+        p.add(operation+'-undo', 'history.undo')
+        p.add(operation+'-original', 'histogram.query', source='layer', layer_id=1)
+        p.add(operation+'-workflow', 'workflow.set', graph=dict(version=1, nodes=[dict(
+            id=1, type='action.layer.'+operation, position=[0, 0], parameters={})], edges=[]))
+        p.add(operation+'-run', 'workflow.run', atomic=True)
+        p.add(operation+'-workflow-bins', 'histogram.query', source='layer', layer_id=1)
     p.add('verify', 'replay.verify')
     return p
 
@@ -134,7 +145,13 @@ def validate(values, plan):
                         ('tonal-workflow-result', [(2, 130, 255)]*16),
                         ('gray-partial-bins', [(154, 27, 27)]*16),
                         ('gray-original-bins', [(255, 0, 0)]*16),
-                        ('gray-full-bins', [(54, 54, 54)]*16)]:
+                        ('gray-full-bins', [(54, 54, 54)]*16),
+                        ('threshold-bins', [(0, 0, 0)]*16),
+                        ('threshold-original', [(32, 64, 96)]*16),
+                        ('threshold-workflow-bins', [(0, 0, 0)]*16),
+                        ('posterize-bins', [(0, 85, 85)]*16),
+                        ('posterize-original', [(32, 64, 96)]*16),
+                        ('posterize-workflow-bins', [(0, 85, 85)]*16)]:
         actual = at(key)
         assert actual['exact'] and actual['nontransparent_pixels'] == 16
         for channel, index in [('red', 0), ('green', 1), ('blue', 2)]:
@@ -147,6 +164,10 @@ def validate(values, plan):
     assert at('dry')['ok'] and at('run')['ok'] and at('verify')['valid']
     assert at('tonal-run')['ok'] and at('tonal-edit')['implementation'] == 'independent Rust DLL'
     assert at('gray-run')['ok'] and at('gray-partial')['implementation'] == 'independent Rust DLL'
+    for operation in ['threshold', 'posterize']:
+        assert any(node['id'] == 'action.layer.'+operation for node in at('nodes')['nodes'])
+        assert at(operation+'-edit')['implementation'] == 'independent Rust DLL'
+        assert at(operation+'-run')['ok']
     gray_preview = at('gray-preview')
     assert gray_preview['ok']
     assert gray_preview['results']['draft']['result']['data'] == at('gray-image')['data']
@@ -173,7 +194,7 @@ def main():
     batch = validate(geometry.run_jsonl(cli, flags, plan, output/'hue-saturation.jsonl'), plan)
     mcp = validate(editing.run_mcp(cli, flags, plan, require_masks=False), plan)
     assert batch == mcp
-    print('Native color edits: HSL/tonal preview parity, weighted grayscale references, selection, Undo/Redo, atomic workflow, replay and JSONL/MCP parity passed.')
+    print('Native color edits: HSL/tonal preview parity, weighted grayscale/threshold/posterize references, selection, Undo/Redo, atomic workflow, replay and JSONL/MCP parity passed.')
     print(output)
 
 

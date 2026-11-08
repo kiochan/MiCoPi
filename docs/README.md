@@ -1,5 +1,8 @@
 # Documentation
 
+[Threshold and Posterize](quantization.md) describes native direct byte policies,
+shared execution, reference tests and pending preview/non-destructive variants.
+
 [Direct weighted grayscale](grayscale.md) provides a native percent command with
 an exact integer full-strength path and preserved alpha/selection/history.
 Fenced PNG previews and cached Strength/Reset/Apply/Cancel controls share the

@@ -578,6 +578,8 @@
     "layer.fill_color": "pixels",
     "layer.hue_saturation": "pixels",
     "layer.brightness_contrast": "pixels",
-    "layer.grayscale": "pixels"
+    "layer.grayscale": "pixels",
+    "layer.threshold": "pixels",
+    "layer.posterize": "pixels"
   }
 }

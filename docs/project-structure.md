@@ -1,5 +1,9 @@
 # Project Structure and Ownership
 
+`plugins/native-paint/src/quantize.rs` owns direct Threshold cutoff parsing and
+Posterize table preparation/pixel lookup. DLL descriptors register their schemas;
+Session retains permission, selection, Undo and replay ownership.
+
 `plugins/native-paint/src/grayscale.rs` owns direct weighted-gray parsing and
 the exact integer full-strength path. Partial strength calls the shared legacy
 filter source; Session retains clipping, permission/history and outcome ownership.

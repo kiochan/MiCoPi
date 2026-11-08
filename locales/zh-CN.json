@@ -1613,5 +1613,9 @@
   "Grayscale Strength": "灰度强度",
   "Grayscale: Preview Active Layer": "灰度：预览当前图层",
   "Open Grayscale Controls": "打开灰度调整",
-  "Document changed; reopen Grayscale.": "画布已改变，请重新打开灰度调整。"
+  "Document changed; reopen Grayscale.": "画布已改变，请重新打开灰度调整。",
+  "Threshold: Active Layer": "阈值：当前图层",
+  "Threshold Level": "阈值色阶",
+  "Posterize: Active Layer": "色调分离：当前图层",
+  "Posterize Levels": "色调分离级数"
 }
