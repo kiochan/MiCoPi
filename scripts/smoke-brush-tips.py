@@ -205,6 +205,59 @@ def validate(values, plan, output, prefix, scenarios):
     return outcomes
 
 
+def symmetry_checks(cli, flags, output, prefix):
+    """Tiny exact point references through both transports, including raw A8."""
+    plan = Plan()
+    scenarios = [(mode, a8) for mode in ['off', 'vertical', 'horizontal', 'both'] for a8 in [False, True]]
+    for mode, a8 in scenarios:
+        name = f'symmetry-{mode}-{"a8" if a8 else "rgba"}'
+        plan.add(name+'-new', 'canvas.new', width=WIDTH, height=HEIGHT)
+        plan.add(name+'-tool', 'tool.select', tool='brush')
+        if a8:
+            plan.add(name+'-mask', 'mask.create', owner=dict(kind='layer', id=1))
+        plan.add(name+'-params', 'brush.set', radius=.5, opacity=.5, hardness=1, color='#000000',
+                 stabilizer=0, pressure_size=False, pressure_opacity=False, flow=1, opacity_mode='dab',
+                 tip_shape='round', tip_roundness=1, tip_angle=0, symmetry=mode, symmetry_x=.5, symmetry_y=.5)
+        plan.add(name+'-stroke', 'canvas.stroke', points=[dict(x=1.5, y=2.5, pressure=1, pen=True, time=100)])
+        plan.add(name+'-state', 'canvas.state')
+        plan.add(name+'-save', 'document.save', path=str(output/f'{prefix}-{name}.mcp'))
+        plan.add(name+'-png', 'canvas.snapshot')
+        plan.add(name+'-undo', 'history.undo')
+        plan.add(name+'-undone', 'document.save', path=str(output/f'{prefix}-{name}-undone.mcp'))
+        plan.add(name+'-redo', 'history.redo')
+        plan.add(name+'-redone', 'canvas.snapshot')
+        plan.add(name+'-verify', 'replay.verify')
+        plan.add(name+'-seek', 'replay.seek')
+        plan.add(name+'-archive', 'replay.export', path=str(output/f'{prefix}-{name}.mcreplay'))
+    values = geometry.run_jsonl(cli, flags, plan, output/f'{prefix}-symmetry.jsonl') if prefix == 'jsonl' else editing.run_mcp(cli, flags, plan)
+    at = lambda key: plan.at(values, key)
+    result = {}
+    for mode, a8 in scenarios:
+        name = f'symmetry-{mode}-{"a8" if a8 else "rgba"}'
+        points = {(1, 2)}
+        if mode in ['vertical', 'both']: points.add((5, 2))
+        if mode in ['horizontal', 'both']: points.add((1, 4))
+        if mode == 'both': points.add((5, 4))
+        raster = [0 if a8 or (x, y) not in points else 0x80000000 for y in range(HEIGHT) for x in range(WIDTH)]
+        png = base64.b64decode(at(name+'-png')['data'])
+        assert pixels(png) == (WIDTH, HEIGHT, b''.join(editing.rgba(p) for p in raster)), name
+        assert pixels(base64.b64decode(at(name+'-redone')['data'])) == pixels(png), name
+        project = foundation.read_project(output/f'{prefix}-{name}.mcp')
+        assert project['rasters'][0][1] == struct.pack('<'+'I'*AREA, *raster), name
+        undone = foundation.read_project(output/f'{prefix}-{name}-undone.mcp')
+        assert undone['rasters'][0][1] == bytes(AREA*4), name
+        if a8:
+            plane = project['planes'][1]
+            assert (plane*AREA if len(plane) == 1 else plane) == bytes(127 if (x, y) in points else 255 for y in range(HEIGHT) for x in range(WIDTH)), name
+            plane = undone['planes'][1]
+            assert (plane*AREA if len(plane) == 1 else plane) == bytes([255]*AREA), name
+        state = at(name+'-state')
+        assert state['parameters']['symmetry'] == mode and not state['drawing'], name
+        assert at(name+'-verify')['valid'], name
+        result[name] = dict(png=png, seek=at(name+'-seek'))
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--cli', default='target/build/x86_64-pc-windows-gnu/release/micopi-cli.exe')
@@ -231,11 +284,12 @@ def main():
         plan = commands(output, prefix, scenarios)
         values = geometry.run_jsonl(cli, flags, plan, output/'tips.jsonl') if prefix == 'jsonl' else editing.run_mcp(cli, flags, plan)
         current = validate(values, plan, output, prefix, scenarios)
+        current.update(symmetry_checks(cli, flags, output, prefix))
         if baseline is not None:
             assert {name: pixels(result['png']) for name, result in current.items()} == {
                 name: pixels(result['png']) for name, result in baseline.items()}
         baseline = current
-        print(f'{prefix.upper()}: five tiny tip cases, preset formats and angle actions passed independent references.', flush=True)
+        print(f'{prefix.upper()}: five tiny tip cases, eight symmetry cases, preset formats and angle actions passed independent references.', flush=True)
     # JSONL intentionally stops at the first action failure. MCP independently
     # exercises strict original-number validation and leaves the state intact.
     negative = Plan()

@@ -360,6 +360,31 @@
                           "minimum": -180,
                           "maximum": 180,
                           "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+                        },
+                        "symmetry": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "vertical",
+                            "horizontal",
+                            "both"
+                          ],
+                          "default": "off",
+                          "title": "Brush Symmetry"
+                        },
+                        "symmetry_x": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.5,
+                          "title": "Symmetry X Anchor"
+                        },
+                        "symmetry_y": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.5,
+                          "title": "Symmetry Y Anchor"
                         }
                       }
                     }
@@ -501,6 +526,31 @@
                           "minimum": -180,
                           "maximum": 180,
                           "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+                        },
+                        "symmetry": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "vertical",
+                            "horizontal",
+                            "both"
+                          ],
+                          "default": "off",
+                          "title": "Brush Symmetry"
+                        },
+                        "symmetry_x": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.5,
+                          "title": "Symmetry X Anchor"
+                        },
+                        "symmetry_y": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.5,
+                          "title": "Symmetry Y Anchor"
                         }
                       }
                     }
@@ -635,6 +685,31 @@
                       "minimum": -180,
                       "maximum": 180,
                       "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+                    },
+                    "symmetry": {
+                      "type": "string",
+                      "enum": [
+                        "off",
+                        "vertical",
+                        "horizontal",
+                        "both"
+                      ],
+                      "default": "off",
+                      "title": "Brush Symmetry"
+                    },
+                    "symmetry_x": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1,
+                      "default": 0.5,
+                      "title": "Symmetry X Anchor"
+                    },
+                    "symmetry_y": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1,
+                      "default": 0.5,
+                      "title": "Symmetry Y Anchor"
                     }
                   }
                 },
@@ -684,6 +759,67 @@
         ],
         "additionalProperties": false
       }
+    },
+    {
+      "id": "brush.symmetry.off",
+      "title": "Disable Brush Symmetry",
+      "steps": [
+        {
+          "action": "brush.set",
+          "args": {
+            "symmetry": "off"
+          }
+        }
+      ]
+    },
+    {
+      "id": "brush.symmetry.vertical",
+      "title": "Enable Vertical Brush Symmetry",
+      "steps": [
+        {
+          "action": "brush.set",
+          "args": {
+            "symmetry": "vertical"
+          }
+        }
+      ]
+    },
+    {
+      "id": "brush.symmetry.horizontal",
+      "title": "Enable Horizontal Brush Symmetry",
+      "steps": [
+        {
+          "action": "brush.set",
+          "args": {
+            "symmetry": "horizontal"
+          }
+        }
+      ]
+    },
+    {
+      "id": "brush.symmetry.both",
+      "title": "Enable Both Brush Symmetry Axes",
+      "steps": [
+        {
+          "action": "brush.set",
+          "args": {
+            "symmetry": "both"
+          }
+        }
+      ]
+    },
+    {
+      "id": "brush.symmetry.center",
+      "title": "Center Symmetry Axes",
+      "steps": [
+        {
+          "action": "brush.set",
+          "args": {
+            "symmetry_x": 0.5,
+            "symmetry_y": 0.5
+          }
+        }
+      ]
     }
   ],
   "library": "micopi_painting_tools.dll",
@@ -864,6 +1000,31 @@
                           "minimum": -180,
                           "maximum": 180,
                           "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+                        },
+                        "symmetry": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "vertical",
+                            "horizontal",
+                            "both"
+                          ],
+                          "default": "off",
+                          "title": "Brush Symmetry"
+                        },
+                        "symmetry_x": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.5,
+                          "title": "Symmetry X Anchor"
+                        },
+                        "symmetry_y": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.5,
+                          "title": "Symmetry Y Anchor"
                         }
                       }
                     }
@@ -1005,6 +1166,31 @@
                           "minimum": -180,
                           "maximum": 180,
                           "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+                        },
+                        "symmetry": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "vertical",
+                            "horizontal",
+                            "both"
+                          ],
+                          "default": "off",
+                          "title": "Brush Symmetry"
+                        },
+                        "symmetry_x": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.5,
+                          "title": "Symmetry X Anchor"
+                        },
+                        "symmetry_y": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1,
+                          "default": 0.5,
+                          "title": "Symmetry Y Anchor"
                         }
                       }
                     }
@@ -1139,6 +1325,31 @@
                       "minimum": -180,
                       "maximum": 180,
                       "description": "Fixed clockwise document degrees; omitted values resolve to 0."
+                    },
+                    "symmetry": {
+                      "type": "string",
+                      "enum": [
+                        "off",
+                        "vertical",
+                        "horizontal",
+                        "both"
+                      ],
+                      "default": "off",
+                      "title": "Brush Symmetry"
+                    },
+                    "symmetry_x": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1,
+                      "default": 0.5,
+                      "title": "Symmetry X Anchor"
+                    },
+                    "symmetry_y": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1,
+                      "default": 0.5,
+                      "title": "Symmetry Y Anchor"
                     }
                   }
                 },

@@ -1,5 +1,7 @@
 # MiCoPi
 
+[Brush symmetry](docs/native-brush-symmetry.md) now shares vertical/horizontal/two-axis painting across native Brush/Eraser, commands, settings, presets, nodes, MCP and headless. Four-language controls and view-aware axis/cursor feedback are implemented in source; runtime, reviewed native captures and performance gates remain pending.
+
 [Horizontal/vertical canvas view mirroring](docs/view-mirroring.md) now adds a searchable, bindable desktop command with reflected pen input, brush contours and edit overlays, preserving document pixels, export and Undo. Runtime/UI validation and native capture review remain pending.
 
 [Threshold and Posterize](docs/quantization.md) share native direct edits, non-destructive nodes and adjustment layers. Fenced PNG queries and cached desktop drafts now add guarded Apply/Cancel, default/reset controls and a 256-level identity fast path. New runtime/UI checks and native screenshot review remain pending.

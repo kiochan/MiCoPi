@@ -1,4 +1,6 @@
 use super::*;
+#[path = "symmetry_feedback.rs"]
+mod symmetry_feedback;
 use crate::{platform::windows::desktop_bridge::PenPhase, ui::keymap::Wheel};
 
 impl Editor {
@@ -605,6 +607,7 @@ impl Editor {
                 Color32::WHITE,
             );
         }
+        self.paint_symmetry_guides(&painter, c.accent);
         self.movement_preview(&painter, c.accent);
         self.crop_outline(&painter, c.accent);
         self.selection_preview(&painter);
@@ -638,31 +641,7 @@ impl Editor {
                     // screen-space readability marks are separate from the tip.
                     let radius =
                         self.brush(self.pressure, self.pen_active).radius.max(0.5) * self.zoom;
-                    let parameters = &self.session.parameters;
-                    let contour = super::brush::tip_geometry::cached(
-                        &ctx,
-                        "brush-tip-cursor",
-                        parameters.tip_shape,
-                        parameters.tip_roundness,
-                        if self.session.view.mirror_x != self.session.view.mirror_y {
-                            -parameters.tip_angle
-                        } else {
-                            parameters.tip_angle
-                        },
-                        radius,
-                    );
-                    contour.outline(
-                        &painter,
-                        p,
-                        radius,
-                        Stroke::new(2.5, Color32::from_white_alpha(230)),
-                    );
-                    contour.outline(
-                        &painter,
-                        p,
-                        radius,
-                        Stroke::new(1., Color32::from_black_alpha(220)),
-                    );
+                    self.paint_symmetry_cursors(&ctx, &painter, p, radius);
                     if radius < 4. {
                         painter.line_segment(
                             [p - vec2(3., 0.), p + vec2(3., 0.)],

@@ -4,9 +4,9 @@
 while reflecting Canvas display, input and edit overlays. Runtime/UI validation
 and native captures remain pending.
 
-[Native brush symmetry](native-brush-symmetry.md) documents the optional DLL/SDK
-prerequisite. Session controls, public intent, presets and desktop guides remain
-planned; this is not yet an available painting mode.
+[Brush symmetry](native-brush-symmetry.md) describes the optional DLL/SDK, shared
+parameters/settings/presets, four-language controls and Canvas guides. New
+runtime/UI/transport checks and reviewed native captures remain pending.
 
 [Native quantization](native-quantization.md) documents the optional rendering/
 observation prerequisite. Typed source nodes/adjustments now share local controls

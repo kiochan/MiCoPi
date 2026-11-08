@@ -1638,5 +1638,22 @@
   "Vertical View Mirror": "表示の上下反転",
   "Distribute Horizontal Spacing": "水平方向に等間隔で分布",
   "Distribute Vertical Spacing": "垂直方向に等間隔で分布",
-  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "3 つ以上のレイヤーの端の間隔を均等にします。間隔が負の場合は重なります。両端のレイヤーは移動しません。"
+  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "3 つ以上のレイヤーの端の間隔を均等にします。間隔が負の場合は重なります。両端のレイヤーは移動しません。",
+  "Brush Symmetry": "ブラシ対称描画",
+  "Vertical Symmetry": "垂直軸で対称",
+  "Horizontal Symmetry": "水平軸で対称",
+  "Both Axes": "両軸",
+  "Symmetry X Anchor": "対称軸の X 位置",
+  "Symmetry Y Anchor": "対称軸の Y 位置",
+  "Vertical axis position as a fraction of canvas width.": "キャンバス幅に対する垂直対称軸の位置です。",
+  "Horizontal axis position as a fraction of canvas height.": "キャンバス高さに対する水平対称軸の位置です。",
+  "Reflect brush and eraser marks across one or both document axes.": "文書の片方または両方の軸でブラシと消しゴムの筆跡を対称に描きます。",
+  "Center Symmetry Axes": "対称軸を中央に戻す",
+  "Axes use document coordinates. Overlapping marks share the selected opacity mode.": "対称軸は文書座標を使います。重なる筆跡にも選択中の不透明度モードが適用されます。",
+  "Symmetry needs a supporting Brush or Eraser and idle input.": "対称描画には対応するブラシまたは消しゴムと、入力が終了した状態が必要です。",
+  "Disable Brush Symmetry": "ブラシ対称描画を無効にする",
+  "Enable Vertical Brush Symmetry": "ブラシの垂直軸対称描画を有効にする",
+  "Enable Horizontal Brush Symmetry": "ブラシの水平軸対称描画を有効にする",
+  "Enable Both Brush Symmetry Axes": "ブラシの両軸対称描画を有効にする",
+  "Off": "オフ"
 }

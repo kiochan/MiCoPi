@@ -711,6 +711,22 @@ impl NativePlugin {
         self.tool_options
             .is_some_and(|(_, features)| features & abi::TOOL_OPTION_TIP_GEOMETRY != 0)
     }
+    pub(crate) fn supports_symmetry(&self) -> bool {
+        self.tool_options
+            .is_some_and(|(_, features)| features & abi::TOOL_OPTION_SYMMETRY != 0)
+    }
+    fn validate_symmetry_parameters(
+        &self,
+        p: &crate::application::Parameters,
+    ) -> Result<(), ActionError> {
+        if p.has_custom_symmetry() && !self.supports_symmetry() {
+            return Err(ActionError::new(
+                "tool_options_unsupported",
+                "Tool DLL does not support brush symmetry",
+            ));
+        }
+        Ok(())
+    }
     fn validate_flow_parameters(
         &self,
         p: &crate::application::Parameters,
@@ -732,6 +748,7 @@ impl NativePlugin {
         p: &crate::application::Parameters,
     ) -> Result<(), ActionError> {
         self.validate_flow_parameters(p)?;
+        self.validate_symmetry_parameters(p)?;
         if p.has_custom_tip() && !self.supports_tip_geometry() {
             return Err(ActionError::new(
                 "tool_options_unsupported",
@@ -3325,6 +3342,8 @@ impl ToolInstance {
             let stroke_opacity =
                 session.parameters.opacity_mode == crate::application::OpacityMode::Stroke;
             self.plugin.validate_flow_parameters(&session.parameters)?;
+            self.plugin
+                .validate_symmetry_parameters(&session.parameters)?;
             if session.parameters.has_custom_tip() && !self.plugin.supports_tip_geometry() {
                 return Err(ActionError::new(
                     "tool_options_unsupported",
@@ -3383,8 +3402,10 @@ impl ToolInstance {
                 } else {
                     0
                 };
-                let status = if features & abi::TOOL_OPTION_TIP_GEOMETRY != 0 {
-                    let extended = abi::ToolOptionsTip {
+                let status = if features & abi::TOOL_OPTION_TIP_GEOMETRY != 0
+                    || p.has_custom_symmetry()
+                {
+                    let mut extended = abi::ToolOptionsTip {
                         base: abi::ToolOptionsStroke {
                             base: abi::ToolOptionsSelection {
                                 base: abi::ToolOptionsExt {
@@ -3419,7 +3440,25 @@ impl ToolInstance {
                         angle: p.tip_angle,
                         reserved: 0,
                     };
-                    unsafe { (api.configure.unwrap())(self.state, &extended.base.base.base.base) }
+                    if p.has_custom_symmetry() {
+                        extended.base.base.base.base.struct_size =
+                            std::mem::size_of::<abi::ToolOptionsSymmetry>() as u32;
+                        extended.base.base.base.flags |= abi::TOOL_OPTION_SYMMETRY;
+                        let symmetry = abi::ToolOptionsSymmetry {
+                            base: extended,
+                            axes: p.symmetry.axes(),
+                            anchor_x: p.symmetry_x,
+                            anchor_y: p.symmetry_y,
+                            reserved: 0,
+                        };
+                        unsafe {
+                            (api.configure.unwrap())(self.state, &symmetry.base.base.base.base.base)
+                        }
+                    } else {
+                        unsafe {
+                            (api.configure.unwrap())(self.state, &extended.base.base.base.base)
+                        }
+                    }
                 } else if features & abi::TOOL_OPTION_STROKE_OPACITY != 0 {
                     let extended = abi::ToolOptionsStroke {
                         base: abi::ToolOptionsSelection {

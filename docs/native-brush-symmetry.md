@@ -1,11 +1,41 @@
-# Native brush symmetry prerequisite
+# Brush symmetry
 
-This increment implements an optional native painting capability. It is not yet
-an available desktop/Session painting mode: host parameter schemas, capability
-discovery, settings/presets, command controls, axis guides and end-to-end verified
-recordings remain to be integrated. Existing hosts continue to configure old
-prefixes and paint with symmetry disabled. Runtime/native verification is pending
-CI; no physical tablet, native screenshot or latency result is claimed.
+Brush and Eraser now have source implementations of vertical-axis, horizontal-axis
+and two-axis symmetry. The Brush panel offers an idle-only collapsible section,
+normalized axis positions and Center; the Canvas shows document-space guides and
+nominal reflected tip contours through the existing view mirror mapping. Runtime,
+reviewed native captures, hardware and end-to-end performance verification remain
+pending CI or interactive validation; this is not a verified release claim.
+
+## Shared public intent
+
+`brush.set` accepts `symmetry` (`off`, `vertical`, `horizontal`, `both`),
+`symmetry_x` and `symmetry_y` (finite 0 through 1, default `.5`). Vertical mode
+reflects X; horizontal mode reflects Y. Anchors remain document fractions across
+canvas resizing and are independent of view flips. Nondefault anchors are retained
+while off. Only Brush/Eraser paint symmetrically; Picker, Hand, Zoom, fill and
+selection gestures retain their existing behavior.
+
+Search/bind `brush.symmetry.off`, `.vertical`, `.horizontal`, `.both` or `.center`.
+They expand to the same parameter command; no default Photoshop-style shortcut
+is replaced. Parameters, required public resource fields and a cached native
+`symmetry` capability are discoverable through `painting.tool`, registry state,
+workflow nodes, MCP and headless. Settings use `painting.symmetry`,
+`painting.symmetry_x`, `painting.symmetry_y`; all are searchable in Settings.
+Validated user presets capture them while preserving both swatches. A legacy
+user preset resolves missing symmetry to off/center; built-in tool patches retain
+fields they do not explicitly override. See [example](../examples/automation/brush-symmetry.jsonl).
+
+Default off/center fields are omitted from settings, scalar snapshots and replay
+metadata to preserve old wire bytes. Existing recorded outcomes remain readable.
+Capability admission rejects unsupported nondefault intent before mutable pixel
+loans or uniform-mask materialization. Parameter intent can still be configured
+for an unavailable provider; drawing is rejected, never silently asymmetric.
+Preset availability reflects the same capability. Generic `brush.set` retains its
+existing stroke-finalization behavior after schema validation; these UI controls
+remain disabled until input is idle. One contact freezes mode, anchors, pressure,
+stabilization and tip geometry and retains one stroke Undo/verified outcome.
+Atomic pipeline rollback and project/replay persistence share Session ownership.
 
 ## Optional ABI
 
@@ -73,13 +103,21 @@ every stored channel with a one-byte tolerance for reflected f32 coordinate
 rounding; the simple point reference is byte exact. Bounded loan counters cover
 four distant dabs without a full-span loan. These cases await CI.
 
-Before exposing painting symmetry, integrate capability-gated scalar intent in
-`brush.set`, searchable validated defaults and presets, public state, action/
-workflow/MCP/headless execution and contact-frozen native options. Preserve old
-settings, recordings and default hashes. Add one-stroke Undo/rollback/project/
-DLL-free outcome replay and all four view-mirror combinations, plus localized
-controls and axis/tip feedback. Measure disabled-path cost and enabled dirty
-regions, GPU uploads, journal/history bytes, sparse cache peaks and contact
-latency. Separate native loans do not prove the host avoids a large combined
-dirty upload. Actual devices, native screenshots and multi-monitor/DPI behavior
-require their own evidence.
+The host integration now adds Session scalar intent, native capability/option
+admission, searchable defaults, presets, public schemas, commands and Canvas/Brush
+presentation. Authored Session cases check exact RGBA/A8 point outcomes, one Undo,
+failed atomic rollback, legacy presets, settings, projects and DLL-free journal
+restoration. Actual UI cases exercise mode/Center controls in four languages at
+narrow/wide widths. Synthetic pen cases check reflected cursor positions and equal
+pixels under all four view mirror combinations. The existing tiny brush transport
+smoke now runs eight independent symmetry point cases through JSONL and MCP,
+including raw A8 project planes, Undo/Redo and DLL-free archive hashes. These new
+checks await exact-head CI; they have not run locally.
+
+Outstanding gates include reviewed native captures, full runtime success and
+measurements of disabled-path cost and enabled dirty regions, GPU uploads,
+journal/history bytes, sparse cache peaks and contact latency. Separate native
+loans do not prove the host avoids a large combined dirty upload. Actual devices,
+native screenshots and multi-monitor/DPI behavior require their own evidence.
+Radial/mandala symmetry, draggable/angled axes, sampled brushes and straight-line
+assistance remain planned. The broader painting acceptance checklist stays open.

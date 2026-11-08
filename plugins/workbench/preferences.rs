@@ -315,6 +315,9 @@ const SETTINGS: &[Setting] = &[
     Setting {id:"painting.tip_shape",title:"Brush Tip Shape",description:"Round tips flatten into ellipses; square tips flatten into rectangles.",keywords:"brush tip shape round square",category:Category::Painting,range:None},
     Setting {id:"painting.tip_roundness",title:"Brush Tip Roundness",description:"Width of the short side compared with the long side, from 25% to 100%.",keywords:"brush tip roundness ratio",category:Category::Painting,range:Some((0.25,1.))},
     Setting {id:"painting.tip_angle",title:"Brush Tip Angle",description:"Rotate the tip clockwise and keep its angle fixed as you draw.",keywords:"brush tip angle rotate",category:Category::Painting,range:Some((-180.,180.))},
+    Setting {id:"painting.symmetry",title:"Brush Symmetry",description:"Reflect brush and eraser marks across one or both document axes.",keywords:"brush symmetry mirror manga",category:Category::Painting,range:None},
+    Setting {id:"painting.symmetry_x",title:"Symmetry X Anchor",description:"Vertical axis position as a fraction of canvas width.",keywords:"symmetry vertical axis center",category:Category::Painting,range:Some((0.,1.))},
+    Setting {id:"painting.symmetry_y",title:"Symmetry Y Anchor",description:"Horizontal axis position as a fraction of canvas height.",keywords:"symmetry horizontal axis center",category:Category::Painting,range:Some((0.,1.))},
 ];
 fn matches(query: &str, text: &str, modified: bool) -> bool {
     let text = text.to_lowercase();
@@ -857,6 +860,21 @@ impl Studio {
                         if ui.checkbox(&mut enabled, tr("Enabled")).changed() {
                             v = serde_json::json!(enabled);
                         }
+                    } else if item.id == "painting.symmetry" {
+                        let mut mode: crate::application::SymmetryMode =
+                            serde_json::from_value(v.clone()).unwrap_or_default();
+                        ComboBox::from_id_salt(item.id)
+                            .selected_text(tr(mode.title()))
+                            .show_ui(ui, |ui| {
+                                for candidate in crate::application::SymmetryMode::ALL {
+                                    ui.selectable_value(
+                                        &mut mode,
+                                        candidate,
+                                        tr(candidate.title()),
+                                    );
+                                }
+                            });
+                        v = serde_json::to_value(mode).unwrap();
                     } else if item.id == "painting.tip_shape" {
                         let mut shape: crate::application::TipShape =
                             serde_json::from_value(v.clone()).unwrap_or_default();

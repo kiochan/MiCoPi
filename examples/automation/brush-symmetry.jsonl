@@ -1,0 +1,4 @@
+{"id":"new","action":"canvas.new","args":{"width":512,"height":512}}
+{"id":"symmetry","action":"brush.set","args":{"symmetry":"both","symmetry_x":0.5,"symmetry_y":0.5,"radius":4,"flow":0.25,"opacity_mode":"stroke","color":"#473C65"}}
+{"id":"draw","action":"canvas.stroke","args":{"points":[{"x":128,"y":128,"pressure":0.3,"pen":true,"time":100},{"x":200,"y":160,"pressure":0.8,"pen":true,"time":116}]}}
+{"id":"verify","action":"replay.verify","args":{}}

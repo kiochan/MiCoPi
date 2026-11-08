@@ -61,6 +61,18 @@ pub struct Parameters {
     pub tip_roundness: f32,
     #[serde(default, skip_serializing_if = "super::zero_tip_angle")]
     pub tip_angle: f32,
+    #[serde(default, skip_serializing_if = "super::SymmetryMode::is_off")]
+    pub symmetry: super::SymmetryMode,
+    #[serde(
+        default = "super::brush_symmetry::center",
+        skip_serializing_if = "super::brush_symmetry::is_center"
+    )]
+    pub symmetry_x: f32,
+    #[serde(
+        default = "super::brush_symmetry::center",
+        skip_serializing_if = "super::brush_symmetry::is_center"
+    )]
+    pub symmetry_y: f32,
 }
 fn default_flow() -> f32 {
     1.
@@ -116,10 +128,16 @@ impl Default for Parameters {
             tip_shape: super::TipShape::Round,
             tip_roundness: 1.,
             tip_angle: 0.,
+            symmetry: super::SymmetryMode::Off,
+            symmetry_x: 0.5,
+            symmetry_y: 0.5,
         }
     }
 }
 impl Parameters {
+    pub(crate) fn has_custom_symmetry(&self) -> bool {
+        !self.symmetry.is_off() || self.symmetry_x != 0.5 || self.symmetry_y != 0.5
+    }
     pub(crate) fn has_custom_tip(&self) -> bool {
         self.tip_shape != super::TipShape::Round || self.tip_roundness != 1. || self.tip_angle != 0.
     }
@@ -406,6 +424,9 @@ impl Session {
         parameters["tip_shape"] = json!(self.parameters.tip_shape);
         parameters["tip_roundness"] = json!(self.parameters.tip_roundness);
         parameters["tip_angle"] = json!(self.parameters.tip_angle);
+        parameters["symmetry"] = json!(self.parameters.symmetry);
+        parameters["symmetry_x"] = json!(self.parameters.symmetry_x);
+        parameters["symmetry_y"] = json!(self.parameters.symmetry_y);
         parameters
     }
     pub fn state(&self) -> Value {

@@ -411,7 +411,8 @@ The optional `TOOL_OPTION_SYMMETRY` (`0x20`) feature adds a complete 96-byte
 normalized document anchors are frozen before DOWN. The native DLL reflects
 spaced dabs after one pressure/stabilization pass, retaining shared selection,
 Flow, capped influence and local host loans. Old prefixes reset symmetry off;
-no Session/desktop mode is exposed yet. See [Native Brush Symmetry](native-brush-symmetry.md)
+Session scalar parameters, presets, capability discovery and desktop controls now
+use the same tail, with new runtime validation pending. See [Brush Symmetry](native-brush-symmetry.md)
 for offsets, overlap semantics, compatibility, pending CI and host integration gates.
 
 ### Selection capability and kernels

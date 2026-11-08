@@ -1638,5 +1638,22 @@
   "Vertical View Mirror": "Vertical View Mirror",
   "Distribute Horizontal Spacing": "Distribute Horizontal Spacing",
   "Distribute Vertical Spacing": "Distribute Vertical Spacing",
-  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed."
+  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.",
+  "Brush Symmetry": "Brush Symmetry",
+  "Vertical Symmetry": "Vertical Symmetry",
+  "Horizontal Symmetry": "Horizontal Symmetry",
+  "Both Axes": "Both Axes",
+  "Symmetry X Anchor": "Symmetry X Anchor",
+  "Symmetry Y Anchor": "Symmetry Y Anchor",
+  "Vertical axis position as a fraction of canvas width.": "Vertical axis position as a fraction of canvas width.",
+  "Horizontal axis position as a fraction of canvas height.": "Horizontal axis position as a fraction of canvas height.",
+  "Reflect brush and eraser marks across one or both document axes.": "Reflect brush and eraser marks across one or both document axes.",
+  "Center Symmetry Axes": "Center Symmetry Axes",
+  "Axes use document coordinates. Overlapping marks share the selected opacity mode.": "Axes use document coordinates. Overlapping marks share the selected opacity mode.",
+  "Symmetry needs a supporting Brush or Eraser and idle input.": "Symmetry needs a supporting Brush or Eraser and idle input.",
+  "Disable Brush Symmetry": "Disable Brush Symmetry",
+  "Enable Vertical Brush Symmetry": "Enable Vertical Brush Symmetry",
+  "Enable Horizontal Brush Symmetry": "Enable Horizontal Brush Symmetry",
+  "Enable Both Brush Symmetry Axes": "Enable Both Brush Symmetry Axes",
+  "Off": "Off"
 }

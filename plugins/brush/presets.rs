@@ -47,6 +47,9 @@ fn current_matches(p: &PresetParameters, s: &crate::application::Parameters) -> 
         && p.tip_shape == s.tip_shape
         && p.tip_roundness == s.tip_roundness
         && p.tip_angle == s.tip_angle
+        && p.symmetry == s.symmetry
+        && p.symmetry_x == s.symmetry_x
+        && p.symmetry_y == s.symmetry_y
 }
 fn button(ui: &mut Ui, a: &Appearance, title: &str, enabled: bool) -> Response {
     let natural = ui.painter().layout_no_wrap(

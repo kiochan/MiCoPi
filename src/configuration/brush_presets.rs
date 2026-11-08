@@ -20,7 +20,14 @@ const PARAMETER_KEYS: [&str; 12] = [
     "flow",
     "opacity_mode",
 ];
-const OPTIONAL_PARAMETER_KEYS: [&str; 3] = ["tip_shape", "tip_roundness", "tip_angle"];
+const OPTIONAL_PARAMETER_KEYS: [&str; 6] = [
+    "tip_shape",
+    "tip_roundness",
+    "tip_angle",
+    "symmetry",
+    "symmetry_x",
+    "symmetry_y",
+];
 
 /// A complete scalar/dynamics snapshot. Artist foreground/background swatches
 /// are deliberately outside the format and survive every preset application.
@@ -45,6 +52,12 @@ pub struct PresetParameters {
     pub tip_roundness: f32,
     #[serde(skip_serializing_if = "crate::application::zero_tip_angle")]
     pub tip_angle: f32,
+    #[serde(skip_serializing_if = "crate::application::SymmetryMode::is_off")]
+    pub symmetry: crate::application::SymmetryMode,
+    #[serde(skip_serializing_if = "crate::application::brush_symmetry::is_center")]
+    pub symmetry_x: f32,
+    #[serde(skip_serializing_if = "crate::application::brush_symmetry::is_center")]
+    pub symmetry_y: f32,
 }
 impl PresetParameters {
     fn from_validated(p: &Parameters) -> Self {
@@ -64,6 +77,9 @@ impl PresetParameters {
             tip_shape: p.tip_shape,
             tip_roundness: p.tip_roundness,
             tip_angle: p.tip_angle,
+            symmetry: p.symmetry,
+            symmetry_x: p.symmetry_x,
+            symmetry_y: p.symmetry_y,
         }
     }
     pub fn capture(p: &Parameters) -> Result<Self, String> {

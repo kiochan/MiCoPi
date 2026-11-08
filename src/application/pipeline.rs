@@ -81,7 +81,7 @@ pub(crate) fn resource_schema(id: &str) -> Value {
                 .cloned()
                 .collect::<Vec<_>>();
             parameters["required"] = json!(required);
-            json!({"type":"object","properties":{"selected":{"type":"string"},"kind":{"type":"string"},"parameters":parameters,"capabilities":{"type":"object","properties":{"flow":{"type":"boolean"},"stroke_opacity":{"type":"boolean"},"tip_geometry":{"type":"boolean"}},"required":["flow","stroke_opacity","tip_geometry"],"additionalProperties":false},"view":{"type":"object"},"drawing":{"type":"boolean"}},"required":["selected","kind","parameters","capabilities","view","drawing"]})
+            json!({"type":"object","properties":{"selected":{"type":"string"},"kind":{"type":"string"},"parameters":parameters,"capabilities":{"type":"object","properties":{"flow":{"type":"boolean"},"stroke_opacity":{"type":"boolean"},"tip_geometry":{"type":"boolean"},"symmetry":{"type":"boolean"}},"required":["flow","stroke_opacity","tip_geometry","symmetry"],"additionalProperties":false},"view":{"type":"object"},"drawing":{"type":"boolean"}},"required":["selected","kind","parameters","capabilities","view","drawing"]})
         }
         "input.pointer" => {
             json!({"type":"object","properties":{"last":{"description":"Last accepted Pointer or null"},"pen_observed":{"type":"boolean"},"windows_ink_supported":{"type":"boolean"},"device_enumeration":{"type":"boolean"}},"required":["last","pen_observed","windows_ink_supported","device_enumeration"]})

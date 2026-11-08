@@ -1638,5 +1638,22 @@
   "Vertical View Mirror": "보기 상하 반전",
   "Distribute Horizontal Spacing": "가로 간격 균등 분포",
   "Distribute Vertical Spacing": "세로 간격 균등 분포",
-  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "세 개 이상 레이어의 가장자리 간격을 균등하게 배치합니다. 음수 간격은 레이어를 겹치며 양 끝 레이어는 고정됩니다."
+  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "세 개 이상 레이어의 가장자리 간격을 균등하게 배치합니다. 음수 간격은 레이어를 겹치며 양 끝 레이어는 고정됩니다.",
+  "Brush Symmetry": "브러시 대칭",
+  "Vertical Symmetry": "세로축 대칭",
+  "Horizontal Symmetry": "가로축 대칭",
+  "Both Axes": "양쪽 축",
+  "Symmetry X Anchor": "대칭축 X 위치",
+  "Symmetry Y Anchor": "대칭축 Y 위치",
+  "Vertical axis position as a fraction of canvas width.": "캔버스 너비에 대한 세로 대칭축의 위치입니다.",
+  "Horizontal axis position as a fraction of canvas height.": "캔버스 높이에 대한 가로 대칭축의 위치입니다.",
+  "Reflect brush and eraser marks across one or both document axes.": "문서의 한 축 또는 양쪽 축을 기준으로 브러시와 지우개 획을 대칭으로 그립니다.",
+  "Center Symmetry Axes": "대칭축을 중앙으로",
+  "Axes use document coordinates. Overlapping marks share the selected opacity mode.": "대칭축은 문서 좌표를 사용합니다. 겹친 획도 선택한 불투명도 모드를 따릅니다.",
+  "Symmetry needs a supporting Brush or Eraser and idle input.": "대칭 그리기는 지원하는 브러시 또는 지우개와 입력 대기 상태가 필요합니다.",
+  "Disable Brush Symmetry": "브러시 대칭 끄기",
+  "Enable Vertical Brush Symmetry": "브러시 세로축 대칭 켜기",
+  "Enable Horizontal Brush Symmetry": "브러시 가로축 대칭 켜기",
+  "Enable Both Brush Symmetry Axes": "브러시 양쪽 축 대칭 켜기",
+  "Off": "끄기"
 }

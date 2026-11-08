@@ -300,3 +300,47 @@ fn mirrored_pen_input_matches_document_strokes_and_reflects_rotated_tip_feedback
         assert!(app.editor.core("replay.verify", json!({})));
     }
 }
+
+#[test]
+fn symmetry_cursor_feedback_and_typed_ink_follow_all_view_mirrors() {
+    let mut reference = None;
+    for (x, y) in [(false, false), (true, false), (false, true), (true, true)] {
+        let mut app = fixture();
+        let ctx = context(&app);
+        assert!(app.editor.core("brush.set",json!({"symmetry":"both","radius":1.5,"tip_shape":"square","tip_roundness":0.5,"tip_angle":30,"stabilizer":0.35,"pressure_size":true,"pressure_opacity":true})));
+        assert!(app
+            .editor
+            .core("view.set", json!({"mirror_x":x,"mirror_y":y})));
+        app.editor.sync_from_session();
+        for i in 0..3 {
+            frame(&mut app, &ctx, vec![], i as f64);
+        }
+        let start = app.editor.document_screen_position(pos2(2.5, 2.5));
+        let hover = frame(&mut app, &ctx, vec![Event::PointerMoved(start)], 3.);
+        assert_eq!(paths(&hover).len(), 4);
+        let (centers, count) = app.editor.symmetry_cursor_centers(start);
+        assert_eq!(count, 4);
+        for (q, angle) in &centers[..count] {
+            let doc = app.editor.document_position(*q);
+            assert!([
+                pos2(2.5, 2.5),
+                pos2(9.5, 2.5),
+                pos2(2.5, 5.5),
+                pos2(9.5, 5.5)
+            ]
+            .iter()
+            .any(|expected| expected.distance(doc) < 0.001));
+            assert_eq!(angle.abs(), 30.);
+        }
+        pen(&mut app, &ctx, PenPhase::Down, start, 0.3, 4000);
+        let end = app.editor.document_screen_position(pos2(4.5, 3.5));
+        pen(&mut app, &ctx, PenPhase::Move, end, 0.8, 4016);
+        pen(&mut app, &ctx, PenPhase::Up, end, 0.8, 4032);
+        if let Some(reference) = &reference {
+            assert_eq!(&app.editor.session.doc.layers[0].pixels, reference);
+        } else {
+            reference = Some(app.editor.session.doc.layers[0].pixels.clone());
+        }
+        assert!(app.editor.core("replay.verify", json!({})));
+    }
+}

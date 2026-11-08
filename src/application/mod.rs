@@ -5,7 +5,9 @@ mod adjustment_boundary;
 mod adjustment_tests;
 mod atomic;
 mod brush_presets;
+pub(crate) mod brush_symmetry;
 mod brush_tip;
+pub use brush_symmetry::SymmetryMode;
 pub use brush_tip::TipShape;
 pub(crate) use brush_tip::{default_tip_roundness, full_tip_roundness, zero_tip_angle};
 #[cfg(test)]
@@ -183,3 +185,6 @@ mod quantize_tests;
 pub(crate) mod units;
 #[cfg(test)]
 mod view_tests;
+
+#[cfg(test)]
+mod brush_symmetry_tests;

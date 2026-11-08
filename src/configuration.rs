@@ -150,6 +150,21 @@ pub struct PaintingPreferences {
     pub tip_roundness: f32,
     #[serde(default, skip_serializing_if = "crate::application::zero_tip_angle")]
     pub tip_angle: f32,
+    #[serde(
+        default,
+        skip_serializing_if = "crate::application::SymmetryMode::is_off"
+    )]
+    pub symmetry: crate::application::SymmetryMode,
+    #[serde(
+        default = "crate::application::brush_symmetry::center",
+        skip_serializing_if = "crate::application::brush_symmetry::is_center"
+    )]
+    pub symmetry_x: f32,
+    #[serde(
+        default = "crate::application::brush_symmetry::center",
+        skip_serializing_if = "crate::application::brush_symmetry::is_center"
+    )]
+    pub symmetry_y: f32,
     pub flow: f32,
     pub opacity_mode: crate::application::OpacityMode,
     #[serde(serialize_with = "crate::application::serialize_spacing")]
@@ -168,6 +183,9 @@ impl Default for PaintingPreferences {
             tip_shape: crate::application::TipShape::Round,
             tip_roundness: 1.,
             tip_angle: 0.,
+            symmetry: crate::application::SymmetryMode::Off,
+            symmetry_x: 0.5,
+            symmetry_y: 0.5,
             opacity_mode: crate::application::OpacityMode::Dab,
             spacing: 0.11,
             minimum_opacity: 0.,
@@ -186,6 +204,9 @@ impl From<&crate::application::Parameters> for PaintingPreferences {
             tip_shape: p.tip_shape,
             tip_roundness: p.tip_roundness,
             tip_angle: p.tip_angle,
+            symmetry: p.symmetry,
+            symmetry_x: p.symmetry_x,
+            symmetry_y: p.symmetry_y,
             opacity_mode: p.opacity_mode,
             spacing: p.spacing,
             minimum_opacity: p.minimum_opacity,
@@ -204,6 +225,9 @@ impl PaintingPreferences {
         value["tip_shape"] = json!(self.tip_shape);
         value["tip_roundness"] = json!(self.tip_roundness);
         value["tip_angle"] = json!(self.tip_angle);
+        value["symmetry"] = json!(self.symmetry);
+        value["symmetry_x"] = json!(self.symmetry_x);
+        value["symmetry_y"] = json!(self.symmetry_y);
         Ok(value)
     }
     pub fn validate(&self) -> Result<(), String> {
@@ -216,6 +240,9 @@ impl PaintingPreferences {
         parameters.tip_shape = self.tip_shape;
         parameters.tip_roundness = self.tip_roundness;
         parameters.tip_angle = self.tip_angle;
+        parameters.symmetry = self.symmetry;
+        parameters.symmetry_x = self.symmetry_x;
+        parameters.symmetry_y = self.symmetry_y;
         parameters.flow = self.flow;
         parameters.opacity_mode = self.opacity_mode;
         parameters.spacing = self.spacing;

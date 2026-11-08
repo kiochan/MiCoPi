@@ -3,6 +3,8 @@ use super::panels::{parameter, section};
 use super::*;
 #[path = "presets.rs"]
 mod presets;
+#[path = "symmetry_ui.rs"]
+mod symmetry_ui;
 #[path = "tip_geometry.rs"]
 pub(crate) mod tip_geometry;
 pub(super) const OPACITY_MODES: [crate::application::OpacityMode; 2] = [
@@ -212,6 +214,7 @@ impl Editor {
         parameter(ui, "Size", &mut diameter, 1.0..=400., " px", false, true);
         self.radius = diameter / 2.;
         self.brush_tip_ui(ui);
+        self.brush_symmetry_ui(ui);
         parameter(ui, "Opacity", &mut self.opacity, 0.0..=1., "%", true, false);
         ui.add_enabled_ui(self.area_mode == 0 && matches!(self.tool, Tool::Brush | Tool::Eraser), |ui| {
         let mut flow = self.session.parameters.flow;

@@ -230,8 +230,8 @@ def validate(values, plan, output, prefix, scenarios):
     assert set(complete['required']) == set(complete['properties'])
     assert {'flow', 'opacity_mode', 'spacing', 'minimum_opacity'} <= set(complete['required'])
     native = at('providers')['resources']['plugins.registry']['value']['native']
-    assert next(p for p in native if p['id'] == 'painting')['tool_options'] == dict(flow=True, stroke_opacity=True, tip_geometry=True)
-    assert next(p for p in native if p['id'] == 'compositing')['tool_options'] == dict(flow=False, stroke_opacity=False, tip_geometry=False)
+    assert next(p for p in native if p['id'] == 'painting')['tool_options'] == dict(flow=True, stroke_opacity=True, tip_geometry=True, symmetry=True)
+    assert next(p for p in native if p['id'] == 'compositing')['tool_options'] == dict(flow=False, stroke_opacity=False, tip_geometry=False, symmetry=False)
     results = {}
     for case in scenarios:
         key, expected = case['name'], reference(case)
@@ -244,7 +244,7 @@ def validate(values, plan, output, prefix, scenarios):
         tool = at(key+'-tool-context')['resources']['painting.tool']['value']
         assert tool['parameters'] == after['parameters'], key
         assert set(tool['parameters']) == set(complete['required']), key
-        assert tool['capabilities'] == dict(flow=True, stroke_opacity=True, tip_geometry=True), key
+        assert tool['capabilities'] == dict(flow=True, stroke_opacity=True, tip_geometry=True, symmetry=True), key
         png = base64.b64decode(at(key+'-snapshot')['data'])
         assert pixels(png) == (WIDTH, HEIGHT, expected['png']), key
         assert pixels(base64.b64decode(at(key+'-reopen-png')['data'])) == (WIDTH, HEIGHT, expected['png']), key

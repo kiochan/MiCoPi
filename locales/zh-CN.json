@@ -1638,5 +1638,22 @@
   "Vertical View Mirror": "垂直视图镜像",
   "Distribute Horizontal Spacing": "水平等间距分布",
   "Distribute Vertical Spacing": "垂直等间距分布",
-  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "在至少三个图层之间分配相等的边缘间距。负间距会使图层重叠；两端图层保持不动。"
+  "Distribute equal edge spacing between at least three layers. Negative spacing overlaps layers; the two end layers stay fixed.": "在至少三个图层之间分配相等的边缘间距。负间距会使图层重叠；两端图层保持不动。",
+  "Brush Symmetry": "画笔对称",
+  "Vertical Symmetry": "垂直轴对称",
+  "Horizontal Symmetry": "水平轴对称",
+  "Both Axes": "双轴对称",
+  "Symmetry X Anchor": "对称轴 X 位置",
+  "Symmetry Y Anchor": "对称轴 Y 位置",
+  "Vertical axis position as a fraction of canvas width.": "垂直对称轴的位置，以画布宽度的比例表示。",
+  "Horizontal axis position as a fraction of canvas height.": "水平对称轴的位置，以画布高度的比例表示。",
+  "Reflect brush and eraser marks across one or both document axes.": "沿一条或两条文档对称轴镜像绘制画笔和橡皮笔迹。",
+  "Center Symmetry Axes": "对称轴居中",
+  "Axes use document coordinates. Overlapping marks share the selected opacity mode.": "对称轴使用文档坐标。重叠笔迹遵循所选透明度模式。",
+  "Symmetry needs a supporting Brush or Eraser and idle input.": "对称绘画需要支持此功能的画笔或橡皮，且当前没有活动笔画。",
+  "Disable Brush Symmetry": "关闭画笔对称",
+  "Enable Vertical Brush Symmetry": "启用画笔垂直轴对称",
+  "Enable Horizontal Brush Symmetry": "启用画笔水平轴对称",
+  "Enable Both Brush Symmetry Axes": "启用画笔双轴对称",
+  "Off": "关闭"
 }

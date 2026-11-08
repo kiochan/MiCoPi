@@ -2,8 +2,10 @@
 
 `plugins/painting/src/symmetry.rs` owns fixed-size native dab reflection, while
 `raster.rs` shares the existing per-stamp deposits and capped influence cache.
-`ToolOptionsSymmetry` is an optional SDK/C-header tail; host intent/UI integration
-is still pending. `symmetry_tests.rs` reuses the padded native loan harness.
+`ToolOptionsSymmetry` is an optional SDK/C-header tail; `src/application/brush_symmetry.rs` supplies scalar intent; Session, configuration
+and preset adapters retain old default wire data. `plugins/brush/symmetry_ui.rs`
+owns idle controls and `plugins/canvas/symmetry_feedback.rs` owns view-aware guides
+and reflected cursor geometry. `symmetry_tests.rs` reuses the padded native loan harness.
 
 `application::View` owns the optional horizontal/vertical mirror flags. The workbench registers
 both view toggles and the shared painting/view adapter validates desktop/contact scope.
