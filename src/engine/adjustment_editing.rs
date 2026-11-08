@@ -15,6 +15,9 @@ struct CreatePlan {
 }
 
 #[cfg(test)]
+#[path = "shared_adjustment_tests.rs"]
+mod shared_tests;
+#[cfg(test)]
 #[path = "adjustment_tests.rs"]
 mod tests;
 impl Document {
@@ -208,6 +211,21 @@ impl Document {
         self.commit_owner_composition(before, None, mask_change);
         Ok((plan.id, plan.mask_id))
     }
+    pub(crate) fn preview_adjustment(
+        &self,
+        id: u64,
+        spec: AdjustmentSpec,
+    ) -> Result<Vec<u32>, String> {
+        self.require_idle_adjustment_edit()?;
+        spec.validate()?;
+        self.validate_owner_transform_source()?;
+        let mut tree = self.tree();
+        tree.adjustment(id)?;
+        *tree.adjustments.iter_mut().find(|a| a.id == id).unwrap() = Adjustment::new(id, spec);
+        let plan = self.prepare_adjustment_tree(&tree, &self.raster_masks)?;
+        self.preview_adjustment_plan(&plan)
+    }
+
     pub fn set_adjustment(&mut self, id: u64, spec: AdjustmentSpec) -> Result<bool, String> {
         self.require_idle_adjustment_edit()?;
         spec.validate()?;

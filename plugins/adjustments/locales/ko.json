@@ -1,0 +1,12 @@
+{
+  "Preview Shared Adjustment": "공유 조정 미리 보기",
+  "Preview shared adjustment": "공유 조정 미리 보기",
+  "Bind explicit source layers": "지정한 원본 레이어에 연결",
+  "Move this controller to the root before binding layers.": "레이어를 연결하기 전에 컨트롤러를 최상위로 이동하세요.",
+  "Bind Selected Layers": "선택한 레이어 연결",
+  "Unbind All Layers": "모든 레이어 연결 해제",
+  "Select Bound Layers": "연결된 레이어 선택",
+  "No bound layers. This controller changes no pixels.": "연결된 레이어가 없어 이미지가 변경되지 않습니다.",
+  "Each bound source is adjusted independently, in controller ID order.": "연결된 원본을 컨트롤러 ID 순서로 각각 조정합니다.",
+  "Move Controller to Root": "컨트롤러를 최상위로 이동"
+}

@@ -1068,3 +1068,133 @@ fn adjustment_named_folder_query_shows_adjustment_context_and_selected_predicate
         before.unchanged(&app);
     }
 }
+
+#[test]
+fn shared_binding_controls_preview_cancel_apply_and_unbind_keep_exact_targets() {
+    let mut app = app();
+    let id = create(&mut app, false);
+    assert!(app.editor.core(
+        "layer.selection.set",
+        json!({"layer_ids":[1,2],"active_layer_id":2})
+    ));
+    let ctx = context(&app);
+    let size = vec2(700., 1400.);
+    app.editor.focus_adjustment_ui(&ctx, Some(id));
+    warm(&mut app, &ctx, size);
+    let revision = app.editor.session.revision;
+    let raw: Vec<_> = app
+        .editor
+        .session
+        .doc
+        .layers
+        .iter()
+        .map(|l| l.pixels.clone())
+        .collect();
+    let history = app.editor.session.doc.history_bytes();
+    let scope = ctx.data_mut(|d| {
+        d.get_temp::<Rect>(Id::new((
+            "adjustment-target-scope",
+            app.editor.session.doc.identity,
+            id,
+        )))
+        .unwrap()
+    });
+    click(&mut app, &ctx, size, scope.center(), 4.);
+    let key = draft_key(app.editor.session.doc.identity, id);
+    let draft = ctx.data_mut(|d| d.get_temp::<Draft>(key)).unwrap();
+    assert_eq!(draft.value.target_layer_ids, Some(vec![1, 2]));
+    assert!(app
+        .editor
+        .session
+        .doc
+        .adjustment(id)
+        .unwrap()
+        .target_layer_ids
+        .is_none());
+    let preview = preview_key(app.editor.session.doc.identity, id);
+    ctx.data_mut(|d| {
+        let mut cache = d.get_temp::<PreviewCache>(preview).unwrap();
+        cache.changed = Instant::now() - Duration::from_secs(1);
+        d.insert_temp(preview, cache);
+    });
+    frame(&mut app, &ctx, size, vec![], 5.);
+    let texture = app
+        .editor
+        .shared_adjustment_preview_texture(&ctx)
+        .unwrap()
+        .id();
+    frame(&mut app, &ctx, size, vec![], 5.1);
+    assert_eq!(
+        app.editor
+            .shared_adjustment_preview_texture(&ctx)
+            .unwrap()
+            .id(),
+        texture
+    );
+    assert_eq!(app.editor.session.revision, revision);
+    assert_eq!(app.editor.session.doc.history_bytes(), history);
+    assert_eq!(
+        app.editor
+            .session
+            .doc
+            .layers
+            .iter()
+            .map(|l| l.pixels.clone())
+            .collect::<Vec<_>>(),
+        raw
+    );
+    let unbind = ctx.data_mut(|d| {
+        d.get_temp::<Rect>(Id::new((
+            "adjustment-unbind-all",
+            app.editor.session.doc.identity,
+            id,
+        )))
+        .unwrap()
+    });
+    click(&mut app, &ctx, size, unbind.center(), 6.);
+    assert_eq!(
+        ctx.data_mut(|d| d.get_temp::<Draft>(key))
+            .unwrap()
+            .value
+            .target_layer_ids,
+        Some(vec![])
+    );
+    let cancel = control(&ctx, &app, "adjustment-cancel", id).0;
+    click(&mut app, &ctx, size, cancel.center(), 7.);
+    assert!(app.editor.shared_adjustment_preview_texture(&ctx).is_none());
+    assert_eq!(app.editor.session.revision, revision);
+    for i in 0..3 {
+        frame(&mut app, &ctx, size, vec![], 7.1 + i as f64 * 0.01);
+    }
+    let scope = ctx.data_mut(|d| {
+        d.get_temp::<Rect>(Id::new((
+            "adjustment-target-scope",
+            app.editor.session.doc.identity,
+            id,
+        )))
+        .unwrap()
+    });
+    click(&mut app, &ctx, size, scope.center(), 8.);
+    let apply = control(&ctx, &app, "adjustment-apply", id).0;
+    click(&mut app, &ctx, size, apply.center(), 9.);
+    assert_eq!(
+        app.editor
+            .session
+            .doc
+            .adjustment(id)
+            .unwrap()
+            .target_layer_ids,
+        Some(vec![1, 2])
+    );
+    assert_eq!(app.editor.session.revision, revision + 1);
+    assert!(app.editor.shared_adjustment_preview_texture(&ctx).is_none());
+    assert!(app.editor.core("history.undo", json!({})));
+    assert!(app
+        .editor
+        .session
+        .doc
+        .adjustment(id)
+        .unwrap()
+        .target_layer_ids
+        .is_none());
+}

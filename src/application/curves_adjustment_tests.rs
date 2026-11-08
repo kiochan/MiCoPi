@@ -176,6 +176,7 @@ fn hidden_unsupported_curves_invalid_points_and_ambiguous_intents_reject_before_
         curves: None,
         hsl: None,
         quantization: None,
+        target_layer_ids: None,
     };
     let value = serde_json::to_value(&spec).unwrap();
     assert!(value.get("curves").is_none());

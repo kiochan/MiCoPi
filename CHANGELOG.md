@@ -6,6 +6,8 @@ Implemented changes since 0.21.0, grouped by their current behavior. Git history
 
 ### Painting and document editing
 
+- Add source integration for explicit shared adjustment controllers: optional legacy-omitted raster bindings, targeted/unbound versus affect-below scope, stable controller-ID evaluation after each source filter chain and before its owner/group gates. Reuse native color kernels and masks without changing raw owners; preflight root-only placement, missing targets, complete hidden declarations and bounded graph expansion. Share existing create/set/query/state/nodes/MCP/headless, one Undo/revision/outcome and strict project/replay metadata. Add fenced read-only PNG preview with resolved Apply intent and immutable candidate plan/color slots, plus owner-scoped binding controls, cached debounced preview, Cancel/Apply and target selection. Author source/mask/order/persistence/rollback/outcome/UI/JSONL/MCP gates and an example; runtime CI, canvas integration, native captures and measured end-to-end costs remain pending.
+
 - Seed the Liquify test fixture's directly written raster tiles into its verified journal before rollback/outcome assertions, and assert the baseline replay matches the document. Latest CI passed 1,269 tests but three Liquify cases restored the fixture's stale all-zero journal sources; retain their full raw/history/rollback assertions. Corrected runtime verification awaits CI.
 
 - Correct the new Liquify smoke step's workflow indentation so GitHub can schedule its runtime validation. The initial integration push failed before creating jobs; no runtime result was produced by that run.

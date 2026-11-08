@@ -776,6 +776,14 @@ impl Document {
         let parent = tree.parent(GroupItem::group(id))?;
         let layer_ids = tree.descendants(GroupItem::group(id))?;
         let descendant_adjustments = tree.adjustment_ids(GroupItem::group(id))?;
+        if descendant_adjustments.iter().any(|id| {
+            source
+                .adjustment(*id)
+                .is_ok_and(|a| a.target_layer_ids.is_some())
+        }) {
+            return Err("Duplicating a shared adjustment controller is unavailable; create an explicit new binding".into());
+        }
+
         let adjustment_ids: Vec<_> = source
             .adjustments
             .iter()
@@ -1133,7 +1141,7 @@ impl Document {
                         if let Ok(a) = tree.adjustment(item.id) {
                             rows.push(json!({"kind":"adjustment","id":a.id,"name":a.name,"parent_id":parent,"depth":depth,
                                 "visible":a.visible,"effective_visible":visible&&a.visible,"opacity":a.opacity as f32/255.,
-                                "node_type":a.node_type,"filter":a.filter,"amount":a.amount,"node_id":doc.adjustment_nodes.get(&a.id)}));
+                                "node_type":a.node_type,"filter":a.filter,"amount":a.amount,"scope":if a.target_layer_ids.is_some(){"targets"}else{"affect_below"},"target_layer_ids":a.target_layer_ids.as_deref().unwrap_or(&[]),"evaluation_order":if a.target_layer_ids.is_some(){"ascending_controller_id"}else{"stack_position"},"node_id":doc.adjustment_nodes.get(&a.id)}));
                         }
                     }
                     ItemKind::Group => {

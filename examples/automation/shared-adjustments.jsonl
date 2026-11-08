@@ -1,0 +1,9 @@
+{"action":"canvas.new","args":{"width":7,"height":5}}
+{"action":"layer.fill_color","args":{"color":"#4879AB"}}
+{"action":"layer.duplicate","args":{"layer_id":1}}
+{"action":"adjustment.create","args":{"node_type":"compositing.filter","parameters":{"filter":"invert","amount":1},"target_layer_ids":[1,2]}}
+{"action":"pipeline.run","args":{"atomic":true,"steps":[{"id":"read","action":"graph.read","args":{}},{"id":"preview","action":"adjustment.preview","args":{"adjustment_id":1,"document_identity":{"$ref":"read#/result/document_identity"},"document_revision":{"$ref":"read#/result/revision"},"target_layer_ids":[1,2],"parameters":{"amount":0.5}}},{"id":"apply","action":"adjustment.set","args":{"$ref":"preview#/result/apply/args"}}]}}
+{"action":"history.undo","args":{}}
+{"action":"history.redo","args":{}}
+{"action":"adjustment.get","args":{"adjustment_id":1}}
+{"action":"replay.verify","args":{}}

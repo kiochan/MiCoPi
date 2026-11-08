@@ -11,6 +11,30 @@ struct Draft {
     revision: u64,
     error: String,
 }
+
+#[derive(Clone)]
+struct PreviewCache {
+    value: Adjustment,
+    revision: u64,
+    changed: Instant,
+    attempted: bool,
+    texture: Option<TextureHandle>,
+    error: String,
+}
+fn preview_key(document: u64, id: u64) -> Id {
+    Id::new(("shared-adjustment-preview", document, id))
+}
+fn shared_text(message: &str) -> String {
+    crate::i18n::translated_for(Some("adjustments"), message).into_owned()
+}
+fn apply_args(id: u64, value: &Adjustment) -> Value {
+    let mut args = json!({"adjustment_id":id,"name":value.name,"visible":value.visible,"opacity":value.opacity as f64/255.,"node_type":value.node_type,"parameters":parameters(value),"scope":if value.target_layer_ids.is_some(){"targets"}else{"affect_below"}});
+    if let Some(ids) = &value.target_layer_ids {
+        args["target_layer_ids"] = json!(ids);
+    }
+    args
+}
+
 fn draft_key(document: u64, id: u64) -> Id {
     Id::new(("adjustment-draft", document, id))
 }
@@ -67,6 +91,100 @@ fn amount_range(def: &Resolved, filter: Filter) -> Option<(f32, f32)> {
 }
 
 impl Editor {
+    /// Presentation lookup only; composing pixels happens in the debounced inspector.
+    pub(super) fn shared_adjustment_preview_texture(&self, ctx: &Context) -> Option<TextureHandle> {
+        let id = self.focused_adjustment_ui(ctx)?;
+        let draft =
+            ctx.data_mut(|d| d.get_temp::<Draft>(draft_key(self.session.doc.identity, id)))?;
+        if draft.revision != self.session.revision
+            || draft.value == draft.source
+            || self.backend_contact_active()
+        {
+            return None;
+        }
+        let cache = ctx
+            .data_mut(|d| d.get_temp::<PreviewCache>(preview_key(self.session.doc.identity, id)))?;
+        if cache.revision != self.session.revision
+            || cache.value != draft.value
+            || !cache.attempted
+            || !cache.error.is_empty()
+        {
+            return None;
+        }
+        cache.texture
+    }
+    fn shared_adjustment_preview_ui(&self, ui: &mut Ui, id: u64, draft: &Draft, allowed: bool) {
+        let enabled_key = Id::new((
+            "shared-adjustment-preview-enabled",
+            self.session.doc.identity,
+            id,
+        ));
+        let mut enabled = ui
+            .data_mut(|d| d.get_temp::<bool>(enabled_key))
+            .unwrap_or(true);
+        ui.checkbox(&mut enabled, shared_text("Preview shared adjustment"));
+        ui.data_mut(|d| d.insert_temp(enabled_key, enabled));
+        let key = preview_key(self.session.doc.identity, id);
+        if !enabled || !allowed || draft.value == draft.source {
+            ui.data_mut(|d| d.remove::<PreviewCache>(key));
+            return;
+        }
+        let previous = ui.data_mut(|d| d.get_temp::<PreviewCache>(key));
+        let mut cache = match previous {
+            Some(cache) if cache.revision == draft.revision && cache.value == draft.value => cache,
+            previous => PreviewCache {
+                value: draft.value.clone(),
+                revision: draft.revision,
+                changed: Instant::now(),
+                attempted: false,
+                texture: previous.and_then(|cache| cache.texture),
+                error: String::new(),
+            },
+        };
+        if !cache.attempted {
+            let wait = Duration::from_millis(150);
+            if cache.changed.elapsed() >= wait {
+                cache.attempted = true;
+                match self.session.doc.preview_adjustment(id, draft.value.spec()) {
+                    Ok(pixels) => {
+                        let width = self.session.doc.width;
+                        let height = self.session.doc.height;
+                        let colors = pixels
+                            .into_iter()
+                            .enumerate()
+                            .map(|(i, p)| {
+                                let bg = if (i % width / 12 + i / width / 12) % 2 == 0 {
+                                    0xfffdfdfd
+                                } else {
+                                    0xfff3f5f7
+                                };
+                                let p = crate::engine::over(bg, p);
+                                Color32::from_rgb((p >> 16) as u8, (p >> 8) as u8, p as u8)
+                            })
+                            .collect();
+                        let image = ColorImage::new([width, height], colors);
+                        if let Some(texture) = &mut cache.texture {
+                            texture.set(image, TextureOptions::LINEAR);
+                        } else {
+                            cache.texture = Some(ui.ctx().load_texture(
+                                "shared-adjustment-preview",
+                                image,
+                                TextureOptions::LINEAR,
+                            ));
+                        }
+                    }
+                    Err(error) => cache.error = error,
+                }
+            } else {
+                ui.ctx()
+                    .request_repaint_after(wait - cache.changed.elapsed().min(wait));
+            }
+        }
+        if !cache.error.is_empty() {
+            ui.add(Label::new(localize(&cache.error)).wrap());
+        }
+        ui.data_mut(|d| d.insert_temp(key, cache));
+    }
     /// Resolve placement only at the explicit create/menu boundary. Painting
     /// remains attached to the current raster, even while another item is inspected.
     fn adjustment_placement_ui(&self, ctx: &Context) -> (u64, usize) {
@@ -232,6 +350,27 @@ impl Editor {
             .auto_shrink([false,true]).show(ui,|ui|{
                 if draft.value.curves.is_some() || draft.value.levels.is_some() || draft.value.hsl.is_some() || draft.value.quantization.is_some() {super::nodes::histogram_ui::controls(ui,&mut self.session);}
                 ui.add_enabled_ui(!stale,|ui|{
+                    let root=self.session.doc.adjustment_parent_id(id)==Ok(0);
+                    let mut targeted=draft.value.target_layer_ids.is_some();
+                    let toggle=ui.add_enabled(root,Checkbox::new(&mut targeted,shared_text("Bind explicit source layers")));
+                    if toggle.changed(){draft.value.target_layer_ids=if targeted{Some(self.session.doc.selected_layer_ids())}else{None};}
+                    #[cfg(test)] ui.data_mut(|d|d.insert_temp(Id::new(("adjustment-target-scope",self.session.doc.identity,id)),toggle.rect));
+                    if !root{ui.add(Label::new(shared_text("Move this controller to the root before binding layers.")).wrap());}
+                    if let Some(ids)=&mut draft.value.target_layer_ids{
+                        ui.horizontal_wrapped(|ui|{
+                            let bind=ui.button(shared_text("Bind Selected Layers"));
+                            let unbind=ui.button(shared_text("Unbind All Layers"));
+                            #[cfg(test)] ui.data_mut(|d|{d.insert_temp(Id::new(("adjustment-bind-selected",self.session.doc.identity,id)),bind.rect);d.insert_temp(Id::new(("adjustment-unbind-all",self.session.doc.identity,id)),unbind.rect);});
+                            if bind.clicked(){*ids=self.session.doc.selected_layer_ids();}
+                            if unbind.clicked(){ids.clear();}
+                        });
+                        for index in (0..self.session.doc.layers.len()).rev(){
+                            let layer=self.session.doc.layer_id(index);let mut selected=ids.contains(&layer);
+                            if ui.checkbox(&mut selected,self.session.doc.layer_name(index)).changed(){if selected{ids.push(layer);}else{ids.retain(|id|*id!=layer);}}
+                        }
+                        if ids.is_empty(){ui.label(shared_text("No bound layers. This controller changes no pixels."));}
+                        ui.add(Label::new(shared_text("Each bound source is adjusted independently, in controller ID order.")).wrap());
+                    }
                     let _name=ui.add(TextEdit::singleline(&mut draft.value.name).id(Id::new(("adjustment-name",self.session.doc.identity,id))).char_limit(120).desired_width(f32::INFINITY).hint_text(crate::i18n::text("Adjustment Name")));
                     #[cfg(test)] ui.data_mut(|data|data.insert_temp(Id::new(("adjustment-name",self.session.doc.identity,id)),_name.rect));
                     ui.horizontal_wrapped(|ui|{
@@ -326,7 +465,7 @@ impl Editor {
                     panels::parameter(ui,"Opacity",&mut opacity,0. ..=1.,"%",true,false);
                     draft.value.opacity=(opacity*255.).round() as u8;
                 });
-                ui.add(Label::new(tr("Adjusts the artwork below this item. Painting stays on the current raster layer.")).wrap());
+                if draft.value.target_layer_ids.is_none(){ui.add(Label::new(tr("Adjusts the artwork below this item. Painting stays on the current raster layer.")).wrap());}
             });
         if draft.value != old {
             draft.error.clear();
@@ -345,22 +484,74 @@ impl Editor {
         if !draft.error.is_empty() {
             ui.add(Label::new(localize(&draft.error)).wrap());
         }
+        if draft.value.target_layer_ids.is_some() {
+            self.shared_adjustment_preview_ui(
+                ui,
+                id,
+                &draft,
+                !stale && valid.is_ok() && !self.backend_contact_active(),
+            );
+        }
         let mut discard = false;
-        ui.horizontal_wrapped(|ui|{
-            let cancel=ui.add_enabled(dirty||!draft.error.is_empty(),Button::new(tr("Cancel")));
-            let apply=ui.add_enabled(dirty&&!stale&&valid.is_ok()&&!draft.value.name.trim().is_empty(),Button::new(tr("Apply")));
-            #[cfg(test)] ui.data_mut(|data|{
-                data.insert_temp(Id::new(("adjustment-cancel",self.session.doc.identity,id)),(cancel.rect,cancel.enabled()));
-                data.insert_temp(Id::new(("adjustment-apply",self.session.doc.identity,id)),(apply.rect,apply.enabled()));
+        ui.horizontal_wrapped(|ui| {
+            let cancel =
+                ui.add_enabled(dirty || !draft.error.is_empty(), Button::new(tr("Cancel")));
+            let apply = ui.add_enabled(
+                dirty && !stale && valid.is_ok() && !draft.value.name.trim().is_empty(),
+                Button::new(tr("Apply")),
+            );
+            #[cfg(test)]
+            ui.data_mut(|data| {
+                data.insert_temp(
+                    Id::new(("adjustment-cancel", self.session.doc.identity, id)),
+                    (cancel.rect, cancel.enabled()),
+                );
+                data.insert_temp(
+                    Id::new(("adjustment-apply", self.session.doc.identity, id)),
+                    (apply.rect, apply.enabled()),
+                );
             });
-            if cancel.clicked() {discard=true;}
-            if apply.clicked() {
-                let mut action=crate::application::Action::new("adjustment.set",json!({"adjustment_id":id,"name":draft.value.name,"visible":draft.value.visible,"opacity":draft.value.opacity as f32/255.,"node_type":draft.value.node_type,"parameters":parameters(&draft.value)}));
-                action.expected_revision=Some(draft.revision);pending.push(action);
+            if cancel.clicked() {
+                discard = true;
             }
-            if stale&&ui.button(tr("Reload Adjustment")).clicked() {discard=true;}
+            if apply.clicked() {
+                let mut action =
+                    crate::application::Action::new("adjustment.set", apply_args(id, &draft.value));
+                action.expected_revision = Some(draft.revision);
+                pending.push(action);
+            }
+            if stale && ui.button(tr("Reload Adjustment")).clicked() {
+                discard = true;
+            }
         });
         ui.menu_button(tr("Adjustment Actions"), |ui| {
+            if let Some(ids) = &draft.source.target_layer_ids {
+                if ui
+                    .add_enabled(
+                        !dirty && !ids.is_empty(),
+                        Button::new(shared_text("Select Bound Layers")),
+                    )
+                    .clicked()
+                {
+                    pending.push(crate::application::Action::new(
+                        "layer.selection.set",
+                        json!({"layer_ids":ids}),
+                    ));
+                    ui.close();
+                }
+            }
+            if self.session.doc.adjustment_parent_id(id) != Ok(0)
+                && ui.button(shared_text("Move Controller to Root")).clicked()
+            {
+                let count = self.session.doc.groups_state()["roots"]
+                    .as_array()
+                    .map_or(0, Vec::len);
+                pending.push(crate::application::Action::new(
+                    "adjustment.move",
+                    json!({"adjustment_id":id,"parent_id":0,"index":count}),
+                ));
+                ui.close();
+            }
             if ui.button(tr("Delete Adjustment")).clicked() {
                 pending.push(crate::application::Action::new(
                     "adjustment.delete",
@@ -404,7 +595,10 @@ impl Editor {
             }
         });
         if discard {
-            ui.data_mut(|data| data.remove::<Draft>(key));
+            ui.data_mut(|data| {
+                data.remove::<Draft>(key);
+                data.remove::<PreviewCache>(preview_key(self.session.doc.identity, id));
+            });
         } else if dirty || !draft.error.is_empty() {
             ui.data_mut(|data| data.insert_temp(key, draft));
         }
