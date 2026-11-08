@@ -540,9 +540,9 @@ fn brush_tip_presets_round_trip_optional_geometry_and_legacy_twelve_value_record
     let imported = call(&mut s, "brush.presets.import", json!({"path":bundle}))["imported_ids"][0]
         .as_u64()
         .unwrap();
-    for key in ["tip_shape", "tip_roundness", "tip_angle"] {
-        parameters.as_object_mut().unwrap().remove(key);
-    }
+    parameters.as_object_mut().unwrap().retain(|key, _| {
+        crate::configuration::brush_presets::REQUIRED_PARAMETER_KEYS.contains(&key.as_str())
+    });
     assert_eq!(parameters.as_object().unwrap().len(), 12);
     let legacy = call(
         &mut s,

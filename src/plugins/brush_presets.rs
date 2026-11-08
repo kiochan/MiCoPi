@@ -3,7 +3,7 @@ use crate::application::{ActionError, ActionResult, Operation, Session, ToolKind
 use crate::configuration::{
     brush_presets::{
         canonical_value, BrushPresetBundle, BrushPresetLibrary, PresetParameters, UserPreset,
-        MAX_BUNDLE_BYTES, MAX_PRESETS,
+        MAX_BUNDLE_BYTES, MAX_PRESETS, REQUIRED_PARAMETER_KEYS,
     },
     Settings,
 };
@@ -23,14 +23,9 @@ pub(crate) fn parameters_schema() -> Value {
     let fields = schema["properties"].as_object_mut().unwrap();
     fields.remove("color");
     fields.remove("background_color");
-    // Legacy bundles remain complete snapshots: omitted tip fields reset to
-    // circular defaults. Only the twelve original scalar fields are required.
-    let required = fields
-        .keys()
-        .filter(|key| !matches!(key.as_str(), "tip_shape" | "tip_roundness" | "tip_angle"))
-        .cloned()
-        .collect::<Vec<_>>();
-    schema["required"] = json!(required);
+    // Optional geometry and symmetry retain their default semantics in old
+    // snapshots. Share the stable twelve-key contract with the data decoder.
+    schema["required"] = json!(REQUIRED_PARAMETER_KEYS);
     schema
 }
 pub(crate) fn schema(op: Operation) -> Value {

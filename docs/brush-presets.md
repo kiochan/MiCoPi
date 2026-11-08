@@ -24,7 +24,10 @@ instead stores twelve required scalar/dynamics values:
 
 [Analytic tip geometry](brush-tips.md) adds optional `tip_shape`, `tip_roundness`
 and `tip_angle` fields. Missing fields mean Round/1/0, and applying a legacy
-twelve-field record explicitly restores those defaults. Nondefault geometry is
+twelve-field record explicitly restores those defaults. [Brush symmetry](native-brush-symmetry.md) similarly adds optional
+`symmetry`, `symmetry_x` and `symmetry_y`; legacy records restore off/center.
+The action schema and data decoder share the same twelve required keys. Complete
+public `painting.tool` state still includes all geometry/symmetry defaults. Nondefault geometry is
 retained through Save/Update/Apply and bundle import/export. Default geometry
 stays omitted, preserving the older twelve-field representation; strict older
 preset readers may reject records with the new fields.

@@ -62,6 +62,32 @@ fn symmetry_defaults_legacy_wire_public_schemas_and_numeric_admission_agree() {
     assert_eq!(tool["parameters"]["symmetry_y"], 0.5);
     assert_eq!(tool["capabilities"]["symmetry"], true);
     crate::plugins::validate(&pipeline::resource_schema("painting.tool"), tool).unwrap();
+    for key in ["symmetry", "symmetry_x", "symmetry_y"] {
+        let mut incomplete = tool.clone();
+        incomplete["parameters"]
+            .as_object_mut()
+            .unwrap()
+            .remove(key);
+        assert!(
+            crate::plugins::validate(&pipeline::resource_schema("painting.tool"), &incomplete)
+                .is_err()
+        );
+    }
+    let schema = Operation::BrushPresetUpsert.schema();
+    let parameters_schema = &schema["properties"]["parameters"];
+    assert_eq!(parameters_schema["required"].as_array().unwrap().len(), 12);
+    let legacy = PresetParameters::capture(&Parameters::default())
+        .unwrap()
+        .value()
+        .unwrap();
+    crate::plugins::validate(parameters_schema, &legacy).unwrap();
+    for key in ["symmetry", "symmetry_x", "symmetry_y"] {
+        assert!(!parameters_schema["required"]
+            .as_array()
+            .unwrap()
+            .contains(&json!(key)));
+        assert!(parameters_schema["properties"].get(key).is_some());
+    }
     for args in [
         json!({"symmetry":"radial"}),
         json!({"symmetry_x":-0.00000001}),
@@ -205,6 +231,15 @@ fn unsupported_symmetry_rejects_before_pixels_or_uniform_masks_materialize() {
 #[test]
 fn symmetry_settings_presets_projects_and_atomic_rollback_keep_exact_intent() {
     let mut s = fixture();
+    let profile_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+        "target/test-output/brush-symmetry-profile/{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&profile_dir).unwrap();
+    let profile = Settings::defaults(profile_dir.join("settings.json"));
+    profile.save().unwrap();
+    s.settings_path = Some(profile.path.clone());
+    s.load_profile_presets(&profile).unwrap();
     configure(&mut s, "both");
     call(
         &mut s,

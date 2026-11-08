@@ -6,7 +6,7 @@ use serde_json::Value;
 pub const MAX_PRESETS: usize = 128;
 pub const MAX_BUNDLE_BYTES: usize = 1024 * 1024;
 pub const BUNDLE_FORMAT: &str = "micopi.brush-presets";
-const PARAMETER_KEYS: [&str; 12] = [
+pub(crate) const REQUIRED_PARAMETER_KEYS: [&str; 12] = [
     "radius",
     "opacity",
     "hardness",
@@ -91,9 +91,11 @@ impl PresetParameters {
         let object = raw
             .as_object()
             .ok_or("Preset parameters must be a complete object")?;
-        if PARAMETER_KEYS.iter().any(|key| !object.contains_key(*key))
+        if REQUIRED_PARAMETER_KEYS
+            .iter()
+            .any(|key| !object.contains_key(*key))
             || object.keys().any(|key| {
-                !PARAMETER_KEYS.contains(&key.as_str())
+                !REQUIRED_PARAMETER_KEYS.contains(&key.as_str())
                     && !OPTIONAL_PARAMETER_KEYS.contains(&key.as_str())
             })
         {
