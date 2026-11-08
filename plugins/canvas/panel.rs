@@ -586,6 +586,7 @@ impl Editor {
         );
         self.refresh_texture(ui.ctx());
         self.refresh_selection(ui.ctx());
+        let adjustment_preview = self.shared_adjustment_preview_texture(ui.ctx());
         let painter = ui.painter().with_clip_rect(bounds);
         // A recessed stage sits inside the card between the tab row and the zoom strip.
         painter.rect_filled(bounds, 0, c.stage);
@@ -593,6 +594,7 @@ impl Editor {
             .color_preview_texture()
             .or_else(|| self.liquify_texture())
             .or_else(|| self.transform_texture())
+            .or_else(|| adjustment_preview.as_ref())
             .or(self.texture.as_ref())
         {
             for (offset, blur, alpha) in [([0, 2], 6, 0.6), ([0, 14], 40, 1.)] {

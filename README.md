@@ -1,5 +1,7 @@
 # MiCoPi
 
+[Shared targeted adjustments](docs/shared-adjustments.md) now add one controller bound to explicit raster sources, independent per-source evaluation, inert unbound scope and reversible Canvas previews. Binding controls, actions/nodes/MCP/headless and persistence/replay contracts are implemented in source; controllers are root-only, graph expansion remains bounded and new runtime/performance/capture gates are pending.
+
 [Multi-layer Liquify](docs/liquify-design.md) now connects a shared native deformation to independent raster/linked-mask outputs, reversible canvas previews and one Undo through registered actions. Desktop pressure/symmetry controls and MCP/headless contracts are implemented in source; exact-head runtime checks, native captures and measured large-canvas performance remain pending.
 
 Current priorities follow the [painting-first requirements](docs/painting-requirements.md): multi-layer Liquify, shared adjustments bound to layers, convenient groups/search and symmetry editing. The former exhaustive PS feature goal has been stopped; these requirements do not claim the features are verified.

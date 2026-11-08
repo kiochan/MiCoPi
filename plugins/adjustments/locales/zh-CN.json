@@ -1,0 +1,12 @@
+{
+  "Preview Shared Adjustment": "预览共享调整",
+  "Preview shared adjustment": "预览共享调整",
+  "Bind explicit source layers": "绑定指定源图层",
+  "Move this controller to the root before binding layers.": "绑定图层前，请将控制器移到根级。",
+  "Bind Selected Layers": "绑定所选图层",
+  "Unbind All Layers": "解除所有图层绑定",
+  "Select Bound Layers": "选中绑定图层",
+  "No bound layers. This controller changes no pixels.": "未绑定图层，此控制器不改变图像。",
+  "Each bound source is adjusted independently, in controller ID order.": "每个绑定源图层分别调整，按控制器 ID 顺序执行。",
+  "Move Controller to Root": "将控制器移到根级"
+}

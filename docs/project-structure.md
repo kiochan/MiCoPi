@@ -1,5 +1,22 @@
 # Project Structure and Ownership
 
+`src/engine/adjustments.rs`, `adjustment_editing.rs` and `groups.rs` own optional
+shared raster bindings, root-only controller validation and deterministic
+per-source graph expansion. `src/plugins/adjustments.rs` owns public binding and
+fenced preview schemas/handlers; `plugins/adjustments/panel.rs` owns inspector
+controls and cached preview textures. `src/engine/owner_preview.rs` borrows the
+validated candidate plan without copying raw layers. Scoped CJK catalogs live in
+`plugins/adjustments/locales/`; default legacy metadata omits bindings. The
+[shared adjustment guide](shared-adjustments.md) records limits and open evidence.
+`src/application/painting_integration_tests.rs` covers combined shared-tone and
+Liquify ownership, previews, stale drafts and grouped Undo.
+
+`src/plugins/liquify_regions.rs` partitions four dirty unions into disjoint
+regions; `liquify_steps.rs` retains bounded inline arm records with unchanged JSON
+arrays. `plugins/canvas/liquify_preview.rs` owns the separately bounded CPU display
+cache and exact changed-pixel texture uploads. Full composition remains separate.
+
+
 `src/plugins/liquify.rs` owns captured requests, cost/lock admission, typed cached
 multi-owner drafts and shared preview/Apply handlers. `src/plugins/native_liquify.rs`
 negotiates the optional DLL table and owns cached handles. Pixel field/sampling

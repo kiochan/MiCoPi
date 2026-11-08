@@ -114,8 +114,9 @@ Historical checkboxes below and in the comparison guide do not override this tab
 
 ## Immediate delivery sequence
 
-- [ ] Restore exact-head CI after the symmetry settings fixture compile failure;
-  preserve regression assertions and repair subsequent failures before calling it green.
+- [x] Restore a verified CI baseline at `74726fb` (run `42453627144`), retaining
+  the Liquify rollback/outcome assertions and correcting fixture tile publication.
+  Subsequent parallel feature/integration heads require their own passing results.
 - [x] Add the internal native inverse-field source prerequisite for R1, with checked
   node/workspace budgets, joint symmetric pushes and local dirty regions. Source now connects optional ABI/pixel sampling,
   captured multi-owner Session previews/grouped history and desktop input. New
@@ -123,6 +124,10 @@ Historical checkboxes below and in the comparison guide do not override this tab
 - [ ] Deliver R1 multi-layer Liquify end to end: read-only explicit target/lock/mask
   admission, bounded native deformation, cached reversible previews, one committed
   owner group/outcome, project/replay and public automation, then measured costs.
+- [x] Implement shared-target adjustment source integration: explicit/inert-unbound
+  bindings, per-source order, root-only controllers, source-fenced previews,
+  inspector controls and shared execution. Add combined Liquify regression gates;
+  runtime/capture/performance acceptance remains open below.
 - [ ] Deliver R2 shared-target adjustment binding with stable controller/target IDs,
   defined per-source order and reused color controls; retain ordinary affect-below items.
 - [ ] Improve grouping/search around target capture and binding, including masked

@@ -221,6 +221,18 @@ impl GroupTree {
         let mut previous = 0;
         for adjustment in &self.adjustments {
             adjustment.validate()?;
+            if let Some(targets) = &adjustment.target_layer_ids {
+                if self.parent(GroupItem::adjustment(adjustment.id))? != 0 {
+                    return Err("Shared adjustment controllers must remain at the root".into());
+                }
+                if targets.iter().any(|id| !ids.contains(id)) {
+                    return Err(
+                        "A bound raster is missing; unbind it before deleting or replacing it"
+                            .into(),
+                    );
+                }
+            }
+
             if adjustment.id <= previous || adjustment.id >= self.next_adjustment_id {
                 return Err("Invalid or duplicate adjustment identity".into());
             }
@@ -497,6 +509,87 @@ impl GroupTree {
             graph.nodes.push(node);
             Ok(id)
         }
+        fn adjustment_node(
+            adjustment: &super::adjustments::Adjustment,
+            input: u32,
+            masks: &super::raster_masks::MaskState,
+            graph: &mut Graph,
+            next: &mut u64,
+        ) -> Result<u32, String> {
+            let (kind, operation) = if let Some(quantization) = adjustment.quantization {
+                (NodeKind::Quantization { quantization }, "quantization")
+            } else if let Some(hsl) = adjustment.hsl {
+                (NodeKind::Hsl { hsl }, "hsl")
+            } else if let Some(curves) = &adjustment.curves {
+                (
+                    NodeKind::Curves {
+                        curves: curves.clone(),
+                    },
+                    "curves",
+                )
+            } else if let Some(parameters) = adjustment.levels {
+                (NodeKind::Levels { parameters }, "levels")
+            } else {
+                (
+                    NodeKind::Filter {
+                        filter: adjustment.filter,
+                        amount: adjustment.amount,
+                    },
+                    "filter",
+                )
+            };
+            let mut filter = fresh(next, kind, operation)?;
+            filter.node_type = Some(adjustment.node_type.clone());
+            graph.edges.push(Edge {
+                from: input,
+                to: filter.id,
+                input: 0,
+            });
+            let head = filter.id;
+            graph.nodes.push(filter);
+            let mask = coverage(
+                masks,
+                super::raster_masks::MaskOwner::Adjustment { id: adjustment.id },
+                graph,
+                next,
+            )?;
+            let opacity = if adjustment.visible {
+                adjustment.opacity as f32 / 255.
+            } else {
+                0.
+            };
+            let mix = fresh(
+                next,
+                if mask.is_some() {
+                    NodeKind::MaskedMix { opacity }
+                } else {
+                    NodeKind::Mix { opacity }
+                },
+                if mask.is_some() { "masked_mix" } else { "mix" },
+            )?;
+            graph.edges.extend([
+                Edge {
+                    from: input,
+                    to: mix.id,
+                    input: 0,
+                },
+                Edge {
+                    from: head,
+                    to: mix.id,
+                    input: 1,
+                },
+            ]);
+            if let Some(mask) = mask {
+                graph.edges.push(Edge {
+                    from: mask,
+                    to: mix.id,
+                    input: 2,
+                });
+            }
+            let result = mix.id;
+            graph.nodes.push(mix);
+            Ok(result)
+        }
         fn build(
             tree: &GroupTree,
             items: &[GroupItem],
@@ -518,84 +611,16 @@ impl GroupTree {
             for item in items {
                 if item.kind == ItemKind::Adjustment {
                     let adjustment = tree.adjustment(item.id)?;
+                    if adjustment.target_layer_ids.is_some() {
+                        continue;
+                    }
                     if !validate_all
                         && (!source.enabled || !adjustment.visible || adjustment.opacity == 0)
                     {
                         continue;
                     }
-                    let (kind, operation) = if let Some(quantization) = adjustment.quantization {
-                        (NodeKind::Quantization { quantization }, "quantization")
-                    } else if let Some(hsl) = adjustment.hsl {
-                        (NodeKind::Hsl { hsl }, "hsl")
-                    } else if let Some(curves) = &adjustment.curves {
-                        (
-                            NodeKind::Curves {
-                                curves: curves.clone(),
-                            },
-                            "curves",
-                        )
-                    } else if let Some(parameters) = adjustment.levels {
-                        (NodeKind::Levels { parameters }, "levels")
-                    } else {
-                        (
-                            NodeKind::Filter {
-                                filter: adjustment.filter,
-                                amount: adjustment.amount,
-                            },
-                            "filter",
-                        )
-                    };
-                    let mut filter = fresh(next, kind, operation)?;
-                    filter.node_type = Some(adjustment.node_type.clone());
-                    graph.edges.push(Edge {
-                        from: last,
-                        to: filter.id,
-                        input: 0,
-                    });
-                    let head = filter.id;
-                    graph.nodes.push(filter);
-                    let mask = coverage(
-                        masks,
-                        super::raster_masks::MaskOwner::Adjustment { id: item.id },
-                        graph,
-                        next,
-                    )?;
-                    let opacity = if adjustment.visible {
-                        adjustment.opacity as f32 / 255.
-                    } else {
-                        0.
-                    };
-                    let mix = fresh(
-                        next,
-                        if mask.is_some() {
-                            NodeKind::MaskedMix { opacity }
-                        } else {
-                            NodeKind::Mix { opacity }
-                        },
-                        if mask.is_some() { "masked_mix" } else { "mix" },
-                    )?;
-                    graph.edges.extend([
-                        Edge {
-                            from: last,
-                            to: mix.id,
-                            input: 0,
-                        },
-                        Edge {
-                            from: head,
-                            to: mix.id,
-                            input: 1,
-                        },
-                    ]);
-                    if let Some(mask) = mask {
-                        graph.edges.push(Edge {
-                            from: mask,
-                            to: mix.id,
-                            input: 2,
-                        });
-                    }
-                    last = mix.id;
-                    adjustment_nodes.insert(item.id, mix.id);
-                    graph.nodes.push(mix);
+                    last = adjustment_node(adjustment, last, masks, graph, next)?;
+                    adjustment_nodes.insert(item.id, last);
                     continue;
                 }
                 if item.kind == ItemKind::Group {
@@ -681,6 +706,21 @@ impl GroupTree {
                                 });
                                 head = filter.id;
                                 graph.nodes.push(filter.clone());
+                            }
+                        }
+                        if source.enabled || validate_all {
+                            // Sorted stable controller IDs define shared adjustment order;
+                            // stack placement never applies the controller a second time.
+                            for adjustment in &tree.adjustments {
+                                if adjustment
+                                    .target_layer_ids
+                                    .as_ref()
+                                    .is_some_and(|targets| targets.contains(&item.id))
+                                    && (validate_all
+                                        || (adjustment.visible && adjustment.opacity != 0))
+                                {
+                                    head = adjustment_node(adjustment, head, masks, graph, next)?;
+                                }
                             }
                         }
                         if let Some(mask) = coverage(

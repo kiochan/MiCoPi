@@ -1,5 +1,10 @@
 # Examples
 
+[Shared adjustments](automation/shared-adjustments.jsonl) binds one controller to
+two explicit sources, previews a parameter change, applies its fenced intent and
+checks Undo/Redo plus verified replay. Build/stage matching plugins first; new
+runtime transport gates await CI.
+
 [Multi-layer Liquify](automation/liquify.jsonl) captures a source fence, previews two independent layers, applies the returned intent atomically and checks one Undo/Redo plus verified replay. Runtime checks for this new example await CI.
 
 - [Selection commands](automation/selection.jsonl): native shape/combine geometry, pressure strokes, clipped filters and verified outcomes.

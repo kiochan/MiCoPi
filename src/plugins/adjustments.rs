@@ -1,4 +1,4 @@
-//! Metadata-only affect-below items. Registered image filters own the kernels.
+//! Metadata-only stack items and explicit shared per-source controllers. Registered image filters own the kernels.
 use super::{
     nodes::{Binding, Resolved},
     Registry,
@@ -28,12 +28,19 @@ pub(crate) fn schema(op: Operation) -> Value {
     let mut required = vec![];
     if matches!(
         op,
-        AdjustmentRead | AdjustmentSet | AdjustmentMove | AdjustmentDelete | AdjustmentInspect
+        AdjustmentRead
+            | AdjustmentSet
+            | AdjustmentMove
+            | AdjustmentDelete
+            | AdjustmentInspect
+            | AdjustmentPreview
     ) {
         properties["adjustment_id"] = id;
         required.push("adjustment_id");
     }
-    if matches!(op, AdjustmentCreate | AdjustmentSet) {
+    if matches!(op, AdjustmentCreate | AdjustmentSet | AdjustmentPreview) {
+        properties["scope"] = json!({"type":"string","enum":["affect_below","targets"],"description":"Omitted create uses affect-below; omitted set preserves the existing scope. targets applies independently to explicit source rasters in ascending controller-ID order. affect_below cannot be combined with target_layer_ids."});
+        properties["target_layer_ids"] = json!({"type":"array","maxItems":16,"items":{"type":"integer","minimum":1,"maximum":4294967295u64},"description":"Exact unique existing raster IDs. Supplying an array selects targets scope; [] is an explicitly unbound controller and never affects the backdrop. Targeted controllers must remain at the root."});
         properties["name"] = json!({"type":"string","description":"Nonblank, single-line artist-owned name, at most 512 UTF-8 bytes."});
         properties["visible"] = json!({"type":"boolean"});
         properties["opacity"] = json!({"type":"number","minimum":0,"maximum":1});
@@ -64,6 +71,11 @@ pub(crate) fn schema(op: Operation) -> Value {
     }
     if op == AdjustmentMove {
         required.extend(["parent_id", "index"]);
+    }
+    if op == AdjustmentPreview {
+        properties["document_identity"] = json!({"type":"integer","minimum":1});
+        properties["document_revision"] = json!({"type":"integer","minimum":0});
+        required.extend(["document_identity", "document_revision"]);
     }
     json!({"type":"object","properties":properties,"required":required,"additionalProperties":false})
 }
@@ -282,6 +294,12 @@ pub(crate) fn validate_literal(
     op: Operation,
     args: &Value,
 ) -> Result<(), ActionError> {
+    if matches!(
+        op,
+        Operation::AdjustmentCreate | Operation::AdjustmentSet | Operation::AdjustmentPreview
+    ) {
+        bindings(args, None)?;
+    }
     if let Some(name) = args["name"].as_str() {
         if name.trim().is_empty() || name.len() > 512 || name.chars().any(char::is_control) {
             return Err(error(
@@ -296,7 +314,7 @@ pub(crate) fn validate_literal(
             None,
             &args["parameters"],
         )?;
-    } else if op == Operation::AdjustmentSet {
+    } else if matches!(op, Operation::AdjustmentSet | Operation::AdjustmentPreview) {
         if let Some(id) = args["node_type"].as_str() {
             let def = definition(registry, id)?;
             let mut partial = def.parameters_schema.clone();
@@ -327,6 +345,45 @@ fn mask_ids(doc: &Document, id: u64) -> Vec<u64> {
         .map(|mask| mask.id)
         .collect()
 }
+fn bindings(args: &Value, old: Option<&Adjustment>) -> Result<Option<Vec<u64>>, ActionError> {
+    if args["scope"] == "affect_below" {
+        if args.get("target_layer_ids").is_some() {
+            return Err(error(
+                "affect_below cannot be combined with target_layer_ids",
+            ));
+        }
+        return Ok(None);
+    }
+    if let Some(value) = args.get("target_layer_ids") {
+        let values = value
+            .as_array()
+            .ok_or_else(|| error("target_layer_ids requires an array"))?;
+        if values.len() > 16 {
+            return Err(error("Too many shared adjustment targets"));
+        }
+        let mut ids = Vec::with_capacity(values.len());
+        for value in values {
+            let id = super::bounded_integer(value)
+                .filter(|id| *id > 0)
+                .ok_or_else(|| error("Shared targets require positive raster IDs"))?;
+            if ids.contains(&id) {
+                return Err(error("Shared adjustment targets must be unique"));
+            }
+            ids.push(id);
+        }
+        return Ok(Some(ids));
+    }
+    if args["scope"] == "targets" {
+        return Ok(Some(
+            old.and_then(|item| item.target_layer_ids.clone())
+                .unwrap_or_default(),
+        ));
+    }
+    Ok(old.and_then(|item| item.target_layer_ids.clone()))
+}
+fn scope_state(item: &Adjustment) -> Value {
+    json!({"scope":if item.target_layer_ids.is_some(){"targets"}else{"affect_below"},"target_layer_ids":item.target_layer_ids.as_deref().unwrap_or(&[]),"evaluation_order":if item.target_layer_ids.is_some(){"ascending_controller_id"}else{"stack_position"}})
+}
 fn item_state(s: &Session, item: &Adjustment) -> Value {
     let tree = s.doc.groups_state();
     let parent = s.doc.adjustment_parent_id(item.id).unwrap_or(0);
@@ -345,9 +402,13 @@ fn item_state(s: &Session, item: &Adjustment) -> Value {
                 .position(|child| child["kind"] == "adjustment" && child["id"] == item.id)
         })
         .unwrap_or(0);
-    json!({"id":item.id,"name":item.name,"visible":item.visible,"opacity":item.opacity as f64/255.,
+    let mut state = json!({"id":item.id,"name":item.name,"visible":item.visible,"opacity":item.opacity as f64/255.,
         "node_type":item.node_type,"parameters":item_parameters(item),"parent_id":parent,"index":index,
-        "mask_ids":mask_ids(&s.doc,item.id),"provider_available":definition(&s.registry,&item.node_type).is_ok()})
+        "mask_ids":mask_ids(&s.doc,item.id),"provider_available":definition(&s.registry,&item.node_type).is_ok()});
+    for (key, value) in scope_state(item).as_object().unwrap() {
+        state[key] = value.clone();
+    }
+    state
 }
 fn idle(s: &Session) -> Result<(), ActionError> {
     if s.stroke.active() || s.pointer_checkpoint.is_some() {
@@ -360,6 +421,28 @@ fn idle(s: &Session) -> Result<(), ActionError> {
 }
 fn id(args: &Value) -> u64 {
     super::bounded_integer(&args["adjustment_id"]).unwrap()
+}
+
+fn updated_spec(
+    registry: &Registry,
+    old: &Adjustment,
+    args: &Value,
+) -> Result<AdjustmentSpec, ActionError> {
+    let node = args["node_type"].as_str().unwrap_or(&old.node_type);
+    let parameters = resolve_parameters(registry, node, Some(old), &args["parameters"])?;
+    Ok(AdjustmentSpec {
+        name: args["name"].as_str().unwrap_or(&old.name).to_owned(),
+        visible: args["visible"].as_bool().unwrap_or(old.visible),
+        opacity: opacity(&args, old.opacity),
+        node_type: node.to_owned(),
+        filter: parameters.filter,
+        amount: parameters.amount,
+        levels: parameters.levels,
+        curves: parameters.curves,
+        hsl: parameters.hsl,
+        quantization: parameters.quantization,
+        target_layer_ids: bindings(&args, Some(old))?,
+    })
 }
 
 pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
@@ -395,6 +478,45 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
     }
     idle(s)?;
     validate_document(&s.registry, &s.doc)?;
+    if op == AdjustmentPreview {
+        let identity = args["document_identity"].as_u64();
+        let revision = args["document_revision"].as_u64();
+        if identity != Some(s.doc.identity) || revision != Some(s.revision) {
+            return Err(ActionError::new(
+                "revision_conflict",
+                "Adjustment preview source changed; reload the draft",
+            ));
+        }
+        let adjustment_id = id(&args);
+        let old = s.doc.adjustment(adjustment_id).map_err(error)?;
+        let spec = updated_spec(&s.registry, old, &args)?;
+        let resolved = Adjustment::new(adjustment_id, spec.clone());
+        let cost = s.doc.owner_preview_cost(&[]).map_err(error)?;
+        let pixels = s
+            .doc
+            .preview_adjustment(adjustment_id, spec)
+            .map_err(error)?;
+        let bytes = crate::application::png_io::encode(
+            s.doc.width,
+            s.doc.height,
+            pixels.into_iter(),
+            s.doc.info().export_density(),
+        )?;
+        let mut apply_args = json!({"adjustment_id":adjustment_id,"name":resolved.name,"visible":resolved.visible,"opacity":resolved.opacity as f64/255.,"node_type":resolved.node_type,"parameters":item_parameters(&resolved),"scope":if resolved.target_layer_ids.is_some(){"targets"}else{"affect_below"}});
+        if let Some(ids) = &resolved.target_layer_ids {
+            apply_args["target_layer_ids"] = json!(ids);
+        }
+        let action = crate::application::Action {
+            action: "adjustment.set".into(),
+            args: apply_args,
+            expected_revision: Some(s.revision),
+        };
+        let mut response = json!({"document_identity":s.doc.identity,"revision":s.revision,"adjustment_id":adjustment_id,"width":s.doc.width,"height":s.doc.height,"mimeType":"image/png","data":crate::application::codec::base64(&bytes),"cost":cost,"apply":action});
+        for (key, value) in scope_state(&resolved).as_object().unwrap() {
+            response[key] = value.clone();
+        }
+        return Ok(response);
+    }
     let result = match op {
         AdjustmentCreate => {
             let node = args["node_type"].as_str().unwrap();
@@ -413,8 +535,13 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
                 curves: parameters.curves,
                 hsl: parameters.hsl,
                 quantization: parameters.quantization,
+                target_layer_ids: bindings(&args, None)?,
             };
-            let (parent, index) = placement(s, &args)?;
+            let mut placement_args = args.clone();
+            if spec.target_layer_ids.is_some() && args.get("parent_id").is_none() {
+                placement_args["parent_id"] = json!(0);
+            }
+            let (parent, index) = placement(s, &placement_args)?;
             let with_mask = args["mask_source"] == "selection";
             s.doc
                 .preflight_create_adjustment(&spec, parent, index, with_mask)
@@ -441,21 +568,7 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         AdjustmentSet => {
             let id = id(&args);
             let old = s.doc.adjustment(id).map_err(error)?.clone();
-            let node = args["node_type"].as_str().unwrap_or(&old.node_type);
-            let parameters =
-                resolve_parameters(&s.registry, node, Some(&old), &args["parameters"])?;
-            let spec = AdjustmentSpec {
-                name: args["name"].as_str().unwrap_or(&old.name).to_owned(),
-                visible: args["visible"].as_bool().unwrap_or(old.visible),
-                opacity: opacity(&args, old.opacity),
-                node_type: node.to_owned(),
-                filter: parameters.filter,
-                amount: parameters.amount,
-                levels: parameters.levels,
-                curves: parameters.curves,
-                hsl: parameters.hsl,
-                quantization: parameters.quantization,
-            };
+            let spec = updated_spec(&s.registry, &old, &args)?;
             let changed = s.doc.set_adjustment(id, spec).map_err(error)?;
             Ok(
                 json!({"adjustment_id":id,"mask_ids":mask_ids(&s.doc,id),"changed":changed,"revision":s.revision}),
@@ -484,6 +597,16 @@ pub(crate) fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResu
         }
         _ => Err(error("Operation routed to the wrong handler")),
     }?;
+    let mut result = result;
+    if matches!(op, AdjustmentCreate | AdjustmentSet | AdjustmentMove) {
+        let id = super::bounded_integer(&result["adjustment_id"]).unwrap();
+        for (key, value) in scope_state(s.doc.adjustment(id).map_err(error)?)
+            .as_object()
+            .unwrap()
+        {
+            result[key] = value.clone();
+        }
+    }
     s.doc.compose();
     if let Some(error) = &s.doc.render_error {
         return Err(ActionError::new("adjustment_render", error));
@@ -531,3 +654,7 @@ fn placement(s: &Session, args: &Value) -> Result<(u64, usize), ActionError> {
         });
     Ok((parent, index))
 }
+
+#[cfg(test)]
+#[path = "../application/shared_adjustment_tests.rs"]
+mod shared_tests;

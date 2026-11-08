@@ -1,0 +1,12 @@
+{
+  "Preview Shared Adjustment": "共有調整をプレビュー",
+  "Preview shared adjustment": "共有調整をプレビュー",
+  "Bind explicit source layers": "指定した元レイヤーに適用",
+  "Move this controller to the root before binding layers.": "レイヤーを指定する前にコントローラーを最上位へ移動してください。",
+  "Bind Selected Layers": "選択レイヤーに適用",
+  "Unbind All Layers": "すべてのレイヤーを解除",
+  "Select Bound Layers": "対象レイヤーを選択",
+  "No bound layers. This controller changes no pixels.": "対象がないため画像は変わりません。",
+  "Each bound source is adjusted independently, in controller ID order.": "各対象レイヤーを個別に、コントローラーID順に調整します。",
+  "Move Controller to Root": "コントローラーを最上位へ移動"
+}

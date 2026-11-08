@@ -4,9 +4,15 @@
 artist outcomes and acceptance gates. The former exhaustive PS parity goal was
 cancelled; its comparison checklist remains reference material.
 
-[Multi-layer Liquify design](liquify-design.md) tracks the bounded native inverse
-field prerequisite and the remaining sampling, ownership, preview and shared
-execution stages. A usable Liquify tool is not delivered yet.
+[Multi-layer Liquify design](liquify-design.md) describes shared native fields,
+independent owner sampling, reversible Canvas controls and grouped outcomes. The
+initial integration passed CI at `74726fb`; newer performance/preview gates,
+reviewed native captures and measured large-canvas costs remain open.
+
+[Shared targeted adjustments](shared-adjustments.md) describes explicit per-source
+bindings, inert unbound controllers, scope/order/ownership contracts, immutable
+previews and the binding inspector. This new integration awaits exact-head CI
+and artist/performance evidence; ordinary affect-below items remain distinct.
 
 [Horizontal/vertical view mirroring](view-mirroring.md) keeps document pixels unchanged
 while reflecting Canvas display, input and edit overlays. Runtime/UI validation

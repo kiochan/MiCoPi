@@ -108,7 +108,7 @@ impl Document {
         layers: &[(u64, &'a [u32])],
         masks: &[(u64, PlaneView<'a>)],
     ) -> Result<Vec<u32>, String> {
-        self.preview_owner_pixels(layers, masks, true)
+        self.preview_owner_pixels(layers, masks, true, None)
     }
 
     /// Color-only overrides retain position locks; all other validation and
@@ -118,7 +118,15 @@ impl Document {
         layer_id: u64,
         pixels: &[u32],
     ) -> Result<Vec<u32>, String> {
-        self.preview_owner_pixels(&[(layer_id, pixels)], &[], false)
+        self.preview_owner_pixels(&[(layer_id, pixels)], &[], false, None)
+    }
+
+    /// Render a validated candidate adjustment graph over immutable source owners.
+    pub(super) fn preview_adjustment_plan(
+        &self,
+        plan: &super::group_editing::GroupPlan,
+    ) -> Result<Vec<u32>, String> {
+        self.preview_owner_pixels(&[], &[], false, Some(plan))
     }
 
     fn preview_owner_pixels<'a>(
@@ -126,10 +134,17 @@ impl Document {
         layers: &[(u64, &'a [u32])],
         masks: &[(u64, PlaneView<'a>)],
         geometry: bool,
+        candidate: Option<&super::group_editing::GroupPlan>,
     ) -> Result<Vec<u32>, String> {
         let mask_ids = masks.iter().map(|(id, _)| *id).collect::<Vec<_>>();
         let _cost = self.owner_preview_cost(&mask_ids)?;
         let area = self.width * self.height;
+        let plan = candidate.map_or(self.plan.as_slice(), |p| p.plan.as_slice());
+        let colors = match candidate {
+            Some(p) => p.levels.as_ref(),
+            None => self.levels_plan.as_ref(),
+        };
+        let masked_layers = candidate.map_or(&self.masked_layers, |p| &p.masked_layers);
         if layers.len() > MAX_LAYERS
             || layers
                 .iter()
@@ -220,7 +235,7 @@ impl Document {
                 .map_or(self.layers[index].pixels.as_slice(), |(_, pixels)| *pixels)
         };
         let mut result = vec![0; area];
-        if self.requires_renderer() {
+        if candidate.is_some() || self.requires_renderer() {
             let descriptors = prepared
                 .iter()
                 .map(|mask| super::mask_effects::descriptor(mask.view(), self.width))
@@ -232,7 +247,7 @@ impl Document {
                 .map(|(index, layer)| abi::CompositeLayer {
                     data: source(index).as_ptr(),
                     len: source(index).len(),
-                    opacity: if self.has_raster_masks() && self.masked_layers[index] {
+                    opacity: if self.has_raster_masks() && masked_layers[index] {
                         255
                     } else {
                         layer.opacity as u32
@@ -256,28 +271,29 @@ impl Document {
                 .ok_or("Compositor DLL is not loaded")?;
             if self.has_raster_masks() {
                 renderer.render_color(
-                    &self.plan,
+                    plan,
                     &layers,
                     &descriptors,
-                    self.levels_plan.as_ref().map_or(&[], |p| p.tables()),
-                    self.levels_plan.as_ref().map_or(&[], |p| p.hsl()),
+                    colors.map_or(&[], |p| p.tables()),
+                    colors.map_or(&[], |p| p.hsl()),
                     self.width as u32,
                     self.height as u32,
                     &mut output,
                 )?;
             } else {
                 renderer.render_color(
-                    if self.has_mixed_stack()
+                    if candidate.is_some()
+                        || self.has_mixed_stack()
                         || self.graph.enabled && (!self.graph.linked || self.graph.has_filters())
                     {
-                        &self.plan
+                        plan
                     } else {
                         &[]
                     },
                     &layers,
                     &[],
-                    self.levels_plan.as_ref().map_or(&[], |p| p.tables()),
-                    self.levels_plan.as_ref().map_or(&[], |p| p.hsl()),
+                    colors.map_or(&[], |p| p.tables()),
+                    colors.map_or(&[], |p| p.hsl()),
                     self.width as u32,
                     self.height as u32,
                     &mut output,

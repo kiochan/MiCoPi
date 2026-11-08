@@ -562,6 +562,29 @@
                 },
                 "provider_available": {
                   "type": "boolean"
+                },
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "affect_below",
+                    "targets"
+                  ]
+                },
+                "target_layer_ids": {
+                  "type": "array",
+                  "maxItems": 16,
+                  "items": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 4294967295
+                  }
+                },
+                "evaluation_order": {
+                  "type": "string",
+                  "enum": [
+                    "stack_position",
+                    "ascending_controller_id"
+                  ]
                 }
               },
               "required": [
@@ -1110,6 +1133,29 @@
           "revision": {
             "type": "integer",
             "minimum": 0
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "affect_below",
+              "targets"
+            ]
+          },
+          "target_layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "evaluation_order": {
+            "type": "string",
+            "enum": [
+              "stack_position",
+              "ascending_controller_id"
+            ]
           }
         },
         "required": [
@@ -1152,6 +1198,29 @@
           "revision": {
             "type": "integer",
             "minimum": 0
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "affect_below",
+              "targets"
+            ]
+          },
+          "target_layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "evaluation_order": {
+            "type": "string",
+            "enum": [
+              "stack_position",
+              "ascending_controller_id"
+            ]
           }
         },
         "required": [
@@ -1189,6 +1258,29 @@
           },
           "changed": {
             "type": "boolean"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "affect_below",
+              "targets"
+            ]
+          },
+          "target_layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "evaluation_order": {
+            "type": "string",
+            "enum": [
+              "stack_position",
+              "ascending_controller_id"
+            ]
           }
         },
         "required": [
@@ -1227,6 +1319,29 @@
           },
           "changed": {
             "type": "boolean"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "affect_below",
+              "targets"
+            ]
+          },
+          "target_layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          },
+          "evaluation_order": {
+            "type": "string",
+            "enum": [
+              "stack_position",
+              "ascending_controller_id"
+            ]
           }
         },
         "required": [
@@ -1297,6 +1412,74 @@
           "adjustment_id"
         ],
         "additionalProperties": false
+      }
+    },
+    {
+      "id": "adjustment.preview",
+      "title": "Preview Shared Adjustment",
+      "operation": "adjustment_preview",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "document_identity": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "adjustment_id": {
+            "type": "integer"
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "affect_below",
+              "targets"
+            ]
+          },
+          "target_layer_ids": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "integer"
+            }
+          },
+          "evaluation_order": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          },
+          "cost": {
+            "type": "object"
+          },
+          "apply": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "document_identity",
+          "revision",
+          "adjustment_id",
+          "scope",
+          "target_layer_ids",
+          "evaluation_order",
+          "width",
+          "height",
+          "mimeType",
+          "data",
+          "cost",
+          "apply"
+        ]
       }
     }
   ],
@@ -1852,5 +2035,10 @@
         "additionalProperties": false
       }
     }
-  ]
+  ],
+  "locales": {
+    "zh-CN": "locales/zh-CN.json",
+    "ja": "locales/ja.json",
+    "ko": "locales/ko.json"
+  }
 }
