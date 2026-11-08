@@ -1,5 +1,11 @@
 # Project Structure and Ownership
 
+`plugins/compositing/src/filter_math.rs` owns the unchanged pure legacy scalar
+filter function, independently compiled into both native DLLs.
+`plugins/native-paint/src/brightness_contrast.rs` prepares its 256-byte direct-edit
+table at command start. Host validation, region/selection loans, tiled history
+and outcomes remain in Session/native integration; no pixel math moves into UI.
+
 `src/engine/hsl.rs` owns typed non-destructive HSL intent/schema/validation.
 The shared prepared color cache stores HSL records separately from byte tables;
 common renderer dispatch carries both domains through composition, bakes and

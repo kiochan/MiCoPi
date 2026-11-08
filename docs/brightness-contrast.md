@@ -1,0 +1,64 @@
+# Direct Brightness/Contrast
+
+`layer.brightness_contrast` edits the active raster through the independent
+native painting DLL. Command search and schema-derived parameter forms,
+configurable bindings, workflow nodes, pipelines, JSONL and MCP share the action.
+This source increment and its runtime/transport regressions await CI. A dedicated
+coupled slider/preview dialog remains planned; the current desktop entry uses
+the shared command parameter form.
+
+```json
+{"action":"layer.brightness_contrast","args":{"brightness":25,"contrast":100}}
+```
+
+Both optional numbers range from -100 to 100 and default to zero. Brightness is
+applied first, then contrast, retaining the existing encoded-byte source-filter
+arithmetic. Normalize parameters by 100 to binary32. Brightness maps byte `v` to
+`v + brightness * 255`, then rounds/clamps to a byte. Contrast maps that byte to
+`(v - 127.5) * (1 + contrast)^2 + 127.5`, then rounds/clamps again. Positive
+halves round upward; output is bounded to 0–255.
+
+This is the project's legacy contrast policy, not an ICC-managed, linear-light
+or exact Photoshop adjustment. Minimum contrast produces midpoint 128. For
+example, RGBA `#20406080` with brightness 25 and contrast 100 becomes
+`#0282FF80`. Neutral parameters preserve all bytes. Alpha and hidden RGB under
+zero alpha remain unchanged.
+
+The DLL prepares one 256-byte lookup table per command. Its pixel pass performs
+three byte lookups and preserves alpha, with no image allocations or floating
+point contrast calculation per pixel. Both independently compiled DLLs share
+the same pure filter source; the compositor's public function, mode IDs,
+arithmetic and dirty-region behavior remain unchanged. This does not claim a
+speedup for the existing non-destructive renderer. No dependency or ABI is added.
+
+The action declares `pixel_access=pixels`, `requires_idle=true` and
+`document_atomic=true`. Selection coverage is blended once by the existing native
+selection kernel. Pixel/transparency locks are honored; position locks permit
+color-only edits. A selected A8 painting target must be switched to Pixels
+explicitly. Raw masks and unselected layers remain unchanged; multi-selection
+and link sets do not widen painting scope.
+
+One changed edit uses tiled Undo, one outer revision and verified outcomes.
+Atomic failure restores pixels, history and revision. Replay restores surfaces
+without invoking the DLL. Active contacts reject before instance dispatch and
+remain active; recording can still flush raw samples and record rejection.
+The operation never enters pointer MOVE.
+
+The host stages one bounded RGBA region, up to 64 MiB for a 4096-square canvas.
+The table and cold scalar work are separate from document/history/renderer
+buffers and process peak. End-to-end latency and peak memory remain unmeasured.
+
+For non-destructive work, use the existing ordered **Brightness** and **Contrast**
+source filters or affect-below adjustment providers. Their normalized `amount`
+values are percent divided by 100; brightness before contrast matches the direct
+command at full strength. Independent adjustment opacities, masks and group
+boundaries retain their own semantics and can produce different results.
+
+Native references cover all 256 byte values, four alpha values, integer
+endpoints, combined order and malformed parameters. Session checks cover the
+independent RGBA witness, selection/locks/masks, contact continuity, Undo/Redo,
+post-edit rollback, source-filter parity and verified outcomes. The existing
+tiny `scripts/smoke-hue-saturation.py` also checks this command's independent
+bins, Undo and workflow/JSONL/MCP parity, sharing its isolated process setup.
+Complete CI, dedicated preview controls, visual review and measurements remain
+pending. See the [feature checklist](photoshop-essentials.md).

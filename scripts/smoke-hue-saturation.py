@@ -64,6 +64,17 @@ def commands():
     p.add('adjustment-light-green', 'histogram.query')
     p.add('adjustment-undo', 'history.undo')
     p.add('adjustment-green-again', 'histogram.query')
+    p.add('tonal-new', 'canvas.new', width=4, height=4)
+    p.add('tonal-fill', 'layer.fill_color', color='#20406080')
+    p.add('tonal-edit', 'layer.brightness_contrast', brightness=25, contrast=100)
+    p.add('tonal-result', 'histogram.query', source='layer', layer_id=1)
+    p.add('tonal-undo', 'history.undo')
+    p.add('tonal-original', 'histogram.query', source='layer', layer_id=1)
+    p.add('tonal-workflow', 'workflow.set', graph=dict(version=1, nodes=[dict(
+        id=1, type='action.layer.brightness_contrast', position=[0, 0],
+        parameters=dict(brightness=25, contrast=100))], edges=[]))
+    p.add('tonal-run', 'workflow.run', atomic=True)
+    p.add('tonal-workflow-result', 'histogram.query', source='layer', layer_id=1)
     p.add('verify', 'replay.verify')
     return p
 
@@ -72,6 +83,7 @@ def validate(values, plan):
     at = lambda key: plan.at(values, key)
     assert any(node['id'] == 'action.layer.hue_saturation' for node in at('nodes')['nodes'])
     assert any(node['id'] == 'action.layer.hue_saturation.preview' for node in at('nodes')['nodes'])
+    assert any(node['id'] == 'action.layer.brightness_contrast' for node in at('nodes')['nodes'])
     assert at('hue')['implementation'] == 'independent Rust DLL'
     preview = at('preview')
     assert preview['ok']
@@ -91,7 +103,10 @@ def validate(values, plan):
                         ('source-raw', [(255, 0, 0)]*16),
                         ('adjustment-green', [(0, 255, 0)]*16),
                         ('adjustment-light-green', [(128, 255, 128)]*16),
-                        ('adjustment-green-again', [(0, 255, 0)]*16)]:
+                        ('adjustment-green-again', [(0, 255, 0)]*16),
+                        ('tonal-result', [(2, 130, 255)]*16),
+                        ('tonal-original', [(32, 64, 96)]*16),
+                        ('tonal-workflow-result', [(2, 130, 255)]*16)]:
         actual = at(key)
         assert actual['exact'] and actual['nontransparent_pixels'] == 16
         for channel, index in [('red', 0), ('green', 1), ('blue', 2)]:
@@ -102,6 +117,7 @@ def validate(values, plan):
     observed = at('source-observe')
     assert observed['ok'] and observed['results']['sample']['result']['green'][255] == 16
     assert at('dry')['ok'] and at('run')['ok'] and at('verify')['valid']
+    assert at('tonal-run')['ok'] and at('tonal-edit')['implementation'] == 'independent Rust DLL'
     return result
 
 
@@ -120,7 +136,7 @@ def main():
     batch = validate(geometry.run_jsonl(cli, flags, plan, output/'hue-saturation.jsonl'), plan)
     mcp = validate(editing.run_mcp(cli, flags, plan, require_masks=False), plan)
     assert batch == mcp
-    print('Hue/Saturation: fenced read-only preview/Apply parity, independent primary-color bins, selection, Undo/Redo, atomic workflow, replay and JSONL/MCP parity passed.')
+    print('Native color edits: HSL preview/Apply parity, Brightness/Contrast integer bins, selection, Undo/Redo, atomic workflow, replay and JSONL/MCP parity passed.')
     print(output)
 
 

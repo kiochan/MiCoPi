@@ -4,7 +4,10 @@ use serde_json::{json, Value};
 use std::ffi::c_void;
 mod area;
 mod area_action;
+mod brightness_contrast;
 mod fill_mask;
+#[path = "../../compositing/src/filter_math.rs"]
+mod filter_math;
 mod hsl_math;
 mod hue_saturation;
 mod spatial;
@@ -28,6 +31,7 @@ struct Kernel {
     cell: usize,
     spatial: Option<spatial::Spatial>,
     hue_saturation: Option<hue_saturation::Parameters>,
+    brightness_contrast: Option<brightness_contrast::Table>,
 }
 unsafe extern "C" fn transform(user: *mut c_void, buffer: *mut abi::Pixels) -> i32 {
     if user.is_null() || buffer.is_null() {
@@ -44,6 +48,12 @@ unsafe extern "C" fn transform(user: *mut c_void, buffer: *mut abi::Pixels) -> i
         return abi::ERROR;
     }
     let pixels = std::slice::from_raw_parts_mut(buffer.data, buffer.len);
+    if let Some(table) = &kernel.brightness_contrast {
+        for pixel in pixels {
+            *pixel = table.apply(*pixel);
+        }
+        return abi::OK;
+    }
     if let Some(parameters) = kernel.hue_saturation {
         for pixel in pixels {
             *pixel = parameters.apply(*pixel);
@@ -113,6 +123,7 @@ unsafe fn run(
         "gradient",
         "fill_color",
         "hue_saturation",
+        "brightness_contrast",
     ]
     .contains(&handler)
     {
@@ -164,6 +175,11 @@ unsafe fn run(
     };
     let cell = args["cell"].as_f64().unwrap_or(16.).clamp(1., 256.) as usize;
     let mut kernel = Kernel {
+        brightness_contrast: if handler == "brightness_contrast" {
+            Some(brightness_contrast::parse(&args)?)
+        } else {
+            None
+        },
         hue_saturation: if handler == "hue_saturation" {
             Some(hue_saturation::parse(&args)?)
         } else {

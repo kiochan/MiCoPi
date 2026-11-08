@@ -1,5 +1,10 @@
 # Documentation
 
+[Direct Brightness/Contrast](brightness-contrast.md) adds a native active-raster
+command with a cold 256-byte table and the existing source-filter arithmetic.
+Runtime/transport checks await CI; dedicated coupled preview controls remain
+planned.
+
 [Direct Hue/Saturation](hue-saturation.md) describes the native active-raster
 command, selection/lock/idle admission and shared workflow/MCP/headless path.
 Typed source/adjustment HSL integration and shared controls are now implemented

@@ -367,6 +367,65 @@
         },
         "additionalProperties": false
       }
+    },
+    {
+      "id": "layer.brightness_contrast",
+      "title": "Brightness/Contrast: Active Layer",
+      "native": "brightness_contrast",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "brightness": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100,
+            "default": 0,
+            "title": "Brightness",
+            "description": "Encoded-byte brightness offset, applied before contrast; percent of 255."
+          },
+          "contrast": {
+            "type": "number",
+            "minimum": -100,
+            "maximum": 100,
+            "default": 0,
+            "title": "Contrast",
+            "description": "Legacy encoded-byte contrast around 127.5 with squared gain; percent adjustment."
+          }
+        }
+      },
+      "document_atomic": true,
+      "requires_idle": true,
+      "pixel_access": "pixels",
+      "output_schema": {
+        "type": "object",
+        "required": [
+          "implementation",
+          "calls",
+          "width",
+          "height"
+        ],
+        "properties": {
+          "implementation": {
+            "type": "string"
+          },
+          "calls": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          }
+        },
+        "additionalProperties": false
+      }
     }
   ],
   "panels": [

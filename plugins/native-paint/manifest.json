@@ -222,6 +222,7 @@
     "layer.fill": "pixels",
     "layer.gradient": "pixels",
     "layer.fill_color": "pixels",
-    "layer.hue_saturation": "pixels"
+    "layer.hue_saturation": "pixels",
+    "layer.brightness_contrast": "pixels"
   }
 }

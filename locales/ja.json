@@ -1603,5 +1603,6 @@
   "Refresh Preview Source": "プレビュー元を更新",
   "Finish the current contact before requesting a color preview": "現在のストロークを終了してから色をプレビューしてください",
   "Open Hue/Saturation Controls": "色相・彩度の調整を開く",
-  "Document changed; reopen Hue/Saturation.": "文書が変更されました。色相・彩度を開き直してください。"
+  "Document changed; reopen Hue/Saturation.": "文書が変更されました。色相・彩度を開き直してください。",
+  "Brightness/Contrast: Active Layer": "明るさ・コントラスト：現在のレイヤー"
 }

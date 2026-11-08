@@ -1,0 +1,198 @@
+//! Native tonal edits preserve shared selection, locking, history and replay.
+use super::{
+    editing_tests::{call, check, session},
+    *,
+};
+use serde_json::json;
+fn fixture() -> Session {
+    let mut s = session();
+    call(&mut s, "layer.fill_color", json!({"color":"#20406080"}));
+    s
+}
+#[test]
+fn brightness_contrast_selection_locks_atomic_rollback_and_single_undo_agree() {
+    let mut s = fixture();
+    call(
+        &mut s,
+        "selection.shape",
+        json!({"kind":"rectangle","x":2,"y":1,"width":3,"height":2}),
+    );
+    call(
+        &mut s,
+        "layer.set",
+        json!({"position_locked":true,"alpha_locked":true}),
+    );
+    let before = s.doc.layers[0].pixels.clone();
+    let revision = s.revision;
+    let events = s.journal.as_ref().unwrap().entries.len();
+    let result = call(
+        &mut s,
+        "layer.brightness_contrast",
+        json!({"brightness":25,"contrast":100}),
+    );
+    assert_eq!(result["implementation"], "independent Rust DLL");
+    assert_eq!(s.revision, revision + 1);
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), events + 1);
+    for y in 0..8 {
+        for x in 0..12 {
+            assert_eq!(
+                s.doc.layers[0].pixels[y * 12 + x],
+                if (2..5).contains(&x) && (1..3).contains(&y) {
+                    0x800282ff
+                } else {
+                    0x80204060
+                }
+            );
+        }
+    }
+    let after = s.doc.layers[0].pixels.clone();
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(s.doc.layers[0].pixels, before);
+    call(&mut s, "history.redo", json!({}));
+    assert_eq!(s.doc.layers[0].pixels, after);
+    let state = s.state();
+    let history = s.doc.history_bytes();
+    let failed = call(
+        &mut s,
+        "pipeline.run",
+        json!({"atomic":true,"steps":[
+        {"id":"edit","action":"layer.brightness_contrast","args":{"brightness":-50}},
+        {"id":"reject","action":"layer.select","args":{"layer_id":99999}}]}),
+    );
+    assert_eq!(failed["ok"], false);
+    assert_eq!(failed["rolled_back"], true);
+    assert_eq!(failed["completed"], json!(["edit"]));
+    assert_eq!(failed["error"]["code"], "invalid_layer");
+    assert_eq!(failed["committed"], json!([]));
+    assert_eq!(s.state(), state);
+    assert_eq!(s.doc.history_bytes(), history);
+    assert_eq!(s.doc.layers[0].pixels, after);
+    check(&mut s);
+}
+#[test]
+fn brightness_contrast_matches_existing_ordered_source_filters_without_changing_them() {
+    let mut direct = fixture();
+    call(
+        &mut direct,
+        "layer.brightness_contrast",
+        json!({"brightness":25,"contrast":100}),
+    );
+    let mut source = fixture();
+    let raw = source.doc.layers[0].pixels.clone();
+    call(
+        &mut source,
+        "graph.set",
+        json!({"graph":{"enabled":true,"linked":true,"nodes":[
+        {"id":1,"kind":"layer","index":0,"position":[0,0]},
+        {"id":2,"kind":"filter","filter":"brightness","amount":0.25,"position":[200,0]},
+        {"id":3,"kind":"filter","filter":"contrast","amount":1,"position":[400,0]},
+        {"id":4,"kind":"output","position":[600,0]}],"edges":[
+        {"from":1,"to":2,"input":0},{"from":2,"to":3,"input":0},{"from":3,"to":4,"input":0}]}}),
+    );
+    assert_eq!(direct.doc.layers[0].pixels, vec![0x800282ff; 96]);
+    assert_eq!(source.doc.composite, direct.doc.composite);
+    assert_eq!(source.doc.layers[0].pixels, raw);
+    check(&mut direct);
+    check(&mut source);
+}
+#[test]
+fn brightness_contrast_invalid_locked_mask_and_contact_targets_reject_without_dispatch() {
+    let mut s = fixture();
+    for args in [
+        json!({"brightness":101}),
+        json!({"contrast":-101}),
+        json!({"brightness":null}),
+        json!({"contrast":"20"}),
+    ] {
+        let state = s.state();
+        assert_eq!(
+            s.apply(Action::new("layer.brightness_contrast", args))
+                .unwrap_err()
+                .code,
+            "invalid_arguments"
+        );
+        assert_eq!(s.state(), state);
+    }
+    call(&mut s, "layer.set", json!({"pixel_locked":true}));
+    assert_eq!(
+        s.apply(Action::new(
+            "layer.brightness_contrast",
+            json!({"brightness":20})
+        ))
+        .unwrap_err()
+        .code,
+        "pixel_locked"
+    );
+    call(&mut s, "layer.set", json!({"pixel_locked":false}));
+    let mask = call(
+        &mut s,
+        "mask.create",
+        json!({"owner":{"kind":"layer","id":1}}),
+    )["mask_id"]
+        .as_u64()
+        .unwrap();
+    assert_eq!(
+        s.apply(Action::new(
+            "layer.brightness_contrast",
+            json!({"brightness":20})
+        ))
+        .unwrap_err()
+        .code,
+        "mask_target_pending"
+    );
+    call(
+        &mut s,
+        "mask.target",
+        json!({"target":{"kind":"layer_pixels"}}),
+    );
+    call(
+        &mut s,
+        "layer.brightness_contrast",
+        json!({"brightness":25,"contrast":100}),
+    );
+    assert!((0..96).all(|i| s.doc.mask_plane(mask).unwrap().sample(i) == 255));
+    let pointer = Pointer {
+        phase: PointerPhase::Down,
+        x: 1.5,
+        y: 1.5,
+        pressure: 0.4,
+        time: 1,
+        pen: true,
+        eraser: false,
+        tool_override: None,
+        view_x: None,
+        view_y: None,
+    };
+    s.pointer(pointer).unwrap();
+    let revision = s.revision;
+    let pixels = s.doc.layers[0].pixels.clone();
+    let instances = s.native_instances.len();
+    assert_eq!(
+        s.apply(Action::new(
+            "layer.brightness_contrast",
+            json!({"contrast":30})
+        ))
+        .unwrap_err()
+        .code,
+        "stroke_active"
+    );
+    assert!(s.stroke.active());
+    assert_eq!(s.revision, revision);
+    assert_eq!(s.doc.layers[0].pixels, pixels);
+    assert_eq!(s.native_instances.len(), instances);
+    s.pointer(Pointer {
+        phase: PointerPhase::Move,
+        time: 2,
+        x: 4.,
+        ..pointer
+    })
+    .unwrap();
+    s.pointer(Pointer {
+        phase: PointerPhase::Up,
+        time: 3,
+        x: 5.,
+        ..pointer
+    })
+    .unwrap();
+    check(&mut s);
+}

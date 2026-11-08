@@ -1603,5 +1603,6 @@
   "Refresh Preview Source": "重新读取预览来源",
   "Finish the current contact before requesting a color preview": "请结束当前笔触，再预览颜色",
   "Open Hue/Saturation Controls": "打开色相／饱和度调整",
-  "Document changed; reopen Hue/Saturation.": "画布已改变，请重新打开色相／饱和度调整。"
+  "Document changed; reopen Hue/Saturation.": "画布已改变，请重新打开色相／饱和度调整。",
+  "Brightness/Contrast: Active Layer": "亮度／对比度：当前图层"
 }

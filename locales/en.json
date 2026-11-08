@@ -1603,5 +1603,6 @@
   "Refresh Preview Source": "Refresh Preview Source",
   "Finish the current contact before requesting a color preview": "Finish the current contact before requesting a color preview",
   "Open Hue/Saturation Controls": "Open Hue/Saturation Controls",
-  "Document changed; reopen Hue/Saturation.": "Document changed; reopen Hue/Saturation."
+  "Document changed; reopen Hue/Saturation.": "Document changed; reopen Hue/Saturation.",
+  "Brightness/Contrast: Active Layer": "Brightness/Contrast: Active Layer"
 }

@@ -157,6 +157,8 @@ mod geometry_density_tests;
 mod png_density_tests;
 
 #[cfg(test)]
+mod brightness_contrast_tests;
+#[cfg(test)]
 mod export_tests;
 #[cfg(test)]
 mod hsl_document_tests;

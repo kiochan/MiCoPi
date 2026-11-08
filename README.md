@@ -1,5 +1,7 @@
 # MiCoPi
 
+[Direct Brightness/Contrast](docs/brightness-contrast.md) now provides native active-layer editing with a prepared byte table, selection/locks, Undo and verified replay. Runtime checks await CI; dedicated coupled preview controls remain planned.
+
 A fenced read-only HSL preview command now returns PNG and a revision-guarded Apply action through nodes, MCP and headless clients; runtime validation is pending. Desktop color drafts now add debounced cached Canvas previews and guarded Apply/Cancel controls; UI/runtime and reviewed captures await validation.
 
 [Hue/Saturation](docs/hue-saturation.md) now has a native direct pixel command, typed source nodes and affect-below adjustment layers. Shared controls, masks, cached parameter slots, Undo, projects, verified outcomes and explicit node observations use the same execution core. New document/UI/transport checks await CI; Colorize remains planned.
