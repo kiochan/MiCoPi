@@ -199,6 +199,14 @@ These payload ceilings do not describe process peak memory or graphics overhead.
 
 ## Verification and remaining acceptance
 
+Desktop feedback uses the draft's captured symmetry axes, not later painting
+defaults. Circular radius cursors reflect across those axes, deduplicate on-axis
+centers and map through mirrored Canvas views. Ordinary Brush/Eraser feedback is
+suppressed while the correction draft is open; stale or failed drafts publish no
+Liquify axes/cursors. This presentation does not alter the native joint-push or
+pressure/stabilization contract. Four-view and stale/error regressions are authored;
+native screenshots and device evidence remain separate acceptance gates.
+
 Liquify and shared adjustment previews now use the same bounded desktop display
 cache in `src/desktop/preview_image.rs`. The feature-specific field, sampling,
 composition, throttling and source fences remain separate. Existing exact-bound,

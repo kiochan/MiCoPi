@@ -205,20 +205,58 @@ impl Editor {
         }
         self.liquify = Some(d);
     }
+    fn liquify_cursor_centers(&self, p: Pos2) -> Option<([Pos2; 4], usize)> {
+        let d = self
+            .liquify
+            .as_ref()
+            .filter(|d| source_matches(d, &self.session) && d.error.is_empty())?;
+        let q = self.document_position(p);
+        let (reflected, count) = arms(
+            Push {
+                x: q.x,
+                y: q.y,
+                dx: 0.,
+                dy: 0.,
+                radius: d.radius,
+                strength: d.strength,
+            },
+            d.symmetry,
+        );
+        let mut centers = [Pos2::ZERO; 4];
+        let mut length = 0;
+        for arm in &reflected[..count] {
+            let center = self.document_screen_position(pos2(arm.x, arm.y));
+            if !centers[..length].contains(&center) {
+                centers[length] = center;
+                length += 1;
+            }
+        }
+        Some((centers, length))
+    }
     pub(super) fn liquify_cursor(&self, painter: &Painter, color: Color32) {
         let Some(d) = self
             .liquify
             .as_ref()
-            .filter(|d| source_matches(d, &self.session))
+            .filter(|d| source_matches(d, &self.session) && d.error.is_empty())
         else {
             return;
         };
+        self.paint_document_symmetry_axes(painter, color, d.symmetry);
         if let Some(p) = self
             .pen_hover
             .or(self.mouse_position)
             .filter(|p| self.canvas.contains(*p))
         {
-            painter.circle_stroke(p, d.radius * self.zoom, Stroke::new(1., color));
+            if let Some((centers, count)) = self.liquify_cursor_centers(p) {
+                for center in &centers[..count] {
+                    painter.circle_stroke(
+                        *center,
+                        d.radius * self.zoom,
+                        Stroke::new(2.5, Color32::from_white_alpha(230)),
+                    );
+                    painter.circle_stroke(*center, d.radius * self.zoom, Stroke::new(1., color));
+                }
+            }
         }
     }
     pub(super) fn liquify_window(&mut self, ctx: &Context) {
@@ -632,6 +670,48 @@ mod tests {
             assert_eq!(app.editor.session.revision, revision);
             assert!(!app.editor.session.stroke.active());
         }
+    }
+    #[test]
+    fn liquify_cursor_centers_use_captured_axes_deduplicate_and_follow_view_mirrors() {
+        let mut app = studio();
+        open(&mut app);
+        app.editor.image_rect = Rect::from_min_size(pos2(30., 40.), vec2(24., 16.));
+        app.editor.zoom = 2.;
+        app.editor.liquify.as_mut().unwrap().symmetry = (
+            micopi_plugin_api::SYMMETRY_X | micopi_plugin_api::SYMMETRY_Y,
+            4.,
+            3.,
+        );
+        let pixels = app.editor.session.doc.layers[0].pixels.clone();
+        let revision = app.editor.session.revision;
+        for mirror_x in [false, true] {
+            for mirror_y in [false, true] {
+                app.editor.session.view.mirror_x = mirror_x;
+                app.editor.session.view.mirror_y = mirror_y;
+                let at = app.editor.document_screen_position(pos2(2., 1.));
+                let (centers, count) = app.editor.liquify_cursor_centers(at).unwrap();
+                assert_eq!(count, 4);
+                for (actual, point) in
+                    centers
+                        .iter()
+                        .zip([pos2(2., 1.), pos2(6., 1.), pos2(2., 5.), pos2(6., 5.)])
+                {
+                    assert_eq!(*actual, app.editor.document_screen_position(point));
+                }
+                let axis = app.editor.document_screen_position(pos2(4., 3.));
+                assert_eq!(app.editor.liquify_cursor_centers(axis).unwrap().1, 1);
+            }
+        }
+        assert_eq!(app.editor.session.revision, revision);
+        assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+        app.editor.liquify.as_mut().unwrap().error = "Invalid draft".into();
+        assert!(app.editor.liquify_cursor_centers(Pos2::ZERO).is_none());
+        app.editor.liquify.as_mut().unwrap().error.clear();
+        assert!(app.editor.core(
+            "layer.rename",
+            json!({"layer_id":1,"name":"Changed source"})
+        ));
+        assert!(app.editor.liquify_cursor_centers(Pos2::ZERO).is_none());
     }
 
     #[test]

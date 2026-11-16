@@ -640,6 +640,9 @@ impl Editor {
                     ctx.set_cursor_icon(CursorIcon::Grab);
                 } else if self.tool == Tool::Zoom || held.zoom || held.zoom_out {
                     ctx.set_cursor_icon(CursorIcon::ZoomIn);
+                } else if self.liquify.is_some() {
+                    // Liquify supplies its own captured-radius/symmetry feedback.
+                    ctx.set_cursor_icon(CursorIcon::None);
                 } else if self.area_mode == 8 {
                     ctx.set_cursor_icon(CursorIcon::Move);
                 } else if self.tool == Tool::Picker || held.pick || self.area_mode != 0 {

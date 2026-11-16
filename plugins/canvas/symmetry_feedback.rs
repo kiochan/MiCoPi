@@ -6,25 +6,34 @@ impl Editor {
         if p.symmetry.is_off()
             || self.area_mode != 0
             || !matches!(self.tool, Tool::Brush | Tool::Eraser)
+            || self.liquify.is_some()
         {
             return;
         }
+        self.paint_document_symmetry_axes(
+            painter,
+            color,
+            (
+                p.symmetry.axes(),
+                p.symmetry_x * self.session.doc.width as f32,
+                p.symmetry_y * self.session.doc.height as f32,
+            ),
+        );
+    }
+    pub(in crate::desktop) fn paint_document_symmetry_axes(
+        &self,
+        painter: &Painter,
+        color: Color32,
+        axes: (u32, f32, f32),
+    ) {
         let width = self.session.doc.width as f32;
         let height = self.session.doc.height as f32;
         let clip = painter.with_clip_rect(painter.clip_rect().intersect(self.image_rect));
         for (bit, a, b) in [
-            (
-                1,
-                pos2(p.symmetry_x * width, 0.),
-                pos2(p.symmetry_x * width, height),
-            ),
-            (
-                2,
-                pos2(0., p.symmetry_y * height),
-                pos2(width, p.symmetry_y * height),
-            ),
+            (1, pos2(axes.1, 0.), pos2(axes.1, height)),
+            (2, pos2(0., axes.2), pos2(width, axes.2)),
         ] {
-            if p.symmetry.axes() & bit != 0 {
+            if axes.0 & bit != 0 {
                 let points = [
                     self.document_screen_position(a),
                     self.document_screen_position(b),
