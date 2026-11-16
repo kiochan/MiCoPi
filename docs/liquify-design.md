@@ -221,8 +221,11 @@ input covers pressure, mirrored mapping and an idle committed canvas; desktop
 controls cover texture reuse, exact changed upload bounds, immutable shared-image
 fallback, no-op suppression, immediate Reset and stale-source behavior. Grouped
 masked project round-trips and imported DLL-free raw outcomes are authored too. Tiny JSONL/MCP smoke exercises
-preview/Apply parity, generated nodes and verified outcomes. These new gates have
-not yet returned a passing CI result. Synthetic input does not certify devices.
+preview/Apply parity, generated nodes and verified outcomes. The integrated baseline
+at `6703685` passed full Windows desktop/headless, native and JSONL/MCP checks in
+[run 43882360623](https://github.com/kiochan/MiCoPi/actions/runs/43882360623).
+Later shared display-cache and Liquify feedback increments require their own
+exact-head CI; synthetic input does not certify devices.
 
 - [x] Connect field, samplers, captured owners, private previews and grouped
   publication in source, with registered contracts and desktop controls.

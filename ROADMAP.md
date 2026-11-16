@@ -117,6 +117,10 @@ Historical checkboxes below and in the comparison guide do not override this tab
 - [x] Restore a verified CI baseline at `74726fb` (run `42453627144`), retaining
   the Liquify rollback/outcome assertions and correcting fixture tile publication.
   Subsequent parallel feature/integration heads require their own passing results.
+  The integrated painting/workspace baseline at `6703685` passed full Windows CI
+  and portable ZIP extraction/upload in [run 43882360623](https://github.com/kiochan/MiCoPi/actions/runs/43882360623).
+  Later preview/feedback increments still require their own CI; R1/R2 artist,
+  native-capture, hardware and representative performance gates remain open.
 - [x] Add the internal native inverse-field source prerequisite for R1, with checked
   node/workspace budgets, joint symmetric pushes and local dirty regions. Source now connects optional ABI/pixel sampling,
   captured multi-owner Session previews/grouped history and desktop input. New

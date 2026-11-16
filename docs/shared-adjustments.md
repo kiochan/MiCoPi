@@ -122,8 +122,13 @@ color-family preview parity, one Undo/Redo, atomic rollback, DLL-free verified
 outcomes and actual bind/preview/cancel/apply controls, plus private-preview and post-publication compositor failure recovery. Tiny JSONL/MCP smoke checks
 explicit mode, PNG/Apply parity, binding Undo/Redo and generated action nodes.
 
-Only source/format/repository/Python/JSON checks have run locally for this slice.
-CI runtime results, CJK/narrow native captures and representative cold/warm preview/controller costs must be reviewed before
-closing R2 artist acceptance. Canvas now consumes the valid cached preview;
+The integrated baseline at `6703685` passed full Windows desktop/headless,
+native and JSONL/MCP checks in
+[run 43882360623](https://github.com/kiochan/MiCoPi/actions/runs/43882360623),
+including shared binding, preview and outcome transport gates. Subsequent
+display-cache/eviction regressions require their own exact-head CI results.
+CJK/narrow native captures and representative cold/warm preview/controller costs
+remain open before closing R2 artist acceptance. Canvas consumes the valid cached preview;
 combined shared-tone/Liquify preview, raw-owner, stale-source and grouped-Undo
-regressions are authored for the integrated CI head, without a local runtime claim.
+regressions are included in that integrated baseline. New source increments run
+only light local checks; CI evidence is recorded against its actual commit.

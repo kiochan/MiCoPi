@@ -88,6 +88,12 @@ After building, `python scripts/package.py` creates the portable ZIP from versio
 
 ### Automatic main builds
 
+The first full Windows packaging pipeline passed for `6703685` in
+[run 43882360623](https://github.com/kiochan/MiCoPi/actions/runs/43882360623),
+including the extracted-package check and direct ZIP/checksum uploads. This is
+evidence for that commit; later commits need their own successful run. Artifact
+availability is temporary under the retention policy below.
+
 After every existing CI check succeeds on `main`, the Windows job stages its already-tested release executables and matching native DLLs, verifies the extracted portable build, and uploads a development ZIP to [GitHub Actions](https://github.com/kiochan/MiCoPi/actions/workflows/ci.yml). Pull requests, feature branches, failed checks and cancelled runs do not publish a package. A manual CI run on `main` follows the same gates. This does not create a GitHub Release, tag or version bump.
 
 Open a successful main run and use its **Artifacts** section or the download link in the run summary. Download `MiCoPi-<version>-<commit>-Windows-x64.zip` and extract the **entire** archive before launching `MiCoPi.exe`. The CLI is `micopi-cli.exe`. Artifacts are retained for **30 days**, subject to repository retention settings; downloading requires a GitHub account. The ZIP is uploaded directly, without another ZIP wrapped around it. Its `.zip.sha256` checksum is a separate artifact. `BUILD-INFO.json` records the full commit, CI run, Windows target, redistributable version and executable/DLL SHA-256 hashes. These are development builds, not reviewed releases.

@@ -18,12 +18,13 @@
   roadmap without adding video capabilities or moving source. Repair a baseline
   shared-controller test to unwrap its required optional action schema and validate
   the complete group-query provider against its state schema, retaining adjustment
-  parity with the canvas hierarchy. Full CI, native captures and physical-device
-  evidence remain pending.
+  parity with the canvas hierarchy. Full Windows CI passed at `6703685`
+  ([run 43882360623](https://github.com/kiochan/MiCoPi/actions/runs/43882360623));
+  native captures and physical-device evidence remain pending.
 
-- Publish a Windows x64 portable development ZIP and SHA-256 sidecar to Actions for 30 days only after all main CI checks and extracted-package verification succeed. Reuse the same tested executables and native DLLs in clean staging, add app-local x64 MSVC redistributables and commit/run/hash metadata, and retain default plugins, global/owner-scoped catalogs, guides and verified license notices without personal configuration. Fix packaging to admit declared plugin catalogs with owner-relative path validation; add fixture coverage for missing/escaping catalogs and runtime admission. Document downloads in all four READMEs and English development/ownership guides. Local fixture and repository checks are reported separately; the first full Windows artifact run awaits CI.
+- Publish a Windows x64 portable development ZIP and SHA-256 sidecar to Actions for 30 days only after all main CI checks and extracted-package verification succeed. Reuse the same tested executables and native DLLs in clean staging, add app-local x64 MSVC redistributables and commit/run/hash metadata, and retain default plugins, global/owner-scoped catalogs, guides and verified license notices without personal configuration. Fix packaging to admit declared plugin catalogs with owner-relative path validation; add fixture coverage for missing/escaping catalogs and runtime admission. Document downloads in all four READMEs and English development/ownership guides. Full Windows CI, extracted CLI/plugin/catalog/painting/replay checks and ZIP/checksum uploads passed at `6703685` in run `43882360623`; later preview/feedback increments require their own CI results.
 
-- Fix shared-controller public state schemas to admit explicit raster bindings and null generated-node IDs, including unbound controllers. Add a Session/state/workflow regression for the CI failure in shared-adjustment transport checks. Local source checks only; runtime revalidation runs in CI.
+- Fix shared-controller public state schemas to admit explicit raster bindings and null generated-node IDs, including unbound controllers. Add a Session/state/workflow regression for the CI failure in shared-adjustment transport checks; correct its optional action-schema and complete group-query inspection. Full desktop/headless and shared-adjustment transport checks passed at `6703685` in run `43882360623`.
 
 Implemented changes since 0.21.0, grouped by their current behavior. Git history retains the individual commits and intermediate design iterations.
 
