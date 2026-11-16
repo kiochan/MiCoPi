@@ -26,6 +26,21 @@ struct PreviewCache {
 fn preview_key(document: u64, id: u64) -> Id {
     Id::new(("shared-adjustment-preview", document, id))
 }
+/// A controller name affects publication metadata, not its composed pixels.
+/// Keep this comparison borrowed: no JSON, curve copies or image work per frame.
+fn same_preview(a: &Adjustment, b: &Adjustment) -> bool {
+    a.id == b.id
+        && a.visible == b.visible
+        && a.opacity == b.opacity
+        && a.node_type == b.node_type
+        && a.filter == b.filter
+        && a.amount == b.amount
+        && a.levels == b.levels
+        && a.curves == b.curves
+        && a.hsl == b.hsl
+        && a.quantization == b.quantization
+        && a.target_layer_ids == b.target_layer_ids
+}
 fn shared_text(message: &str) -> String {
     crate::i18n::translated_for(Some("adjustments"), message).into_owned()
 }
@@ -99,7 +114,7 @@ impl Editor {
         let draft =
             ctx.data_mut(|d| d.get_temp::<Draft>(draft_key(self.session.doc.identity, id)))?;
         if draft.revision != self.session.revision
-            || draft.value == draft.source
+            || same_preview(&draft.value, &draft.source)
             || self.backend_contact_active()
         {
             return None;
@@ -107,7 +122,7 @@ impl Editor {
         let cache = ctx
             .data_mut(|d| d.get_temp::<PreviewCache>(preview_key(self.session.doc.identity, id)))?;
         if cache.revision != self.session.revision
-            || cache.value != draft.value
+            || !same_preview(&cache.value, &draft.value)
             || !cache.attempted
             || !cache.error.is_empty()
         {
@@ -136,7 +151,7 @@ impl Editor {
             }
             d.insert_temp(slot, key);
         });
-        if !enabled || !allowed || draft.value == draft.source {
+        if !enabled || !allowed || same_preview(&draft.value, &draft.source) {
             ui.data_mut(|d| d.remove::<PreviewCache>(key));
             return;
         }
@@ -145,7 +160,12 @@ impl Editor {
         // cloned CPU image in the context would force full-frame copy-on-write.
         ui.data_mut(|d| d.remove::<PreviewCache>(key));
         let mut cache = match previous {
-            Some(cache) if cache.revision == draft.revision && cache.value == draft.value => cache,
+            Some(mut cache)
+                if cache.revision == draft.revision && same_preview(&cache.value, &draft.value) =>
+            {
+                cache.value.name.clone_from(&draft.value.name);
+                cache
+            }
             previous => {
                 let (texture, display) = previous
                     .map(|cache| (cache.texture, cache.display))

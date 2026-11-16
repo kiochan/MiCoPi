@@ -90,7 +90,14 @@ ownership flags, then render into a bounded temporary output. They do not clone
 Session, copy every source frame, change raw samples, warm source caches or
 publish history. Desktop preview attempts debounce for 150 ms and reuse the GPU
 texture; pending, cancelled, stale and applied drafts do not publish an invalid
-cached preview. A shared desktop display cache compares checkerboard-composited
+cached preview. Preview identity compares borrowed pixel-relevant intent,
+including provider, all color families, opacity/visibility and exact bindings;
+the controller name is publication metadata. A name-only draft needs no preview
+image; renaming an already modified color draft retains its ready texture and
+debounce state without composing again. Apply still publishes the rename through
+the registered action, with normal revision/history behavior. Renderer-absent
+tests cover both metadata cases without relying on timing measurements.
+A shared desktop display cache compares checkerboard-composited
 pixels, skips identical uploads and sends exact bounding patches for partial
 changes. Release the context's old cache snapshot before preparing the next
 image, so cloned UI metadata does not force a full-frame copy. Initial images,
@@ -136,7 +143,8 @@ including shared binding, preview and outcome transport gates. Subsequent
 display-cache/eviction regressions passed full Windows CI and extracted-package
 verification at `ff44d07` in
 [run 43883972758](https://github.com/kiochan/MiCoPi/actions/runs/43883972758).
-The subsequent contact-control increment requires its own CI result.
+The subsequent contact-control and metadata-preview increments require their own
+CI results.
 CJK/narrow native captures and representative cold/warm preview/controller costs
 remain open before closing R2 artist acceptance. Canvas consumes the valid cached preview;
 combined shared-tone/Liquify preview, raw-owner, stale-source and grouped-Undo

@@ -1280,7 +1280,9 @@ fn shared_preview_skips_identical_uploads_and_patches_only_affected_display_pixe
     assert_eq!(delta.pos, Some([3, 2]));
     assert_eq!([delta.image.width(), delta.image.height()], [5, 4]);
     drop(changed);
-    // A name-only draft edit still composes, but must not allocate an upload.
+    // A name-only draft edit must retain the ready image even with no renderer:
+    // absence makes an accidental composition fail instead of silently passing.
+    let renderer = app.editor.session.doc.renderer.take();
     ctx.data_mut(|d| {
         let mut draft = d.get_temp::<Draft>(key).unwrap();
         draft.value.name = "Preview name only".into();
@@ -1300,6 +1302,7 @@ fn shared_preview_skips_identical_uploads_and_patches_only_affected_display_pixe
             .id(),
         texture
     );
+    app.editor.session.doc.renderer = renderer;
     assert_eq!(app.editor.session.revision, revision);
     assert_eq!(app.editor.session.doc.history_bytes(), history);
     assert_eq!(app.editor.session.doc.composite, committed);
@@ -1377,4 +1380,72 @@ fn changing_shared_preview_controller_releases_the_previous_cpu_image_and_textur
     assert!(ctx
         .data_mut(|d| d.get_temp::<Draft>(draft_key(app.editor.session.doc.identity, first)))
         .is_some());
+}
+
+#[test]
+fn name_only_shared_draft_uses_no_preview_and_still_publishes_one_undoable_rename() {
+    let mut app = app();
+    let id = create(&mut app, false);
+    assert!(app.editor.core(
+        "adjustment.set",
+        json!({"adjustment_id":id,"target_layer_ids":[2]})
+    ));
+    let source = app.editor.session.doc.adjustment(id).unwrap().clone();
+    let mut value = source.clone();
+    value.name = "Shared shadows".into();
+    let revision = app.editor.session.revision;
+    let composite = app.editor.session.doc.composite.clone();
+    let raw: Vec<_> = app
+        .editor
+        .session
+        .doc
+        .layers
+        .iter()
+        .map(|l| l.pixels.clone())
+        .collect();
+    let ctx = context(&app);
+    let size = vec2(700., 1400.);
+    app.editor.focus_adjustment_ui(&ctx, Some(id));
+    ctx.data_mut(|data| {
+        data.insert_temp(
+            draft_key(app.editor.session.doc.identity, id),
+            Draft {
+                source: source.clone(),
+                value,
+                revision,
+                error: String::new(),
+            },
+        )
+    });
+    let renderer = app.editor.session.doc.renderer.take();
+    warm(&mut app, &ctx, size);
+    assert!(app.editor.shared_adjustment_preview_texture(&ctx).is_none());
+    assert!(ctx
+        .data_mut(
+            |data| data.get_temp::<PreviewCache>(preview_key(app.editor.session.doc.identity, id))
+        )
+        .is_none());
+    let (apply, enabled) = control(&ctx, &app, "adjustment-apply", id);
+    assert!(enabled);
+    app.editor.session.doc.renderer = renderer;
+    assert_eq!(app.editor.session.revision, revision);
+    drop(click(&mut app, &ctx, size, apply.center(), 4.));
+    assert_eq!(app.editor.session.revision, revision + 1);
+    assert_eq!(
+        app.editor.session.doc.adjustment(id).unwrap().name,
+        "Shared shadows"
+    );
+    assert_eq!(app.editor.session.doc.composite, composite);
+    assert_eq!(
+        app.editor
+            .session
+            .doc
+            .layers
+            .iter()
+            .map(|l| l.pixels.clone())
+            .collect::<Vec<_>>(),
+        raw
+    );
+    assert!(app.editor.core("history.undo", json!({})));
+    assert_eq!(app.editor.session.doc.adjustment(id).unwrap(), &source);
 }
