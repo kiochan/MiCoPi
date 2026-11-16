@@ -18,6 +18,11 @@ flowchart TD
 
 ## Boundaries
 
+The [workspace domain decomposition](workspace-domains.md) separates a proposed
+Painting/Layout/Video shell from document ownership, versioned asset publication
+and optional media workers. It is a design plan, not implemented workspace or
+video support; the existing Session and painting-first scope remain authoritative.
+
 | Module | Responsibility |
 | --- | --- |
 | application | Session, actions, validation, revision, events, pipeline and workflow compilation |

@@ -1,5 +1,10 @@
 # Project Structure and Ownership
 
+The [workspace domain plan](workspace-domains.md#source-ownership-and-dependencies)
+maps future Painting/Layout/Video responsibilities onto these existing ownership
+boundaries. Suggested new module paths are proposals, not current files; no
+source has moved and no video engine or workspace switcher is implemented.
+
 `src/engine/adjustments.rs`, `adjustment_editing.rs` and `groups.rs` own optional
 shared raster bindings, root-only controller validation and deterministic
 per-source graph expansion. `src/plugins/adjustments.rs` owns public binding and

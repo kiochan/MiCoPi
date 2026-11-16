@@ -1,5 +1,10 @@
 # Documentation
 
+[Workspace domain decomposition](workspace-domains.md) plans Painting, Layout and
+Video responsibilities in one application, with separate project history,
+version-pinned assets and ordered acceptance gates. This is design-only work;
+new workspace switching and video editing are not available yet.
+
 [Painting-first Requirements](painting-requirements.md) defines the current
 artist outcomes and acceptance gates. The former exhaustive PS parity goal was
 cancelled; its comparison checklist remains reference material.

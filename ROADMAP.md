@@ -252,6 +252,30 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 
 ## M5 — Multiple documents and workspace
 
+### Workspace and Sovia production boundaries
+
+The maintainer requested a concrete [Painting/Layout/Video decomposition](docs/workspace-domains.md)
+within one application. The design is documented; runtime work remains planned.
+Painting-first delivery stays current. The packages below order later work and
+do not make text/video support an immediate requirement or restart PS parity.
+
+- [ ] Add named task layouts using existing desktop/plugin windows, with old-layout
+  migration, preserved drafts/contact guards and no document mutation on switching.
+- [ ] Define a bounded editable-text contract and implement one static Sovia cover
+  workflow with reusable layout and multi-size output; defer advanced typesetting.
+- [ ] Publish revision-fenced immutable PNG assets with manifests, pinned versions,
+  explicit replacement, missing-media handling and project relocation rules.
+- [ ] Specify separate video project timing, history/persistence, explicit targeting
+  and optional worker contracts before adding one-image/music/timed-lyrics motion
+  and export. General footage editing remains a later evaluation.
+
+Acceptance gates and prerequisites are in the domain plan. None of these items is
+implemented by documenting them. M6 recording-range encoding remains distinct
+from a general video project. Future text/media slices require their own bounded
+implementation assignments and do not supersede the retain/defer/cancel table.
+
+### Existing multiple-document backlog
+
 - [ ] Add document tabs with independent history, recovery, file state and view state, using bounded caches for inactive canvases.
 - [ ] Extend action/state schemas with explicit document IDs while preserving a documented active-document default for existing clients.
 - [ ] Make AI/MCP targets and revision guards unambiguous so an operation cannot accidentally edit another tab.

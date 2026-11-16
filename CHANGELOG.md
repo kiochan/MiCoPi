@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Document a Painting/Layout/Video workspace decomposition for Sovia production
+  within one application. Define existing versus proposed ownership, separate
+  project revisions/history, immutable asset publication and explicit version
+  replacement, optional media workers and ordered acceptance gates. Link the plan
+  from architecture, ownership, documentation and roadmap guides; preserve current
+  painting-first priorities. This documentation adds no runtime workspace or video
+  capabilities and moves no source files.
+
 - Publish a Windows x64 portable development ZIP and SHA-256 sidecar to Actions for 30 days only after all main CI checks and extracted-package verification succeed. Reuse the same tested executables and native DLLs in clean staging, add app-local x64 MSVC redistributables and commit/run/hash metadata, and retain default plugins, global/owner-scoped catalogs, guides and verified license notices without personal configuration. Fix packaging to admit declared plugin catalogs with owner-relative path validation; add fixture coverage for missing/escaping catalogs and runtime admission. Document downloads in all four READMEs and English development/ownership guides. Local fixture and repository checks are reported separately; the first full Windows artifact run awaits CI.
 
 - Fix shared-controller public state schemas to admit explicit raster bindings and null generated-node IDs, including unbound controllers. Add a Session/state/workflow regression for the CI failure in shared-adjustment transport checks. Local source checks only; runtime revalidation runs in CI.
