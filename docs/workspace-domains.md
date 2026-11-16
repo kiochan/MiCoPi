@@ -1,8 +1,9 @@
 # Painting, layout and video workspace boundaries
 
-Status: design decomposition requested by the maintainer. None of the new
-workspace switching, editable text, media references or video facilities below
-is implemented by this document. The existing
+Status: design decomposition requested by the maintainer. The first
+[named-layout source increment](workspace-layouts.md) implements layout storage
+and switching, with its own verification gates. Editable text, media references
+and video facilities below remain planned. The existing
 [painting-first requirements](painting-requirements.md) remain the immediate
 delivery baseline; this plan does not restart Photoshop parity.
 

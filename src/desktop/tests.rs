@@ -23,6 +23,7 @@ pub(super) fn studio() -> Studio {
         preferences: preferences::Preferences::default(),
         applied,
         layout_path: root.join("layout.json"),
+        layouts: workspaces::Layouts::default(),
         layout_snapshot: String::new(),
         layout_changed: None,
         preview: None,

@@ -126,6 +126,10 @@ impl Studio {
                                 }
                                 ui.menu_button(tr(title), |ui| {
                                     ui.set_min_width(a.control_height*10.);
+                                    if title == "Workspace" {
+                                        self.workspace_menu(ui);
+                                        ui.separator();
+                                    }
                                     for (id,label) in entries {
                                         let background=ui.painter().add(Shape::Noop);
                                         let row=ui.horizontal(|ui|{

@@ -1668,5 +1668,14 @@
   "Radius": "半径",
   "Strength": "强度",
   "Stabilization": "防抖",
-  "Linked masks follow their layers; unlinked masks stay in place.": "已链接的蒙版随图层变形；未链接的蒙版保持原位。"
+  "Linked masks follow their layers; unlinked masks stay in place.": "已链接的蒙版随图层变形；未链接的蒙版保持原位。",
+  "Delete Saved Layout": "删除已保存布局",
+  "Delete Saved Workspace Layout": "删除已保存的工作区布局",
+  "Inspect Saved Workspace Layouts": "查看已保存的工作区布局",
+  "Layout Name": "布局名称",
+  "Save Named Workspace Layout": "保存命名工作区布局",
+  "Save New Layout": "保存新布局",
+  "Saved Workspace Layouts": "已保存的工作区布局",
+  "Switch Workspace Layout": "切换工作区布局",
+  "Update Active Layout": "更新当前布局"
 }

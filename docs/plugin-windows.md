@@ -12,6 +12,13 @@ GUI rendering uses feature-owned, host-compiled adapters; drawing algorithms con
 
 ## Workspace behavior
 
+[Named workspace layouts](workspace-layouts.md) add Save, explicit Update,
+Switch and Delete in the Workspace menu and shared command registry. The
+version-2 `workspace.egui.json` envelope retains current arrangement separately
+from bounded named snapshots, reads legacy files and preserves rejected files.
+Named operations retain document revision/history; switching rejects live
+contacts and rechecks at presentation without resetting correction drafts.
+
 The default layout uses an independent Tools bar above a large Canvas window, with Navigator and property tabs on the right. Both Tools and Canvas can float, dock on any side, join a tab group or be hidden. Floating surfaces are **native operating-system windows** rendered by egui immediate viewports. Tools and Canvas each have their own top-level Windows handle and can move independently to other displays. Tab groups and split trees can share a native window. The main workbench remains the owner of the Session. Hiding Canvas keeps the document, pixels, undo history and plugins alive. The Windows menu lists registered contributions; tab context menus expose docking and grouping commands.
 
 ![Independent native canvas](screenshots/floating-windows.png)

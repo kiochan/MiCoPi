@@ -59,6 +59,7 @@ mod window_groups;
 mod windows;
 #[path = "../../plugins/workflows/panel.rs"]
 mod workflow;
+mod workspaces;
 
 use crate::i18n::localize;
 use crate::{
@@ -684,6 +685,7 @@ pub struct Studio {
     preferences: preferences::Preferences,
     applied: Appearance,
     layout_path: PathBuf,
+    layouts: workspaces::Layouts,
     layout_snapshot: String,
     layout_changed: Option<Instant>,
     preview: Option<capture::PendingCapture>,
@@ -752,7 +754,18 @@ impl Studio {
         }
         theme::apply(&cc.egui_ctx, &editor.settings.ui);
         let layout_path = editor.settings.path.with_file_name("workspace.egui.json");
-        let saved_text = std::fs::read_to_string(&layout_path).ok();
+        let loaded = workspaces::read(&layout_path).and_then(|text| {
+            text.map(|text| workspaces::Layouts::decode(&text))
+                .transpose()
+        });
+        let (mut layouts, saved_text) = match loaded {
+            Ok(Some((layouts, text))) => (layouts, Some(text)),
+            Ok(None) => (workspaces::Layouts::default(), None),
+            Err(error) => {
+                editor.status = format!("Workspace File Not Loaded: {error}");
+                (workspaces::Layouts::blocked(error), None)
+            }
+        };
         let saved = saved_text.as_deref().and_then(decode_workspace);
         if saved
             .as_ref()
@@ -777,6 +790,13 @@ impl Studio {
             )
         });
         reconcile_plugins(&mut dock, &editor.session.registry, known.as_deref());
+        if saved_text.is_none() {
+            if let Ok(text) = encode_workspace(&dock, &editor.session.registry) {
+                if let Ok((initial, _)) = workspaces::Layouts::decode(&text) {
+                    layouts.initialize_default(initial);
+                }
+            }
+        }
         let layout_snapshot = encode_dock(&dock).unwrap_or_default();
 
         let preview = args
@@ -824,6 +844,7 @@ impl Studio {
             preferences,
             applied,
             layout_path,
+            layouts,
             layout_snapshot,
             layout_changed: None,
             preview: preview.map(|path| capture::PendingCapture::new(path, None)),
@@ -837,6 +858,20 @@ impl Studio {
         let effects = std::mem::take(&mut self.editor.session.ui_effects);
         for effect in effects {
             match effect["id"].as_str() {
+                Some("workspace.named") => {
+                    let operation = effect["operation"].as_str().unwrap_or_default();
+                    let result = self.apply_named_workspace(operation, &effect["value"]);
+                    self.editor.session.ui["workspaces.result"] = match result {
+                        Ok(()) => {
+                            serde_json::json!({"status":"applied","operation":operation,"name":effect["value"]["name"]})
+                        }
+                        Err(error) => {
+                            self.editor.status = error.clone();
+                            serde_json::json!({"status":"failed","operation":operation,"name":effect["value"]["name"],"error":error})
+                        }
+                    };
+                    ctx.request_repaint();
+                }
                 Some("canvas.export.open") => {
                     self.editor.open_export_options(effect["value"].clone())
                 }
@@ -1211,10 +1246,7 @@ impl Studio {
         if self.preview.is_some() {
             return;
         }
-        let dock = self.dock_before_focus.as_ref().unwrap_or(&self.dock);
-        match encode_workspace(dock, &self.editor.session.registry)
-            .and_then(|text| settings::atomic_write(&self.layout_path, &text))
-        {
+        match self.persist_workspaces() {
             Ok(()) => {
                 self.layout_changed = None;
             }
@@ -1222,6 +1254,7 @@ impl Studio {
         }
     }
     fn frame_ui(&mut self, ctx: &Context) {
+        self.report_workspaces();
         self.editor.push_gui_parameters();
         self.editor.push_gui_view();
         let previous = self.editor.backend_contact_stamp();

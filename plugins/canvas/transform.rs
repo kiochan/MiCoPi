@@ -209,6 +209,11 @@ impl Draft {
     }
 }
 impl Editor {
+    pub(super) fn transform_contact_active(&self) -> bool {
+        self.transform
+            .as_ref()
+            .is_some_and(|draft| draft.drag.is_some())
+    }
     pub(super) fn guarded_transform_modal(&self) -> bool {
         self.transform
             .as_ref()

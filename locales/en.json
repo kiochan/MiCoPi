@@ -1668,5 +1668,14 @@
   "Radius": "Radius",
   "Strength": "Strength",
   "Stabilization": "Stabilization",
-  "Linked masks follow their layers; unlinked masks stay in place.": "Linked masks follow their layers; unlinked masks stay in place."
+  "Linked masks follow their layers; unlinked masks stay in place.": "Linked masks follow their layers; unlinked masks stay in place.",
+  "Delete Saved Layout": "Delete Saved Layout",
+  "Delete Saved Workspace Layout": "Delete Saved Workspace Layout",
+  "Inspect Saved Workspace Layouts": "Inspect Saved Workspace Layouts",
+  "Layout Name": "Layout Name",
+  "Save Named Workspace Layout": "Save Named Workspace Layout",
+  "Save New Layout": "Save New Layout",
+  "Saved Workspace Layouts": "Saved Workspace Layouts",
+  "Switch Workspace Layout": "Switch Workspace Layout",
+  "Update Active Layout": "Update Active Layout"
 }

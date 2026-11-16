@@ -68,6 +68,9 @@ fn operation_policy(operation: Operation) -> CommandContactPolicy {
             // Runtime steps/graphs remain opaque here. Session owns atomic
             // admission, dry-run semantics and sequential leaf ordering.
             Operation::PipelineRun
+                | Operation::WorkspaceSwitch
+                | Operation::WorkspaceSave
+                | Operation::WorkspaceDelete
                 | Operation::WorkflowRun
                 // Group and layer organization include idle-only and
                 // conditional admission. The backend decides from actual args.

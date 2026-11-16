@@ -49,6 +49,53 @@ pub fn commands(panel: &PanelDefinition) -> Vec<ActionDefinition> {
     commands
 }
 pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
+    if op == Operation::WorkspaceList {
+        return Ok(json!({"runtime":s.runtime,"available":s.runtime=="desktop",
+            "actual":s.ui.get("workspaces.actual"),"last_result":s.ui.get("workspaces.result")}));
+    }
+    if matches!(
+        op,
+        Operation::WorkspaceSave | Operation::WorkspaceSwitch | Operation::WorkspaceDelete
+    ) {
+        let name = args["name"].as_str().unwrap().to_owned();
+        if name.trim() != name
+            || name.is_empty()
+            || name.chars().count() > 64
+            || name.chars().any(char::is_control)
+        {
+            return Err(ActionError::new(
+                "invalid_workspace_name",
+                "Use 1-64 characters without surrounding whitespace or control characters",
+            ));
+        }
+        if op == Operation::WorkspaceSwitch && (s.stroke.active() || s.pointer_checkpoint.is_some())
+        {
+            return Err(ActionError::new(
+                "stroke_active",
+                "Finish the current contact before switching workspace layouts",
+            ));
+        }
+        if s.runtime != "desktop" {
+            return Ok(
+                json!({"queued":false,"applied":false,"status":"presentation_unavailable","runtime":s.runtime}),
+            );
+        }
+        if s.ui_effects.len() >= 128 {
+            return Err(ActionError::new(
+                "presentation_queue_full",
+                "Wait for queued presentation commands before retrying",
+            ));
+        }
+        let operation = match op {
+            Operation::WorkspaceSave => "save",
+            Operation::WorkspaceSwitch => "switch",
+            _ => "delete",
+        };
+        s.ui_effects
+            .push_back(json!({"id":"workspace.named","operation":operation,"value":args}));
+        s.ui["workspaces.result"] = json!({"status":"queued","operation":operation,"name":name});
+        return Ok(json!({"queued":true,"applied":false,"runtime":s.runtime}));
+    }
     if op == Operation::WindowState {
         let captures = s.capture_diagnostics();
         let last_capture = if captures["last"].is_null() {
@@ -148,6 +195,106 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn workspace_layout_actions_are_discoverable_headless_explicit_and_revision_neutral() {
+        let mut s = Session::new(crate::plugins::Registry::bundled()).unwrap();
+        let revision = s.revision;
+        let history = s.doc.history_bytes();
+        for id in [
+            "workspace.layout.save",
+            "workspace.layout.switch",
+            "workspace.layout.delete",
+        ] {
+            assert_eq!(s.registry.owners[id], "workbench");
+            let result = s.apply(Action::new(id, json!({"name":"绘画"}))).unwrap();
+            assert_eq!(result["result"]["status"], "presentation_unavailable");
+            assert_eq!(result["result"]["queued"], false);
+            assert_eq!(s.revision, revision);
+            assert!(s.ui_effects.is_empty());
+        }
+        assert!(s.registry.actions["workspace.layout.list"].is_read_only());
+        assert_eq!(
+            s.apply(Action::new("workspace.layout.list", json!({})))
+                .unwrap()["result"]["available"],
+            false
+        );
+        s.runtime = "desktop";
+        s.apply(Action::new("workspace.layout.save", json!({"name":"One"})))
+            .unwrap();
+        assert_eq!(s.ui_effects.len(), 1);
+        assert_eq!(s.revision, revision);
+        assert_eq!(s.doc.history_bytes(), history);
+        for invalid in [
+            json!({"name":""}),
+            json!({"name":" space "}),
+            json!({"name":"a\nb"}),
+            json!({"name":"a".repeat(65)}),
+            json!({"name":"One","extra":true}),
+        ] {
+            assert!(s
+                .apply(Action::new("workspace.layout.save", invalid))
+                .is_err());
+        }
+        assert_eq!(s.ui_effects.len(), 1);
+        s.ui_effects.clear();
+        assert!(s.apply(Action::new("pipeline.run", json!({"atomic":true,"steps":[{"id":"save","action":"workspace.layout.save","args":{"name":"One"}}]}))).is_err());
+        assert!(s.ui_effects.is_empty());
+    }
+
+    #[test]
+    fn workspace_layout_switch_rejects_live_backend_contacts_and_full_queue() {
+        let mut s = Session::new(crate::plugins::Registry::bundled()).unwrap();
+        s.runtime = "desktop";
+        s.apply(Action::new(
+            "canvas.pointer",
+            json!({"phase":"down","x":2,"y":2,"pressure":0.5,"pen":true,"time":0}),
+        ))
+        .unwrap();
+        assert!(s.stroke.active() || s.pointer_checkpoint.is_some());
+        let revision = s.revision;
+        s.apply(Action::new(
+            "workspace.layout.save",
+            json!({"name":"During contact"}),
+        ))
+        .unwrap();
+        assert!(s.stroke.active() || s.pointer_checkpoint.is_some());
+        assert_eq!(s.revision, revision);
+        assert_eq!(s.ui_effects.len(), 1);
+        s.ui_effects.clear();
+        assert_eq!(
+            s.apply(Action::new(
+                "workspace.layout.switch",
+                json!({"name":"One"})
+            ))
+            .unwrap_err()
+            .code,
+            "stroke_active"
+        );
+        assert!(s.stroke.active() || s.pointer_checkpoint.is_some());
+        assert_eq!(s.revision, revision);
+        assert!(s.ui_effects.is_empty());
+        s.apply(Action::new(
+            "canvas.pointer",
+            json!({"phase":"up","x":2,"y":2,"pressure":0.5,"pen":true,"time":1}),
+        ))
+        .unwrap();
+        for _ in 0..128 {
+            s.ui_effects.push_back(json!({"id":"test"}));
+        }
+        assert_eq!(
+            s.apply(Action::new(
+                "workspace.layout.switch",
+                json!({"name":"One"})
+            ))
+            .unwrap_err()
+            .code,
+            "presentation_queue_full"
+        );
+        assert_eq!(s.ui_effects.len(), 128);
+        assert!(s
+            .apply(Action::new("workspace.layout.list", json!({})))
+            .is_ok());
+    }
     #[test]
     fn desktop_point_drop_has_explicit_headless_results_and_validates_target_ids() {
         let mut s = Session::new(crate::plugins::Registry::bundled()).unwrap();

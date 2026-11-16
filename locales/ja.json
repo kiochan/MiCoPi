@@ -1668,5 +1668,14 @@
   "Radius": "半径",
   "Strength": "強さ",
   "Stabilization": "手ブレ補正",
-  "Linked masks follow their layers; unlinked masks stay in place.": "リンクされたマスクはレイヤーと一緒に変形し、リンクされていないマスクは元の位置を保ちます。"
+  "Linked masks follow their layers; unlinked masks stay in place.": "リンクされたマスクはレイヤーと一緒に変形し、リンクされていないマスクは元の位置を保ちます。",
+  "Delete Saved Layout": "保存した配置を削除",
+  "Delete Saved Workspace Layout": "保存したワークスペース配置を削除",
+  "Inspect Saved Workspace Layouts": "保存したワークスペース配置を確認",
+  "Layout Name": "配置名",
+  "Save Named Workspace Layout": "名前付きワークスペース配置を保存",
+  "Save New Layout": "新しい配置を保存",
+  "Saved Workspace Layouts": "保存したワークスペース配置",
+  "Switch Workspace Layout": "ワークスペース配置を切り替え",
+  "Update Active Layout": "現在の配置を更新"
 }

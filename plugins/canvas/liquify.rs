@@ -47,6 +47,11 @@ fn arms(base: Push, axes: (u32, f32, f32)) -> ([Push; 4], usize) {
     (result, n)
 }
 impl Editor {
+    pub(super) fn liquify_contact_active(&self) -> bool {
+        self.liquify
+            .as_ref()
+            .is_some_and(|draft| draft.previous.is_some())
+    }
     pub(super) fn receive_liquify(&mut self, effect: &serde_json::Value) {
         let parsed = serde_json::from_value::<Request>(effect["request"].clone());
         match parsed

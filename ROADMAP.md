@@ -255,12 +255,17 @@ Layer organization now includes persistent pixel/position locks, color labels, r
 ### Workspace and Sovia production boundaries
 
 The maintainer requested a concrete [Painting/Layout/Video decomposition](docs/workspace-domains.md)
-within one application. The design is documented; runtime work remains planned.
+within one application. The first [named-layout increment](docs/workspace-layouts.md)
+now implements bounded snapshots and shared commands; full CI/native evidence
+remains pending. Text, media publication and video remain planned.
 Painting-first delivery stays current. The packages below order later work and
 do not make text/video support an immediate requirement or restart PS parity.
 
-- [ ] Add named task layouts using existing desktop/plugin windows, with old-layout
-  migration, preserved drafts/contact guards and no document mutation on switching.
+- [x] Add the named-layout source increment using existing desktop/plugin windows:
+  Save/Update/Switch/Delete, bounded version-2 storage and legacy reading,
+  preserved drafts/contact guards and revision-neutral presentation commands.
+  Automated checks and open native/capture gates are tracked in the guide; fixed
+  task presets and additional document/view-state switching remain separate work.
 - [ ] Define a bounded editable-text contract and implement one static Sovia cover
   workflow with reusable layout and multi-size output; defer advanced typesetting.
 - [ ] Publish revision-fenced immutable PNG assets with manifests, pinned versions,

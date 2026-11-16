@@ -33,13 +33,17 @@ fn shared_controller_public_state_matches_workflow_and_state_schemas() {
             json!({"adjustment_id":id,"target_layer_ids":targets}),
         );
         let state = call(&mut s, "canvas.state", json!({}));
-        crate::plugins::validate(&s.registry.actions["canvas.state"].output_schema, &state)
-            .unwrap();
         crate::plugins::validate(
-            &s.registry.states["core.groups"].output_schema,
-            &state["groups"],
+            s.registry.actions["canvas.state"]
+                .output_schema
+                .as_ref()
+                .expect("canvas.state publishes a schema"),
+            &state,
         )
         .unwrap();
+        let groups = call(&mut s, "group.query", json!({}));
+        assert_eq!(groups["adjustments"], state["groups"]["adjustments"]);
+        crate::plugins::validate(&s.registry.states["core.groups"].output_schema, &groups).unwrap();
         let result = call(
             &mut s,
             "pipeline.run",

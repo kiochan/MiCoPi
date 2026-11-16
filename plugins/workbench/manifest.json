@@ -305,6 +305,46 @@
       "operation": "window_layout"
     },
     {
+      "id": "workspace.layout.save",
+      "title": "Save Named Workspace Layout",
+      "operation": "workspace_save",
+      "output_schema": {
+        "type": "object",
+        "properties": {"queued": {"type": "boolean"}, "applied": {"type": "boolean"}, "runtime": {"type": "string"}, "status": {"type": "string"}},
+        "required": ["queued", "applied", "runtime"]
+      }
+    },
+    {
+      "id": "workspace.layout.switch",
+      "title": "Switch Workspace Layout",
+      "operation": "workspace_switch",
+      "output_schema": {
+        "type": "object",
+        "properties": {"queued": {"type": "boolean"}, "applied": {"type": "boolean"}, "runtime": {"type": "string"}, "status": {"type": "string"}},
+        "required": ["queued", "applied", "runtime"]
+      }
+    },
+    {
+      "id": "workspace.layout.delete",
+      "title": "Delete Saved Workspace Layout",
+      "operation": "workspace_delete",
+      "output_schema": {
+        "type": "object",
+        "properties": {"queued": {"type": "boolean"}, "applied": {"type": "boolean"}, "runtime": {"type": "string"}, "status": {"type": "string"}},
+        "required": ["queued", "applied", "runtime"]
+      }
+    },
+    {
+      "id": "workspace.layout.list",
+      "title": "Inspect Saved Workspace Layouts",
+      "operation": "workspace_list",
+      "output_schema": {
+        "type": "object",
+        "properties": {"runtime": {"type": "string"}, "available": {"type": "boolean"}, "actual": {}, "last_result": {}},
+        "required": ["runtime", "available", "actual", "last_result"]
+      }
+    },
+    {
       "id": "application.minimize",
       "title": "Minimize Application",
       "steps": [

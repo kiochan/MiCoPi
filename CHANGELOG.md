@@ -2,13 +2,20 @@
 
 ## Unreleased
 
-- Document a Painting/Layout/Video workspace decomposition for Sovia production
-  within one application. Define existing versus proposed ownership, separate
-  project revisions/history, immutable asset publication and explicit version
-  replacement, optional media workers and ordered acceptance gates. Link the plan
-  from architecture, ownership, documentation and roadmap guides; preserve current
-  painting-first priorities. This documentation adds no runtime workspace or video
-  capabilities and moves no source files.
+- Add named workspace layout Save, explicit Update, Switch, Delete and read-only
+  inventory through the Workspace menu, command search/shortcuts, nodes and attached
+  MCP. Keep current arrangement autosave separate from 16 bounded snapshots in an
+  atomic version-2 workspace file; read legacy snapshots and preserve invalid or
+  unsupported files. Recheck native/local contacts before switching, retain draft
+  values and document revision/history, and publish layout/inventory only after
+  successful persistence. Add storage, migration, failure, contact, draft and
+  transport gates, four-language entries and English contracts. Keep the broader
+  Painting/Layout/Video decomposition and staged asset/video acceptance in the
+  roadmap without adding video capabilities or moving source. Repair a baseline
+  shared-controller test to unwrap its required optional action schema and validate
+  the complete group-query provider against its state schema, retaining adjustment
+  parity with the canvas hierarchy. Full CI, native captures and physical-device
+  evidence remain pending.
 
 - Publish a Windows x64 portable development ZIP and SHA-256 sidecar to Actions for 30 days only after all main CI checks and extracted-package verification succeed. Reuse the same tested executables and native DLLs in clean staging, add app-local x64 MSVC redistributables and commit/run/hash metadata, and retain default plugins, global/owner-scoped catalogs, guides and verified license notices without personal configuration. Fix packaging to admit declared plugin catalogs with owner-relative path validation; add fixture coverage for missing/escaping catalogs and runtime admission. Document downloads in all four READMEs and English development/ownership guides. Local fixture and repository checks are reported separately; the first full Windows artifact run awaits CI.
 

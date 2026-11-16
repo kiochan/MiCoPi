@@ -1,9 +1,12 @@
 # Documentation
 
+[Named workspace layouts](workspace-layouts.md) documents Save, explicit Update,
+Switch, Delete, versioned storage, contact guards and pending native evidence.
+
 [Workspace domain decomposition](workspace-domains.md) plans Painting, Layout and
 Video responsibilities in one application, with separate project history,
-version-pinned assets and ordered acceptance gates. This is design-only work;
-new workspace switching and video editing are not available yet.
+version-pinned assets and ordered acceptance gates. Named-layout switching has
+its own source increment; text, media references and video editing remain planned.
 
 [Painting-first Requirements](painting-requirements.md) defines the current
 artist outcomes and acceptance gates. The former exhaustive PS parity goal was

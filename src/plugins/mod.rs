@@ -193,9 +193,8 @@ pub(crate) fn execute(
         | LayerProperties | ClearLayer => layers::execute(session, op, args),
         SelectTool | Parameters | Pointer | Stroke | Pick | View | MirrorView
         | MirrorViewVertical => painting::execute(session, op, args),
-        WindowCommand | WindowState | WindowLayout | WindowCapture | WindowDrop => {
-            windows::execute(session, op, args)
-        }
+        WindowCommand | WindowState | WindowLayout | WindowCapture | WindowDrop | WorkspaceSave
+        | WorkspaceSwitch | WorkspaceDelete | WorkspaceList => windows::execute(session, op, args),
         CaptureWorkspace | SettingsRead | SettingsWrite | Ui => {
             workbench::execute(session, op, args)
         }

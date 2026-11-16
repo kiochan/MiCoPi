@@ -43,6 +43,17 @@ def main():
     (profile/'settings.json').write_text(json.dumps(dict(version=1,selection=selection_defaults)),encoding='utf-8')
     startup_state=subprocess.run([str(cli),'call','canvas.state','{}','--plugins',str(plugins),'--config-dir',str(profile)],capture_output=True,text=True,encoding='utf-8',check=True)
     assert json.loads(startup_state.stdout)['result']['selection_defaults']==selection_defaults
+    # Named layouts are presentation-only: headless JSONL and MCP report explicit
+    # unavailability without changing the document revision or writing a layout file.
+    layout_commands = [dict(action=action, args=dict(name="Smoke Layout")) for action in (
+        "workspace.layout.save", "workspace.layout.switch", "workspace.layout.delete")]
+    layout_script = output / "layouts.jsonl"
+    layout_script.write_text("\n".join(json.dumps(c) for c in layout_commands) + "\n", encoding="utf-8")
+    layout_run = subprocess.run([str(cli), "run", str(layout_script), "--plugins", str(plugins), "--config-dir", str(profile)], capture_output=True, text=True, encoding="utf-8", timeout=30, check=True)
+    for line in layout_run.stdout.splitlines():
+        reply = json.loads(line)
+        assert reply["ok"] and reply["data"]["result"]["status"] == "presentation_unavailable", reply
+    assert not (profile / "workspace.egui.json").exists()
 
     commands = [
         dict(action="canvas.new", args=dict(width=256, height=192)),
@@ -221,6 +232,8 @@ def main():
     requests += [message("tools/call", dict(name=c["action"], arguments=c["args"]), n) for n, c in enumerate(commands, 3)]
     requests.append(message("tools/call", dict(name="canvas.state", arguments={}), 10000))
     requests.append(message("tools/call", dict(name="canvas.snapshot", arguments={}), 40000))
+    requests += [message("tools/call", dict(name=c["action"], arguments=c["args"]), n)
+                 for n, c in enumerate(layout_commands, 40200)]
     requests += [message("resources/list",{},40101),message("resources/read",dict(uri="micopi://state/ai_assistant.context"),40102)]
     run = subprocess.run([str(cli), "mcp", "--plugins", str(plugins), "--config-dir", str(profile)], input="\n".join(json.dumps(r) for r in requests) + "\n", capture_output=True, text=True, encoding="utf-8", timeout=30)
     assert run.returncode == 0, run.stderr
@@ -230,6 +243,12 @@ def main():
     defaults_state=defaults_reply.get('structuredContent') or json.loads(defaults_reply['content'][0]['text'])
     assert defaults_state['result']['selection_defaults']==selection_defaults
     tools = next(r for r in replies if r["id"] == 2)["result"]["tools"]
+    for number in range(40200, 40203):
+        reply = next(r for r in replies if r["id"] == number)["result"]
+        value = reply.get("structuredContent") or json.loads(reply["content"][0]["text"])
+        assert value["result"]["status"] == "presentation_unavailable", value
+    for action in ("workspace.layout.save", "workspace.layout.switch", "workspace.layout.delete", "workspace.layout.list"):
+        assert any(t["name"] == action for t in tools), action
     assert any(t["name"] == "quick.blue_stroke" for t in tools), "Custom plugin missing from MCP tools"
     assert any(t["name"] == "native.invert" for t in tools), "Native DLL action missing from MCP tools"
     for name in ("canvas.transform.repeat", "canvas.transform.repeat_copy", "canvas.transform.state", "layer.merge_down", "layer.merge_visible", "layer.flatten", "layer.stamp_visible", "selection.wand", "selection.grow", "selection.similar"):
@@ -261,6 +280,37 @@ def main():
             assert process.poll() is None, "GUI exited before creating session.json"
             assert time.monotonic() < deadline, "GUI IPC startup timed out"
             time.sleep(.05)
+        def named_layout(operation, name, **extra):
+            reply = call("workspace.layout." + operation, dict(name=name, **extra))["result"]
+            assert reply["queued"] and not reply["applied"], reply
+            deadline = time.monotonic() + 10
+            while True:
+                result = call("workspace.layout.list", {})["result"]
+                status = result["last_result"]
+                if status.get("operation") == operation and status.get("name") == name and status.get("status") != "queued":
+                    assert status["status"] == "applied", status
+                    return result
+                assert time.monotonic() < deadline, result
+                time.sleep(.05)
+        named_layout("save", "Smoke Original")
+        call("window.command", dict(panel="brush", operation="hide"))
+        deadline = time.monotonic() + 10
+        while any(p["id"] == "brush" and p["open"] for p in call("window.list", {})["result"]["actual"]):
+            assert time.monotonic() < deadline
+            time.sleep(.05)
+        before_layout = call("canvas.state", {})["result"]
+        before_pixels = call("canvas.snapshot", {})["result"]["data"]
+        named_layout("save", "Smoke Compact")
+        named_layout("switch", "Smoke Original")
+        after_layout = call("canvas.state", {})["result"]
+        # Presentation observations and fit-to-window view coordinates may change.
+        for state in (before_layout, after_layout):
+            state.pop("ui", None)
+            state.pop("view", None)
+        assert after_layout == before_layout
+        assert call("canvas.snapshot", {})["result"]["data"] == before_pixels
+        assert any(p["id"] == "brush" and p["open"] for p in call("window.list", {})["result"]["actual"])
+        named_layout("delete", "Smoke Compact")
         for index, command in enumerate(commands):
             cursor = call("events.list", {})["result"]["latest"]
             before = call("canvas.state", {})["result"]

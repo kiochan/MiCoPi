@@ -3,7 +3,12 @@
 The [workspace domain plan](workspace-domains.md#source-ownership-and-dependencies)
 maps future Painting/Layout/Video responsibilities onto these existing ownership
 boundaries. Suggested new module paths are proposals, not current files; no
-source has moved and no video engine or workspace switcher is implemented.
+source has moved and no video engine is implemented. `src/desktop/workspaces.rs`
+now owns the first named-layout library, bounded version-2 persistence, legacy
+reading, native/local contact rechecks and Workspace menu. Registered operations
+route through `src/plugins/windows.rs`; Session preserves document revisions and
+excludes presentation changes from document atomic execution. See
+[Named workspace layouts](workspace-layouts.md) for exact behavior and evidence.
 
 `src/engine/adjustments.rs`, `adjustment_editing.rs` and `groups.rs` own optional
 shared raster bindings, root-only controller validation and deterministic

@@ -639,6 +639,9 @@ impl Session {
                                     | Operation::Pointer
                                     | Operation::CaptureWorkspace
                                     | Operation::WindowCapture
+                                    | Operation::WorkspaceSave
+                                    | Operation::WorkspaceSwitch
+                                    | Operation::WorkspaceDelete
                                     | Operation::TransformPreview
                                     | Operation::LiquifyDialog
                                     | Operation::HslDialog

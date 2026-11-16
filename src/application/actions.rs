@@ -234,6 +234,10 @@ pub enum Operation {
     WindowCommand,
     WindowState,
     WindowLayout,
+    WorkspaceSave,
+    WorkspaceSwitch,
+    WorkspaceDelete,
+    WorkspaceList,
     WindowCapture,
     WindowDrop,
     Plugins,
@@ -699,6 +703,14 @@ impl Operation {
                 vec!["panel", "path"],
             ),
             Self::WindowLayout => (json!({"layout":{"type":"object"}}), vec!["layout"]),
+            Self::WorkspaceSave => (
+                json!({"name":{"type":"string","minLength":1,"description":"1-64 Unicode characters without surrounding whitespace or control characters"},"replace":{"type":"boolean","default":false}}),
+                vec!["name"],
+            ),
+            Self::WorkspaceSwitch | Self::WorkspaceDelete => (
+                json!({"name":{"type":"string","minLength":1,"description":"1-64 Unicode characters without surrounding whitespace or control characters"}}),
+                vec!["name"],
+            ),
             Self::WindowCommand => (
                 json!({"panel":{"type":"string"},"scope":{"type":"string","enum":["panel","group","tabs"]},"drag":{"type":"boolean"},"index":{"type":"integer","minimum":0,"maximum":127},"operation":{"type":"string","enum":["show","hide","focus","float","dock_left","dock_right","dock_top","dock_bottom","tab","minimize","maximize","restore"]},"target":{"type":"string"},"fraction":{"type":"number","minimum":0.05,"maximum":0.95},"x":{"type":"number","minimum":-100000,"maximum":100000},"y":{"type":"number","minimum":-100000,"maximum":100000},"width":{"type":"number","minimum":48,"maximum":10000},"height":{"type":"number","minimum":48,"maximum":10000}}),
                 vec!["panel", "operation"],
@@ -778,6 +790,7 @@ impl Operation {
                 | Self::ExportPreview
                 | Self::SettingsRead
                 | Self::WindowState
+                | Self::WorkspaceList
         )
     }
     pub(crate) fn is_mask(self) -> bool {

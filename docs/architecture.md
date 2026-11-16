@@ -20,8 +20,10 @@ flowchart TD
 
 The [workspace domain decomposition](workspace-domains.md) separates a proposed
 Painting/Layout/Video shell from document ownership, versioned asset publication
-and optional media workers. It is a design plan, not implemented workspace or
-video support; the existing Session and painting-first scope remain authoritative.
+and optional media workers. Text and video domains remain planned. The first
+[named-layout increment](workspace-layouts.md) reuses
+the desktop dock/window boundary; the existing Session and painting-first scope
+remain authoritative.
 
 | Module | Responsibility |
 | --- | --- |
