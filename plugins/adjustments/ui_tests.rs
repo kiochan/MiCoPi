@@ -696,13 +696,24 @@ fn adjustment_dynamic_inspect_and_rejected_apply_preserve_local_external_brush_h
             frame(&mut app, &ctx, size, vec![], 8.);
             name(&mut app, &ctx, size, id, "Keep this draft", 9.);
             let (apply, enabled) = control(&ctx, &app, "adjustment-apply", id);
-            assert!(enabled);
+            assert!(!enabled);
             click(&mut app, &ctx, size, apply.center(), 10.);
-            assert!(
-                app.editor.status.contains("stroke_active"),
-                "{}",
-                app.editor.status
-            );
+            let draft = ctx
+                .data_mut(|data| {
+                    data.get_temp::<Draft>(draft_key(app.editor.session.doc.identity, id))
+                })
+                .unwrap();
+            // Disabling the presentation control must not replace the public
+            // idle guard used by actions, workflows and attached clients.
+            let error = app
+                .editor
+                .session
+                .apply(crate::application::Action::new(
+                    "adjustment.set",
+                    apply_args(id, &draft.value),
+                ))
+                .unwrap_err();
+            assert_eq!(error.code, "stroke_active");
             before.unchanged(&app);
             assert_eq!(app.editor.session.state(), public);
             assert_eq!(samples(&mut app), transcript);

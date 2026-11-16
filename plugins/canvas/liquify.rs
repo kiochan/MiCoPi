@@ -266,6 +266,8 @@ impl Editor {
         let a = self.settings.ui.clone();
         let c = theme::Colors::new(&a);
         let stale = !source_matches(&d, &self.session);
+        let backend_contact = self.backend_contact_active();
+        let idle = !backend_contact && d.previous.is_none();
         let mut open = true;
         let mut apply = false;
         let mut reset = false;
@@ -331,17 +333,14 @@ impl Editor {
                 }
                 ui.separator();
                 ui.horizontal_wrapped(|ui| {
-                    let reset_button = ui.add_enabled(!stale, Button::new(tr("Reset")));
+                    let reset_button = ui.add_enabled(!stale && idle, Button::new(tr("Reset")));
                     reset = reset_button.clicked();
                     let cancel_button = ui.button(tr("Cancel"));
                     if cancel_button.clicked() {
                         cancel = true;
                     }
                     let apply_button = ui.add_enabled(
-                        !stale
-                            && d.error.is_empty()
-                            && !d.native.request.steps.is_empty()
-                            && d.previous.is_none(),
+                        !stale && d.error.is_empty() && !d.native.request.steps.is_empty() && idle,
                         Button::new(tr("Apply")),
                     );
                     apply = apply_button.clicked();
@@ -350,6 +349,8 @@ impl Editor {
                         data.insert_temp(Id::new("liquify-reset"), reset_button.rect);
                         data.insert_temp(Id::new("liquify-cancel"), cancel_button.rect);
                         data.insert_temp(Id::new("liquify-apply"), apply_button.rect);
+                        data.insert_temp(Id::new("liquify-reset-enabled"), reset_button.enabled());
+                        data.insert_temp(Id::new("liquify-apply-enabled"), apply_button.enabled());
                     });
                 });
             });
@@ -379,7 +380,7 @@ impl Editor {
             self.pen_hover = None;
             return;
         }
-        if d.dirty && !stale && d.error.is_empty() {
+        if d.dirty && !stale && d.error.is_empty() && !backend_contact {
             // Full composition is bounded and throttled; exact display changes
             // use partial texture uploads. Typed
             // field/owner ROI updates do not wait for this presentation step.
@@ -612,6 +613,104 @@ mod tests {
         assert_eq!((p[2].y, p[2].dy), (14., 0.5));
         assert_eq!((p[3].x, p[3].y, p[3].dx, p[3].dy), (17., 14., -1.5, 0.5));
         assert!(p.iter().all(|p| p.strength == 0.7));
+    }
+    #[test]
+    fn liquify_footer_preserves_local_and_backend_contacts_without_poisoning_the_draft() {
+        use crate::application::{Pointer, PointerPhase, ToolKind};
+        let mut app = studio();
+        let ctx = Context::default();
+        theme::fonts(&ctx);
+        open(&mut app);
+        deform(&mut app);
+        let steps = json!(app.editor.liquify.as_ref().unwrap().native.request.steps);
+        let revision = app.editor.session.revision;
+        let pixels = app.editor.session.doc.layers[0].pixels.clone();
+        let original_point = (pos2(4., 3.), 100);
+        app.editor.liquify.as_mut().unwrap().previous = Some(original_point);
+        frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        for id in ["liquify-reset-enabled", "liquify-apply-enabled"] {
+            assert_eq!(
+                ctx.data_mut(|data| data.get_temp::<bool>(Id::new(id))),
+                Some(false)
+            );
+        }
+        click(&mut app, &ctx, "liquify-reset");
+        click(&mut app, &ctx, "liquify-apply");
+        assert_eq!(
+            app.editor.liquify.as_ref().unwrap().previous,
+            Some(original_point)
+        );
+        assert_eq!(
+            json!(app.editor.liquify.as_ref().unwrap().native.request.steps),
+            steps
+        );
+        app.editor.liquify.as_mut().unwrap().previous = None;
+        frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        for id in ["liquify-reset-enabled", "liquify-apply-enabled"] {
+            assert_eq!(
+                ctx.data_mut(|data| data.get_temp::<bool>(Id::new(id))),
+                Some(true)
+            );
+        }
+        let pointer = Pointer {
+            phase: PointerPhase::Down,
+            x: 5.,
+            y: 4.,
+            pressure: 0.4,
+            time: 200,
+            pen: true,
+            eraser: false,
+            tool_override: Some(ToolKind::Hand),
+            view_x: Some(50.),
+            view_y: Some(40.),
+        };
+        app.editor.session.pointer(pointer).unwrap();
+        assert!(app.editor.backend_contact_active());
+        let public = app.editor.session.state();
+        // Backend input advances the source revision. A stale/private draft
+        // must neither run the idle-only compositor nor finish that contact.
+        {
+            let d = app.editor.liquify.as_mut().unwrap();
+            d.dirty = true;
+            d.last_preview = Instant::now() - Duration::from_secs(1);
+        }
+        frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        click(&mut app, &ctx, "liquify-reset");
+        click(&mut app, &ctx, "liquify-apply");
+        assert!(app.editor.backend_contact_active());
+        assert_eq!(app.editor.session.state(), public);
+        let d = app.editor.liquify.as_ref().unwrap();
+        assert!(d.dirty && d.error.is_empty());
+        assert_eq!(json!(d.native.request.steps), steps);
+        app.editor
+            .session
+            .pointer(Pointer {
+                phase: PointerPhase::Up,
+                time: 216,
+                ..pointer
+            })
+            .unwrap();
+        frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        let d = app.editor.liquify.as_ref().unwrap();
+        assert!(d.error.is_empty());
+        assert!(d.dirty);
+        assert!(!source_matches(d, &app.editor.session));
+        for id in ["liquify-reset-enabled", "liquify-apply-enabled"] {
+            assert_eq!(
+                ctx.data_mut(|data| data.get_temp::<bool>(Id::new(id))),
+                Some(false)
+            );
+        }
+        assert_eq!(app.editor.session.revision, revision + 2);
+        assert_eq!(app.editor.session.doc.layers[0].pixels, pixels);
+        assert!(app.editor.liquify_texture().is_none());
+        click(&mut app, &ctx, "liquify-cancel");
+        assert!(app.editor.liquify.is_none());
+        open(&mut app);
+        assert!(source_matches(
+            app.editor.liquify.as_ref().unwrap(),
+            &app.editor.session
+        ));
     }
 
     #[test]

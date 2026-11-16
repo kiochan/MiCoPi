@@ -517,7 +517,11 @@ impl Editor {
             let cancel =
                 ui.add_enabled(dirty || !draft.error.is_empty(), Button::new(tr("Cancel")));
             let apply = ui.add_enabled(
-                dirty && !stale && valid.is_ok() && !draft.value.name.trim().is_empty(),
+                dirty
+                    && !stale
+                    && valid.is_ok()
+                    && !draft.value.name.trim().is_empty()
+                    && !self.backend_contact_active(),
                 Button::new(tr("Apply")),
             );
             #[cfg(test)]

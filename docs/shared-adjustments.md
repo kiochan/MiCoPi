@@ -114,6 +114,13 @@ fields and carry `expected_revision`. See the
 
 ## Verification gates
 
+Apply is disabled during a backend contact, matching the Session idle guard.
+Scalar draft editing/cancellation stays local; the inspector does not finish the
+contact to enable Apply. Session input advances revision, so ending a contact
+does not silently rebase an older draft; stale parameters still require explicit
+reload or cancellation. Real-control regressions cover disabled Apply, retained
+parameters/contact state and the independent registered-action rejection guard.
+
 Authored tests cover independent per-source color composition, noncontiguous and
 cross-group targets, controller versus owner mask/opacity order, unchanged raw
 owners/allocations, empty/legacy metadata, stable controller order, copy and
@@ -126,7 +133,10 @@ The integrated baseline at `6703685` passed full Windows desktop/headless,
 native and JSONL/MCP checks in
 [run 43882360623](https://github.com/kiochan/MiCoPi/actions/runs/43882360623),
 including shared binding, preview and outcome transport gates. Subsequent
-display-cache/eviction regressions require their own exact-head CI results.
+display-cache/eviction regressions passed full Windows CI and extracted-package
+verification at `ff44d07` in
+[run 43883972758](https://github.com/kiochan/MiCoPi/actions/runs/43883972758).
+The subsequent contact-control increment requires its own CI result.
 CJK/narrow native captures and representative cold/warm preview/controller costs
 remain open before closing R2 artist acceptance. Canvas consumes the valid cached preview;
 combined shared-tone/Liquify preview, raw-owner, stale-source and grouped-Undo

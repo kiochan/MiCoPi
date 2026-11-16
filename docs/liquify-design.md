@@ -199,6 +199,16 @@ These payload ceilings do not describe process peak memory or graphics overhead.
 
 ## Verification and remaining acceptance
 
+Reset and Apply remain disabled while a local correction gesture or external
+Session contact is active. External contacts defer dirty preview composition
+without discarding the field, transcript or pending display state. Session input
+advances revision, so ending that contact does not silently rebase a stale draft:
+cancel/reopen explicitly. Local correction contacts retain their captured source.
+Cancel discards only the
+private correction draft and never finishes a Session contact. These guards add
+no pixel copies or native calls to pointer MOVE. Contact continuity/staleness and
+disabled-control regressions are authored; the new source increment awaits CI.
+
 Desktop feedback uses the draft's captured symmetry axes, not later painting
 defaults. Circular radius cursors reflect across those axes, deduplicate on-axis
 centers and map through mirrored Canvas views. Ordinary Brush/Eraser feedback is
@@ -224,8 +234,11 @@ masked project round-trips and imported DLL-free raw outcomes are authored too. 
 preview/Apply parity, generated nodes and verified outcomes. The integrated baseline
 at `6703685` passed full Windows desktop/headless, native and JSONL/MCP checks in
 [run 43882360623](https://github.com/kiochan/MiCoPi/actions/runs/43882360623).
-Later shared display-cache and Liquify feedback increments require their own
-exact-head CI; synthetic input does not certify devices.
+Shared display-cache and Liquify feedback increments passed full Windows CI and
+portable verification at `ff44d07` in
+[run 43883972758](https://github.com/kiochan/MiCoPi/actions/runs/43883972758).
+The subsequent contact-control increment still requires exact-head CI;
+synthetic input does not certify devices.
 
 - [x] Connect field, samplers, captured owners, private previews and grouped
   publication in source, with registered contracts and desktop controls.
