@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reuse Liquify's bounded display-image cache for shared adjustment previews: skip identical checkerboard-composited frames, upload exact changed bounds, retain texture identity and avoid a context-held snapshot forcing full copies. Evict the previous controller/document image on inspector changes while retaining scalar drafts, bounding the active shared-adjustment display cache to one image per UI context. Move the common presentation helper into desktop ownership without changing native pixels, contact routing or document history. Add sparse target, metadata-only, immutable-source, eviction and stale-cache regression gates; preserve existing Liquify display/Reset references. Full composition and comparison remain frame-wide; runtime and measured costs await CI, with light local checks only.
+
 - Add named workspace layout Save, explicit Update, Switch, Delete and read-only
   inventory through the Workspace menu, command search/shortcuts, nodes and attached
   MCP. Keep current arrangement autosave separate from 16 bounded snapshots in an

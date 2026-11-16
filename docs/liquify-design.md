@@ -199,6 +199,12 @@ These payload ceilings do not describe process peak memory or graphics overhead.
 
 ## Verification and remaining acceptance
 
+Liquify and shared adjustment previews now use the same bounded desktop display
+cache in `src/desktop/preview_image.rs`. The feature-specific field, sampling,
+composition, throttling and source fences remain separate. Existing exact-bound,
+pending-image immutability, hidden-RGB and Reset upload regressions continue to
+cover Liquify; sharing presentation adds no work to its typed pointer path.
+
 Authored CI gates cover independent native scalar/region/exterior references,
 SDK prefix/layout/lifecycle, owner preview/PNG versus Apply, selection/unlinked
 mask preservation, unchanged affine recipe, one Undo/Redo, missing capabilities,

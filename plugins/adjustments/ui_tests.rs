@@ -1198,3 +1198,172 @@ fn shared_binding_controls_preview_cancel_apply_and_unbind_keep_exact_targets() 
         .target_layer_ids
         .is_none());
 }
+
+#[test]
+fn shared_preview_skips_identical_uploads_and_patches_only_affected_display_pixels() {
+    let mut app = app();
+    let id = create(&mut app, false);
+    assert!(app.editor.core(
+        "adjustment.set",
+        json!({"adjustment_id":id,"target_layer_ids":[2]})
+    ));
+    let source = app.editor.session.doc.adjustment(id).unwrap().clone();
+    let revision = app.editor.session.revision;
+    let history = app.editor.session.doc.history_bytes();
+    let raw: Vec<_> = app
+        .editor
+        .session
+        .doc
+        .layers
+        .iter()
+        .map(|l| l.pixels.clone())
+        .collect();
+    let committed = app.editor.session.doc.composite.clone();
+    let ctx = context(&app);
+    let size = vec2(700., 1400.);
+    app.editor.focus_adjustment_ui(&ctx, Some(id));
+    let key = draft_key(app.editor.session.doc.identity, id);
+    let preview = preview_key(app.editor.session.doc.identity, id);
+    let mut value = source.clone();
+    value.amount = 0.5;
+    ctx.data_mut(|d| {
+        d.insert_temp(
+            key,
+            Draft {
+                source,
+                value,
+                revision,
+                error: String::new(),
+            },
+        )
+    });
+    // Advance the debounce timestamp explicitly, without sleeping or timing a GPU.
+    let render = |app: &mut Studio, time: f64| {
+        drop(frame(app, &ctx, size, vec![], time));
+        ctx.data_mut(|d| {
+            let mut cache = d.get_temp::<PreviewCache>(preview).unwrap();
+            cache.changed = Instant::now() - Duration::from_secs(1);
+            d.insert_temp(preview, cache);
+        });
+        frame(app, &ctx, size, vec![], time + 0.01)
+    };
+    drop(render(&mut app, 1.));
+    let texture = app
+        .editor
+        .shared_adjustment_preview_texture(&ctx)
+        .unwrap()
+        .id();
+    ctx.data_mut(|d| {
+        let mut draft = d.get_temp::<Draft>(key).unwrap();
+        draft.value.amount = 0.25;
+        d.insert_temp(key, draft);
+    });
+    let changed = render(&mut app, 2.);
+    let delta = &changed
+        .textures_delta
+        .set
+        .iter()
+        .find(|(id, _)| *id == texture)
+        .unwrap()
+        .1;
+    assert_eq!(delta.pos, Some([3, 2]));
+    assert_eq!([delta.image.width(), delta.image.height()], [5, 4]);
+    drop(changed);
+    // A name-only draft edit still composes, but must not allocate an upload.
+    ctx.data_mut(|d| {
+        let mut draft = d.get_temp::<Draft>(key).unwrap();
+        draft.value.name = "Preview name only".into();
+        d.insert_temp(key, draft);
+    });
+    let unchanged = render(&mut app, 3.);
+    assert!(unchanged
+        .textures_delta
+        .set
+        .iter()
+        .all(|(id, _)| *id != texture));
+    drop(unchanged);
+    assert_eq!(
+        app.editor
+            .shared_adjustment_preview_texture(&ctx)
+            .unwrap()
+            .id(),
+        texture
+    );
+    assert_eq!(app.editor.session.revision, revision);
+    assert_eq!(app.editor.session.doc.history_bytes(), history);
+    assert_eq!(app.editor.session.doc.composite, committed);
+    assert_eq!(
+        app.editor
+            .session
+            .doc
+            .layers
+            .iter()
+            .map(|l| l.pixels.clone())
+            .collect::<Vec<_>>(),
+        raw
+    );
+    // A changed source fence cannot publish the old texture.
+    assert!(app.editor.core(
+        "layer.rename",
+        json!({"layer_id":1,"name":"Changed source"})
+    ));
+    assert!(app.editor.shared_adjustment_preview_texture(&ctx).is_none());
+    let stale = frame(&mut app, &ctx, size, vec![], 4.);
+    assert!(stale
+        .textures_delta
+        .set
+        .iter()
+        .all(|(id, _)| *id != texture));
+    assert!(ctx
+        .data_mut(|d| d.get_temp::<PreviewCache>(preview))
+        .is_none());
+}
+
+#[test]
+fn changing_shared_preview_controller_releases_the_previous_cpu_image_and_texture() {
+    let mut app = app();
+    let first = create(&mut app, false);
+    let second = create(&mut app, false);
+    for id in [first, second] {
+        assert!(app.editor.core(
+            "adjustment.set",
+            json!({"adjustment_id":id,"target_layer_ids":[2]})
+        ));
+    }
+    let ctx = context(&app);
+    let size = vec2(700., 1400.);
+    for (index, id) in [first, second].into_iter().enumerate() {
+        app.editor.focus_adjustment_ui(&ctx, Some(id));
+        let source = app.editor.session.doc.adjustment(id).unwrap().clone();
+        let mut value = source.clone();
+        value.amount = 0.5;
+        ctx.data_mut(|d| {
+            d.insert_temp(
+                draft_key(app.editor.session.doc.identity, id),
+                Draft {
+                    source,
+                    value,
+                    revision: app.editor.session.revision,
+                    error: String::new(),
+                },
+            )
+        });
+        drop(frame(&mut app, &ctx, size, vec![], index as f64 + 1.));
+        let key = preview_key(app.editor.session.doc.identity, id);
+        ctx.data_mut(|d| {
+            let mut cache = d.get_temp::<PreviewCache>(key).unwrap();
+            cache.changed = Instant::now() - Duration::from_secs(1);
+            d.insert_temp(key, cache);
+        });
+        drop(frame(&mut app, &ctx, size, vec![], index as f64 + 1.1));
+        assert!(app.editor.shared_adjustment_preview_texture(&ctx).is_some());
+    }
+    assert!(ctx
+        .data_mut(
+            |d| d.get_temp::<PreviewCache>(preview_key(app.editor.session.doc.identity, first))
+        )
+        .is_none());
+    assert!(ctx
+        .data_mut(|d| d.get_temp::<Draft>(draft_key(app.editor.session.doc.identity, first)))
+        .is_some());
+}

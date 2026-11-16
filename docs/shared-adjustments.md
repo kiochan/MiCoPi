@@ -90,9 +90,19 @@ ownership flags, then render into a bounded temporary output. They do not clone
 Session, copy every source frame, change raw samples, warm source caches or
 publish history. Desktop preview attempts debounce for 150 ms and reuse the GPU
 texture; pending, cancelled, stale and applied drafts do not publish an invalid
-cached preview. Full composition and upload remain synchronous/full-frame, under
-the existing separate preview composite/effect budgets; no end-to-end latency or
-allocation-free UI claim is made.
+cached preview. A shared desktop display cache compares checkerboard-composited
+pixels, skips identical uploads and sends exact bounding patches for partial
+changes. Release the context's old cache snapshot before preparing the next
+image, so cloned UI metadata does not force a full-frame copy. Initial images,
+size changes and still-pending shared images retain full immutable uploads. The
+retained CPU display image has a separate 64 MiB limit. Inspecting a different
+controller/document evicts the previous preview image and texture while retaining
+its scalar draft; there is one active shared-adjustment display cache per UI
+context rather than a full image for each inspected controller. Full composition and
+display comparison remain synchronous/full-frame, under the existing separate
+preview composite/effect budgets; no end-to-end latency or allocation-free UI
+claim is made. Regression gates cover sparse target patches, name-only no-op
+uploads, texture identity, source immutability and stale suppression.
 
 `adjustment.preview` exposes the same private candidate as a read-only PNG. Supply
 `document_identity`, `document_revision` and `adjustment_id`, plus ordinary Set

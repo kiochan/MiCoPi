@@ -43,6 +43,7 @@ mod panels;
 mod plugin_commands;
 #[path = "../../plugins/workbench/preferences.rs"]
 mod preferences;
+mod preview_image;
 #[path = "../../plugins/replay/panel.rs"]
 mod replay;
 mod schema;

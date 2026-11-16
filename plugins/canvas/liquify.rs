@@ -1,10 +1,8 @@
 //! Cached whole-owner Liquify controls and typed canvas input adapter.
 use super::*;
+use crate::desktop::preview_image::{DisplayCache, Upload};
 use crate::platform::windows::desktop_bridge::PenPhase;
 use crate::plugins::liquify::{self, Push, Request};
-#[path = "liquify_preview.rs"]
-mod preview;
-use preview::{DisplayCache, Upload};
 
 pub(super) struct Draft {
     native: liquify::Draft,

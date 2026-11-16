@@ -3,7 +3,7 @@ use eframe::egui::{Color32, ColorImage};
 use std::sync::Arc;
 
 const DISPLAY_LIMIT: usize = 64 * 1024 * 1024;
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(super) struct DisplayCache {
     image: Option<Arc<ColorImage>>,
 }
@@ -30,7 +30,7 @@ fn colors(source: &[u32], width: usize, bounds: [usize; 4]) -> Result<ColorImage
     let mut pixels = Vec::new();
     pixels
         .try_reserve_exact(w * h)
-        .map_err(|_| "Cannot reserve Liquify display upload")?;
+        .map_err(|_| "Cannot reserve preview display upload")?;
     for y in y0..y1 {
         for x in x0..x1 {
             let index = y * width + x;
@@ -52,13 +52,13 @@ impl DisplayCache {
         let [width, height] = size;
         let area = width
             .checked_mul(height)
-            .ok_or("Liquify display extent overflows")?;
+            .ok_or("Preview display extent overflows")?;
         let bytes = area
             .checked_mul(std::mem::size_of::<Color32>())
-            .ok_or("Liquify display cost overflows")?;
+            .ok_or("Preview display cost overflows")?;
         if width == 0 || height == 0 || source.len() != area || bytes > DISPLAY_LIMIT {
             return Err(
-                "Liquify CPU display image exceeds its 64 MiB limit or has invalid storage".into(),
+                "Preview CPU display image exceeds its 64 MiB limit or has invalid storage".into(),
             );
         }
         let Some(previous) = self.image.as_ref().filter(|image| image.size == size) else {
@@ -85,7 +85,7 @@ impl DisplayCache {
         }
         let patch = colors(source, width, bounds)?;
         let cached = Arc::get_mut(self.image.as_mut().unwrap())
-            .ok_or("Liquify display image is still shared")?;
+            .ok_or("Preview display image is still shared")?;
         for row in 0..patch.size[1] {
             let start = (bounds[1] + row) * width + bounds[0];
             cached.pixels[start..start + patch.size[0]]

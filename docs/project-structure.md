@@ -23,8 +23,10 @@ Liquify ownership, previews, stale drafts and grouped Undo.
 
 `src/plugins/liquify_regions.rs` partitions four dirty unions into disjoint
 regions; `liquify_steps.rs` retains bounded inline arm records with unchanged JSON
-arrays. `plugins/canvas/liquify_preview.rs` owns the separately bounded CPU display
-cache and exact changed-pixel texture uploads. Full composition remains separate.
+arrays. `src/desktop/preview_image.rs` owns the separately bounded CPU display
+cache and exact changed-pixel texture uploads shared by Liquify and adjustment
+previews. Feature adapters retain their debounce and source-fence policies;
+full composition remains separate.
 
 
 `src/plugins/liquify.rs` owns captured requests, cost/lock admission, typed cached

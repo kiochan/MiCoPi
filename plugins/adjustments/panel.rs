@@ -1,5 +1,6 @@
 //! Non-raster stack inspection. Drafts remain local until one shared Apply.
 use super::*;
+use crate::desktop::preview_image::{DisplayCache, Upload};
 use crate::engine::{adjustments::Adjustment, graph::Filter, raster_masks::MaskOwner};
 use crate::plugins::nodes::{Binding, Resolved};
 use serde_json::{json, Value};
@@ -19,6 +20,7 @@ struct PreviewCache {
     changed: Instant,
     attempted: bool,
     texture: Option<TextureHandle>,
+    display: DisplayCache,
     error: String,
 }
 fn preview_key(document: u64, id: u64) -> Id {
@@ -125,21 +127,39 @@ impl Editor {
         ui.checkbox(&mut enabled, shared_text("Preview shared adjustment"));
         ui.data_mut(|d| d.insert_temp(enabled_key, enabled));
         let key = preview_key(self.session.doc.identity, id);
+        // Keep one active CPU image per UI context, rather than one large image
+        // for every controller/document that has ever been inspected.
+        ui.data_mut(|d| {
+            let slot = Id::new("shared-adjustment-preview-owner");
+            if let Some(previous) = d.get_temp::<Id>(slot).filter(|previous| *previous != key) {
+                d.remove::<PreviewCache>(previous);
+            }
+            d.insert_temp(slot, key);
+        });
         if !enabled || !allowed || draft.value == draft.source {
             ui.data_mut(|d| d.remove::<PreviewCache>(key));
             return;
         }
         let previous = ui.data_mut(|d| d.get_temp::<PreviewCache>(key));
+        // Release the stored snapshot before preparing an upload. Keeping a
+        // cloned CPU image in the context would force full-frame copy-on-write.
+        ui.data_mut(|d| d.remove::<PreviewCache>(key));
         let mut cache = match previous {
             Some(cache) if cache.revision == draft.revision && cache.value == draft.value => cache,
-            previous => PreviewCache {
-                value: draft.value.clone(),
-                revision: draft.revision,
-                changed: Instant::now(),
-                attempted: false,
-                texture: previous.and_then(|cache| cache.texture),
-                error: String::new(),
-            },
+            previous => {
+                let (texture, display) = previous
+                    .map(|cache| (cache.texture, cache.display))
+                    .unwrap_or_default();
+                PreviewCache {
+                    value: draft.value.clone(),
+                    revision: draft.revision,
+                    changed: Instant::now(),
+                    attempted: false,
+                    texture,
+                    display,
+                    error: String::new(),
+                }
+            }
         };
         if !cache.attempted {
             let wait = Duration::from_millis(150);
@@ -149,28 +169,28 @@ impl Editor {
                     Ok(pixels) => {
                         let width = self.session.doc.width;
                         let height = self.session.doc.height;
-                        let colors = pixels
-                            .into_iter()
-                            .enumerate()
-                            .map(|(i, p)| {
-                                let bg = if (i % width / 12 + i / width / 12) % 2 == 0 {
-                                    0xfffdfdfd
+                        match cache.display.prepare(&pixels, [width, height]) {
+                            Ok(Upload::Unchanged) => {}
+                            Ok(Upload::Full(image)) => {
+                                if let Some(texture) = &mut cache.texture {
+                                    texture.set(image, TextureOptions::LINEAR);
                                 } else {
-                                    0xfff3f5f7
-                                };
-                                let p = crate::engine::over(bg, p);
-                                Color32::from_rgb((p >> 16) as u8, (p >> 8) as u8, p as u8)
-                            })
-                            .collect();
-                        let image = ColorImage::new([width, height], colors);
-                        if let Some(texture) = &mut cache.texture {
-                            texture.set(image, TextureOptions::LINEAR);
-                        } else {
-                            cache.texture = Some(ui.ctx().load_texture(
-                                "shared-adjustment-preview",
-                                image,
-                                TextureOptions::LINEAR,
-                            ));
+                                    cache.texture = Some(ui.ctx().load_texture(
+                                        "shared-adjustment-preview",
+                                        image,
+                                        TextureOptions::LINEAR,
+                                    ));
+                                }
+                            }
+                            Ok(Upload::Partial { origin, image }) => {
+                                if let Some(texture) = &mut cache.texture {
+                                    texture.set_partial(origin, image, TextureOptions::LINEAR);
+                                } else {
+                                    cache.error =
+                                        "Shared adjustment preview texture was lost".into();
+                                }
+                            }
+                            Err(error) => cache.error = error,
                         }
                     }
                     Err(error) => cache.error = error,
