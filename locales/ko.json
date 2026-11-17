@@ -1679,5 +1679,9 @@
   "Switch Workspace Layout": "작업 공간 레이아웃 전환",
   "Update Active Layout": "현재 레이아웃 업데이트",
   "Retry Preview": "미리 보기 다시 시도",
-  "Retry Apply": "적용 다시 시도"
+  "Retry Apply": "적용 다시 시도",
+  "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.": "창 흐림 효과 사용 시 패널 색상의 불투명도입니다. 그림과 팝업은 불투명하게 유지됩니다.",
+  "Surface Opacity": "패널 불투명도",
+  "Use system Acrylic on supported Windows versions; otherwise keep opaque surfaces.": "지원되는 Windows에서 시스템 아크릴 효과를 사용하며, 그 외에는 불투명하게 표시합니다.",
+  "Window Blur": "창 흐림 효과"
 }

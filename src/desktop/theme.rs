@@ -5,6 +5,31 @@ use eframe::egui::{self, *};
 mod glyph_tests {
     use super::*;
     #[test]
+    fn unsupported_backdrop_is_opaque_and_material_never_tints_artwork_or_text() {
+        let ctx = Context::default();
+        let mut a = Appearance::default();
+        for theme in ["graphite", "light", "warm"] {
+            a.theme = theme.into();
+            let opaque = Colors::new(&a);
+            // Missing HWND/capability must not leave an unblurred transparent UI.
+            sync_backdrop(&ctx, &a, None);
+            assert_eq!(Colors::for_context(&ctx, &a).panel, opaque.panel);
+            let key = backdrop_key(&ctx);
+            ctx.data_mut(|d| d.insert_temp(key, true));
+            let glass = Colors::for_context(&ctx, &a);
+            assert!(glass.panel.a() < 255 && glass.background.a() < 255);
+            assert_eq!(glass.stage, opaque.stage);
+            assert_eq!(glass.text, opaque.text);
+            assert_eq!(glass.raised, opaque.raised);
+            assert_eq!(glass.border, opaque.border);
+            a.window_blur = false;
+            let disabled = Colors::for_context(&ctx, &a);
+            assert_eq!(disabled.background, opaque.background);
+            assert_eq!(disabled.panel, opaque.panel);
+            a.window_blur = true;
+        }
+    }
+    #[test]
     fn embedded_material_subset_covers_theme_and_layer_controls() {
         let ctx = Context::default();
         let mut definitions = FontDefinitions::default();
@@ -77,6 +102,21 @@ pub fn rgb(value: u32) -> Color32 {
     Color32::from_rgb((value >> 16) as u8, (value >> 8) as u8, value as u8)
 }
 impl Colors {
+    /// Only native-backed workspace surfaces are translucent. Artwork, widgets
+    /// and popups retain their opaque color/contrast contracts.
+    pub fn for_context(ctx: &Context, a: &Appearance) -> Self {
+        let mut colors = Self::new(a);
+        let key = backdrop_key(ctx);
+        if a.window_blur && ctx.data(|d| d.get_temp::<bool>(key)).unwrap_or(false) {
+            let tint = |c: Color32, opacity: f32| {
+                Color32::from_rgba_unmultiplied(c.r(), c.g(), c.b(), (opacity * 255.).round() as u8)
+            };
+            colors.background = tint(colors.background, a.surface_opacity * 0.3);
+            colors.panel = tint(colors.panel, a.surface_opacity);
+            colors.header = tint(colors.header, a.surface_opacity);
+        }
+        colors
+    }
     pub fn new(a: &Appearance) -> Self {
         let dark = a.theme == "graphite";
         let (background, panel, raised, border, text, muted, stage, blush) = match a.theme.as_str()
@@ -125,6 +165,14 @@ impl Colors {
     pub fn tint(&self, amount: f32) -> Color32 {
         self.panel.lerp_to_gamma(self.accent, amount)
     }
+}
+fn backdrop_key(ctx: &Context) -> Id {
+    Id::new(("native-backdrop", ctx.viewport_id()))
+}
+pub fn sync_backdrop(ctx: &Context, a: &Appearance, native: Option<&super::Native>) {
+    let active = native.is_some_and(|n| n.backdrop(a.window_blur, a.theme == "graphite"));
+    let key = backdrop_key(ctx);
+    ctx.data_mut(|d| d.insert_temp(key, active));
 }
 pub fn apply(ctx: &Context, a: &Appearance) {
     // Style is stored per egui theme. Pin the configured appearance before

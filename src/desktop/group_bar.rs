@@ -134,7 +134,7 @@ impl panels::Viewer<'_> {
             UiBuilder::new().max_rect(h.bar).layer_id(ui.layer_id()),
         );
         row.set_clip_rect(h.bar.intersect(ui.ctx().content_rect()));
-        let colors = theme::Colors::new(&a);
+        let colors = theme::Colors::for_context(ui.ctx(), &a);
         let radius = theme::card_radius(&a);
         row.painter().rect_filled(
             h.bar,

@@ -292,6 +292,14 @@ implementation assignments and do not supersede the retain/defer/cancel table.
 
 ### Existing multiple-document backlog
 
+- [ ] Accept the system-glass presentation increment: source now includes a
+  searchable blur toggle and bounded panel opacity, per-window native capability
+  fallback and opaque artwork/popups. Require exact-head CI plus reviewed native
+  captures in graphite/light/warm, docked/detached, restored/maximized and mixed-DPI
+  windows; check Windows transparency/accessibility fallbacks and representative
+  GPU/pen latency before claiming visual/performance acceptance. No CPU blur or
+  new rendering dependency is planned. See [Interface design](docs/interface-design.md#system-glass).
+
 - [ ] Add document tabs with independent history, recovery, file state and view state, using bounded caches for inactive canvases.
 - [ ] Extend action/state schemas with explicit document IDs while preserving a documented active-document default for existing clients.
 - [ ] Make AI/MCP targets and revision guards unambiguous so an operation cannot accidentally edit another tab.

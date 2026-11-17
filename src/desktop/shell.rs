@@ -3,7 +3,7 @@ use crate::ui::palette::Mode;
 impl Studio {
     pub(super) fn draw_shell(&mut self, ctx: &Context) {
         let a = self.editor.settings.ui.clone();
-        let c = theme::Colors::new(&a);
+        let c = theme::Colors::for_context(ctx, &a);
         let edge = ctx
             .data(|d| d.get_temp::<f32>(Id::new("workspace-card-left")))
             .unwrap_or(a.outer_padding);

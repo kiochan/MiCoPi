@@ -1,5 +1,12 @@
 # Project Structure and Ownership
 
+System glass stays in the existing presentation boundary: `src/configuration.rs`
+validates material preferences, `plugins/workbench/preferences.rs` exposes search
+controls, `src/desktop/theme.rs` gates translucent workspace colors per native
+viewport, and `src/platform/windows/chrome.rs` / `desktop_bridge.rs` negotiate and
+cache the documented DWM backdrop. Canvas pixels and plugin algorithms do not own
+window materials. See [Interface design](interface-design.md#system-glass).
+
 The [workspace domain plan](workspace-domains.md#source-ownership-and-dependencies)
 maps future Painting/Layout/Video responsibilities onto these existing ownership
 boundaries. Suggested new module paths are proposals, not current files; no

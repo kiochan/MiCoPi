@@ -2,6 +2,7 @@
 //! The egui shell never borrows the legacy App or creates a second message loop.
 use super::*;
 use eframe::egui;
+use std::cell::Cell;
 use std::collections::{BTreeMap, VecDeque};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -58,6 +59,7 @@ thread_local! { static HOOKS: RefCell<BTreeMap<usize, Hook>> = const { RefCell::
 pub struct Native {
     hwnd: Hwnd,
     gdiplus: usize,
+    backdrop: Cell<Option<(bool, bool, bool)>>,
 }
 impl Native {
     /// Must be created and dropped on the native event-loop thread.
@@ -101,6 +103,7 @@ impl Native {
             Self {
                 hwnd,
                 gdiplus: token,
+                backdrop: Cell::new(None),
             }
         }
     }
@@ -309,6 +312,17 @@ impl Native {
                 chrome::appearance(self.hwnd, theme, dark);
             }
         }
+    }
+    /// Cache native negotiation; never call DWM for every repaint or pen sample.
+    pub fn backdrop(&self, enabled: bool, dark: bool) -> bool {
+        if let Some((requested, previous_dark, active)) = self.backdrop.get() {
+            if requested == enabled && previous_dark == dark {
+                return active;
+            }
+        }
+        let active = unsafe { !self.hwnd.is_null() && chrome::backdrop(self.hwnd, enabled, dark) };
+        self.backdrop.set(Some((enabled, dark, active)));
+        active
     }
     pub fn load_image(&self, path: &Path) -> std::io::Result<Document> {
         unsafe { load_image(path) }

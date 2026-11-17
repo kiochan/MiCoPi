@@ -21,7 +21,7 @@ pub(super) struct NativeWindow {
     pub minimized: bool,
 }
 pub(super) fn dock_style(ctx: &Context, a: &Appearance) -> egui_dock::Style {
-    let colors = theme::Colors::new(a);
+    let colors = theme::Colors::for_context(ctx, a);
     let mut style = egui_dock::Style::from_egui(ctx.style().as_ref());
     let radius = theme::card_radius(a);
     style.dock_area_padding = Some(Margin::ZERO);
@@ -395,6 +395,7 @@ impl Studio {
                 .with_title(if first { &bootstrap } else { &title })
                 .with_active(false)
                 .with_decorations(false)
+                .with_transparent(true)
                 .with_resizable(true)
                 .with_inner_size(window.placement.size())
                 .with_position(window.placement.min)
@@ -421,7 +422,8 @@ impl Studio {
                 if window.native.is_none() {
                     window.native = Native::for_viewport(&bootstrap, ctx.clone());
                 }
-                let colors = theme::Colors::new(&a);
+                theme::sync_backdrop(ctx, &a, window.native.as_ref());
+                let colors = theme::Colors::for_context(ctx, &a);
                 if let Some(native) = &window.native {
                     let mut t = crate::ui::Theme::preset(if a.theme == "graphite" { 2 } else { 0 });
                     t.selected = u32::from_be_bytes([

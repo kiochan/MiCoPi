@@ -85,6 +85,22 @@ const SETTINGS: &[Setting] = &[
         category: Category::Appearance,
         range: None,
     },
+    Setting {
+        id: "ui.window_blur",
+        title: "Window Blur",
+        description: "Use system Acrylic on supported Windows versions; otherwise keep opaque surfaces.",
+        keywords: "glass acrylic transparency blur material 透明 模糊",
+        category: Category::Appearance,
+        range: None,
+    },
+    metric!(
+        "ui.surface_opacity",
+        "Surface Opacity",
+        "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.",
+        Appearance,
+        0.65,
+        1.
+    ),
     metric!(
         "ui.font_size",
         "Font Size",

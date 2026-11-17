@@ -1679,5 +1679,9 @@
   "Switch Workspace Layout": "Switch Workspace Layout",
   "Update Active Layout": "Update Active Layout",
   "Retry Preview": "Retry Preview",
-  "Retry Apply": "Retry Apply"
+  "Retry Apply": "Retry Apply",
+  "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.": "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.",
+  "Surface Opacity": "Surface Opacity",
+  "Use system Acrylic on supported Windows versions; otherwise keep opaque surfaces.": "Use system Acrylic on supported Windows versions; otherwise keep opaque surfaces.",
+  "Window Blur": "Window Blur"
 }

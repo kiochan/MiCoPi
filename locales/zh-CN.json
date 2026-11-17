@@ -1679,5 +1679,9 @@
   "Switch Workspace Layout": "切换工作区布局",
   "Update Active Layout": "更新当前布局",
   "Retry Preview": "重试预览",
-  "Retry Apply": "重试应用"
+  "Retry Apply": "重试应用",
+  "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.": "开启窗口模糊时的面板着色不透明度。画布和弹出菜单保持不透明。",
+  "Surface Opacity": "界面不透明度",
+  "Use system Acrylic on supported Windows versions; otherwise keep opaque surfaces.": "在支持的 Windows 版本使用系统亚克力效果；其他系统保持不透明。",
+  "Window Blur": "窗口模糊"
 }

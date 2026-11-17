@@ -6,6 +6,26 @@ Each panel group is a rounded floating card with a hairline outline and a soft s
 
 The Tools window is an icon-only strip: brush, Move, eraser, selection tools, flood fill, gradient, eyedropper, hand and zoom by default. It lays out horizontally or vertically to match its shape. A separate Tool Options window beside it shows the active tool with its size, opacity and stabilizer. Search Settings for **Tools Icons** to reorder or hide icons, or edit `ui.tool_order` and `ui.hidden_tools` in `settings.json`; unlisted icons keep their default order. Brush cards show stylized pressure-tapered marks, with an accent tint for the selected preset. These previews use small vector meshes and never call painting plugins or allocate bitmap textures. The command search remains available in the title row with a quiet shortcut hint. Document size and history memory usage are available on the status tooltip in the zoom strip.
 
+## System glass
+
+The main window and detached panel groups request Windows system Acrylic by
+default. Search Settings for **Window Blur** (`ui.window_blur`) or **Surface
+Opacity** (`ui.surface_opacity`, 0.65–1.0, default 0.8). Changes apply to existing
+windows without restarting or modifying the saved dock geometry. Opacity controls
+the panel tint; the workspace gaps use a lighter tint to expose the system material.
+Turning blur off restores the existing opaque palette. Artwork, the recessed
+canvas stage, text, widgets and popups remain opaque for accurate color and contrast.
+
+Use the documented [DWM system backdrop API](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_systembackdrop_type),
+available from Windows 11 build 22621. Older systems, failed native negotiation and
+embedded test viewports retain opaque surfaces. Windows owns the blur strength and
+may substitute its accessibility/power fallback. No screen capture, CPU blur,
+per-frame native backdrop call, bitmap allocation or new dependency is added;
+OpenGL viewports use alpha presentation and the OS compositor supplies the effect.
+This does not blur content behind panels inside the same application window.
+Native screenshot/driver review and representative GPU cost remain acceptance
+gates; automated settings, palette-fallback and native frame tests are separate.
+
 ## Spacing and hierarchy
 
 All dimensions below are logical points and follow each viewport's DPI scale. Search Settings for the corresponding UI setting, or edit `settings.json`. Existing explicit values are preserved; these are defaults for new profiles.

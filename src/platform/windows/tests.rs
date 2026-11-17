@@ -990,6 +990,23 @@ fn check_native_hidden_window_resize(clamp_tracking: bool) {
         assert!(!window.is_null());
         assert_eq!(mem::size_of::<Margins>(), 16);
         chrome::appearance(window, crate::ui::Theme::preset(2), true);
+        for requested in [true, false, true, false] {
+            let active = chrome::backdrop(window, requested, true);
+            let mut material = 0u32;
+            if DwmGetWindowAttribute(window, 38, &mut material as *mut _ as _, 4) >= 0 {
+                assert_eq!(material, if requested { 3 } else { 1 });
+                chrome::shape(window, true);
+                chrome::shape(window, false);
+                let mut restored = 0u32;
+                assert!(DwmGetWindowAttribute(window, 38, &mut restored as *mut _ as _, 4) >= 0);
+                assert_eq!(restored, material);
+            } else {
+                assert!(!active, "unsupported backdrops must retain opaque UI");
+            }
+            if !requested {
+                assert!(!active);
+            }
+        }
         let mut composition = 0;
         if DwmIsCompositionEnabled(&mut composition) >= 0 && composition != 0 {
             let mut enabled = 0u32;

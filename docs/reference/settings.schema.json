@@ -11,6 +11,18 @@
       "additionalProperties": false,
       "description": "Logical points, scaled by system DPI. Heights must contain font size plus padding; runtime validates dependent dimensions.",
       "properties": {
+        "window_blur": {
+          "type": "boolean",
+          "default": true,
+          "description": "System Acrylic on supported native Windows viewports; opaque fallback otherwise."
+        },
+        "surface_opacity": {
+          "type": "number",
+          "minimum": 0.65,
+          "maximum": 1,
+          "default": 0.8,
+          "description": "Panel tint opacity while Window Blur is active; artwork stays opaque."
+        },
         "font_size": {
           "type": "number",
           "minimum": 11,

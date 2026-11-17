@@ -43,8 +43,17 @@ unsafe fn attribute(hwnd: Hwnd, id: u32, value: u32) {
 }
 pub(super) unsafe fn shape(hwnd: Hwnd, maximized: bool) {
     // Keep a tiny compositor-owned edge so a client-drawn window retains DWM shadow.
-    // Maximized windows must meet the work area without transparent insets.
-    let edge = if maximized { 0 } else { 1 };
+    // System material needs the client frame; it does not add geometry insets.
+    let mut material = 1u32;
+    let glass =
+        DwmGetWindowAttribute(hwnd, 38, &mut material as *mut _ as _, 4) >= 0 && material == 3;
+    let edge = if glass {
+        -1
+    } else if maximized {
+        0
+    } else {
+        1
+    };
     DwmExtendFrameIntoClientArea(
         hwnd,
         &Margins {
@@ -55,6 +64,15 @@ pub(super) unsafe fn shape(hwnd: Hwnd, maximized: bool) {
         },
     );
     attribute(hwnd, 33, if maximized { 1 } else { 3 }); // DONOTROUND / ROUNDSMALL (Windows 11).
+}
+/// Documented Windows 11 22H2 system Acrylic; older systems keep opaque chrome.
+pub(super) unsafe fn backdrop(hwnd: Hwnd, enabled: bool, dark: bool) -> bool {
+    attribute(hwnd, 20, dark as u32);
+    let material = if enabled { 3u32 } else { 1u32 }; // TRANSIENTWINDOW / NONE.
+    let accepted = DwmSetWindowAttribute(hwnd, 38, &material as *const _ as _, 4) >= 0;
+    shape(hwnd, IsZoomed(hwnd) != 0);
+    let mut composition = 0;
+    enabled && accepted && DwmIsCompositionEnabled(&mut composition) >= 0 && composition != 0
 }
 pub(super) unsafe fn appearance(hwnd: Hwnd, theme: crate::ui::Theme, dark: bool) {
     attribute(hwnd, 2, 2); // DWMWA_NCRENDERING_POLICY = DWMNCRP_ENABLED.

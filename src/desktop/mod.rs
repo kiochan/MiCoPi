@@ -748,6 +748,7 @@ impl Studio {
             .map(|p| PathBuf::from(p).join("settings.json"))
             .unwrap_or_else(Keymap::path);
         let mut editor = Editor::new(path, Some(native));
+        theme::sync_backdrop(&cc.egui_ctx, &editor.settings.ui, editor.native.as_ref());
         crate::i18n::set_language(editor.settings.ui.language);
         theme::fonts(&cc.egui_ctx);
         if !editor.session.registry.diagnostics.is_empty() {
@@ -1258,6 +1259,7 @@ impl Studio {
         }
     }
     fn frame_ui(&mut self, ctx: &Context) {
+        theme::sync_backdrop(ctx, &self.editor.settings.ui, self.editor.native.as_ref());
         self.report_workspaces();
         self.editor.push_gui_parameters();
         self.editor.push_gui_view();
@@ -1354,7 +1356,7 @@ impl Studio {
         self.editor.headers.clear();
         self.draw_shell(ctx);
         let a = self.editor.settings.ui.clone();
-        let colors = theme::Colors::new(&a);
+        let colors = theme::Colors::for_context(ctx, &a);
         if self.dock.translations.tab_context_menu.close_button != crate::i18n::text("Hide Window")
         {
             self.dock.translations.tab_context_menu.close_button =
@@ -1675,6 +1677,9 @@ fn valid_dock(dock: &DockState<Panel>) -> bool {
         && tabs.iter().enumerate().all(|(i, p)| !tabs[..i].contains(p))
 }
 impl eframe::App for Studio {
+    fn clear_color(&self, _visuals: &Visuals) -> [f32; 4] {
+        [0.; 4]
+    }
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         self.poll_captures(ctx);
         if ctx.input(|i| i.viewport().close_requested()) && !self.allow_close {
@@ -1774,7 +1779,7 @@ pub fn run() -> eframe::Result {
             .with_inner_size([1360., 920.])
             .with_min_inner_size([960., 680.])
             .with_decorations(false)
-            .with_transparent(false),
+            .with_transparent(true),
         ..Default::default()
     };
     eframe::run_native(

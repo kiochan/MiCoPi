@@ -12,6 +12,8 @@ pub use canvas::{CanvasPreset, NewCanvasPreferences};
 pub struct Appearance {
     pub language: crate::i18n::Language,
     pub theme: String,
+    pub window_blur: bool,
+    pub surface_opacity: f32,
     pub font_size: f32,
     pub small_font_size: f32,
     pub item_spacing: f32,
@@ -41,6 +43,8 @@ impl Default for Appearance {
         Self {
             language: crate::i18n::Language::English,
             theme: "graphite".into(),
+            window_blur: true,
+            surface_opacity: 0.8,
             font_size: 13.,
             small_font_size: 12.,
             item_spacing: 4.,
@@ -76,6 +80,7 @@ impl Appearance {
     }
     pub fn validate(&self) -> Result<(), String> {
         for (name, value, low, high) in [
+            ("surface_opacity", self.surface_opacity, 0.65, 1.),
             ("font_size", self.font_size, 11., 22.),
             ("small_font_size", self.small_font_size, 10., 18.),
             ("item_spacing", self.item_spacing, 4., 20.),
@@ -547,10 +552,19 @@ mod tests {
             r#"{"ui":{"section_spacing":8,"item_spacing":12}}"#,
             r#"{"ui":{"typo":4}}"#,
             r#"{"ui":{"accent":"red"}}"#,
+            r#"{"ui":{"surface_opacity":0.64}}"#,
+            r#"{"ui":{"surface_opacity":1.01}}"#,
         ] {
             assert!(Settings::decode(input, PathBuf::new()).is_err(), "{input}");
         }
         Appearance::default().validate().unwrap();
+        let material = Settings::decode(
+            r#"{"ui":{"window_blur":false,"surface_opacity":0.9}}"#,
+            PathBuf::new(),
+        )
+        .unwrap();
+        assert!(!material.ui.window_blur);
+        assert_eq!(material.ui.surface_opacity, 0.9);
         let s = Settings::decode(
             r#"{"ui":{"tool_order":["zoom","brush"],"hidden_tools":["gradient"]}}"#,
             PathBuf::new(),

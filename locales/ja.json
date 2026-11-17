@@ -1679,5 +1679,9 @@
   "Switch Workspace Layout": "ワークスペース配置を切り替え",
   "Update Active Layout": "現在の配置を更新",
   "Retry Preview": "プレビューを再試行",
-  "Retry Apply": "適用を再試行"
+  "Retry Apply": "適用を再試行",
+  "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.": "ぼかし有効時のパネル色の不透明度。作品とポップアップは不透明のままです。",
+  "Surface Opacity": "パネルの不透明度",
+  "Use system Acrylic on supported Windows versions; otherwise keep opaque surfaces.": "対応する Windows でシステムのアクリル効果を使用し、それ以外では不透明にします。",
+  "Window Blur": "ウィンドウのぼかし"
 }
