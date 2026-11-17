@@ -297,7 +297,10 @@ implementation assignments and do not supersede the retain/defer/cancel table.
   fallback and opaque artwork/popups. Require exact-head CI plus reviewed native
   captures in graphite/light/warm, docked/detached, restored/maximized and mixed-DPI
   windows; check Windows transparency/accessibility fallbacks and representative
-  GPU/pen latency before claiming visual/performance acceptance. No CPU blur or
+  GPU/pen latency before claiming visual/performance acceptance. First query
+  `workbench.diagnostics` / `workbench.debug` for the observed system preference
+  and native negotiation; renderer PNGs do not verify the composed backdrop.
+  No CPU blur or
   new rendering dependency is planned. See [Interface design](docs/interface-design.md#system-glass).
 
 - [ ] Add document tabs with independent history, recovery, file state and view state, using bounded caches for inactive canvases.

@@ -1683,5 +1683,7 @@
   "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.": "ぼかし有効時のパネル色の不透明度。作品とポップアップは不透明のままです。",
   "Surface Opacity": "パネルの不透明度",
   "Use system Acrylic on supported Windows versions; otherwise keep opaque surfaces.": "対応する Windows でシステムのアクリル効果を使用し、それ以外では不透明にします。",
-  "Window Blur": "ウィンドウのぼかし"
+  "Window Blur": "ウィンドウのぼかし",
+  "Workbench Diagnostics": "ワークベンチの診断",
+  "Windows transparency is disabled. Enable Transparency effects in Windows Settings to see Acrylic.": "Windows の透明効果が無効です。設定で「透明効果」を有効にするとアクリル表示になります。"
 }

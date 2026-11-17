@@ -12,6 +12,12 @@ GUI rendering uses feature-owned, host-compiled adapters; drawing algorithms con
 
 ## Workspace behavior
 
+[Workbench diagnostics](workbench-diagnostics.md) adds read-only material,
+preference and renderer observations through `workbench.diagnostics`,
+`workbench.debug` and `window.list`. The attached CLI/report script can inspect
+state and request renderer PNGs without UI automation. These PNGs exclude DWM's
+desktop backdrop, so native negotiation and visible glass are separate evidence.
+
 [Named workspace layouts](workspace-layouts.md) add Save, explicit Update,
 Switch and Delete in the Workspace menu and shared command registry. The
 version-2 `workspace.egui.json` envelope retains current arrangement separately

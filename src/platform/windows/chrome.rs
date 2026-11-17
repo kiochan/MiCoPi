@@ -74,6 +74,38 @@ pub(super) unsafe fn backdrop(hwnd: Hwnd, enabled: bool, dark: bool) -> bool {
     let mut composition = 0;
     enabled && accepted && DwmIsCompositionEnabled(&mut composition) >= 0 && composition != 0
 }
+/// Read only; a missing/unsupported preference remains unknown. Never change
+/// the user's system-wide transparency setting to implement an app theme.
+pub(super) fn system_transparency() -> Option<bool> {
+    #[link(name = "advapi32")]
+    extern "system" {
+        fn RegGetValueW(
+            key: Handle,
+            sub: *const u16,
+            name: *const u16,
+            flags: u32,
+            kind: *mut u32,
+            data: *mut std::ffi::c_void,
+            size: *mut u32,
+        ) -> i32;
+    }
+    let sub = wide("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
+    let name = wide("EnableTransparency");
+    let mut value = 0u32;
+    let mut size = 4u32;
+    let code = unsafe {
+        RegGetValueW(
+            (0x80000001u32 as i32 as isize) as Handle,
+            sub.as_ptr(),
+            name.as_ptr(),
+            0x10,
+            null_mut(),
+            &mut value as *mut _ as _,
+            &mut size,
+        )
+    };
+    (code == 0 && size == 4).then_some(value != 0)
+}
 pub(super) unsafe fn appearance(hwnd: Hwnd, theme: crate::ui::Theme, dark: bool) {
     attribute(hwnd, 2, 2); // DWMWA_NCRENDERING_POLICY = DWMNCRP_ENABLED.
     attribute(hwnd, 20, dark as u32);

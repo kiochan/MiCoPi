@@ -1683,5 +1683,7 @@
   "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.": "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.",
   "Surface Opacity": "Surface Opacity",
   "Use system Acrylic on supported Windows versions; otherwise keep opaque surfaces.": "Use system Acrylic on supported Windows versions; otherwise keep opaque surfaces.",
-  "Window Blur": "Window Blur"
+  "Window Blur": "Window Blur",
+  "Workbench Diagnostics": "Workbench Diagnostics",
+  "Windows transparency is disabled. Enable Transparency effects in Windows Settings to see Acrylic.": "Windows transparency is disabled. Enable Transparency effects in Windows Settings to see Acrylic."
 }

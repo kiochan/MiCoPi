@@ -326,6 +326,8 @@ pub struct Session {
     pub(crate) preset_library_token: u64,
     pub ui_effects: VecDeque<Value>,
     pub(crate) presentation_captures: super::presentation_captures::Captures,
+    /// Transient host observations, excluded from document/replay metadata.
+    pub(crate) desktop_diagnostics: Option<Value>,
     pub(crate) stroke: crate::plugins::tools::StrokeEngine,
     pub(crate) events: VecDeque<Event>,
     pub(crate) sequence: u64,
@@ -398,6 +400,7 @@ impl Session {
             export_event: None,
             ui_effects: VecDeque::new(),
             presentation_captures: Default::default(),
+            desktop_diagnostics: None,
             stroke: Default::default(),
             events: VecDeque::with_capacity(512),
             sequence: 0,

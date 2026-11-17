@@ -438,7 +438,7 @@ impl Studio {
                 if window.native.is_none() {
                     window.native = Native::for_viewport(&bootstrap, ctx.clone());
                 }
-                theme::sync_backdrop(ctx, &a, window.native.as_ref());
+                report_changed |= theme::sync_backdrop(ctx, &a, window.native.as_ref());
                 let colors = theme::Colors::for_context(ctx, &a);
                 if let Some(native) = &window.native {
                     let mut t = crate::ui::Theme::preset(if a.theme == "graphite" { 2 } else { 0 });

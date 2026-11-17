@@ -104,7 +104,7 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
             captures["last"].clone()
         };
         return Ok(
-            json!({"runtime":s.runtime,"panels":s.registry.panels.values().collect::<Vec<_>>(),"actual":s.ui.get("windows.actual"),"last_drop":s.ui.get("windows.drop"),"last_capture":last_capture,"capture_requests":captures,"last_request":s.ui.get("windows.request"),"last_result":s.ui.get("windows.result")}),
+            json!({"runtime":s.runtime,"panels":s.registry.panels.values().collect::<Vec<_>>(),"actual":s.ui.get("windows.actual"),"last_drop":s.ui.get("windows.drop"),"last_capture":last_capture,"capture_requests":captures,"last_request":s.ui.get("windows.request"),"last_result":s.ui.get("windows.result"),"diagnostics_available":s.runtime=="desktop" && s.desktop_diagnostics.is_some(),"diagnostics":s.desktop_diagnostics}),
         );
     }
     if s.runtime == "desktop" && s.ui_effects.len() >= 128 {
@@ -195,6 +195,36 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn diagnostics_are_discoverable_read_only_and_explicit_when_unavailable() {
+        let mut s = Session::new(crate::plugins::Registry::bundled()).unwrap();
+        assert!(s.registry.states.contains_key("workbench.debug"));
+        let before = s.state();
+        let history = s.doc.history_bytes();
+        let revision = s.revision;
+        let events = s.replay_journal(false).unwrap().entries.len();
+        let headless = s
+            .apply(Action::new("workbench.diagnostics", json!({})))
+            .unwrap();
+        assert_eq!(headless["result"]["diagnostics_available"], false);
+        assert!(headless["result"]["diagnostics"].is_null());
+        s.runtime = "desktop".into();
+        s.desktop_diagnostics =
+            Some(json!({"root_material":{"reason":"system_transparency_disabled"}}));
+        let actual = s
+            .apply(Action::new("workbench.diagnostics", json!({})))
+            .unwrap();
+        assert_eq!(actual["result"]["diagnostics_available"], true);
+        assert_eq!(
+            actual["result"]["diagnostics"]["root_material"]["reason"],
+            "system_transparency_disabled"
+        );
+        assert_eq!(s.state(), before);
+        assert_eq!(s.revision, revision);
+        assert_eq!(s.doc.history_bytes(), history);
+        assert_eq!(s.replay_journal(false).unwrap().entries.len(), events);
+        assert!(s.ui_effects.is_empty());
+    }
     #[test]
     fn workspace_layout_actions_are_discoverable_headless_explicit_and_revision_neutral() {
         let mut s = Session::new(crate::plugins::Registry::bundled()).unwrap();

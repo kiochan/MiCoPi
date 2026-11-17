@@ -1683,5 +1683,7 @@
   "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.": "창 흐림 효과 사용 시 패널 색상의 불투명도입니다. 그림과 팝업은 불투명하게 유지됩니다.",
   "Surface Opacity": "패널 불투명도",
   "Use system Acrylic on supported Windows versions; otherwise keep opaque surfaces.": "지원되는 Windows에서 시스템 아크릴 효과를 사용하며, 그 외에는 불투명하게 표시합니다.",
-  "Window Blur": "창 흐림 효과"
+  "Window Blur": "창 흐림 효과",
+  "Workbench Diagnostics": "워크벤치 진단",
+  "Windows transparency is disabled. Enable Transparency effects in Windows Settings to see Acrylic.": "Windows 투명 효과가 꺼져 있습니다. Windows 설정에서 투명 효과를 켜면 아크릴 효과를 볼 수 있습니다."
 }

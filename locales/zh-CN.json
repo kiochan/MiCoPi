@@ -1683,5 +1683,7 @@
   "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.": "开启窗口模糊时的面板着色不透明度。画布和弹出菜单保持不透明。",
   "Surface Opacity": "界面不透明度",
   "Use system Acrylic on supported Windows versions; otherwise keep opaque surfaces.": "在支持的 Windows 版本使用系统亚克力效果；其他系统保持不透明。",
-  "Window Blur": "窗口模糊"
+  "Window Blur": "窗口模糊",
+  "Workbench Diagnostics": "工作台诊断",
+  "Windows transparency is disabled. Enable Transparency effects in Windows Settings to see Acrylic.": "Windows 透明效果已关闭。请在 Windows 设置中开启“透明效果”，以显示亚克力模糊。"
 }

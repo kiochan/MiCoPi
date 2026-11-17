@@ -104,6 +104,7 @@ impl Studio {
             json!({"id":definition.id,"open":location.is_some(),"active":active,"floating":location.is_some_and(|(s,_,_)|!s.is_main()),"bounds":bounds,"native":native,"group":group,"header":header,"tabs":tabs})
         }).collect();
         self.editor.session.ui["windows.actual"] = json!(actual);
+        self.report_diagnostics();
     }
     pub(super) fn apply_window_command(
         &mut self,

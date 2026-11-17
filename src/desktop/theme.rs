@@ -253,10 +253,22 @@ impl Colors {
 fn backdrop_key(ctx: &Context) -> Id {
     Id::new(("native-backdrop", ctx.viewport_id()))
 }
-pub fn sync_backdrop(ctx: &Context, a: &Appearance, native: Option<&super::Native>) {
+pub fn sync_backdrop(ctx: &Context, a: &Appearance, native: Option<&super::Native>) -> bool {
     let active = native.is_some_and(|n| n.backdrop(a.window_blur, a.theme == "graphite"));
     let key = backdrop_key(ctx);
-    ctx.data_mut(|d| d.insert_temp(key, active));
+    let status = native.and_then(|n| n.material_status());
+    let status_key = key.with("observed-status");
+    ctx.data_mut(|d| {
+        let changed =
+            d.get_temp::<Option<crate::platform::windows::desktop_bridge::MaterialStatus>>(
+                status_key,
+            ) != Some(status);
+        if changed {
+            d.insert_temp(status_key, status);
+        }
+        d.insert_temp(key, active);
+        changed
+    })
 }
 pub fn apply(ctx: &Context, a: &Appearance) {
     // Style is stored per egui theme. Pin the configured appearance before

@@ -291,7 +291,11 @@
             ]
           },
           "last_request": {},
-          "last_result": {}
+          "last_result": {},
+          "diagnostics_available": {
+            "type": "boolean"
+          },
+          "diagnostics": {}
         },
         "required": [
           "runtime",
@@ -547,6 +551,28 @@
       },
       "pixel_access": "none",
       "requires_idle": true
+    },
+    {
+      "id": "workbench.diagnostics",
+      "title": "Workbench Diagnostics",
+      "operation": "window_state",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "runtime": {
+            "type": "string"
+          },
+          "diagnostics_available": {
+            "type": "boolean"
+          },
+          "diagnostics": {}
+        },
+        "required": [
+          "runtime",
+          "diagnostics_available",
+          "diagnostics"
+        ]
+      }
     }
   ],
   "panels": [],
@@ -696,11 +722,37 @@
             ]
           },
           "last_request": {},
-          "last_result": {}
+          "last_result": {},
+          "diagnostics_available": {
+            "type": "boolean"
+          },
+          "diagnostics": {}
         },
         "required": [
           "runtime",
           "capture_requests"
+        ]
+      }
+    },
+    {
+      "id": "workbench.debug",
+      "title": "Workbench Diagnostics",
+      "action": "workbench.diagnostics",
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "runtime": {
+            "type": "string"
+          },
+          "diagnostics_available": {
+            "type": "boolean"
+          },
+          "diagnostics": {}
+        },
+        "required": [
+          "runtime",
+          "diagnostics_available",
+          "diagnostics"
         ]
       }
     }

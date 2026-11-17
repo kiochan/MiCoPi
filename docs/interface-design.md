@@ -28,7 +28,12 @@ entire canvas workspace a solid slab.
 Use the documented [DWM system backdrop API](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_systembackdrop_type),
 available from Windows 11 build 22621. Older systems, failed native negotiation and
 embedded test viewports retain opaque surfaces. Windows owns the blur strength and
-may substitute its accessibility/power fallback. No screen capture, CPU blur,
+may substitute its accessibility/power fallback.
+Its observed transparency preference and native negotiation are available through
+[Workbench diagnostics](workbench-diagnostics.md). A disabled Windows transparency
+setting uses the opaque fallback and is explained beside Window Blur in Settings;
+successful DWM negotiation is never presented as composed-pixel verification.
+No screen capture, CPU blur,
 per-frame native backdrop call, bitmap allocation or new dependency is added;
 OpenGL viewports use alpha presentation and the OS compositor supplies the effect.
 This does not blur content behind panels inside the same application window.

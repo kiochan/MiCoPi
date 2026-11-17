@@ -7,6 +7,13 @@ viewport, and `src/platform/windows/chrome.rs` / `desktop_bridge.rs` negotiate a
 cache the documented DWM backdrop. Canvas pixels and plugin algorithms do not own
 window materials. See [Interface design](interface-design.md#system-glass).
 
+`src/desktop/diagnostics.rs` publishes cached presentation observations through
+the transient Session diagnostic slot. `src/plugins/windows.rs` exposes the same
+read-only window-state handler as `workbench.diagnostics` / `workbench.debug`;
+`scripts/inspect-workbench.py` collects local reports and correlated renderer PNGs
+through the existing authenticated attachment. These observations are excluded
+from recorded UI/document state. See [Workbench diagnostics](workbench-diagnostics.md).
+
 The [workspace domain plan](workspace-domains.md#source-ownership-and-dependencies)
 maps future Painting/Layout/Video responsibilities onto these existing ownership
 boundaries. Suggested new module paths are proposals, not current files; no

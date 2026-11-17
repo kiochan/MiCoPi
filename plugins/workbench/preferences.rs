@@ -853,6 +853,11 @@ impl Studio {
                     }
                 });
                 ui.weak(tr(item.description));
+                if item.id == "ui.window_blur" && draft.ui.window_blur
+                    && self.editor.session.desktop_diagnostics.as_ref().is_some_and(|v| v["root_material"]["reason"] == "system_transparency_disabled") {
+                    ui.label(tr(RichText::new("Windows transparency is disabled. Enable Transparency effects in Windows Settings to see Acrylic.")
+                        .color(ui.visuals().warn_fg_color)));
+                }
                 ui.label(tr(RichText::new(localize(item.id)).small().monospace()));
                 let mut v = value(document, item.id).clone();
                 ui.horizontal_wrapped(|ui| {

@@ -55,11 +55,43 @@ impl Hook {
     }
 }
 thread_local! { static HOOKS: RefCell<BTreeMap<usize, Hook>> = const { RefCell::new(BTreeMap::new()) }; }
+thread_local! { static MATERIAL_EPOCH: Cell<u64> = const { Cell::new(0) }; }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MaterialStatus {
+    requested: bool,
+    dark: bool,
+    epoch: u64,
+    negotiated: bool,
+    system_transparency: Option<bool>,
+}
+impl MaterialStatus {
+    pub fn translucent(&self) -> bool {
+        self.requested && self.negotiated && self.system_transparency != Some(false)
+    }
+    pub fn diagnostics(&self) -> serde_json::Value {
+        let reason = if !self.requested {
+            "disabled_in_app"
+        } else if self.system_transparency == Some(false) {
+            "system_transparency_disabled"
+        } else if !self.negotiated {
+            "native_backdrop_unavailable"
+        } else if self.system_transparency.is_none() {
+            "system_preference_unknown"
+        } else {
+            "system_backdrop_negotiated"
+        };
+        serde_json::json!({"requested":self.requested,"native_negotiated":self.negotiated,
+            "system_transparency_enabled":self.system_transparency,
+            "translucent_surfaces":self.translucent(),"reason":reason,
+            "desktop_backdrop_verified":false})
+    }
+}
 
 pub struct Native {
     hwnd: Hwnd,
     gdiplus: usize,
-    backdrop: Cell<Option<(bool, bool, bool)>>,
+    backdrop: Cell<Option<MaterialStatus>>,
 }
 impl Native {
     /// Must be created and dropped on the native event-loop thread.
@@ -315,14 +347,26 @@ impl Native {
     }
     /// Cache native negotiation; never call DWM for every repaint or pen sample.
     pub fn backdrop(&self, enabled: bool, dark: bool) -> bool {
-        if let Some((requested, previous_dark, active)) = self.backdrop.get() {
-            if requested == enabled && previous_dark == dark {
-                return active;
+        let epoch = MATERIAL_EPOCH.with(Cell::get);
+        if let Some(status) = self.backdrop.get() {
+            if status.requested == enabled && status.dark == dark && status.epoch == epoch {
+                return status.translucent();
             }
         }
-        let active = unsafe { !self.hwnd.is_null() && chrome::backdrop(self.hwnd, enabled, dark) };
-        self.backdrop.set(Some((enabled, dark, active)));
-        active
+        let negotiated =
+            unsafe { !self.hwnd.is_null() && chrome::backdrop(self.hwnd, enabled, dark) };
+        let status = MaterialStatus {
+            requested: enabled,
+            dark,
+            epoch,
+            negotiated,
+            system_transparency: chrome::system_transparency(),
+        };
+        self.backdrop.set(Some(status));
+        status.translucent()
+    }
+    pub fn material_status(&self) -> Option<MaterialStatus> {
+        self.backdrop.get()
     }
     pub fn load_image(&self, path: &Path) -> std::io::Result<Document> {
         unsafe { load_image(path) }
@@ -489,7 +533,16 @@ unsafe extern "system" fn procedure(hwnd: Hwnd, msg: u32, w: usize, l: isize) ->
             }
             return 1;
         }
-        0x05 | 0x31a | 0x31e => chrome::shape(hwnd, IsZoomed(hwnd) != 0),
+        0x05 => chrome::shape(hwnd, IsZoomed(hwnd) != 0),
+        0x1a | 0x31a | 0x31e => {
+            MATERIAL_EPOCH.with(|epoch| epoch.set(epoch.get().wrapping_add(1)));
+            HOOKS.with(|hooks| {
+                if let Some(hook) = hooks.borrow().get(&(hwnd as usize)) {
+                    hook.context.request_repaint();
+                }
+            });
+            chrome::shape(hwnd, IsZoomed(hwnd) != 0);
+        }
         0x02cc => return 0x1 | 0x8 | 0x10 | 0x100 | 0x10000 | 0x80000 | 0x100000,
         0x245 | 0x246 | 0x247 | 0x249 => {
             let mut info: PenInfo = mem::zeroed();
@@ -580,6 +633,32 @@ unsafe extern "system" {
 #[cfg(test)]
 mod viewport_input_tests {
     use super::*;
+    #[test]
+    fn native_acceptance_does_not_override_disabled_system_transparency() {
+        let mut status = MaterialStatus {
+            requested: true,
+            dark: true,
+            epoch: 0,
+            negotiated: true,
+            system_transparency: Some(false),
+        };
+        assert!(!status.translucent());
+        assert_eq!(
+            status.diagnostics()["reason"],
+            "system_transparency_disabled"
+        );
+        status.system_transparency = Some(true);
+        assert!(status.translucent());
+        assert_eq!(status.diagnostics()["desktop_backdrop_verified"], false);
+        status.negotiated = false;
+        assert!(!status.translucent());
+        assert_eq!(
+            status.diagnostics()["reason"],
+            "native_backdrop_unavailable"
+        );
+        status.requested = false;
+        assert_eq!(status.diagnostics()["reason"], "disabled_in_app");
+    }
     #[test]
     fn native_move_release_keeps_physical_negative_coordinates_and_respects_cancellation() {
         let mut h = Hook {

@@ -29,6 +29,7 @@ mod capture_writer;
 #[path = "../../plugins/color/panel.rs"]
 mod color;
 mod commands;
+mod diagnostics;
 mod document_texture;
 mod group_bar;
 mod group_drop;
@@ -1259,7 +1260,7 @@ impl Studio {
         }
     }
     fn frame_ui(&mut self, ctx: &Context) {
-        theme::sync_backdrop(ctx, &self.editor.settings.ui, self.editor.native.as_ref());
+        let mut diagnostics_changed = false;
         self.report_workspaces();
         self.editor.push_gui_parameters();
         self.editor.push_gui_view();
@@ -1289,6 +1290,7 @@ impl Studio {
             ctx.request_repaint_after(Duration::from_millis(500));
         }
         if self.applied != self.editor.settings.ui {
+            diagnostics_changed = true;
             if self.applied.language != self.editor.settings.ui.language {
                 theme::fonts(ctx);
                 self.editor.workflow.fit();
@@ -1312,6 +1314,8 @@ impl Studio {
                 native.appearance(t, self.applied.theme == "graphite");
             }
         }
+        diagnostics_changed |=
+            theme::sync_backdrop(ctx, &self.editor.settings.ui, self.editor.native.as_ref());
         if let Some(native) = &self.editor.native {
             native.drain_pen(&mut self.editor.packets);
             if self
@@ -1450,6 +1454,9 @@ impl Studio {
             || area_changed
         {
             self.report_windows();
+        }
+        if diagnostics_changed || self.editor.session.desktop_diagnostics.is_none() {
+            self.report_diagnostics();
         }
         self.settings_window(ctx);
         self.editor.plugin_command_window(ctx);
