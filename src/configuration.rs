@@ -44,7 +44,7 @@ impl Default for Appearance {
             language: crate::i18n::Language::English,
             theme: "graphite".into(),
             window_blur: true,
-            surface_opacity: 0.8,
+            surface_opacity: 0.55,
             font_size: 13.,
             small_font_size: 12.,
             item_spacing: 4.,
@@ -80,7 +80,7 @@ impl Appearance {
     }
     pub fn validate(&self) -> Result<(), String> {
         for (name, value, low, high) in [
-            ("surface_opacity", self.surface_opacity, 0.65, 1.),
+            ("surface_opacity", self.surface_opacity, 0.35, 1.),
             ("font_size", self.font_size, 11., 22.),
             ("small_font_size", self.small_font_size, 10., 18.),
             ("item_spacing", self.item_spacing, 4., 20.),
@@ -552,7 +552,7 @@ mod tests {
             r#"{"ui":{"section_spacing":8,"item_spacing":12}}"#,
             r#"{"ui":{"typo":4}}"#,
             r#"{"ui":{"accent":"red"}}"#,
-            r#"{"ui":{"surface_opacity":0.64}}"#,
+            r#"{"ui":{"surface_opacity":0.34}}"#,
             r#"{"ui":{"surface_opacity":1.01}}"#,
         ] {
             assert!(Settings::decode(input, PathBuf::new()).is_err(), "{input}");

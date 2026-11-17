@@ -10,7 +10,7 @@ impl Studio {
         TopBottomPanel::top("title")
             .show_separator_line(false)
             .exact_height(a.title_height + a.outer_padding)
-            .frame(Frame::new().fill(c.background).inner_margin(Margin {
+            .frame(Frame::new().fill(c.title_fill()).inner_margin(Margin {
                 left: a.outer_padding as i8,
                 right: a.outer_padding as i8,
                 top: a.outer_padding as i8,
@@ -18,6 +18,9 @@ impl Studio {
             }))
             .show(ctx, |ui| {
                 let r = ui.max_rect();
+                if c.background.a() < 255 {
+                    ui.painter().hline(r.x_range(), r.bottom() - 0.5, Stroke::new(1., c.border.gamma_multiply(0.5)));
+                }
                 let drag = ui.interact(r, ui.id().with("window-drag"), Sense::click_and_drag());
                 if drag.drag_started() {
                     ctx.send_viewport_cmd(ViewportCommand::StartDrag);

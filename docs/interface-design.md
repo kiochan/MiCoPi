@@ -10,10 +10,14 @@ The Tools window is an icon-only strip: brush, Move, eraser, selection tools, fl
 
 The main window and detached panel groups request Windows system Acrylic by
 default. Search Settings for **Window Blur** (`ui.window_blur`) or **Surface
-Opacity** (`ui.surface_opacity`, 0.65–1.0, default 0.8). Changes apply to existing
+Opacity** (`ui.surface_opacity`, 0.35–1.0, default 0.55). Changes apply to existing
 windows without restarting or modifying the saved dock geometry. Opacity controls
 the panel tint; the workspace gaps use a lighter tint to expose the system material.
-Turning blur off restores the existing opaque palette. Artwork, the recessed
+Headers receive one tint pass, rather than stacking the docking library's fill
+under the custom group row. The title bar shares the lighter header material;
+brighter hairline edges separate the frosted surfaces without bitmap textures.
+Existing explicit opacity preferences are preserved. Turning blur off restores
+the existing opaque palette. Artwork, the recessed
 canvas stage, text, widgets and popups remain opaque for accurate color and contrast.
 
 Use the documented [DWM system backdrop API](https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_systembackdrop_type),

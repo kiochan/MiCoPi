@@ -98,7 +98,7 @@ const SETTINGS: &[Setting] = &[
         "Surface Opacity",
         "Panel tint opacity with Window Blur enabled. Artwork and popups stay opaque.",
         Appearance,
-        0.65,
+        0.35,
         1.
     ),
     metric!(

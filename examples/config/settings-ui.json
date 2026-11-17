@@ -3,7 +3,7 @@
   "ui": {
     "theme": "graphite",
     "window_blur": true,
-    "surface_opacity": 0.8,
+    "surface_opacity": 0.55,
     "font_size": 13,
     "small_font_size": 12,
     "item_spacing": 4,

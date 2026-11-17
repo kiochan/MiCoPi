@@ -21,11 +21,23 @@ mod glyph_tests {
             assert_eq!(glass.stage, opaque.stage);
             assert_eq!(glass.text, opaque.text);
             assert_eq!(glass.raised, opaque.raised);
-            assert_eq!(glass.border, opaque.border);
+            assert_eq!(glass.border.a(), 255);
+            assert_eq!(glass.title_fill(), glass.header);
+            let dock = crate::desktop::native_windows::dock_style(&ctx, &a);
+            assert_eq!(dock.tab_bar.bg_fill, Color32::TRANSPARENT);
+            assert_eq!(dock.tab.active.bg_fill, Color32::TRANSPARENT);
+            assert_eq!(dock.tab.tab_body.bg_fill, glass.panel);
             a.window_blur = false;
             let disabled = Colors::for_context(&ctx, &a);
             assert_eq!(disabled.background, opaque.background);
             assert_eq!(disabled.panel, opaque.panel);
+            assert_eq!(disabled.title_fill(), opaque.background);
+            assert_eq!(
+                crate::desktop::native_windows::dock_style(&ctx, &a)
+                    .tab_bar
+                    .bg_fill,
+                opaque.header
+            );
             a.window_blur = true;
         }
     }
@@ -111,11 +123,21 @@ impl Colors {
             let tint = |c: Color32, opacity: f32| {
                 Color32::from_rgba_unmultiplied(c.r(), c.g(), c.b(), (opacity * 255.).round() as u8)
             };
-            colors.background = tint(colors.background, a.surface_opacity * 0.3);
+            colors.background = tint(colors.background, a.surface_opacity * 0.12);
             colors.panel = tint(colors.panel, a.surface_opacity);
-            colors.header = tint(colors.header, a.surface_opacity);
+            colors.header = tint(colors.header, a.surface_opacity * 0.85);
+            colors.border = colors
+                .border
+                .lerp_to_gamma(Color32::WHITE, if colors.dark { 0.2 } else { 0.1 });
         }
         colors
+    }
+    pub fn title_fill(&self) -> Color32 {
+        if self.background.a() < 255 {
+            self.header
+        } else {
+            self.background
+        }
     }
     pub fn new(a: &Appearance) -> Self {
         let dark = a.theme == "graphite";
