@@ -5,6 +5,66 @@ use eframe::egui::{self, *};
 mod glyph_tests {
     use super::*;
     #[test]
+    fn empty_docking_tabs_emit_no_visible_capsules_under_custom_headers() {
+        struct EmptyTabs;
+        impl egui_dock::TabViewer for EmptyTabs {
+            type Tab = u8;
+            fn title(&mut self, _: &mut u8) -> WidgetText {
+                "".into()
+            }
+            fn id(&mut self, tab: &mut u8) -> Id {
+                Id::new(("passive-tab", *tab))
+            }
+            fn ui(&mut self, _: &mut Ui, _: &mut u8) {}
+        }
+        for name in ["graphite", "light", "warm"] {
+            for glass in [false, true] {
+                let ctx = Context::default();
+                let mut a = Appearance::default();
+                a.theme = name.into();
+                apply(&ctx, &a);
+                let key = backdrop_key(&ctx);
+                ctx.data_mut(|d| d.insert_temp(key, glass));
+                let style = crate::desktop::native_windows::dock_style(&ctx, &a);
+                let mut dock = egui_dock::DockState::new(vec![0u8, 1]);
+                let output = ctx.run(
+                    RawInput {
+                        screen_rect: Some(Rect::from_min_size(Pos2::ZERO, vec2(400., 250.))),
+                        ..Default::default()
+                    },
+                    |ctx| {
+                        CentralPanel::default().frame(Frame::new()).show(ctx, |ui| {
+                            egui_dock::DockArea::new(&mut dock)
+                                .style(style.clone())
+                                .show_close_buttons(false)
+                                .show_leaf_close_all_buttons(false)
+                                .show_leaf_collapse_buttons(false)
+                                .show_inside(ui, &mut EmptyTabs);
+                        });
+                    },
+                );
+                // Inspect the real library paint output, not just our style
+                // fields. Empty labels still allocate narrow tab rectangles.
+                fn check(shape: &Shape, height: f32) {
+                    match shape {
+                        Shape::Vec(items) => items.iter().for_each(|s| check(s, height)),
+                        Shape::Rect(r) if r.rect.max.y <= height + 2. && r.rect.width() < 120. => {
+                            assert_eq!(r.fill.a(), 0, "passive tab fill leaked");
+                            assert!(
+                                r.stroke.width == 0. || r.stroke.color.a() == 0,
+                                "passive tab outline leaked"
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+                for shape in output.shapes {
+                    check(&shape.shape, a.tab_height);
+                }
+            }
+        }
+    }
+    #[test]
     fn unsupported_backdrop_is_opaque_and_material_never_tints_artwork_or_text() {
         let ctx = Context::default();
         let mut a = Appearance::default();

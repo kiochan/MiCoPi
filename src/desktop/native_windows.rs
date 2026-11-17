@@ -47,24 +47,24 @@ pub(super) fn dock_style(ctx: &Context, a: &Appearance) -> egui_dock::Style {
         se: radius,
     };
     style.tab.hline_below_active_tab_name = false;
-    style.tab.active.bg_fill = colors.panel;
-    style.tab.focused.bg_fill = colors.panel;
     style.tab.focused.text_color = colors.accent_text;
     if colors.background.a() < 255 {
-        // The custom group row paints its own surface. Stacking a second tint
-        // here would turn frosted headers almost opaque.
         style.tab_bar.bg_fill = Color32::TRANSPARENT;
-        for tab in [
-            &mut style.tab.active,
-            &mut style.tab.inactive,
-            &mut style.tab.focused,
-            &mut style.tab.hovered,
-            &mut style.tab.inactive_with_kb_focus,
-            &mut style.tab.active_with_kb_focus,
-            &mut style.tab.focused_with_kb_focus,
-        ] {
-            tab.bg_fill = Color32::TRANSPARENT;
-        }
+    }
+    // The custom group row owns all visible tabs. Even empty library tabs paint
+    // a rounded outline: make every passive state paint-free, in every theme.
+    for tab in [
+        &mut style.tab.active,
+        &mut style.tab.inactive,
+        &mut style.tab.focused,
+        &mut style.tab.hovered,
+        &mut style.tab.inactive_with_kb_focus,
+        &mut style.tab.active_with_kb_focus,
+        &mut style.tab.focused_with_kb_focus,
+    ] {
+        tab.bg_fill = Color32::TRANSPARENT;
+        tab.outline_color = Color32::TRANSPARENT;
+        tab.corner_radius = CornerRadius::ZERO;
     }
     // Gaps between cards match the workspace edge inset.
     style.separator.width = a.outer_padding;

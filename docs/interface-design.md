@@ -14,7 +14,9 @@ Opacity** (`ui.surface_opacity`, 0.35–1.0, default 0.55). Changes apply to exi
 windows without restarting or modifying the saved dock geometry. Opacity controls
 the panel tint; the workspace gaps use a lighter tint to expose the system material.
 Headers receive one tint pass, rather than stacking the docking library's fill
-under the custom group row. The title bar shares the lighter header material;
+under the custom group row. Empty library tabs retain layout/hit routing but no
+fill, outline or rounded corners in any interaction state; the custom row is the
+sole visible tab renderer. The title bar shares the lighter header material;
 brighter hairline edges separate the frosted surfaces without bitmap textures.
 Existing explicit opacity preferences are preserved. Turning blur off restores
 the existing opaque palette. The canvas surround and zoom strip share the glass
