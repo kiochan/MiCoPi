@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Repair the window-local pen queue fixtures after adding the native material cache: initialize their independent caches without changing pen samples, pressure/cancel ordering or production behavior. CI at `25514c7` identified the missing fields during test compilation. Full verification remains assigned to the repaired head; prepare a resource-limited desktop preview build without running local suites.
+
 - Add configurable system Acrylic to the main workbench and independent panel windows, using the existing DWM bridge and alpha OpenGL presentation without new dependencies or CPU blur. Search Window Blur and Surface Opacity in Settings; default to a restrained 0.8 panel tint with opaque artwork/stage, text, widgets and popups. Negotiate/cache native support per window and restore the original opaque palette when disabled or unsupported; retain native frame geometry, shadows and corners. Add four-language labels, settings validation, palette fallback and native material/frame checks. Complete CI, native screenshot review and representative GPU-cost evidence remain pending; local checks stay light.
 
 - Correct the failed-Apply UI replay assertions exposed by CI at `06af9f7`: verify each failed registered action retains an auditable failure event with identical state hashes and zero tile changes, rather than incorrectly requiring no event. Preserve unchanged document/history checks and require exactly one successful retry outcome after the failed attempts, including private preview recovery. Clarify this existing recording contract in both correction guides; no production recording behavior or format changes. Local validation remains light; full runtime verification awaits CI.

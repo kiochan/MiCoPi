@@ -625,10 +625,12 @@ mod viewport_input_tests {
         let first = Native {
             hwnd: 0x7fff001usize as Hwnd,
             gdiplus: 0,
+            backdrop: Cell::new(None),
         };
         let second = Native {
             hwnd: 0x7fff002usize as Hwnd,
             gdiplus: 0,
+            backdrop: Cell::new(None),
         };
         for native in [&first, &second] {
             HOOKS.with(|hooks| {
