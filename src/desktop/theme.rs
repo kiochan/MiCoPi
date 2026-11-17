@@ -18,7 +18,7 @@ mod glyph_tests {
             ctx.data_mut(|d| d.insert_temp(key, true));
             let glass = Colors::for_context(&ctx, &a);
             assert!(glass.panel.a() < 255 && glass.background.a() < 255);
-            assert_eq!(glass.stage, opaque.stage);
+            assert!(glass.stage.a() < glass.panel.a());
             assert_eq!(glass.text, opaque.text);
             assert_eq!(glass.raised, opaque.raised);
             assert_eq!(glass.border.a(), 255);
@@ -31,6 +31,7 @@ mod glyph_tests {
             let disabled = Colors::for_context(&ctx, &a);
             assert_eq!(disabled.background, opaque.background);
             assert_eq!(disabled.panel, opaque.panel);
+            assert_eq!(disabled.stage, opaque.stage);
             assert_eq!(disabled.title_fill(), opaque.background);
             assert_eq!(
                 crate::desktop::native_windows::dock_style(&ctx, &a)
@@ -126,6 +127,7 @@ impl Colors {
             colors.background = tint(colors.background, a.surface_opacity * 0.12);
             colors.panel = tint(colors.panel, a.surface_opacity);
             colors.header = tint(colors.header, a.surface_opacity * 0.85);
+            colors.stage = tint(colors.stage, a.surface_opacity * 0.65);
             colors.border = colors
                 .border
                 .lerp_to_gamma(Color32::WHITE, if colors.dark { 0.2 } else { 0.1 });

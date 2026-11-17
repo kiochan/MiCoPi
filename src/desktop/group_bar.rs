@@ -209,14 +209,11 @@ impl panels::Viewer<'_> {
         }
         let group = tabs[0];
         let drag_id = Id::new("dragged-panel-tab");
-        // Tabs rise from the bottom of the row; the active one shares the body
-        // surface and flares into it. Their surfaces are painted beneath the labels.
+        // Simple tab chips stay within their own bounds. Repainting circles to
+        // carve browser-style flares cannot erase a translucent surface.
         let lift = (a.tab_height * 0.16).round().clamp(3., 8.);
-        let flare = (a.corner_radius * 0.75).clamp(3., 8.);
         let strip = Rect::from_x_y_ranges(h.tabs.x_range(), h.bar.top() + lift..=h.bar.bottom());
-        let surfaces = row
-            .painter()
-            .with_clip_rect(h.tabs.expand2(vec2(flare, 0.)).intersect(h.bar));
+        let surfaces = row.painter().with_clip_rect(h.tabs.intersect(h.bar));
         let slot = surfaces.add(Shape::Noop);
         let mut shapes: Vec<Shape> = vec![];
         let mut tab_rects: Vec<(Rect, bool, bool)> = vec![];
@@ -304,37 +301,24 @@ impl panels::Viewer<'_> {
             });
         });
         let radius = (a.corner_radius * 0.9).min(strip.height() * 0.5);
-        let top = CornerRadius {
-            nw: radius as u8,
-            ne: radius as u8,
-            sw: 0,
-            se: 0,
-        };
         for (index, &(rect, active, hovered)) in tab_rects.iter().enumerate() {
             let body = Rect::from_x_y_ranges(rect.x_range(), strip.y_range());
             if active {
                 shapes.push(Shape::rect_filled(
-                    body.expand2(vec2(0., 1.)).translate(vec2(0., 0.5)),
-                    top,
-                    colors.panel,
+                    body.shrink2(vec2(2., 2.)),
+                    radius,
+                    Color32::from_rgba_unmultiplied(
+                        colors.accent.r(),
+                        colors.accent.g(),
+                        colors.accent.b(),
+                        if colors.dark { 28 } else { 40 },
+                    ),
                 ));
-                for (x, side) in [(body.left(), -1.), (body.right(), 1.)] {
-                    let corner = Rect::from_min_max(
-                        pos2(x.min(x + side * flare), body.bottom() - flare),
-                        pos2(x.max(x + side * flare), body.bottom() + 1.),
-                    );
-                    shapes.push(Shape::rect_filled(corner, 0, colors.panel));
-                    shapes.push(Shape::circle_filled(
-                        pos2(x + side * flare, body.bottom() - flare),
-                        flare,
-                        colors.header,
-                    ));
-                }
             } else if hovered {
                 shapes.push(Shape::rect_filled(
-                    body.shrink2(vec2(2., 0.)).with_max_y(body.bottom() - lift),
+                    body.shrink2(vec2(2., 2.)),
                     radius,
-                    colors.header.lerp_to_gamma(colors.border, 0.7),
+                    colors.border.gamma_multiply(0.3),
                 ));
             }
             // Thin dividers sit between neighbouring tabs that are both at rest.

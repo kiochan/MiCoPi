@@ -143,6 +143,11 @@ impl TabViewer for Viewer<'_> {
         let mut style = global.clone();
         if *p == Panel::Canvas {
             style.tab_body.inner_margin = Margin::ZERO;
+            if global.tab_body.bg_fill.a() < 255 {
+                // The canvas draws the stage and opaque checkerboard itself.
+                // Avoid stacking a second panel tint under the glass stage.
+                style.tab_body.bg_fill = Color32::TRANSPARENT;
+            }
         }
         Some(style)
     }

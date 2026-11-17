@@ -352,7 +352,7 @@ impl Editor {
     }
     pub(super) fn canvas_ui(&mut self, ui: &mut Ui) {
         let appearance = self.settings.ui.clone();
-        let c = theme::Colors::new(&self.settings.ui);
+        let c = theme::Colors::for_context(ui.ctx(), &self.settings.ui);
         // A thin zoom strip sits beneath the stage, like a status bar for the view.
         let strip_height = (appearance.control_height + 2.).round();
         let full = ui.available_rect_before_wrap();
