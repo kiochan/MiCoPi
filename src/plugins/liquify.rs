@@ -205,12 +205,45 @@ fn dense_mask(s: &Session, id: u64) -> Result<SamplePlane, String> {
 pub(crate) struct Draft {
     pub request: Request,
     pub scope: OwnerScope,
-    field: super::native::NativeLiquify,
+    field: Option<super::native::NativeLiquify>,
     outputs: super::owner_affine::OwnerOutputs,
     pending: [Option<abi::Region>; 4],
     valid: bool,
 }
 impl Draft {
+    /// Release large editing resources before registered Apply reconstructs its
+    /// own candidate. Keep only the bounded transcript and captured identities.
+    pub(crate) fn release_working_set(&mut self) {
+        self.field = None;
+        self.outputs.layers.clear();
+        self.outputs.mask_only = None;
+        self.pending = [None; 4];
+        self.valid = false;
+    }
+    pub(crate) fn is_released(&self) -> bool {
+        let released = self.field.is_none();
+        debug_assert!(
+            !released || self.outputs.layers.is_empty() && self.outputs.mask_only.is_none()
+        );
+        released
+    }
+    /// Explicit, cold recovery only. Never allocate or replay intent on MOVE.
+    pub(crate) fn restore_working_set(&mut self, s: &Session) -> Result<(), String> {
+        if self.is_released() {
+            super::owner_affine::require_idle(s).map_err(|e| e.to_string())?;
+            if plan(s, &self.request)?.scope != self.scope {
+                return Err("Liquify captured owner scope changed; reopen the draft".into());
+            }
+            let restored = Self::begin(s, self.request.clone())?;
+            if restored.scope != self.scope {
+                return Err("Liquify captured owner scope changed; reopen the draft".into());
+            }
+            *self = restored;
+        } else {
+            self.check_source(s)?;
+        }
+        Ok(())
+    }
     pub(crate) fn reset(&mut self, s: &Session) -> Result<(), String> {
         if self.request.document_identity != s.doc.identity
             || self.request.document_revision != s.revision
@@ -219,8 +252,21 @@ impl Draft {
         }
         super::owner_affine::require_idle(s).map_err(|e| e.to_string())?;
         s.doc.validate_owner_transform_scope(&self.scope)?;
+        if self.is_released() {
+            let mut request = self.request.clone();
+            request.steps.clear();
+            if plan(s, &request)?.scope != self.scope {
+                return Err("Liquify captured owner scope changed; reopen the draft".into());
+            }
+            let reset = Self::begin(s, request)?;
+            if reset.scope != self.scope {
+                return Err("Liquify captured owner scope changed; reopen the draft".into());
+            }
+            *self = reset;
+            return Ok(());
+        }
         self.valid = false;
-        self.field.clear()?;
+        self.field.as_mut().unwrap().clear()?;
         for (id, pixels, mask) in &mut self.outputs.layers {
             let index = s
                 .doc
@@ -271,7 +317,7 @@ impl Draft {
         let mut draft = Self {
             request,
             scope: p.scope,
-            field,
+            field: Some(field),
             outputs: super::owner_affine::OwnerOutputs {
                 layers,
                 mask_only: None,
@@ -329,7 +375,7 @@ impl Draft {
             *a = p.native();
         }
         self.valid = false;
-        let update = self.field.push(&native[..arms.len()])?;
+        let update = self.field.as_mut().unwrap().push(&native[..arms.len()])?;
         if update.count == 0 {
             self.valid = true;
             return Ok(false);
@@ -368,15 +414,19 @@ impl Draft {
                     .doc
                     .layer_index(*id)
                     .ok_or("Liquify source layer disappeared")?;
-                self.field.pixels_frame_region(
+                self.field.as_mut().unwrap().pixels_frame_region(
                     &s.doc.layers[index].pixels,
                     method,
                     *region,
                     pixels,
                 )?;
                 if let Some((id, SamplePlane::Dense(bytes))) = mask {
-                    self.field
-                        .mask_frame_region(s.doc.mask_plane(*id)?, method, *region, bytes)?;
+                    self.field.as_mut().unwrap().mask_frame_region(
+                        s.doc.mask_plane(*id)?,
+                        method,
+                        *region,
+                        bytes,
+                    )?;
                 }
             }
         }

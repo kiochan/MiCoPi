@@ -124,7 +124,10 @@ Historical checkboxes below and in the comparison guide do not override this tab
   Preview/feedback, contact controls and metadata-preview reuse subsequently
   passed full Windows CI and portable verification at `3ab2673` in
   [run 43899917324](https://github.com/kiochan/MiCoPi/actions/runs/43899917324).
-  Retry Preview recovery remains a newer source increment requiring its own CI.
+  Retry Preview recovery passed full Windows CI and portable verification at
+  `efd3b5e` in [run 43985330073](https://github.com/kiochan/MiCoPi/actions/runs/43985330073).
+  Failed-Apply intent retention/retry is a newer source increment requiring its
+  own CI and actual artist/device/performance evidence.
 - [x] Add the internal native inverse-field source prerequisite for R1, with checked
   node/workspace budgets, joint symmetric pushes and local dirty regions. Source now connects optional ABI/pixel sampling,
   captured multi-owner Session previews/grouped history and desktop input. New

@@ -161,6 +161,29 @@ Renderer-failure regressions cover explicit recovery, retained transcript storag
 texture reuse and unchanged source pixels/history; native and capture evidence
 must be recorded for the new commit.
 
+### Failed Apply and bounded recovery
+
+Before desktop Apply, drop the native editing field, staged RGBA/A8 outputs and
+CPU preview. Retain the bounded request transcript, original document/revision
+fence, captured owner scope and small control values. An already-current GPU
+texture can remain visible without retaining its CPU mirror; discard a dirty/
+throttled preview so it cannot misrepresent the retained gesture. The registered
+`canvas.liquify` action still validates and reconstructs its own candidate; no
+alternate cached-pixel publication path is introduced and two large editing
+working sets are not retained to protect a draft.
+
+Failed Apply leaves this intent-only draft open with **Retry Apply** and
+**Retry Preview**. Retry Apply resubmits the same registered action and expected
+revision. Retry Preview explicitly rebuilds the native field/owners from the
+original transcript, then restores the ordinary cached editing path. Drawing
+is unavailable until that working set is restored. A failed optional preview
+recovery does not disable Retry Apply for the already captured intent; it still
+uses the registered action's full validation and original revision fence. Drawing
+and idle frames never rebuild released resources. Reset explicitly rebuilds an
+empty deformation; Cancel drops the retained intent. Recovery validates the
+original owner/mask pairing before allocating and rejects changed revisions or
+scope without retargeting. No project, recording or ABI format changes are needed.
+
 Before publication, revalidate the source fence, exact owner/mask pairings and
 all outputs. Publish changed raw RGBA/A8 owners under one bounded history group,
 without replacing the independent affine Repeat recipe. Session owns atomic
@@ -251,8 +274,10 @@ portable verification at `ff44d07` in
 The contact-control increment passed full Windows CI and portable verification
 at `3ab2673` in
 [run 43899917324](https://github.com/kiochan/MiCoPi/actions/runs/43899917324).
-Subsequent Retry Preview controls require their own CI result; synthetic input
-does not certify devices.
+Retry Preview recovery passed full Windows CI and portable verification at
+`efd3b5e` in [run 43985330073](https://github.com/kiochan/MiCoPi/actions/runs/43985330073).
+Subsequent failed-Apply recovery requires its own CI result; synthetic input does
+not certify devices.
 
 - [x] Connect field, samplers, captured owners, private previews and grouped
   publication in source, with registered contracts and desktop controls.

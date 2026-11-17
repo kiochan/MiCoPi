@@ -1546,3 +1546,146 @@ fn shared_preview_failure_requires_explicit_retry_and_keeps_parameter_draft_and_
         pixels
     );
 }
+
+#[test]
+fn shared_failed_apply_retains_exact_binding_parameters_and_ready_preview_for_explicit_retry() {
+    let mut app = app();
+    let id = create(&mut app, false);
+    assert!(app.editor.core(
+        "adjustment.set",
+        json!({"adjustment_id":id,"target_layer_ids":[1,2]})
+    ));
+    let renderer =
+        crate::desktop::apply_failure::FailOnceRenderer::install(&mut app.editor.session);
+    let source = app.editor.session.doc.adjustment(id).unwrap().clone();
+    let mut value = source.clone();
+    value.amount = 0.5;
+    value.target_layer_ids = Some(vec![2]);
+    let ctx = context(&app);
+    let size = vec2(700., 1400.);
+    app.editor.focus_adjustment_ui(&ctx, Some(id));
+    let key = draft_key(app.editor.session.doc.identity, id);
+    let preview = preview_key(app.editor.session.doc.identity, id);
+    ctx.data_mut(|data| {
+        data.insert_temp(
+            key,
+            Draft {
+                source: source.clone(),
+                value: value.clone(),
+                revision: app.editor.session.revision,
+                error: String::new(),
+            },
+        )
+    });
+    warm(&mut app, &ctx, size);
+    ctx.data_mut(|data| {
+        let mut cache = data.get_temp::<PreviewCache>(preview).unwrap();
+        cache.changed = Instant::now() - Duration::from_secs(1);
+        data.insert_temp(preview, cache);
+    });
+    drop(frame(&mut app, &ctx, size, vec![], 4.));
+    let texture = app
+        .editor
+        .shared_adjustment_preview_texture(&ctx)
+        .unwrap()
+        .id();
+    let expected = app
+        .editor
+        .session
+        .doc
+        .preview_adjustment(id, value.spec())
+        .unwrap();
+    let before: Vec<_> = app
+        .editor
+        .session
+        .doc
+        .layers
+        .iter()
+        .map(|l| l.pixels.clone())
+        .collect();
+    let surface = app.editor.session.doc.composite.clone();
+    let public = app.editor.session.state();
+    let history = app.editor.session.doc.history_bytes();
+    let entries = app
+        .editor
+        .session
+        .replay_journal(false)
+        .unwrap()
+        .entries
+        .len();
+    let revision = app.editor.session.revision;
+    let (apply, enabled) = control(&ctx, &app, "adjustment-apply", id);
+    assert!(enabled);
+    renderer.arm();
+    drop(click(&mut app, &ctx, size, apply.center(), 5.));
+    assert_eq!(renderer.failures.get(), 1);
+    let draft = ctx.data_mut(|data| data.get_temp::<Draft>(key)).unwrap();
+    assert_eq!(draft.value, value);
+    assert_eq!(draft.source, source);
+    assert_eq!(draft.revision, revision);
+    assert!(!draft.error.is_empty());
+    assert!(!ctx
+        .data_mut(|data| data.get_temp::<PreviewCache>(preview))
+        .unwrap()
+        .display
+        .has_cpu_image());
+    assert_eq!(app.editor.session.state(), public);
+    assert_eq!(app.editor.session.doc.composite, surface);
+    assert_eq!(app.editor.session.doc.history_bytes(), history);
+    assert_eq!(
+        app.editor
+            .session
+            .replay_journal(false)
+            .unwrap()
+            .entries
+            .len(),
+        entries
+    );
+    assert_eq!(
+        app.editor
+            .shared_adjustment_preview_texture(&ctx)
+            .unwrap()
+            .id(),
+        texture
+    );
+    let (apply, enabled) = control(&ctx, &app, "adjustment-apply", id);
+    assert!(enabled);
+    drop(click(&mut app, &ctx, size, apply.center(), 6.));
+    assert!(ctx.data_mut(|data| data.get_temp::<Draft>(key)).is_none());
+    assert!(ctx
+        .data_mut(|data| data.get_temp::<PreviewCache>(preview))
+        .is_none());
+    assert_eq!(app.editor.session.revision, revision + 1);
+    assert_eq!(app.editor.session.doc.adjustment(id).unwrap(), &value);
+    assert_eq!(app.editor.session.doc.composite, expected);
+    assert_eq!(
+        app.editor
+            .session
+            .doc
+            .layers
+            .iter()
+            .map(|l| l.pixels.clone())
+            .collect::<Vec<_>>(),
+        before
+    );
+    assert_eq!(
+        app.editor
+            .session
+            .replay_journal(false)
+            .unwrap()
+            .entries
+            .len(),
+        entries + 1
+    );
+    assert!(app.editor.core("history.undo", json!({})));
+    assert_eq!(app.editor.session.doc.adjustment(id).unwrap(), &source);
+    assert!(app.editor.core("history.redo", json!({})));
+    assert_eq!(app.editor.session.doc.adjustment(id).unwrap(), &value);
+    assert_eq!(
+        app.editor
+            .session
+            .apply(crate::application::Action::new("replay.verify", json!({})))
+            .unwrap()["result"]["valid"],
+        true
+    );
+}

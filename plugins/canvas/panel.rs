@@ -642,7 +642,11 @@ impl Editor {
                     ctx.set_cursor_icon(CursorIcon::ZoomIn);
                 } else if self.liquify.is_some() {
                     // Liquify supplies its own captured-radius/symmetry feedback.
-                    ctx.set_cursor_icon(CursorIcon::None);
+                    ctx.set_cursor_icon(if self.liquify_drawing_ready() {
+                        CursorIcon::None
+                    } else {
+                        CursorIcon::Crosshair
+                    });
                 } else if self.area_mode == 8 {
                     ctx.set_cursor_icon(CursorIcon::Move);
                 } else if self.tool == Tool::Picker || held.pick || self.area_mode != 0 {

@@ -121,6 +121,19 @@ fields and carry `expected_revision`. See the
 
 ## Verification gates
 
+### Failed Apply
+
+A failed registered Apply keeps the exact parameter draft, bindings and original
+revision fence in the inspector, shows its error and exposes **Retry Apply**.
+Retry dispatches `adjustment.set` again through Session; it neither rebases the
+source nor creates another controller. Stale sources and active contacts retain
+their existing guards. Before dispatch, release the cached CPU display mirror
+while retaining a ready GPU preview; this avoids keeping a full display image
+alongside Apply's composition/rollback scratch. A successful Apply clears the
+finished draft and preview cache. Output-write failure regressions cover rollback,
+retained parameters/texture, unchanged raw owners/history/journal and one successful
+Undo/Redo/outcome after explicit retry.
+
 **Retry Preview** explicitly retries a failed private candidate with the same
 parameter draft and source fence. Failed attempts retain their error without
 repeated idle composition; the invalid cached image stays hidden. Retry schedules
@@ -155,7 +168,9 @@ verification at `ff44d07` in
 The contact-control and metadata-preview increments passed full Windows CI and
 portable verification at `3ab2673` in
 [run 43899917324](https://github.com/kiochan/MiCoPi/actions/runs/43899917324).
-Subsequent Retry Preview controls require their own CI result.
+Retry Preview recovery passed full Windows CI and portable verification at
+`efd3b5e` in [run 43985330073](https://github.com/kiochan/MiCoPi/actions/runs/43985330073).
+Subsequent failed-Apply recovery requires its own CI result.
 CJK/narrow native captures and representative cold/warm preview/controller costs
 remain open before closing R2 artist acceptance. Canvas consumes the valid cached preview;
 combined shared-tone/Liquify preview, raw-owner, stale-source and grouped-Undo

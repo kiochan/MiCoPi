@@ -1,6 +1,9 @@
 //! egui workbench. Painting and platform input remain independent of widget layout.
 #[path = "../../plugins/adjustments/panel.rs"]
 mod adjustments;
+#[cfg(test)]
+#[path = "../../tests/reference/apply_failure.rs"]
+mod apply_failure;
 mod area;
 mod blend_modes;
 #[path = "../../plugins/brush/panel.rs"]

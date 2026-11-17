@@ -16,6 +16,7 @@ pub(super) struct Draft {
     last_preview: Instant,
     error: String,
     preview_error: String,
+    apply_error: String,
     symmetry: (u32, f32, f32),
 }
 fn source_matches(d: &Draft, s: &crate::application::Session) -> bool {
@@ -46,6 +47,11 @@ fn arms(base: Push, axes: (u32, f32, f32)) -> ([Push; 4], usize) {
     (result, n)
 }
 impl Editor {
+    pub(super) fn liquify_drawing_ready(&self) -> bool {
+        self.liquify.as_ref().is_some_and(|d| {
+            source_matches(d, &self.session) && d.error.is_empty() && !d.native.is_released()
+        })
+    }
     pub(super) fn liquify_contact_active(&self) -> bool {
         self.liquify
             .as_ref()
@@ -72,6 +78,7 @@ impl Editor {
                     last_preview: Instant::now() - Duration::from_secs(1),
                     error: String::new(),
                     preview_error: String::new(),
+                    apply_error: String::new(),
                     symmetry: (
                         self.session.parameters.symmetry.axes(),
                         self.session.parameters.symmetry_x * self.session.doc.width as f32,
@@ -117,7 +124,8 @@ impl Editor {
                 return;
             }
             editor.pen_hover = Some(p);
-            if !source_matches(&d, &editor.session) || !d.error.is_empty() {
+            if !source_matches(&d, &editor.session) || !d.error.is_empty() || d.native.is_released()
+            {
                 d.previous = None;
                 return;
             }
@@ -163,6 +171,7 @@ impl Editor {
                                 d.dirty |= changed;
                                 if changed {
                                     d.preview_error.clear();
+                                    d.apply_error.clear();
                                 }
                             }
                             Err(e) => {
@@ -207,7 +216,7 @@ impl Editor {
         let mut packets = packets;
         packets.clear();
         self.packets = packets;
-        if d.dirty && d.error.is_empty() {
+        if d.dirty && d.error.is_empty() && !d.native.is_released() {
             if let Err(e) = d.native.flush(&self.session) {
                 d.error = e;
             }
@@ -215,10 +224,9 @@ impl Editor {
         self.liquify = Some(d);
     }
     fn liquify_cursor_centers(&self, p: Pos2) -> Option<([Pos2; 4], usize)> {
-        let d = self
-            .liquify
-            .as_ref()
-            .filter(|d| source_matches(d, &self.session) && d.error.is_empty())?;
+        let d = self.liquify.as_ref().filter(|d| {
+            source_matches(d, &self.session) && d.error.is_empty() && !d.native.is_released()
+        })?;
         let q = self.document_position(p);
         let (reflected, count) = arms(
             Push {
@@ -243,11 +251,9 @@ impl Editor {
         Some((centers, length))
     }
     pub(super) fn liquify_cursor(&self, painter: &Painter, color: Color32) {
-        let Some(d) = self
-            .liquify
-            .as_ref()
-            .filter(|d| source_matches(d, &self.session) && d.error.is_empty())
-        else {
+        let Some(d) = self.liquify.as_ref().filter(|d| {
+            source_matches(d, &self.session) && d.error.is_empty() && !d.native.is_released()
+        }) else {
             return;
         };
         self.paint_document_symmetry_axes(painter, color, d.symmetry);
@@ -340,8 +346,13 @@ impl Editor {
                 if !d.error.is_empty() {
                     ui.colored_label(c.accent, tr(&d.error));
                 }
-                if !d.preview_error.is_empty() {
-                    ui.add(Label::new(localize(&d.preview_error)).wrap());
+                if !d.apply_error.is_empty() {
+                    ui.add(Label::new(localize(&d.apply_error)).wrap());
+                }
+                if !d.preview_error.is_empty() || d.native.is_released() {
+                    if !d.preview_error.is_empty() {
+                        ui.add(Label::new(localize(&d.preview_error)).wrap());
+                    }
                     let retry = ui.add_enabled(
                         !stale && idle && d.error.is_empty(),
                         Button::new(tr("Retry Preview")),
@@ -367,10 +378,14 @@ impl Editor {
                     let apply_button = ui.add_enabled(
                         !stale
                             && d.error.is_empty()
-                            && d.preview_error.is_empty()
+                            && (d.preview_error.is_empty() || !d.apply_error.is_empty())
                             && !d.native.request.steps.is_empty()
                             && idle,
-                        Button::new(tr("Apply")),
+                        Button::new(tr(if d.apply_error.is_empty() {
+                            "Apply"
+                        } else {
+                            "Retry Apply"
+                        })),
                     );
                     apply = apply_button.clicked();
                     #[cfg(test)]
@@ -392,6 +407,7 @@ impl Editor {
                     d.previous = None;
                     d.error.clear();
                     d.preview_error.clear();
+                    d.apply_error.clear();
                     d.dirty = true;
                     d.last_preview = Instant::now() - Duration::from_millis(100);
                 }
@@ -400,10 +416,22 @@ impl Editor {
         }
         if apply {
             let action = d.native.request.apply_action();
-            drop(d);
-            self.core_at_revision(&action.action, action.args, action.expected_revision);
-            self.sync_from_session();
+            d.native.release_working_set();
+            d.display = DisplayCache::default();
+            // Retain only an already-current GPU preview, never its CPU image
+            // or a throttled image from an earlier gesture state.
+            if d.dirty {
+                d.texture = None;
+            }
+            d.dirty = false;
             self.pen_hover = None;
+            if self.core_at_revision(&action.action, action.args, action.expected_revision) {
+                self.sync_from_session();
+            } else {
+                d.apply_error = self.status.clone();
+                self.liquify = Some(d);
+                ctx.request_repaint();
+            }
             return;
         }
         if !open || cancel {
@@ -416,7 +444,11 @@ impl Editor {
             // use partial texture uploads. Typed
             // field/owner ROI updates do not wait for this presentation step.
             if d.last_preview.elapsed() >= Duration::from_millis(100) {
-                match d.native.preview(&self.session) {
+                let preview = d
+                    .native
+                    .restore_working_set(&self.session)
+                    .and_then(|()| d.native.preview(&self.session));
+                match preview {
                     Ok(pixels) => {
                         let w = self.session.doc.width;
                         let h = self.session.doc.height;
@@ -649,6 +681,192 @@ mod tests {
         assert_eq!((p[2].y, p[2].dy), (14., 0.5));
         assert_eq!((p[3].x, p[3].y, p[3].dx, p[3].dy), (17., 14., -1.5, 0.5));
         assert!(p.iter().all(|p| p.strength == 0.7));
+    }
+    #[test]
+    fn failed_liquify_apply_keeps_only_intent_and_retry_publishes_one_undoable_outcome() {
+        let mut app = studio();
+        assert!(app.editor.core(
+            "group.create",
+            json!({"name":"Owners","members":[{"kind":"layer","id":1},{"kind":"layer","id":2}]})
+        ));
+        let renderer =
+            crate::desktop::apply_failure::FailOnceRenderer::install(&mut app.editor.session);
+        let ctx = Context::default();
+        theme::fonts(&ctx);
+        open(&mut app);
+        deform(&mut app);
+        for _ in 0..3 {
+            frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        }
+        let expected = app
+            .editor
+            .liquify
+            .as_ref()
+            .unwrap()
+            .native
+            .preview(&app.editor.session)
+            .unwrap();
+        let intent = json!(app.editor.liquify.as_ref().unwrap().native.request);
+        let texture = app.editor.liquify_texture().unwrap().id();
+        let before: Vec<_> = app
+            .editor
+            .session
+            .doc
+            .layers
+            .iter()
+            .map(|l| l.pixels.clone())
+            .collect();
+        let surface = app.editor.session.doc.composite.clone();
+        let public = app.editor.session.state();
+        let history = app.editor.session.doc.history_bytes();
+        let entries = app
+            .editor
+            .session
+            .replay_journal(false)
+            .unwrap()
+            .entries
+            .len();
+        let revision = app.editor.session.revision;
+        renderer.arm();
+        click(&mut app, &ctx, "liquify-apply");
+        assert_eq!(renderer.failures.get(), 1);
+        let d = app
+            .editor
+            .liquify
+            .as_ref()
+            .expect("Failed Apply must keep the gesture");
+        assert!(d.native.is_released());
+        assert_eq!(json!(d.native.request), intent);
+        assert!(!d.apply_error.is_empty());
+        assert_eq!(d.texture.as_ref().unwrap().id(), texture);
+        assert!(!d.display.has_cpu_image() && !d.dirty);
+        assert_eq!(app.editor.liquify_texture().unwrap().id(), texture);
+        assert!(!app.editor.liquify_drawing_ready());
+        assert_eq!(app.editor.session.state(), public);
+        assert_eq!(app.editor.session.doc.composite, surface);
+        assert_eq!(app.editor.session.doc.history_bytes(), history);
+        assert_eq!(
+            app.editor
+                .session
+                .replay_journal(false)
+                .unwrap()
+                .entries
+                .len(),
+            entries
+        );
+        for _ in 0..3 {
+            frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        }
+        assert!(app.editor.liquify.as_ref().unwrap().native.is_released());
+        // Preview recovery is explicit and must reproduce the exact old gesture.
+        click(&mut app, &ctx, "liquify-preview-retry");
+        let d = app.editor.liquify.as_ref().unwrap();
+        assert!(!d.native.is_released());
+        assert_eq!(json!(d.native.request), intent);
+        assert_eq!(d.native.preview(&app.editor.session).unwrap(), expected);
+        frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        // Release again on another failed Apply, then retry publication directly
+        // without rebuilding a second UI image working set.
+        renderer.arm();
+        click(&mut app, &ctx, "liquify-apply");
+        assert_eq!(renderer.failures.get(), 2);
+        assert!(app.editor.liquify.as_ref().unwrap().native.is_released());
+        frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        renderer.arm();
+        click(&mut app, &ctx, "liquify-preview-retry");
+        assert_eq!(renderer.failures.get(), 3);
+        assert!(!app
+            .editor
+            .liquify
+            .as_ref()
+            .unwrap()
+            .preview_error
+            .is_empty());
+        frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        assert_eq!(
+            ctx.data_mut(|data| data.get_temp::<bool>(Id::new("liquify-apply-enabled"))),
+            Some(true)
+        );
+        click(&mut app, &ctx, "liquify-apply");
+        assert!(app.editor.liquify.is_none());
+        assert_eq!(app.editor.session.revision, revision + 1);
+        assert_eq!(app.editor.session.doc.composite, expected);
+        assert_eq!(
+            app.editor
+                .session
+                .replay_journal(false)
+                .unwrap()
+                .entries
+                .len(),
+            entries + 1
+        );
+        assert!(app.editor.core("history.undo", json!({})));
+        assert_eq!(
+            app.editor
+                .session
+                .doc
+                .layers
+                .iter()
+                .map(|l| l.pixels.clone())
+                .collect::<Vec<_>>(),
+            before
+        );
+        assert!(app.editor.core("history.redo", json!({})));
+        assert_eq!(app.editor.session.doc.composite, expected);
+        assert_eq!(
+            app.editor
+                .session
+                .apply(crate::application::Action::new("replay.verify", json!({})))
+                .unwrap()["result"]["valid"],
+            true
+        );
+    }
+
+    #[test]
+    fn failed_liquify_apply_cannot_rebase_or_retry_a_changed_source() {
+        let mut app = studio();
+        assert!(app.editor.core(
+            "group.create",
+            json!({"name":"Owners","members":[{"kind":"layer","id":1},{"kind":"layer","id":2}]})
+        ));
+        let renderer =
+            crate::desktop::apply_failure::FailOnceRenderer::install(&mut app.editor.session);
+        let ctx = Context::default();
+        theme::fonts(&ctx);
+        open(&mut app);
+        deform(&mut app);
+        for _ in 0..3 {
+            frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        }
+        deform(&mut app);
+        // Model a throttled image deterministically; the GPU image now belongs
+        // to the previous transcript and must not survive failed publication.
+        app.editor.liquify.as_mut().unwrap().last_preview =
+            Instant::now() + Duration::from_secs(60);
+        renderer.arm();
+        click(&mut app, &ctx, "liquify-apply");
+        assert!(app.editor.liquify.as_ref().unwrap().texture.is_none());
+        let intent = json!(app.editor.liquify.as_ref().unwrap().native.request);
+        assert!(app.editor.core(
+            "layer.rename",
+            json!({"layer_id":1,"name":"Changed source"})
+        ));
+        let public = app.editor.session.state();
+        frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        assert_eq!(
+            ctx.data_mut(|data| data.get_temp::<bool>(Id::new("liquify-apply-enabled"))),
+            Some(false)
+        );
+        click(&mut app, &ctx, "liquify-apply");
+        click(&mut app, &ctx, "liquify-preview-retry");
+        let d = app.editor.liquify.as_ref().unwrap();
+        assert!(d.native.is_released());
+        assert_eq!(json!(d.native.request), intent);
+        assert_eq!(app.editor.session.state(), public);
+        assert_eq!(renderer.failures.get(), 1);
+        click(&mut app, &ctx, "liquify-cancel");
+        assert!(app.editor.liquify.is_none());
+        assert_eq!(app.editor.session.state(), public);
     }
     #[test]
     fn liquify_preview_failure_retries_cached_deformation_without_discarding_or_idle_loop() {

@@ -340,6 +340,65 @@ fn liquify_batch_and_incremental_sampling_match_with_reused_inline_transcript() 
 }
 
 #[test]
+fn released_liquify_intent_restores_only_explicitly_and_rejects_stale_or_changed_owners() {
+    let mut s = fixture();
+    let r = request(&s);
+    let mut draft = Draft::begin(&s, r).unwrap();
+    let expected = draft.preview(&s).unwrap();
+    let intent = json!(draft.request);
+    let scope = draft.scope;
+    let before = raw(&s);
+    let revision = s.revision;
+    let history = s.doc.history_bytes();
+    draft.release_working_set();
+    assert!(draft.is_released());
+    assert_eq!(json!(draft.request), intent);
+    assert!(draft.preview(&s).is_err());
+    assert!(draft
+        .push_deferred(
+            &s,
+            &[Push {
+                x: 4.,
+                y: 3.,
+                dx: 1.,
+                dy: 0.,
+                radius: 4.,
+                strength: 0.5
+            }]
+        )
+        .is_err());
+    assert_eq!(json!(draft.request), intent);
+    assert_eq!(raw(&s), before);
+    assert!(s.doc.raster_masks.items[0].linked);
+    s.doc.raster_masks.items[0].linked = false;
+    assert!(draft.restore_working_set(&s).is_err());
+    assert!(draft.is_released());
+    assert_eq!(draft.scope, scope);
+    s.doc.raster_masks.items[0].linked = true;
+    draft.restore_working_set(&s).unwrap();
+    assert!(!draft.is_released());
+    assert_eq!(draft.scope, scope);
+    assert_eq!(json!(draft.request), intent);
+    assert_eq!(draft.preview(&s).unwrap(), expected);
+    assert_eq!(s.revision, revision);
+    assert_eq!(s.doc.history_bytes(), history);
+    draft.release_working_set();
+    draft.reset(&s).unwrap();
+    assert!(!draft.is_released());
+    assert!(draft.request.steps.is_empty());
+    draft.release_working_set();
+    call(
+        &mut s,
+        "layer.rename",
+        json!({"layer_id":1,"name":"New source"}),
+    );
+    assert!(draft.restore_working_set(&s).is_err());
+    assert!(draft.reset(&s).is_err());
+    assert!(draft.is_released());
+    check(&mut s);
+}
+
+#[test]
 fn liquify_masked_group_project_and_imported_outcome_preserve_independent_raw_owners() {
     let mut s = fixture();
     call(

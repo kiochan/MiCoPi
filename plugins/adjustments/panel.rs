@@ -559,7 +559,11 @@ impl Editor {
                     && valid.is_ok()
                     && !draft.value.name.trim().is_empty()
                     && !self.backend_contact_active(),
-                Button::new(tr("Apply")),
+                Button::new(tr(if draft.error.is_empty() {
+                    "Apply"
+                } else {
+                    "Retry Apply"
+                })),
             );
             #[cfg(test)]
             ui.data_mut(|data| {
@@ -792,6 +796,7 @@ impl Editor {
         ctx: &Context,
         mut action: crate::application::Action,
     ) -> bool {
+        let document = self.session.doc.identity;
         if action.expected_revision.is_none() {
             action.expected_revision = Some(self.session.revision);
         }
@@ -801,6 +806,25 @@ impl Editor {
             && ["name", "visible", "opacity", "node_type", "parameters"]
                 .iter()
                 .all(|key| action.args.get(key).is_some());
+        if applied {
+            if let Some(id) = id {
+                let draft = ctx.data_mut(|data| data.get_temp::<Draft>(draft_key(document, id)));
+                if draft.as_ref().is_some_and(|draft| {
+                    action.expected_revision == Some(draft.revision)
+                        && action.args == apply_args(id, &draft.value)
+                }) {
+                    // Keep the ready GPU image, but release its large CPU mirror
+                    // before Apply allocates composition/rollback scratch.
+                    ctx.data_mut(|data| {
+                        let key = preview_key(document, id);
+                        if let Some(mut cache) = data.get_temp::<PreviewCache>(key) {
+                            cache.display = DisplayCache::default();
+                            data.insert_temp(key, cache);
+                        }
+                    });
+                }
+            }
+        }
         let previous = self.backend_contact_stamp();
         let result = self.session.apply(action);
         self.reconcile_command_contact(previous);
@@ -817,7 +841,8 @@ impl Editor {
                 if applied || command == "adjustment.delete" {
                     if let Some(id) = id {
                         ctx.data_mut(|data| {
-                            data.remove::<Draft>(draft_key(self.session.doc.identity, id))
+                            data.remove::<Draft>(draft_key(document, id));
+                            data.remove::<PreviewCache>(preview_key(document, id));
                         });
                     }
                 }
@@ -827,7 +852,7 @@ impl Editor {
             Err(error) => {
                 self.status = error.to_string();
                 if let Some(id) = id {
-                    let key = draft_key(self.session.doc.identity, id);
+                    let key = draft_key(document, id);
                     if let Some(mut draft) = ctx.data_mut(|data| data.get_temp::<Draft>(key)) {
                         draft.error = error.to_string();
                         ctx.data_mut(|data| data.insert_temp(key, draft));

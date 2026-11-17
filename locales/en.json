@@ -1678,5 +1678,6 @@
   "Saved Workspace Layouts": "Saved Workspace Layouts",
   "Switch Workspace Layout": "Switch Workspace Layout",
   "Update Active Layout": "Update Active Layout",
-  "Retry Preview": "Retry Preview"
+  "Retry Preview": "Retry Preview",
+  "Retry Apply": "Retry Apply"
 }

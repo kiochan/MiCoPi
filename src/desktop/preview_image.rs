@@ -40,6 +40,10 @@ fn colors(source: &[u32], width: usize, bounds: [usize; 4]) -> Result<ColorImage
     Ok(ColorImage::new([w, h], pixels))
 }
 impl DisplayCache {
+    #[cfg(test)]
+    pub(super) fn has_cpu_image(&self) -> bool {
+        self.image.is_some()
+    }
     fn full(&mut self, source: &[u32], size: [usize; 2]) -> Result<Upload, String> {
         let image = Arc::new(colors(source, size[0], [0, 0, size[0], size[1]])?);
         self.image = Some(Arc::clone(&image));

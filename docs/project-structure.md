@@ -21,6 +21,13 @@ validated candidate plan without copying raw layers. Scoped CJK catalogs live in
 `src/application/painting_integration_tests.rs` covers combined shared-tone and
 Liquify ownership, previews, stale drafts and grouped Undo.
 
+Liquify's host draft can release its large working set while retaining only
+captured intent for failed Apply recovery; the compiled Canvas adapter owns the
+explicit Retry Apply/Preview lifecycle. `tests/reference/apply_failure.rs` provides
+one-shot output-write failure injection for scalar/grouped desktop fixtures.
+Host released-resource/scope tests and feature-owned UI tests verify recovery
+without adding a second document publication path.
+
 `src/plugins/liquify_regions.rs` partitions four dirty unions into disjoint
 regions; `liquify_steps.rs` retains bounded inline arm records with unchanged JSON
 arrays. `src/desktop/preview_image.rs` owns the separately bounded CPU display

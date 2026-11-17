@@ -3,6 +3,7 @@
 Most unit and platform regression tests live beside the source they exercise. This directory holds the shared test-only material:
 
 - `reference/tools.rs`: the earlier tool implementation used to compare actual DLL pixels and history.
+- `reference/apply_failure.rs`: a one-shot compositor output-write failure for scalar/grouped Liquify and adjustment UI Apply/rollback/retry fixtures.
 - [Replay compatibility fixtures](fixtures/replay/README.md): original versioned archives and expected pixel hashes.
 - `fixtures/native-incompatible/`: a deliberately incompatible native plugin used to verify ABI rejection.
 - `fixtures/native-layout.c`: compile-only C11/C++17 x64 SDK layouts and callback signatures, checked by `scripts/check-native-abi.py` with the existing portable compiler or explicit `--cc`.
