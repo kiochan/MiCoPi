@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Prioritize continuous painting: batch replay tile SHA-256 input, reuse changed-tile
+  digests and borrow little-endian pixel bytes instead of allocating another tile
+  for encoding. A bounded Debug microprobe on 64 tiles measured hashing at 65.9 ms
+  before versus 37.2 ms after; this excludes the rest of the stroke pipeline.
+  Preserve existing recording bytes, compression, pressure,
+  stabilization and contact rollback. Defer workspace layout JSON/checkpoint saves
+  while painting, including detached-canvas contacts. Expose fixed-size transient
+  tool/recording timing counters through existing workbench diagnostics, without
+  per-MOVE JSON or file logging. Add byte/hash, bounded cost, timing and layout
+  deferral regressions and put remaining synchronous recording stalls first in
+  the roadmap. Complete CI, optimized-build continuous-stroke measurements and
+  physical tablet acceptance remain pending; this does not claim stall-free input.
+
 - Remove native caption/dialog-border and sunken client-edge style bits from desktop viewports, filtering later framework style changes before Windows applies them. Keep resizing/system-command/minimize/maximize flags, the sizing edge Windows synthesizes for resizable windows, DWM shadow/backdrop/corners and framework activation forwarding. Native title/icon updates no longer toggle WS_VISIBLE in the desktop bridge, avoiding a compositor visibility transition while updating metadata. Leave the legacy GDI frontend's suppression path intact. Expose actual root/detached frame flags and framework focus in programmatic diagnostics and extend native style/activation/metadata regression checks. Resource-limited build and app-native checks passed for caption-free main/floating windows, a dirty-title update and native minimize/restore, with framework focus received. Full CI, physical click-frame capture and Snap/device acceptance remain pending.
 
 - Repair the diagnostic recording fixture exposed by CI at `a3ccbbf`: verify a fresh read-only query leaves recording absent, then explicitly establish a replay baseline before checking that desktop diagnostics add no events. Preserve state/revision/history checks and production behavior. After the maintainer authorized enabling Windows transparency, the app-native query reported the enabled preference and accepted material; a bounded native three-pattern compositor probe observed a 36/255 background response, strong fine-stripe attenuation, zero sampled paper response and unchanged document revision. The temporary backdrop was removed and no Computer Use/input injection was used. Full CI, other-theme/DPI and representative performance acceptance remain separate.

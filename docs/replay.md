@@ -6,6 +6,21 @@ Open **View → Time-lapse Replay**, or search for **Time-lapse Replay** in the 
 
 ## Execution contract
 
+Recording currently still prepares, compresses and appends provisional segments
+synchronously every 256 direct pointer samples. Batched tile hashing, reuse of
+already-calculated changed-tile digests and borrowed little-endian byte views
+reduce that work without changing the wire format, compression or rollback
+contract. They do not make journaling asynchronous. Use the transient
+[drawing timing counters](workbench-diagnostics.md#drawing-timing-observations)
+to measure remaining stalls; moving this boundary off the input thread requires
+bounded backpressure, ordered publication and complete contact-failure rollback.
+
+The bounded hash fixture measured 64 full 64-by-64 tiles at 65.9 ms with the
+previous per-pixel update loop versus 37.2 ms with batched input in a local GNU
+Debug build (BelowNormal, at most two logical CPUs). This is a hash-only sample,
+not a release benchmark or evidence of continuous tablet smoothness. Full recording
+and physical input acceptance remain separate gates.
+
 ```mermaid
 flowchart LR
     Input[GUI / MCP / Headless] --> Session[Validated Session action]

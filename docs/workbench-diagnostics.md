@@ -28,6 +28,23 @@ snapshot is `null`, never fabricated GPU/window information. Existing
 for layout, validated preferences and floating-window captures. See
 [Plugin windows](plugin-windows.md) and [Capture requests](capture-requests.md).
 
+## Drawing timing observations
+
+The response also includes `drawing_performance`, available in both desktop and
+headless Sessions. `tool_input` measures typed tool dispatch, including its tile
+loans/history work; `replay_flush` measures provisional pointer outcome preparation,
+compression and journal append. Each reports cumulative `count`, `total_us`,
+`max_us` and `over_8ms`. The 8 ms counter is a diagnostic threshold, not a frame-rate
+guarantee. A failed flush is counted before contact rollback; rollback time is
+excluded. Action-based `canvas.stroke` does not use the direct-pointer flush path.
+
+Counters use fixed-size scalar storage and monotonic clocks. JSON is created only
+when querying the existing diagnostics/window inventory action, not on pointer
+MOVE. They survive document Undo/rollback and reset with the Session; they are not
+recorded or persisted. They do not measure input queue delay, GPU/DWM presentation,
+physical tablet latency or the complete desktop frame. Compare tool and flush
+spikes while reproducing a continuous stroke before attributing stalls to blur.
+
 ## Material observations
 
 The cached snapshot includes renderer, active appearance, settings location and

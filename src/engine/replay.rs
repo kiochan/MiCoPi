@@ -223,11 +223,23 @@ impl Block {
         Self { pixels: data }
     }
     fn digest(&self) -> Hash {
-        let mut h = Sha256::new();
-        for p in &self.pixels {
-            h.update(p.to_le_bytes());
-        }
-        h.finalize().into()
+        hash(&pixel_bytes(&self.pixels))
+    }
+}
+
+/// Preserve the recording's little-endian wire format without copying a tile on Windows.
+fn pixel_bytes(pixels: &[u32]) -> std::borrow::Cow<'_, [u8]> {
+    #[cfg(target_endian = "little")]
+    {
+        // SAFETY: u32 has no padding, every byte is initialized, and this immutable
+        // view has the same lifetime and exact byte length as the borrowed slice.
+        std::borrow::Cow::Borrowed(unsafe {
+            std::slice::from_raw_parts(pixels.as_ptr().cast::<u8>(), std::mem::size_of_val(pixels))
+        })
+    }
+    #[cfg(not(target_endian = "little"))]
+    {
+        std::borrow::Cow::Owned(pixels.iter().flat_map(|p| p.to_le_bytes()).collect())
     }
 }
 #[derive(Clone)]
@@ -850,6 +862,7 @@ impl Journal {
         let count = metadata.count();
         let n = doc.layers.len();
         let mut changes = vec![];
+        let mut change_digests = vec![];
         let mut touched = std::mem::take(&mut doc.replay_tiles);
         if replace {
             touched = (0..n)
@@ -861,7 +874,9 @@ impl Journal {
                 continue;
             }
             let block = Block::read(&doc.layers[layer].pixels, &metadata, id);
-            if replace || block.digest() != self.state.layers[layer][id].digest {
+            let digest = block.digest();
+            if replace || digest != self.state.layers[layer][id].digest {
+                change_digests.push(digest);
                 changes.push(Change {
                     layer,
                     tile: id,
@@ -888,7 +903,9 @@ impl Journal {
         let mut visual = replace;
         for id in ids {
             let block = Block::read(&doc.composite, &metadata, id);
-            if replace || block.digest() != self.state.surface[id].digest {
+            let digest = block.digest();
+            if replace || digest != self.state.surface[id].digest {
+                change_digests.push(digest);
                 visual = true;
                 changes.push(Change {
                     layer: n,
@@ -978,10 +995,11 @@ impl Journal {
             },
             &state.metadata,
         );
-        for change in &event.changes {
+        debug_assert_eq!(event.changes.len(), change_digests.len());
+        for (change, digest) in event.changes.iter().zip(change_digests) {
             let block = change.block.as_ref().unwrap();
             let cell = Cell {
-                digest: block.digest(),
+                digest,
                 block: Arc::new(block.clone()),
             };
             if change.layer == n {
@@ -1277,7 +1295,7 @@ impl Journal {
 mod pixel_wire {
     use serde::{Deserialize, Deserializer, Serializer};
     pub fn serialize<S: Serializer>(pixels: &[u32], serializer: S) -> Result<S::Ok, S::Error> {
-        let bytes: Vec<_> = pixels.iter().flat_map(|p| p.to_le_bytes()).collect();
+        let bytes = super::pixel_bytes(pixels);
         serializer.serialize_str(&crate::application::codec::base64(&bytes))
     }
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u32>, D::Error> {
@@ -1329,3 +1347,6 @@ mod pixel_wire {
             .collect())
     }
 }
+
+#[cfg(test)]
+mod performance_tests;

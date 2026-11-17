@@ -21,6 +21,25 @@ Current boundaries include one document per Session, in-process native plugins, 
 
 ## Painting-first delivery requirements
 
+### Immediate gate: uninterrupted painting
+
+Continuous Brush/Eraser input takes priority over additional features or visual
+effects. The maintainer reports periodic stalls while holding a stroke. Inspect
+typed tool and replay-flush timing separately; preserve pressure, stabilization,
+exact samples, one contact Undo and verified outcomes while reducing latency.
+
+- [x] Implement batched tile hashes, reuse changed-tile digests and remove temporary
+  little-endian pixel byte copies in recording; compatibility/runtime CI pending.
+- [x] Defer desktop workspace serialization/persistence during painting and expose
+  bounded transient tool/flush timing counters; runtime CI pending.
+- [ ] Measure continuous strokes in an optimized portable build on representative
+  canvas/layer sizes, including frame/input-queue latency and display/composition.
+- [ ] Remove remaining synchronous provisional recording stalls with a bounded
+  pipeline. Require ordered, verified outcomes, explicit backpressure and full
+  rollback for storage/worker errors; do not drop pen samples or disable replay.
+- [ ] Accept sustained tablet drawing, contact completion and rapid successive
+  strokes without periodic visible stalls before resuming lower-priority work.
+
 The maintainer cancelled the exhaustive PS-common feature goal on 2026-11-08.
 [Painting-first Requirements](docs/painting-requirements.md) now defines the
 acceptance baseline: multi-layer Liquify, shared adjustments bound to explicit

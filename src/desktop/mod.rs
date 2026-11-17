@@ -1259,9 +1259,54 @@ impl Studio {
             Err(e) => self.editor.status = format!("Layout Save Failed: {e}"),
         }
     }
+    fn painting_active(&self) -> bool {
+        self.editor.backend_contact_active()
+            || self.editor.input_owned
+            || self.editor.drawing
+            || self.editor.pen_active
+    }
+    fn checkpoint_layout(&mut self, ctx: &Context) {
+        // Pen input, including detached canvas contacts, outranks workspace JSON and disk I/O.
+        if self.painting_active() {
+            return;
+        }
+        let snapshot =
+            encode_dock(self.dock_before_focus.as_ref().unwrap_or(&self.dock)).unwrap_or_default();
+        if snapshot != self.layout_snapshot {
+            self.layout_snapshot = snapshot;
+            self.layout_changed = Some(Instant::now());
+        }
+        if let Some(then) = self.layout_changed {
+            if then.elapsed() > Duration::from_millis(750)
+                && !ctx.input(|i| i.pointer.any_down())
+                && !self
+                    .native_windows
+                    .values()
+                    .any(|w| w.native.as_ref().is_some_and(Native::is_sizing))
+            {
+                // Coalesce splitter/window drags into one registered presentation command.
+                let layout = encode_workspace(
+                    self.dock_before_focus.as_ref().unwrap_or(&self.dock),
+                    &self.editor.session.registry,
+                );
+                if let Ok(layout) = layout {
+                    if self.editor.core("workspace.layout.apply",serde_json::json!({"layout":serde_json::from_str::<serde_json::Value>(&layout).unwrap()})) {
+                        if self.editor.session.ui_effects.back().is_some_and(|v|v["id"]=="window.layout") { self.editor.session.ui_effects.pop_back(); }
+                        self.editor.session.ui["windows.result"]=serde_json::json!({"status":"applied","operation":"layout"});
+                        self.report_windows();
+                    }
+                }
+                self.save_layout();
+            } else {
+                ctx.request_repaint_after(Duration::from_millis(800));
+            }
+        }
+    }
     fn frame_ui(&mut self, ctx: &Context) {
         let mut diagnostics_changed = false;
-        self.report_workspaces();
+        if !self.painting_active() || self.editor.session.ui.get("workspaces.actual").is_none() {
+            self.report_workspaces();
+        }
         self.editor.push_gui_parameters();
         self.editor.push_gui_view();
         let previous = self.editor.backend_contact_stamp();
@@ -1450,7 +1495,7 @@ impl Studio {
             changed
         });
         if self.editor.session.ui.get("windows.actual").is_none()
-            || self.layout_changed.is_some()
+            || (self.layout_changed.is_some() && !self.painting_active())
             || area_changed
         {
             self.report_windows();
@@ -1711,37 +1756,7 @@ impl eframe::App for Studio {
             }
         }
         self.frame_ui(ctx);
-        let snapshot =
-            encode_dock(self.dock_before_focus.as_ref().unwrap_or(&self.dock)).unwrap_or_default();
-        if snapshot != self.layout_snapshot {
-            self.layout_snapshot = snapshot;
-            self.layout_changed = Some(Instant::now());
-        }
-        if let Some(then) = self.layout_changed {
-            if then.elapsed() > Duration::from_millis(750)
-                && !ctx.input(|i| i.pointer.any_down())
-                && !self
-                    .native_windows
-                    .values()
-                    .any(|w| w.native.as_ref().is_some_and(Native::is_sizing))
-            {
-                // Coalesce splitter/window drags into one registered presentation command.
-                let layout = encode_workspace(
-                    self.dock_before_focus.as_ref().unwrap_or(&self.dock),
-                    &self.editor.session.registry,
-                );
-                if let Ok(layout) = layout {
-                    if self.editor.core("workspace.layout.apply",serde_json::json!({"layout":serde_json::from_str::<serde_json::Value>(&layout).unwrap()})) {
-                        if self.editor.session.ui_effects.back().is_some_and(|v|v["id"]=="window.layout") { self.editor.session.ui_effects.pop_back(); }
-                        self.editor.session.ui["windows.result"]=serde_json::json!({"status":"applied","operation":"layout"});
-                        self.report_windows();
-                    }
-                }
-                self.save_layout();
-            } else {
-                ctx.request_repaint_after(Duration::from_millis(800));
-            }
-        }
+        self.checkpoint_layout(ctx);
         let name = self
             .editor
             .session

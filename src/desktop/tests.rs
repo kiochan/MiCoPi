@@ -35,6 +35,22 @@ pub(super) fn studio() -> Studio {
 }
 
 #[test]
+fn painting_defers_workspace_serialization_until_contact_release() {
+    let mut app = studio();
+    let ctx = Context::default();
+    app.layout_snapshot = "not-yet-observed".into();
+    app.layout_changed = Some(Instant::now() - Duration::from_secs(2));
+    app.editor.input_owned = true;
+    app.checkpoint_layout(&ctx);
+    assert_eq!(app.layout_snapshot, "not-yet-observed");
+    assert!(app.layout_changed.unwrap().elapsed() >= Duration::from_secs(2));
+    app.editor.input_owned = false;
+    app.checkpoint_layout(&ctx);
+    assert_eq!(app.layout_snapshot, encode_dock(&app.dock).unwrap());
+    assert!(app.layout_changed.unwrap().elapsed() < Duration::from_millis(750));
+}
+
+#[test]
 fn external_language_reload_refreshes_open_search_and_keeps_document_pixels() {
     fn has_text(shape: &Shape, value: &str) -> bool {
         match shape {

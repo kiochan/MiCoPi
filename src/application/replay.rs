@@ -46,12 +46,16 @@ impl Session {
         if self.replay_samples.is_empty() {
             return Ok(());
         }
+        let started = std::time::Instant::now();
         let samples = std::mem::take(&mut self.replay_samples);
         let result = self.replay_commit(
             Source::Pointer { samples, complete },
             error.is_none(),
             error,
         );
+        self.drawing_performance
+            .replay_flush
+            .observe(started.elapsed());
         if result.is_err() {
             if let Some((saved, mark)) = self.pointer_checkpoint.take() {
                 let rollback = self.journal.as_mut().unwrap().rollback(mark);

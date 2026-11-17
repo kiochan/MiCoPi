@@ -328,6 +328,7 @@ pub struct Session {
     pub(crate) presentation_captures: super::presentation_captures::Captures,
     /// Transient host observations, excluded from document/replay metadata.
     pub(crate) desktop_diagnostics: Option<Value>,
+    pub(crate) drawing_performance: super::drawing_performance::DrawingPerformance,
     pub(crate) stroke: crate::plugins::tools::StrokeEngine,
     pub(crate) events: VecDeque<Event>,
     pub(crate) sequence: u64,
@@ -401,6 +402,7 @@ impl Session {
             ui_effects: VecDeque::new(),
             presentation_captures: Default::default(),
             desktop_diagnostics: None,
+            drawing_performance: Default::default(),
             stroke: Default::default(),
             events: VecDeque::with_capacity(512),
             sequence: 0,
@@ -895,7 +897,11 @@ impl Session {
             }
         }
         let mut stroke = std::mem::take(&mut self.stroke);
+        let tool_started = std::time::Instant::now();
         let result = stroke.input(self, sample);
+        self.drawing_performance
+            .tool_input
+            .observe(tool_started.elapsed());
         self.stroke = stroke;
         if result.is_err() && recording {
             if let Some((saved, _)) = &self.pointer_checkpoint {

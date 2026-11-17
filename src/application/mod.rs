@@ -7,6 +7,7 @@ mod atomic;
 mod brush_presets;
 pub(crate) mod brush_symmetry;
 mod brush_tip;
+mod drawing_performance;
 pub use brush_symmetry::SymmetryMode;
 pub use brush_tip::TipShape;
 pub(crate) use brush_tip::{default_tip_roundness, full_tip_roundness, zero_tip_angle};

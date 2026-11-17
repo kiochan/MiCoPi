@@ -1,5 +1,12 @@
 # Project Structure and Ownership
 
+Drawing latency counters live in `src/application/drawing_performance.rs`, outside
+document state, history and replay metadata. `src/plugins/windows.rs` exposes
+their query-time JSON through existing diagnostics. Recording tile byte views,
+digest reuse and compatibility/cost fixtures stay in `src/engine/replay.rs` and
+`src/engine/replay/performance_tests.rs`. Desktop layout checkpoint deferral stays
+in `src/desktop/mod.rs`. See [drawing diagnostics](workbench-diagnostics.md#drawing-timing-observations).
+
 System glass stays in the existing presentation boundary: `src/configuration.rs`
 validates material preferences, `plugins/workbench/preferences.rs` exposes search
 controls, `src/desktop/theme.rs` gates translucent workspace colors per native

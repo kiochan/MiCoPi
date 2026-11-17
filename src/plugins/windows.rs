@@ -104,7 +104,7 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
             captures["last"].clone()
         };
         return Ok(
-            json!({"runtime":s.runtime,"panels":s.registry.panels.values().collect::<Vec<_>>(),"actual":s.ui.get("windows.actual"),"last_drop":s.ui.get("windows.drop"),"last_capture":last_capture,"capture_requests":captures,"last_request":s.ui.get("windows.request"),"last_result":s.ui.get("windows.result"),"diagnostics_available":s.runtime=="desktop" && s.desktop_diagnostics.is_some(),"diagnostics":s.desktop_diagnostics}),
+            json!({"runtime":s.runtime,"panels":s.registry.panels.values().collect::<Vec<_>>(),"actual":s.ui.get("windows.actual"),"last_drop":s.ui.get("windows.drop"),"last_capture":last_capture,"capture_requests":captures,"last_request":s.ui.get("windows.request"),"last_result":s.ui.get("windows.result"),"diagnostics_available":s.runtime=="desktop" && s.desktop_diagnostics.is_some(),"diagnostics":s.desktop_diagnostics,"drawing_performance":s.drawing_performance.snapshot()}),
         );
     }
     if s.runtime == "desktop" && s.ui_effects.len() >= 128 {
@@ -208,6 +208,10 @@ mod tests {
             .unwrap();
         assert_eq!(headless["result"]["diagnostics_available"], false);
         assert!(headless["result"]["diagnostics"].is_null());
+        assert_eq!(
+            headless["result"]["drawing_performance"]["tool_input"]["count"],
+            0
+        );
         assert!(
             s.journal.is_none(),
             "a read-only query must not start recording"
@@ -230,6 +234,7 @@ mod tests {
         assert_eq!(s.doc.history_bytes(), history);
         assert_eq!(s.replay_journal(false).unwrap().entries.len(), events);
         assert!(s.ui_effects.is_empty());
+        assert!(s.ui.get("drawing_performance").is_none());
     }
     #[test]
     fn workspace_layout_actions_are_discoverable_headless_explicit_and_revision_neutral() {

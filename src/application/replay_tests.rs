@@ -107,6 +107,8 @@ fn pointer_samples_are_buffered_without_serializing_or_hashing_every_move() {
     }
     assert_eq!(s.journal.as_ref().unwrap().entries.len(), count);
     assert_eq!(s.replay_samples.len(), 51);
+    assert_eq!(s.drawing_performance.tool_input.snapshot()["count"], 51);
+    assert_eq!(s.drawing_performance.replay_flush.snapshot()["count"], 0);
     let pending = call(&mut s, "replay.verify", json!({}));
     assert_eq!(pending["pending_samples"], 51);
     assert_eq!(pending["stroke_in_progress"], true);
@@ -114,6 +116,7 @@ fn pointer_samples_are_buffered_without_serializing_or_hashing_every_move() {
     s.pointer(p).unwrap();
     assert_eq!(s.journal.as_ref().unwrap().entries.len(), count + 1);
     assert!(s.replay_samples.is_empty());
+    assert_eq!(s.drawing_performance.replay_flush.snapshot()["count"], 1);
     let event = call(&mut s, "replay.events", json!({"start":count}));
     assert_eq!(
         event["events"][0]["source"]["samples"]
