@@ -119,8 +119,12 @@ Historical checkboxes below and in the comparison guide do not override this tab
   Subsequent parallel feature/integration heads require their own passing results.
   The integrated painting/workspace baseline at `6703685` passed full Windows CI
   and portable ZIP extraction/upload in [run 43882360623](https://github.com/kiochan/MiCoPi/actions/runs/43882360623).
-  Later preview/feedback increments still require their own CI; R1/R2 artist,
-  native-capture, hardware and representative performance gates remain open.
+  R1/R2 artist, native-capture, hardware and representative performance gates
+  remain open.
+  Preview/feedback, contact controls and metadata-preview reuse subsequently
+  passed full Windows CI and portable verification at `3ab2673` in
+  [run 43899917324](https://github.com/kiochan/MiCoPi/actions/runs/43899917324).
+  Retry Preview recovery remains a newer source increment requiring its own CI.
 - [x] Add the internal native inverse-field source prerequisite for R1, with checked
   node/workspace budgets, joint symmetric pushes and local dirty regions. Source now connects optional ABI/pixel sampling,
   captured multi-owner Session previews/grouped history and desktop input. New

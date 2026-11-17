@@ -1449,3 +1449,100 @@ fn name_only_shared_draft_uses_no_preview_and_still_publishes_one_undoable_renam
     assert!(app.editor.core("history.undo", json!({})));
     assert_eq!(app.editor.session.doc.adjustment(id).unwrap(), &source);
 }
+
+#[test]
+fn shared_preview_failure_requires_explicit_retry_and_keeps_parameter_draft_and_source() {
+    let mut app = app();
+    let id = create(&mut app, false);
+    assert!(app.editor.core(
+        "adjustment.set",
+        json!({"adjustment_id":id,"target_layer_ids":[2]})
+    ));
+    let source = app.editor.session.doc.adjustment(id).unwrap().clone();
+    let mut value = source.clone();
+    value.amount = 0.5;
+    let revision = app.editor.session.revision;
+    let history = app.editor.session.doc.history_bytes();
+    let composite = app.editor.session.doc.composite.clone();
+    let pixels: Vec<_> = app
+        .editor
+        .session
+        .doc
+        .layers
+        .iter()
+        .map(|l| l.pixels.clone())
+        .collect();
+    let ctx = context(&app);
+    let size = vec2(700., 1400.);
+    app.editor.focus_adjustment_ui(&ctx, Some(id));
+    let key = draft_key(app.editor.session.doc.identity, id);
+    let preview = preview_key(app.editor.session.doc.identity, id);
+    ctx.data_mut(|data| {
+        data.insert_temp(
+            key,
+            Draft {
+                source,
+                value: value.clone(),
+                revision,
+                error: String::new(),
+            },
+        )
+    });
+    let renderer = app.editor.session.doc.renderer.take();
+    warm(&mut app, &ctx, size);
+    ctx.data_mut(|data| {
+        let mut cache = data.get_temp::<PreviewCache>(preview).unwrap();
+        cache.changed = Instant::now() - Duration::from_secs(1);
+        data.insert_temp(preview, cache);
+    });
+    drop(frame(&mut app, &ctx, size, vec![], 4.));
+    assert!(!ctx
+        .data_mut(|data| data.get_temp::<PreviewCache>(preview))
+        .unwrap()
+        .error
+        .is_empty());
+    assert!(app.editor.shared_adjustment_preview_texture(&ctx).is_none());
+    app.editor.session.doc.renderer = renderer;
+    for time in [5., 6., 7.] {
+        drop(frame(&mut app, &ctx, size, vec![], time));
+    }
+    assert!(!ctx
+        .data_mut(|data| data.get_temp::<PreviewCache>(preview))
+        .unwrap()
+        .error
+        .is_empty());
+    let retry = ctx
+        .data_mut(|data| {
+            data.get_temp::<Rect>(Id::new((
+                "adjustment-preview-retry",
+                app.editor.session.doc.identity,
+                id,
+            )))
+        })
+        .unwrap();
+    drop(click(&mut app, &ctx, size, retry.center(), 8.));
+    let cache = ctx
+        .data_mut(|data| data.get_temp::<PreviewCache>(preview))
+        .unwrap();
+    assert!(cache.attempted && cache.error.is_empty());
+    assert!(app.editor.shared_adjustment_preview_texture(&ctx).is_some());
+    assert_eq!(
+        ctx.data_mut(|data| data.get_temp::<Draft>(key))
+            .unwrap()
+            .value,
+        value
+    );
+    assert_eq!(app.editor.session.revision, revision);
+    assert_eq!(app.editor.session.doc.history_bytes(), history);
+    assert_eq!(app.editor.session.doc.composite, composite);
+    assert_eq!(
+        app.editor
+            .session
+            .doc
+            .layers
+            .iter()
+            .map(|l| l.pixels.clone())
+            .collect::<Vec<_>>(),
+        pixels
+    );
+}

@@ -1677,5 +1677,6 @@
   "Save New Layout": "保存新布局",
   "Saved Workspace Layouts": "已保存的工作区布局",
   "Switch Workspace Layout": "切换工作区布局",
-  "Update Active Layout": "更新当前布局"
+  "Update Active Layout": "更新当前布局",
+  "Retry Preview": "重试预览"
 }

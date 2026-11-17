@@ -150,6 +150,17 @@ or a native no-op never appends an empty step. Reset clears and refills existing
 Cancel drops the private draft. Failed native updates/sampling poison the draft
 until reset/cancel; no partial owner set is published.
 
+Composition/display failures are tracked separately from native field/sampling
+failure. They retain the cached deformation, bounded transcript and target set;
+the failed image is hidden and Apply waits for recovery. **Retry Preview** reuses
+that field and sampled owners without recreating the native draft. Idle frames
+do not repeat failed composition. A changed typed push may request a new preview;
+Reset clears both error kinds and Cancel discards the private draft. Retry remains
+idle-only and source-fenced, so it cannot refresh a stale document implicitly.
+Renderer-failure regressions cover explicit recovery, retained transcript storage,
+texture reuse and unchanged source pixels/history; native and capture evidence
+must be recorded for the new commit.
+
 Before publication, revalidate the source fence, exact owner/mask pairings and
 all outputs. Publish changed raw RGBA/A8 owners under one bounded history group,
 without replacing the independent affine Repeat recipe. Session owns atomic
@@ -237,8 +248,11 @@ at `6703685` passed full Windows desktop/headless, native and JSONL/MCP checks i
 Shared display-cache and Liquify feedback increments passed full Windows CI and
 portable verification at `ff44d07` in
 [run 43883972758](https://github.com/kiochan/MiCoPi/actions/runs/43883972758).
-The subsequent contact-control increment still requires exact-head CI;
-synthetic input does not certify devices.
+The contact-control increment passed full Windows CI and portable verification
+at `3ab2673` in
+[run 43899917324](https://github.com/kiochan/MiCoPi/actions/runs/43899917324).
+Subsequent Retry Preview controls require their own CI result; synthetic input
+does not certify devices.
 
 - [x] Connect field, samplers, captured owners, private previews and grouped
   publication in source, with registered contracts and desktop controls.

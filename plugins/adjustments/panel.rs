@@ -189,6 +189,9 @@ impl Editor {
                     Ok(pixels) => {
                         let width = self.session.doc.width;
                         let height = self.session.doc.height;
+                        if cache.texture.is_none() {
+                            cache.display = DisplayCache::default();
+                        }
                         match cache.display.prepare(&pixels, [width, height]) {
                             Ok(Upload::Unchanged) => {}
                             Ok(Upload::Full(image)) => {
@@ -222,6 +225,20 @@ impl Editor {
         }
         if !cache.error.is_empty() {
             ui.add(Label::new(localize(&cache.error)).wrap());
+            let retry = ui.button(tr("Retry Preview"));
+            #[cfg(test)]
+            ui.data_mut(|data| {
+                data.insert_temp(
+                    Id::new(("adjustment-preview-retry", self.session.doc.identity, id)),
+                    retry.rect,
+                )
+            });
+            if retry.clicked() {
+                cache.error.clear();
+                cache.attempted = false;
+                cache.changed = Instant::now() - Duration::from_millis(150);
+                ui.ctx().request_repaint();
+            }
         }
         ui.data_mut(|d| d.insert_temp(key, cache));
     }

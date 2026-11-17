@@ -121,6 +121,15 @@ fields and carry `expected_revision`. See the
 
 ## Verification gates
 
+**Retry Preview** explicitly retries a failed private candidate with the same
+parameter draft and source fence. Failed attempts retain their error without
+repeated idle composition; the invalid cached image stays hidden. Retry schedules
+one new attempt and reuses the display cache/texture where available. Changing
+visual parameters starts the ordinary debounced attempt, while metadata-only
+changes do not force a retry. Source/contact/parameter guards still apply before
+offering Retry. Renderer-failure and real-button recovery regressions verify
+unchanged raw owners, committed composite, history and revision.
+
 Apply is disabled during a backend contact, matching the Session idle guard.
 Scalar draft editing/cancellation stays local; the inspector does not finish the
 contact to enable Apply. Session input advances revision, so ending a contact
@@ -143,8 +152,10 @@ including shared binding, preview and outcome transport gates. Subsequent
 display-cache/eviction regressions passed full Windows CI and extracted-package
 verification at `ff44d07` in
 [run 43883972758](https://github.com/kiochan/MiCoPi/actions/runs/43883972758).
-The subsequent contact-control and metadata-preview increments require their own
-CI results.
+The contact-control and metadata-preview increments passed full Windows CI and
+portable verification at `3ab2673` in
+[run 43899917324](https://github.com/kiochan/MiCoPi/actions/runs/43899917324).
+Subsequent Retry Preview controls require their own CI result.
 CJK/narrow native captures and representative cold/warm preview/controller costs
 remain open before closing R2 artist acceptance. Canvas consumes the valid cached preview;
 combined shared-tone/Liquify preview, raw-owner, stale-source and grouped-Undo

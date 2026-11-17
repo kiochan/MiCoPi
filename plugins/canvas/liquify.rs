@@ -15,6 +15,7 @@ pub(super) struct Draft {
     dirty: bool,
     last_preview: Instant,
     error: String,
+    preview_error: String,
     symmetry: (u32, f32, f32),
 }
 fn source_matches(d: &Draft, s: &crate::application::Session) -> bool {
@@ -70,6 +71,7 @@ impl Editor {
                     dirty: true,
                     last_preview: Instant::now() - Duration::from_secs(1),
                     error: String::new(),
+                    preview_error: String::new(),
                     symmetry: (
                         self.session.parameters.symmetry.axes(),
                         self.session.parameters.symmetry_x * self.session.doc.width as f32,
@@ -83,7 +85,9 @@ impl Editor {
     pub(super) fn liquify_texture(&self) -> Option<&TextureHandle> {
         self.liquify
             .as_ref()
-            .filter(|d| source_matches(d, &self.session) && d.error.is_empty())?
+            .filter(|d| {
+                source_matches(d, &self.session) && d.error.is_empty() && d.preview_error.is_empty()
+            })?
             .texture
             .as_ref()
     }
@@ -155,7 +159,12 @@ impl Editor {
                         };
                         let (pushes, n) = arms(p, d.symmetry);
                         match d.native.push_deferred(&editor.session, &pushes[..n]) {
-                            Ok(changed) => d.dirty |= changed,
+                            Ok(changed) => {
+                                d.dirty |= changed;
+                                if changed {
+                                    d.preview_error.clear();
+                                }
+                            }
                             Err(e) => {
                                 d.error = e;
                                 break;
@@ -331,6 +340,22 @@ impl Editor {
                 if !d.error.is_empty() {
                     ui.colored_label(c.accent, tr(&d.error));
                 }
+                if !d.preview_error.is_empty() {
+                    ui.add(Label::new(localize(&d.preview_error)).wrap());
+                    let retry = ui.add_enabled(
+                        !stale && idle && d.error.is_empty(),
+                        Button::new(tr("Retry Preview")),
+                    );
+                    #[cfg(test)]
+                    ctx.data_mut(|data| {
+                        data.insert_temp(Id::new("liquify-preview-retry"), retry.rect)
+                    });
+                    if retry.clicked() {
+                        d.preview_error.clear();
+                        d.dirty = true;
+                        d.last_preview = Instant::now() - Duration::from_millis(100);
+                    }
+                }
                 ui.separator();
                 ui.horizontal_wrapped(|ui| {
                     let reset_button = ui.add_enabled(!stale && idle, Button::new(tr("Reset")));
@@ -340,7 +365,11 @@ impl Editor {
                         cancel = true;
                     }
                     let apply_button = ui.add_enabled(
-                        !stale && d.error.is_empty() && !d.native.request.steps.is_empty() && idle,
+                        !stale
+                            && d.error.is_empty()
+                            && d.preview_error.is_empty()
+                            && !d.native.request.steps.is_empty()
+                            && idle,
                         Button::new(tr("Apply")),
                     );
                     apply = apply_button.clicked();
@@ -362,6 +391,7 @@ impl Editor {
                 Ok(()) => {
                     d.previous = None;
                     d.error.clear();
+                    d.preview_error.clear();
                     d.dirty = true;
                     d.last_preview = Instant::now() - Duration::from_millis(100);
                 }
@@ -380,7 +410,8 @@ impl Editor {
             self.pen_hover = None;
             return;
         }
-        if d.dirty && !stale && d.error.is_empty() && !backend_contact {
+        if d.dirty && !stale && d.error.is_empty() && d.preview_error.is_empty() && !backend_contact
+        {
             // Full composition is bounded and throttled; exact display changes
             // use partial texture uploads. Typed
             // field/owner ROI updates do not wait for this presentation step.
@@ -389,6 +420,10 @@ impl Editor {
                     Ok(pixels) => {
                         let w = self.session.doc.width;
                         let h = self.session.doc.height;
+                        if d.texture.is_none() {
+                            // A CPU cache alone cannot satisfy a missing GPU image.
+                            d.display = DisplayCache::default();
+                        }
                         match d.display.prepare(&pixels, [w, h]) {
                             Ok(Upload::Unchanged) => {}
                             Ok(Upload::Full(image)) => {
@@ -406,16 +441,17 @@ impl Editor {
                                 if let Some(texture) = &mut d.texture {
                                     texture.set_partial(origin, image, TextureOptions::LINEAR);
                                 } else {
-                                    d.error = "Liquify preview texture was lost; cancel and reopen"
-                                        .into();
+                                    d.preview_error =
+                                        "Liquify preview texture was lost; cancel and reopen"
+                                            .into();
                                 }
                             }
-                            Err(e) => d.error = e,
+                            Err(e) => d.preview_error = e,
                         }
                         d.dirty = false;
                         d.last_preview = Instant::now();
                     }
-                    Err(e) => d.error = e,
+                    Err(e) => d.preview_error = e,
                 }
             } else {
                 ctx.request_repaint_after(
@@ -613,6 +649,101 @@ mod tests {
         assert_eq!((p[2].y, p[2].dy), (14., 0.5));
         assert_eq!((p[3].x, p[3].y, p[3].dx, p[3].dy), (17., 14., -1.5, 0.5));
         assert!(p.iter().all(|p| p.strength == 0.7));
+    }
+    #[test]
+    fn liquify_preview_failure_retries_cached_deformation_without_discarding_or_idle_loop() {
+        let mut app = studio();
+        assert!(app.editor.core("group.create",json!({"name":"Grouped owners","members":[{"kind":"layer","id":1},{"kind":"layer","id":2}]})));
+        assert!(app.editor.session.doc.requires_renderer());
+        let ctx = Context::default();
+        theme::fonts(&ctx);
+        open(&mut app);
+        deform(&mut app);
+        let revision = app.editor.session.revision;
+        let history = app.editor.session.doc.history_bytes();
+        let pixels: Vec<_> = app
+            .editor
+            .session
+            .doc
+            .layers
+            .iter()
+            .map(|l| l.pixels.clone())
+            .collect();
+        let expected = app
+            .editor
+            .liquify
+            .as_ref()
+            .unwrap()
+            .native
+            .preview(&app.editor.session)
+            .unwrap();
+        let transcript = app
+            .editor
+            .liquify
+            .as_ref()
+            .unwrap()
+            .native
+            .request
+            .steps
+            .as_ptr();
+        let steps = json!(app.editor.liquify.as_ref().unwrap().native.request.steps);
+        frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        let texture = app.editor.liquify_texture().unwrap().id();
+        let renderer = app.editor.session.doc.renderer.take();
+        {
+            let d = app.editor.liquify.as_mut().unwrap();
+            d.dirty = true;
+            d.last_preview = Instant::now() - Duration::from_secs(1);
+        }
+        frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        let d = app.editor.liquify.as_ref().unwrap();
+        assert!(d.error.is_empty() && !d.preview_error.is_empty());
+        assert!(app.editor.liquify_texture().is_none());
+        app.editor.session.doc.renderer = renderer;
+        for _ in 0..3 {
+            frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        }
+        assert!(!app
+            .editor
+            .liquify
+            .as_ref()
+            .unwrap()
+            .preview_error
+            .is_empty());
+        assert_eq!(
+            ctx.data_mut(|data| data.get_temp::<bool>(Id::new("liquify-apply-enabled"))),
+            Some(false)
+        );
+        click(&mut app, &ctx, "liquify-preview-retry");
+        let d = app.editor.liquify.as_ref().unwrap();
+        assert!(d.error.is_empty() && d.preview_error.is_empty() && !d.dirty);
+        assert_eq!(d.native.request.steps.as_ptr(), transcript);
+        assert_eq!(json!(d.native.request.steps), steps);
+        assert_eq!(d.native.preview(&app.editor.session).unwrap(), expected);
+        assert_eq!(app.editor.liquify_texture().unwrap().id(), texture);
+        {
+            let d = app.editor.liquify.as_mut().unwrap();
+            d.texture = None;
+            d.preview_error = "Preview texture unavailable".into();
+        }
+        frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
+        click(&mut app, &ctx, "liquify-preview-retry");
+        let d = app.editor.liquify.as_ref().unwrap();
+        assert!(d.preview_error.is_empty());
+        assert!(app.editor.liquify_texture().is_some());
+        assert_eq!(d.native.request.steps.as_ptr(), transcript);
+        assert_eq!(app.editor.session.revision, revision);
+        assert_eq!(app.editor.session.doc.history_bytes(), history);
+        assert_eq!(
+            app.editor
+                .session
+                .doc
+                .layers
+                .iter()
+                .map(|l| l.pixels.clone())
+                .collect::<Vec<_>>(),
+            pixels
+        );
     }
     #[test]
     fn liquify_footer_preserves_local_and_backend_contacts_without_poisoning_the_draft() {
