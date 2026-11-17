@@ -202,15 +202,21 @@ mod tests {
         let before = s.state();
         let history = s.doc.history_bytes();
         let revision = s.revision;
-        let events = s.replay_journal(false).unwrap().entries.len();
+        assert!(s.journal.is_none());
         let headless = s
             .apply(Action::new("workbench.diagnostics", json!({})))
             .unwrap();
         assert_eq!(headless["result"]["diagnostics_available"], false);
         assert!(headless["result"]["diagnostics"].is_null());
+        assert!(
+            s.journal.is_none(),
+            "a read-only query must not start recording"
+        );
         s.runtime = "desktop".into();
         s.desktop_diagnostics =
             Some(json!({"root_material":{"reason":"system_transparency_disabled"}}));
+        s.replay_ensure().unwrap();
+        let events = s.replay_journal(false).unwrap().entries.len();
         let actual = s
             .apply(Action::new("workbench.diagnostics", json!({})))
             .unwrap();
