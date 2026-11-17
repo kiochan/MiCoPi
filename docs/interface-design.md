@@ -8,6 +8,15 @@ The Tools window is an icon-only strip: brush, Move, eraser, selection tools, fl
 
 ## System glass
 
+The desktop bridge removes native caption/dialog borders and sunken client edges
+before the first custom frame, and filters subsequent framework style writes.
+It retains sizing and system-command/minimize/maximize flags, including Windows' synthesized sizing edge; DWM still owns
+shadow, rounded corners and backdrop composition. Activation continues through
+the framework with non-client repaint suppressed. Title/icon metadata updates
+do not toggle the window's visibility. This avoids exposing an old themed frame
+while the compositor switches activation state. Native Snap/device behavior and
+activation-frame captures remain separate acceptance gates.
+
 The main window and detached panel groups request Windows system Acrylic by
 default. Search Settings for **Window Blur** (`ui.window_blur`) or **Surface
 Opacity** (`ui.surface_opacity`, 0.35–1.0, default 0.55). Changes apply to existing

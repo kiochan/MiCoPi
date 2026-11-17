@@ -128,6 +128,7 @@ impl Native {
                         },
                     )
                 });
+                chrome::install_client_style(hwnd);
                 chrome::appearance(hwnd, crate::ui::Theme::preset(2), true);
                 // Recalculate the frame after subclassing, without moving or showing it.
                 SetWindowPos(hwnd, null_mut(), 0, 0, 0, 0, 0x1 | 0x2 | 0x4 | 0x10 | 0x20);
@@ -368,6 +369,17 @@ impl Native {
     pub fn material_status(&self) -> Option<MaterialStatus> {
         self.backdrop.get()
     }
+    pub fn frame_status(&self) -> serde_json::Value {
+        unsafe {
+            let style = GetWindowLongPtrW(self.hwnd, -16) as u32;
+            let ex = GetWindowLongPtrW(self.hwnd, -20) as u32;
+            serde_json::json!({"native_caption_bits":style & 0x00c00000,
+                "native_edge_bits":ex & 0x300,"sunken_client_edge":ex & 0x200 != 0,
+                "sizing_edge":ex & 0x100 != 0,"resize_frame":style & 0x40000 != 0,
+                "system_menu":style & 0x80000 != 0,"minimize_box":style & 0x20000 != 0,
+                "maximize_box":style & 0x10000 != 0})
+        }
+    }
     pub fn load_image(&self, path: &Path) -> std::io::Result<Document> {
         unsafe { load_image(path) }
     }
@@ -433,6 +445,7 @@ unsafe extern "system" fn procedure(hwnd: Hwnd, msg: u32, w: usize, l: isize) ->
         .with(|slot| slot.borrow().get(&(hwnd as usize)).map(|h| h.previous))
         .unwrap_or(0);
     match msg {
+        0x7c => chrome::changing_client_style(w as i32, l), // WM_STYLECHANGING.
         0x231 => {
             HOOKS.with(|hooks| {
                 if let Some(h) = hooks.borrow_mut().get_mut(&(hwnd as usize)) {
@@ -496,7 +509,9 @@ unsafe extern "system" fn procedure(hwnd: Hwnd, msg: u32, w: usize, l: isize) ->
                 DefWindowProcW(hwnd, msg, w, -1)
             };
         }
-        0x0c | 0x80 => return chrome::native_metadata(hwnd, msg, w, l),
+        // Caption styles are absent, so metadata updates need no WS_VISIBLE
+        // toggling. Keep the DWM surface continuously visible during activation.
+        0x0c | 0x80 => return DefWindowProcW(hwnd, msg, w, l),
         0x24 => {
             // Preserve the window library's configured minimum size, then apply
             // our work-area bounds for a maximized custom frame.

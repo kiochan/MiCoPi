@@ -1469,7 +1469,13 @@ impl Studio {
         self.editor.liquify_window(ctx);
         self.editor.selected_merge_window(ctx);
         self.run_actions(ctx);
-        if !ctx.input(|i| i.focused)
+        let framework_focused = ctx.input(|i| i.focused);
+        if let Some(diagnostics) = self.editor.session.desktop_diagnostics.as_mut() {
+            if diagnostics["framework_focused"].as_bool() != Some(framework_focused) {
+                diagnostics["framework_focused"] = serde_json::json!(framework_focused);
+            }
+        }
+        if !framework_focused
             && self.editor.input_owned
             && self
                 .dock

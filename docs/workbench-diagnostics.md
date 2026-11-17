@@ -33,6 +33,16 @@ for layout, validated preferences and floating-window captures. See
 The cached snapshot includes renderer, active appearance, settings location and
 root/detached-window material observations:
 
+`root_frame` and each detached window's `frame` also expose the actual native
+caption/edge bits and resize/system-menu/minimize/maximize style flags. The
+desktop filters caption/sunken-client-edge styles before application and keeps native
+metadata updates visibility-neutral. Windows may synthesize the sizing edge for a resizable window; this is reported
+separately from a sunken client border. These are style observations, not a claim
+that every desktop activation frame was captured.
+`framework_focused` mirrors the root egui input-focus observation used by stroke
+ownership, so native activation fixes can be checked without treating an OS
+foreground handle as proof that the painting frontend received focus.
+
 | Field | Meaning |
 | --- | --- |
 | `requested` | App blur preference |

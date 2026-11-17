@@ -3,6 +3,31 @@ use super::*;
 pub(super) const MINIMIZE: u32 = 10001;
 pub(super) const MAXIMIZE: u32 = 10002;
 pub(super) const CLOSE: u32 = 10003;
+pub(super) fn client_style(index: i32, style: u32) -> u32 {
+    match index {
+        -16 => style & !0x00c00000, // WS_CAPTION includes WS_BORDER / WS_DLGFRAME.
+        // Windows synthesizes WINDOWEDGE for THICKFRAME; do not fight that
+        // sizing/shadow contract. A sunken client edge is never our chrome.
+        -20 => style & !0x00000200,
+        _ => style,
+    }
+}
+pub(super) unsafe fn install_client_style(hwnd: Hwnd) {
+    for index in [-16, -20] {
+        let current = GetWindowLongPtrW(hwnd, index) as u32;
+        let filtered = client_style(index, current);
+        if filtered != current {
+            SetWindowLongPtrW(hwnd, index, filtered as isize);
+        }
+    }
+}
+pub(super) unsafe fn changing_client_style(index: i32, l: isize) {
+    if l != 0 && matches!(index, -16 | -20) {
+        // STYLESTRUCT contains two DWORDs, even on 64-bit Windows.
+        let style = (l as *mut u32).add(1);
+        *style = client_style(index, *style);
+    }
+}
 pub(super) unsafe fn native_metadata(hwnd: Hwnd, msg: u32, w: usize, l: isize) -> isize {
     // DefWindowProc must still store taskbar/Alt+Tab metadata, but must not draw
     // a classic caption over our client area. Keep the suppression synchronous;

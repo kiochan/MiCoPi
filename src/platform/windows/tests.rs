@@ -1735,10 +1735,14 @@ fn maximized_padding_keeps_render_input_panels_and_cursor_in_alignment() {
 #[test]
 fn desktop_bridge_forwards_activation_to_the_framework_without_native_repaint() {
     thread_local! { static ACTIVATION: std::cell::Cell<(usize,usize,isize)> = const { std::cell::Cell::new((0,0,0)) }; }
+    thread_local! { static STYLE_WRITES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
     unsafe extern "system" fn framework_proc(hwnd: Hwnd, msg: u32, w: usize, l: isize) -> isize {
         if msg == 0x86 {
             ACTIVATION.with(|state| state.set((state.get().0 + 1, w, l)));
             return 1;
+        }
+        if msg == 0x7c {
+            STYLE_WRITES.with(|count| count.set(count.get() + 1));
         }
         DefWindowProcW(hwnd, msg, w, l)
     }
@@ -1774,6 +1778,38 @@ fn desktop_bridge_forwards_activation_to_the_framework_without_native_repaint() 
         );
         assert!(!window.is_null());
         let native = desktop_bridge::Native::new(window as isize, eframe::egui::Context::default());
+        let frame = native.frame_status();
+        assert_eq!(frame["native_caption_bits"], 0);
+        assert_eq!(frame["sunken_client_edge"], false);
+        for flag in [
+            "resize_frame",
+            "system_menu",
+            "minimize_box",
+            "maximize_box",
+        ] {
+            assert_eq!(frame[flag], true, "lost {flag}");
+        }
+        // Exercise real SetWindowLong transactions, not just a style mask helper.
+        for (index, unwanted) in [(-16, 0x00c00000), (-20, 0x200)] {
+            let original = GetWindowLongPtrW(window, index);
+            SetWindowLongPtrW(window, index, original | unwanted);
+            assert_eq!(GetWindowLongPtrW(window, index) & unwanted, 0);
+            assert_eq!(GetWindowLongPtrW(window, index), original);
+        }
+        ShowWindow(window, 4);
+        STYLE_WRITES.with(|count| count.set(0));
+        let title = wide("custom caption metadata");
+        SendMessageW(window, 0x0c, 0, title.as_ptr() as isize);
+        SendMessageW(window, 0x80, 0, 0);
+        assert_eq!(
+            STYLE_WRITES.with(|count| count.get()),
+            0,
+            "metadata must not toggle visibility or style on the compositor surface"
+        );
+        assert_ne!(GetWindowLongPtrW(window, -16) & 0x10000000, 0);
+        let mut stored = [0u16; 128];
+        GetWindowTextW(window, stored.as_mut_ptr(), stored.len() as i32);
+        assert_eq!(&stored[..title.len()], title.as_slice());
         ACTIVATION.with(|state| state.set((0, 0, 0)));
         for active in [1, 0, 1] {
             assert_eq!(SendMessageW(window, 0x86, active, 0), 1);

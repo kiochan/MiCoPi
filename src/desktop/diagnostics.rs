@@ -9,9 +9,14 @@ impl Studio {
                 .and_then(Native::material_status)
                 .map(|s| s.diagnostics())
         };
-        let windows: Vec<_> = self.native_windows.iter().map(|(index, window)| {
-            json!({"surface":index,"material":material(window.native.as_ref())})
-        }).collect();
+        let windows: Vec<_> = self
+            .native_windows
+            .iter()
+            .map(|(index, window)| {
+                json!({"surface":index,"material":material(window.native.as_ref()),
+                "frame":window.native.as_ref().map(Native::frame_status)})
+            })
+            .collect();
         self.editor.session.desktop_diagnostics = Some(json!({
             "renderer":"egui_glow",
             "appearance":{"theme":self.editor.settings.ui.theme,
@@ -19,6 +24,7 @@ impl Studio {
                 "surface_opacity":self.editor.settings.ui.surface_opacity},
             "settings_path":self.editor.settings.path,
             "root_material":material(self.editor.native.as_ref()),
+            "root_frame":self.editor.native.as_ref().map(Native::frame_status),
             "native_windows":windows,
             "capture":{"source":"opengl_framebuffer","includes_desktop_backdrop":false,
                 "root_action":"ui.capture","panel_action":"window.capture",
