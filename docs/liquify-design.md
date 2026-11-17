@@ -183,6 +183,9 @@ and idle frames never rebuild released resources. Reset explicitly rebuilds an
 empty deformation; Cancel drops the retained intent. Recovery validates the
 original owner/mask pairing before allocating and rejects changed revisions or
 scope without retargeting. No project, recording or ABI format changes are needed.
+Each failed registered Apply remains an auditable replay event with identical
+before/after state hashes and no changed tiles or Undo entry. Private preview
+retries add no document events; successful retry publishes one changed outcome.
 
 Before publication, revalidate the source fence, exact owner/mask pairings and
 all outputs. Publish changed raw RGBA/A8 owners under one bounded history group,

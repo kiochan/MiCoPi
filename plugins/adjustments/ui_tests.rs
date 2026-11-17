@@ -1632,14 +1632,11 @@ fn shared_failed_apply_retains_exact_binding_parameters_and_ready_preview_for_ex
     assert_eq!(app.editor.session.state(), public);
     assert_eq!(app.editor.session.doc.composite, surface);
     assert_eq!(app.editor.session.doc.history_bytes(), history);
-    assert_eq!(
-        app.editor
-            .session
-            .replay_journal(false)
-            .unwrap()
-            .entries
-            .len(),
-        entries
+    crate::desktop::apply_failure::assert_action_event(
+        &mut app.editor.session,
+        entries,
+        "adjustment.set",
+        false,
     );
     assert_eq!(
         app.editor
@@ -1669,14 +1666,11 @@ fn shared_failed_apply_retains_exact_binding_parameters_and_ready_preview_for_ex
             .collect::<Vec<_>>(),
         before
     );
-    assert_eq!(
-        app.editor
-            .session
-            .replay_journal(false)
-            .unwrap()
-            .entries
-            .len(),
-        entries + 1
+    crate::desktop::apply_failure::assert_action_event(
+        &mut app.editor.session,
+        entries + 1,
+        "adjustment.set",
+        true,
     );
     assert!(app.editor.core("history.undo", json!({})));
     assert_eq!(app.editor.session.doc.adjustment(id).unwrap(), &source);

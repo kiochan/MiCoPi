@@ -748,14 +748,11 @@ mod tests {
         assert_eq!(app.editor.session.state(), public);
         assert_eq!(app.editor.session.doc.composite, surface);
         assert_eq!(app.editor.session.doc.history_bytes(), history);
-        assert_eq!(
-            app.editor
-                .session
-                .replay_journal(false)
-                .unwrap()
-                .entries
-                .len(),
-            entries
+        crate::desktop::apply_failure::assert_action_event(
+            &mut app.editor.session,
+            entries,
+            "canvas.liquify",
+            false,
         );
         for _ in 0..3 {
             frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
@@ -774,6 +771,12 @@ mod tests {
         click(&mut app, &ctx, "liquify-apply");
         assert_eq!(renderer.failures.get(), 2);
         assert!(app.editor.liquify.as_ref().unwrap().native.is_released());
+        crate::desktop::apply_failure::assert_action_event(
+            &mut app.editor.session,
+            entries + 1,
+            "canvas.liquify",
+            false,
+        );
         frame(&mut app, &ctx, vec2(1000., 800.), vec![]);
         renderer.arm();
         click(&mut app, &ctx, "liquify-preview-retry");
@@ -795,14 +798,11 @@ mod tests {
         assert_eq!(app.editor.session.revision, revision + 1);
         assert!(app.editor.status.is_empty());
         assert_eq!(app.editor.session.doc.composite, expected);
-        assert_eq!(
-            app.editor
-                .session
-                .replay_journal(false)
-                .unwrap()
-                .entries
-                .len(),
-            entries + 1
+        crate::desktop::apply_failure::assert_action_event(
+            &mut app.editor.session,
+            entries + 2,
+            "canvas.liquify",
+            true,
         );
         assert!(app.editor.core("history.undo", json!({})));
         assert_eq!(

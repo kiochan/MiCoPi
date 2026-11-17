@@ -131,8 +131,10 @@ their existing guards. Before dispatch, release the cached CPU display mirror
 while retaining a ready GPU preview; this avoids keeping a full display image
 alongside Apply's composition/rollback scratch. A successful Apply clears the
 finished draft and preview cache. Output-write failure regressions cover rollback,
-retained parameters/texture, unchanged raw owners/history/journal and one successful
-Undo/Redo/outcome after explicit retry.
+retained parameters/texture, unchanged raw owners/history and one successful
+Undo/Redo/outcome after explicit retry. Each failed registered Apply remains an
+auditable replay event with identical before/after state hashes and no changed
+tiles; private preview retries do not add document events.
 
 **Retry Preview** explicitly retries a failed private candidate with the same
 parameter draft and source fence. Failed attempts retain their error without

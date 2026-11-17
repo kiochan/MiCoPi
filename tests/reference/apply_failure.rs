@@ -3,6 +3,29 @@ use crate::{application::Session, engine::graph::Renderer};
 use micopi_plugin_api as abi;
 use std::{cell::Cell, sync::Arc};
 
+pub(crate) fn assert_action_event(
+    session: &mut Session,
+    previous: usize,
+    action: &str,
+    success: bool,
+) {
+    let journal = session.replay_journal(false).unwrap();
+    assert_eq!(journal.entries.len(), previous + 1);
+    let events = journal.events(previous, 1).unwrap();
+    let event = &events["events"][0];
+    assert_eq!(event["source"]["action"], action);
+    assert_eq!(event["success"], success);
+    if !success {
+        assert!(event["error"].as_str().is_some_and(|s| !s.is_empty()));
+        assert_eq!(event["before"], event["after"]);
+        assert_eq!(event["changed_tiles"], 0);
+        if let Some(changed) = event.get("changed_mask_tiles") {
+            assert_eq!(changed.as_u64(), Some(0));
+        }
+        assert_eq!(event["visual"], false);
+    }
+}
+
 pub(crate) struct FailOnceRenderer {
     inner: Arc<dyn Renderer>,
     armed: Cell<bool>,
