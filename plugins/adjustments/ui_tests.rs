@@ -1656,6 +1656,7 @@ fn shared_failed_apply_retains_exact_binding_parameters_and_ready_preview_for_ex
         .data_mut(|data| data.get_temp::<PreviewCache>(preview))
         .is_none());
     assert_eq!(app.editor.session.revision, revision + 1);
+    assert!(app.editor.status.is_empty());
     assert_eq!(app.editor.session.doc.adjustment(id).unwrap(), &value);
     assert_eq!(app.editor.session.doc.composite, expected);
     assert_eq!(

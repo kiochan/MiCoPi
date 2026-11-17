@@ -340,7 +340,7 @@ fn liquify_batch_and_incremental_sampling_match_with_reused_inline_transcript() 
 }
 
 #[test]
-fn released_liquify_intent_restores_only_explicitly_and_rejects_stale_or_changed_owners() {
+fn released_liquify_intent_restores_only_explicitly_and_rejects_stale_sources() {
     let mut s = fixture();
     let r = request(&s);
     let mut draft = Draft::begin(&s, r).unwrap();
@@ -369,12 +369,6 @@ fn released_liquify_intent_restores_only_explicitly_and_rejects_stale_or_changed
         .is_err());
     assert_eq!(json!(draft.request), intent);
     assert_eq!(raw(&s), before);
-    assert!(s.doc.raster_masks.items[0].linked);
-    s.doc.raster_masks.items[0].linked = false;
-    assert!(draft.restore_working_set(&s).is_err());
-    assert!(draft.is_released());
-    assert_eq!(draft.scope, scope);
-    s.doc.raster_masks.items[0].linked = true;
     draft.restore_working_set(&s).unwrap();
     assert!(!draft.is_released());
     assert_eq!(draft.scope, scope);
@@ -396,6 +390,33 @@ fn released_liquify_intent_restores_only_explicitly_and_rejects_stale_or_changed
     assert!(draft.reset(&s).is_err());
     assert!(draft.is_released());
     check(&mut s);
+}
+
+#[test]
+fn released_liquify_recovery_rejects_changed_pairing_without_rebasing_session_revision() {
+    let mut s = fixture();
+    let mut draft = Draft::begin(&s, request(&s)).unwrap();
+    let scope = draft.scope;
+    let intent = json!(draft.request);
+    let revision = s.revision;
+    draft.release_working_set();
+    let original = s.doc.mask_state().items[0].clone();
+    assert!(original.linked);
+    let mut unlinked = original.clone();
+    unlinked.linked = false;
+    // Use the existing engine boundary to model a changed pairing without
+    // changing Session's revision; do not widen Document field visibility.
+    s.doc.update_mask_metadata(unlinked).unwrap();
+    assert_eq!(s.revision, revision);
+    assert!(draft.restore_working_set(&s).is_err());
+    assert!(draft.reset(&s).is_err());
+    assert!(draft.is_released());
+    assert_eq!(draft.scope, scope);
+    assert_eq!(json!(draft.request), intent);
+    s.doc.update_mask_metadata(original).unwrap();
+    draft.restore_working_set(&s).unwrap();
+    assert_eq!(draft.scope, scope);
+    assert_eq!(json!(draft.request), intent);
 }
 
 #[test]

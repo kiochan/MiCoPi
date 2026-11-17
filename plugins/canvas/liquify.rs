@@ -426,6 +426,9 @@ impl Editor {
             d.dirty = false;
             self.pen_hover = None;
             if self.core_at_revision(&action.action, action.args, action.expected_revision) {
+                if !d.apply_error.is_empty() && self.status == d.apply_error {
+                    self.status.clear();
+                }
                 self.sync_from_session();
             } else {
                 d.apply_error = self.status.clone();
@@ -790,6 +793,7 @@ mod tests {
         click(&mut app, &ctx, "liquify-apply");
         assert!(app.editor.liquify.is_none());
         assert_eq!(app.editor.session.revision, revision + 1);
+        assert!(app.editor.status.is_empty());
         assert_eq!(app.editor.session.doc.composite, expected);
         assert_eq!(
             app.editor

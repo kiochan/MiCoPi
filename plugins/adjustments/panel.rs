@@ -806,6 +806,7 @@ impl Editor {
             && ["name", "visible", "opacity", "node_type", "parameters"]
                 .iter()
                 .all(|key| action.args.get(key).is_some());
+        let mut failed_apply_message = None;
         if applied {
             if let Some(id) = id {
                 let draft = ctx.data_mut(|data| data.get_temp::<Draft>(draft_key(document, id)));
@@ -813,6 +814,10 @@ impl Editor {
                     action.expected_revision == Some(draft.revision)
                         && action.args == apply_args(id, &draft.value)
                 }) {
+                    failed_apply_message = draft
+                        .as_ref()
+                        .map(|draft| draft.error.clone())
+                        .filter(|error| !error.is_empty());
                     // Keep the ready GPU image, but release its large CPU mirror
                     // before Apply allocates composition/rollback scratch.
                     ctx.data_mut(|data| {
@@ -830,6 +835,9 @@ impl Editor {
         self.reconcile_command_contact(previous);
         match result {
             Ok(response) => {
+                if failed_apply_message.as_deref() == Some(self.status.as_str()) {
+                    self.status.clear();
+                }
                 if command == "adjustment.create" {
                     if let Some(id) = response["result"]["adjustment_id"].as_u64() {
                         self.focus_adjustment_ui(ctx, Some(id));
