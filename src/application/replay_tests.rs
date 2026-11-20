@@ -862,6 +862,79 @@ fn desktop_background_finish_failure_blocks_the_next_mutation_and_restores_pixel
 }
 
 #[test]
+fn desktop_fast_brush_draws_before_the_previous_write_finishes() {
+    let mut s = session();
+    s.runtime = "desktop";
+    call(&mut s, "canvas.new", json!({"width":260,"height":195}));
+    call(&mut s, "layer.fill_color", json!({"color":"#7391ba"}));
+    call(&mut s, "layer.add", json!({}));
+    call(&mut s, "layer.set", json!({"index":1,"opacity":0.55}));
+    let before = codec::png(&mut s.doc).unwrap();
+    let release = s.journal.as_mut().unwrap().pause_next_writer_job();
+    s.begin_desktop_pointer(desktop_sample(0, u32::MAX))
+        .unwrap();
+    s.pointer(desktop_sample(1, u32::MAX)).unwrap();
+    s.finish_desktop_stroke().unwrap();
+    let first = codec::png(&mut s.doc).unwrap();
+    assert_ne!(first, before);
+    s.begin_desktop_pointer(Pointer {
+        x: 225.,
+        y: 155.,
+        ..desktop_sample(0, u32::MAX)
+    })
+    .unwrap();
+    assert!(s.is_drawing());
+    assert!(s.released_checkpoint.is_some());
+    assert_eq!(s.drawing_performance.replay_wait.snapshot()["count"], 0);
+    let painted = codec::png(&mut s.doc).unwrap();
+    assert_ne!(painted, first);
+    s.finish_desktop_stroke().unwrap();
+    release.send(()).unwrap();
+    s.settle_submitted_replay().unwrap();
+    let last = s.journal.as_ref().unwrap().entries.len() - 1;
+    assert_eq!(
+        replay::png(&s.replay_preview(last, false).unwrap()).unwrap(),
+        painted
+    );
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(codec::png(&mut s.doc).unwrap(), first);
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(codec::png(&mut s.doc).unwrap(), before);
+}
+
+#[test]
+fn desktop_fast_brush_writer_failure_restores_the_earliest_contact() {
+    let mut s = session();
+    s.runtime = "desktop";
+    let before = s.state();
+    let pixels = s.doc.layers[0].pixels.clone();
+    let head = s.replay_status()["head_hash"].clone();
+    let journal = s.journal.as_mut().unwrap();
+    journal.fail_next_write_after(7);
+    let release = journal.pause_next_writer_job();
+    s.begin_desktop_pointer(desktop_sample(0, u32::MAX))
+        .unwrap();
+    s.finish_desktop_stroke().unwrap();
+    s.begin_desktop_pointer(Pointer {
+        x: 105.,
+        y: 75.,
+        ..desktop_sample(0, u32::MAX)
+    })
+    .unwrap();
+    assert!(s.is_drawing());
+    assert_ne!(s.doc.layers[0].pixels, pixels);
+    release.send(()).unwrap();
+    assert!(s.settle_submitted_replay().is_err());
+    assert_eq!(s.state(), before);
+    assert_eq!(s.doc.layers[0].pixels, pixels);
+    assert_eq!(s.replay_status()["head_hash"], head);
+    assert!(!s.is_drawing());
+    assert!(s.released_checkpoint.is_none());
+    assert!(s.pointer_checkpoint.is_none());
+}
+
+#[test]
 fn completed_action_pointer_contacts_record_every_sample_once() {
     let mut s = session();
     let count = s.journal.as_ref().unwrap().entries.len();

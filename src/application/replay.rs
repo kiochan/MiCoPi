@@ -81,7 +81,8 @@ impl Session {
             if error.code != "render_error" {
                 self.replay_error = Some(error.to_string());
             }
-            if let Some((saved, mark)) = self.pointer_checkpoint.take() {
+            let current = self.pointer_checkpoint.take();
+            if let Some((saved, mark)) = self.released_checkpoint.take().or(current) {
                 let rollback = self.journal.as_mut().unwrap().rollback(mark);
                 saved.restore(self);
                 if let Err(error) = rollback {
@@ -110,7 +111,17 @@ impl Session {
             let completed_contact = result.as_ref().is_ok_and(|finished| *finished);
             self.finish_segment_result(result.map(|_| ()))?;
             if completed_contact {
-                self.clear_replay_contact();
+                if self.released_checkpoint.take().is_some() {
+                    let journal = self.journal.as_ref().unwrap();
+                    let (saved, mark) = self
+                        .pointer_checkpoint
+                        .as_mut()
+                        .expect("overlapped contact");
+                    saved.use_replay_base(journal.state.clone());
+                    *mark = journal.checkpoint();
+                } else {
+                    self.clear_replay_contact();
+                }
             }
         }
         Ok(())
@@ -171,6 +182,13 @@ impl Session {
         Ok(())
     }
 
+    #[cfg(test)]
+    pub(crate) fn settle_submitted_replay(&mut self) -> Result<(), ActionError> {
+        self.poll_replay_segment(true)?;
+        self.advance_replay_writer()?;
+        self.poll_replay_segment(true)
+    }
+
     fn replay_pending_samples(&self) -> usize {
         self.replay_samples.len() + self.replay_worker_pending_samples()
     }
@@ -186,6 +204,9 @@ impl Session {
         self.replay_flush(false, None)?;
         let meta = self.replay_metadata();
         let journal = self.journal.as_ref().unwrap();
+        if journal.already_observed(&self.doc, &meta) {
+            return Ok(());
+        }
         let prepared = journal.prepare(
             &mut self.doc,
             meta,
@@ -425,14 +446,14 @@ impl Session {
         status["contact_finish_pending"] = json!(self.replay_finish_pending);
         status["transaction_pending"] =
             json!(self.atomic_depth != 0 || self.pointer_checkpoint.is_some());
-        status["committed_head_hash"] = self
-            .pointer_checkpoint
+        let earliest_contact = self
+            .released_checkpoint
             .as_ref()
+            .or(self.pointer_checkpoint.as_ref());
+        status["committed_head_hash"] = earliest_contact
             .map(|(_, m)| json!(m.head_hash()))
             .unwrap_or_else(|| status["head_hash"].clone());
-        status["committed_events"] = self
-            .pointer_checkpoint
-            .as_ref()
+        status["committed_events"] = earliest_contact
             .map(|(_, m)| json!(m.event_count()))
             .unwrap_or_else(|| status["events"].clone());
         status["fault"] = json!(self.replay_error);

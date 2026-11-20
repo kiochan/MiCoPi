@@ -39,6 +39,7 @@ impl Session {
 }
 #[derive(Clone)]
 pub(crate) struct Checkpoint {
+    pub(crate) start_revision: u64,
     clipboard: Option<std::sync::Arc<crate::plugins::clipboard::Payload>>,
     state: std::sync::Arc<State>,
     history: HistoryCheckpoint,
@@ -49,6 +50,7 @@ pub(crate) struct Checkpoint {
 impl Checkpoint {
     pub fn capture(s: &Session) -> Self {
         Self {
+            start_revision: s.revision,
             state: s.journal.as_ref().expect("journal boundary").state.clone(),
             history: s.doc.checkpoint_history(),
             clipboard: s.clipboard.clone(),
@@ -56,6 +58,9 @@ impl Checkpoint {
             pen_observed: s.pen_observed,
             ui_effects: s.ui_effects.clone(),
         }
+    }
+    pub(super) fn use_replay_base(&mut self, state: std::sync::Arc<State>) {
+        self.state = state;
     }
     pub fn restore(self, s: &mut Session) {
         s.clipboard = self.clipboard;
@@ -80,6 +85,7 @@ impl Checkpoint {
         s.replay_samples.clear();
         s.replay_direct_contact = false;
         s.replay_finish_pending = false;
+        s.released_checkpoint = None;
     }
 }
 impl Operation {

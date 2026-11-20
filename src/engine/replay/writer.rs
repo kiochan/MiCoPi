@@ -7,7 +7,7 @@ use std::{
 };
 
 struct Job {
-    captured: (Event, usize),
+    captured: Captured,
     previous: Arc<State>,
     head: Hash,
     length: u64,
@@ -137,6 +137,7 @@ impl Journal {
             Source::Pointer { samples, complete },
             true,
             None,
+            true,
         )?;
         let job = Job {
             captured,

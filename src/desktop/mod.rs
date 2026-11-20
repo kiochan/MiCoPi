@@ -440,9 +440,9 @@ impl Editor {
     fn backend_contact_active(&self) -> bool {
         self.session.stroke.active() || self.session.pointer_checkpoint.is_some()
     }
-    fn backend_contact_stamp(&self) -> Option<(u64, Option<usize>)> {
-        // The original checkpoint stays fixed while raw sample chunks flush.
-        // A later recorded DOWN has a newer mark; replacement documents use a
+    fn backend_contact_stamp(&self) -> Option<(u64, Option<u64>)> {
+        // A contact keeps its start revision while replay chunks are published.
+        // A later recorded DOWN has a newer revision; replacement documents use a
         // distinct identity. Active unrecorded contacts retain a separate case.
         self.backend_contact_active().then(|| {
             (
@@ -450,11 +450,11 @@ impl Editor {
                 self.session
                     .pointer_checkpoint
                     .as_ref()
-                    .map(|(_, mark)| mark.event_count()),
+                    .map(|(saved, _)| saved.start_revision),
             )
         })
     }
-    fn reconcile_command_contact(&mut self, previous: Option<(u64, Option<usize>)>) {
+    fn reconcile_command_contact(&mut self, previous: Option<(u64, Option<u64>)>) {
         if previous.is_some() && previous != self.backend_contact_stamp() {
             // A command may end the locally owned contact and start an external
             // one before returning. Clear only the old frontend ownership; the

@@ -209,6 +209,9 @@ impl Block {
         Self { pixels }
     }
     fn read(pixels: &[u32], meta: &Metadata, id: usize) -> Self {
+        Self::normalized(Self::copy_tile(pixels, meta, id).pixels)
+    }
+    fn copy_tile(pixels: &[u32], meta: &Metadata, id: usize) -> Self {
         let cols = meta.width.div_ceil(TILE);
         let x = (id % cols) * TILE;
         let y = (id / cols) * TILE;
@@ -217,9 +220,6 @@ impl Block {
             data.extend_from_slice(
                 &pixels[row * meta.width + x..row * meta.width + (x + TILE).min(meta.width)],
             );
-        }
-        if data.iter().all(|p| *p == data[0]) {
-            data.truncate(1);
         }
         Self { pixels: data }
     }
@@ -690,6 +690,11 @@ pub struct Prepared {
     state: State,
     visual: bool,
 }
+struct Captured {
+    event: Event,
+    layers: usize,
+    project_tiles: BTreeSet<usize>,
+}
 pub struct Entry {
     pub sequence: usize,
     pub elapsed_ms: u64,
@@ -840,8 +845,16 @@ impl Journal {
         error: Option<String>,
     ) -> Result<Prepared, ActionError> {
         debug_assert_eq!(self.in_flight_samples(), 0);
-        let event = self.capture(doc, metadata, source, success, error)?;
+        let event = self.capture(doc, metadata, source, success, error, false)?;
         Self::encode(event, &self.state, self.head, self.length)
+    }
+    pub(crate) fn already_observed(&self, doc: &Document, metadata: &Metadata) -> bool {
+        !self.entries.is_empty()
+            && !doc.has_raster_masks()
+            && doc.replay_tiles.is_empty()
+            && doc.replay_mask_tiles.is_empty()
+            && doc.replay_surface.is_empty()
+            && self.state.metadata == *metadata
     }
     fn capture(
         &self,
@@ -850,7 +863,8 @@ impl Journal {
         source: Source,
         success: bool,
         error: Option<String>,
-    ) -> Result<(Event, usize), ActionError> {
+        allow_direct_projection: bool,
+    ) -> Result<Captured, ActionError> {
         metadata.validate()?;
         doc.validate_mask_storage().map_err(bad)?;
         if (metadata.width, metadata.height) != (doc.width, doc.height)
@@ -866,14 +880,19 @@ impl Journal {
         {
             return Err(bad("Mask allocator moved backwards"));
         }
-        doc.compose();
-        if let Some(error) = &doc.render_error {
-            return Err(ActionError::new(
-                "render_error",
-                format!("Document composition failed: {error}"),
-            ));
+        let project = allow_direct_projection && !doc.requires_renderer();
+        if project {
+            metadata.render_error = None;
+        } else {
+            doc.compose();
+            if let Some(error) = &doc.render_error {
+                return Err(ActionError::new(
+                    "render_error",
+                    format!("Document composition failed: {error}"),
+                ));
+            }
+            metadata.render_error = doc.render_error.clone();
         }
-        metadata.render_error = doc.render_error.clone();
         let replace = self.entries.is_empty()
             || (doc.width, doc.height, doc.layers.len())
                 != (
@@ -894,7 +913,7 @@ impl Journal {
             if layer >= n || id >= count {
                 continue;
             }
-            let block = Block::read(&doc.layers[layer].pixels, &metadata, id);
+            let block = Block::copy_tile(&doc.layers[layer].pixels, &metadata, id);
             changes.push(Change {
                 layer,
                 tile: id,
@@ -903,13 +922,16 @@ impl Journal {
                 xor: false,
             });
         }
-        let surface = doc.replay_surface.take();
+        let surface = std::mem::take(&mut doc.replay_surface);
         let mut ids = BTreeSet::new();
         if replace {
             ids.extend(0..count);
-        } else if let Some([x0, y0, x1, y1]) = surface {
+        } else {
             let cols = metadata.width.div_ceil(TILE);
-            if x1 > x0 && y1 > y0 {
+            for &[x0, y0, x1, y1] in surface.regions() {
+                if x1 <= x0 || y1 <= y0 {
+                    continue;
+                }
                 for y in y0 / TILE..=(y1 - 1) / TILE {
                     for x in x0 / TILE..=(x1 - 1) / TILE {
                         ids.insert(y * cols + x);
@@ -917,14 +939,16 @@ impl Journal {
                 }
             }
         }
-        for id in ids {
-            changes.push(Change {
-                layer: n,
-                tile: id,
-                block: Some(Block::read(&doc.composite, &metadata, id)),
-                reuse: None,
-                xor: false,
-            });
+        if !project {
+            for id in std::mem::take(&mut ids) {
+                changes.push(Change {
+                    layer: n,
+                    tile: id,
+                    block: Some(Block::copy_tile(&doc.composite, &metadata, id)),
+                    reuse: None,
+                    xor: false,
+                });
+            }
         }
         let mut mask_changes = vec![];
         let mask_previous = masks::same_dimensions(Some(&self.state), &metadata);
@@ -959,8 +983,8 @@ impl Journal {
         let mask_version = (!metadata.composition.raster_masks.is_default()
             || !self.state.metadata.composition.raster_masks.is_default())
         .then_some(1);
-        Ok((
-            Event {
+        Ok(Captured {
+            event: Event {
                 sequence: self.entries.len(),
                 elapsed_ms: self
                     .base_time
@@ -977,11 +1001,16 @@ impl Journal {
                 mask_version,
                 mask_changes,
             },
-            n,
-        ))
+            layers: n,
+            project_tiles: ids,
+        })
     }
     fn encode(
-        (mut event, n): (Event, usize),
+        Captured {
+            mut event,
+            layers: n,
+            project_tiles,
+        }: Captured,
         previous: &State,
         head: Hash,
         length: u64,
@@ -1017,8 +1046,11 @@ impl Journal {
             },
             &state.metadata,
         );
-        event.changes.retain(|change| {
-            let block = change.block.as_ref().unwrap();
+        event.changes.retain_mut(|change| {
+            let block = change.block.as_mut().unwrap();
+            if block.pixels.iter().all(|&p| p == block.pixels[0]) {
+                block.pixels.truncate(1);
+            }
             let digest = block.digest();
             let slot = if change.layer == n {
                 &mut state.surface[change.tile]
@@ -1035,6 +1067,20 @@ impl Journal {
             };
             true
         });
+        for tile in project_tiles {
+            let surface = state.project_normal_tile(tile);
+            if replace || state.surface[tile].digest != surface.digest {
+                visual = true;
+                event.changes.push(Change {
+                    layer: n,
+                    tile,
+                    block: Some(surface.block.as_ref().clone()),
+                    reuse: None,
+                    xor: false,
+                });
+                state.surface[tile] = surface;
+            }
+        }
         event.mask_changes.retain(|change| {
             let block = change.block.as_ref().unwrap();
             let digest = hash(&block.bytes);
@@ -1348,6 +1394,56 @@ impl Journal {
             return Err(bad("Replay archive exceeds the size limit"));
         }
         Self::import(&std::fs::read(path)?)
+    }
+}
+impl State {
+    fn project_normal_tile(&self, tile: usize) -> Cell {
+        let mut visible = self
+            .metadata
+            .composition
+            .layers
+            .iter()
+            .enumerate()
+            .filter(|(_, (visible, opacity, _))| *visible && *opacity != 0)
+            .map(|(layer, (_, opacity, _))| (&self.layers[layer][tile], u32::from(*opacity)));
+        if let Some((raster, 255)) = visible.next() {
+            if visible.next().is_none()
+                && !raster.block.pixels.iter().any(|&p| p != 0 && p >> 24 == 0)
+            {
+                return raster.clone();
+            }
+        }
+        let rows = self
+            .metadata
+            .composition
+            .layers
+            .iter()
+            .zip(&self.layers)
+            .filter(|((visible, opacity, _), _)| *visible && *opacity != 0)
+            .map(|((_, opacity, _), grid)| (&grid[tile].block.pixels, u32::from(*opacity)))
+            .collect::<Vec<_>>();
+        let count = if rows.iter().all(|(pixels, _)| pixels.len() == 1) {
+            1
+        } else {
+            self.metadata.tile_len(tile)
+        };
+        let block = Block::normalized(
+            (0..count)
+                .map(|i| {
+                    rows.iter().fold(0, |dst, (pixels, opacity)| {
+                        let src = pixels[if pixels.len() == 1 { 0 } else { i }];
+                        super::document::over(
+                            dst,
+                            src & 0xffffff | ((src >> 24) * opacity / 255) << 24,
+                        )
+                    })
+                })
+                .collect(),
+        );
+        Cell {
+            digest: block.digest(),
+            block: Arc::new(block),
+        }
     }
 }
 mod pixel_wire {

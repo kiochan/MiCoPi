@@ -18,13 +18,19 @@ the final segment succeeds.
 The worker holds one dirty-tile snapshot and the local pointer buffer can grow
 to 1,024 samples if the worker falls behind. The canvas releases the pen without
 waiting for compression or storage. `contact_finish_pending` tracks a released
-contact whose final segment is queued or waiting behind earlier work. The next
-contact, Undo, Save and replay export settle the previous contact before proceeding.
-Buffer saturation can also wait for the previous result. Headless and explicit
-`canvas.pointer` completion remain synchronous. Composition and dirty-tile capture
-run under the document owner. A writer failure rewinds
-the journal, pixels and Undo state to the beginning of the contact, including
-earlier provisional segments. Use the
+contact whose final segment is queued or waiting behind earlier work. Once its
+tail is submitted, one desktop Brush or Eraser contact can draw while it writes.
+The new contact receives its own rollback base when the predecessor is acknowledged.
+A failed predecessor rewinds both provisional contacts. Undo, Save, replay export,
+explicit takeovers, and exhausted buffers settle pending work before proceeding.
+Headless and explicit `canvas.pointer` completion remain synchronous.
+
+The background worker composes affected replay tiles for plain Normal layer
+stacks from the captured raster tiles and the acknowledged layers. The owner
+captures sparse dirty regions and copies touched raw tiles. Masks, groups,
+adjustments and graphs that require the native compositor still capture the
+owner-composed result. The live simple compositor can also skip intact gaps
+between sparse dirty regions. Use the
 [drawing timing counters](workbench-diagnostics.md#drawing-timing-observations)
 to identify remaining capture, worker and wait costs.
 

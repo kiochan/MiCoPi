@@ -38,8 +38,10 @@ exact samples, one contact Undo and verified outcomes while reducing latency.
   bounded worker. Keep ordered publication and full contact rollback. CI pending.
 - [x] Schedule desktop pen-up encoding and append on the replay worker. Preserve
   the journal boundary before the next contact, edit and export. CI pending.
-- [ ] Reduce remaining waits at a new contact and queue saturation, and measure
-  dirty-tile capture, frame stalls and journal waits separately.
+- [x] Allow one desktop brush/eraser contact to overlap an already submitted tail.
+  Move plain replay surface composition to the worker and capture sparse regions.
+- [ ] Measure frame stalls, dirty-tile copies and journal waits on large and
+  complex stacks. Reduce queue saturation and remaining complex compositor work.
 - [ ] Accept sustained tablet drawing, contact completion and rapid successive
   strokes without periodic visible stalls before resuming lower-priority work.
 

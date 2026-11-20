@@ -296,6 +296,10 @@ pub struct Session {
         super::atomic::Checkpoint,
         crate::engine::replay::JournalCheckpoint,
     )>,
+    pub(super) released_checkpoint: Option<(
+        super::atomic::Checkpoint,
+        crate::engine::replay::JournalCheckpoint,
+    )>,
     pub(crate) atomic_depth: usize,
     pub(crate) journal: Option<crate::engine::replay::Journal>,
     pub(crate) loaded_replay: Option<crate::engine::replay::Journal>,
@@ -367,6 +371,7 @@ impl Session {
         doc.renderer = registry.renderer();
         Ok(Self {
             pointer_checkpoint: None,
+            released_checkpoint: None,
             atomic_depth: 0,
             journal: None,
             loaded_replay: None,
@@ -866,6 +871,10 @@ impl Session {
     pub(crate) fn pointer_action(&mut self, sample: Pointer) -> Result<(), ActionError> {
         self.pointer_input(sample, true, false)
     }
+    pub(crate) fn begin_desktop_pointer(&mut self, sample: Pointer) -> Result<(), ActionError> {
+        debug_assert_eq!(sample.phase, PointerPhase::Down);
+        self.pointer_input(sample, true, true)
+    }
     fn pointer_input(
         &mut self,
         sample: Pointer,
@@ -892,14 +901,34 @@ impl Session {
             return Err(error);
         }
         if recording {
-            if self.replay_finish_pending {
-                self.replay_flush(true, None)?;
-            }
             self.poll_replay_segment(false)?;
+            let overlap = defer_finish
+                && self.runtime == "desktop"
+                && self.atomic_depth == 0
+                && sample.phase == PointerPhase::Down
+                && !self.stroke.active()
+                && matches!(
+                    sample.tool_override.unwrap_or(self.tool),
+                    ToolKind::Brush | ToolKind::Eraser
+                )
+                && self.replay_finish_pending
+                && self.released_checkpoint.is_none()
+                && self.replay_samples.is_empty()
+                && self.replay_worker_pending_samples() != 0;
+            if self.replay_finish_pending {
+                if overlap {
+                    self.released_checkpoint = self.pointer_checkpoint.take();
+                    self.replay_finish_pending = false;
+                } else {
+                    self.replay_flush(true, None)?;
+                }
+            }
             self.replay_ensure()?;
             if sample.phase == PointerPhase::Down {
                 if !self.stroke.active() {
-                    self.replay_boundary()?;
+                    if !overlap {
+                        self.replay_boundary()?;
+                    }
                     self.pointer_checkpoint = Some((
                         super::atomic::Checkpoint::capture(self),
                         self.journal.as_ref().unwrap().checkpoint(),
@@ -916,6 +945,9 @@ impl Session {
             .observe(tool_started.elapsed());
         self.stroke = stroke;
         if result.is_err() && recording {
+            if self.released_checkpoint.is_some() {
+                self.poll_replay_segment(true)?;
+            }
             if let Some((saved, _)) = &self.pointer_checkpoint {
                 let saved = saved.clone();
                 let samples = std::mem::take(&mut self.replay_samples);
@@ -969,7 +1001,7 @@ impl Session {
         let _ = self.finish_stroke_with_recording(false);
     }
     pub(crate) fn finish_desktop_stroke(&mut self) -> Result<(), ActionError> {
-        self.finish_stroke_with_recording(true)
+        self.finish_stroke_with_recording(self.is_drawing())
     }
     fn finish_stroke_with_recording(&mut self, defer_finish: bool) -> Result<(), ActionError> {
         if let Some(last) = self.stroke.last_sample() {

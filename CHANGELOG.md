@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Let the desktop start one Brush or Eraser contact while the previous tail is
+  already submitted to the replay writer. Rebase its rollback checkpoint after
+  acknowledgment and rewind both provisional contacts if the predecessor fails.
+  Keep explicit input takeovers synchronous and make transcript test fixtures
+  account for submitted work. Project plain Normal layer stacks into replay
+  surface tiles on the worker, capture sparse damage, and limit live CPU
+  composition to sparse regions when they save work. Preserve archive format
+  and per-contact Undo. Full CI and tablet timing remain pending.
+
 - Make the C++17 native ABI fixture independent of the C++ standard library.
   Keep the origin pointer type assertions and all layout checks. Hosted Windows
   images can run this compile-only fixture with Clang 20 even when the installed

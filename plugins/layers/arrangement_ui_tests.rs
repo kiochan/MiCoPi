@@ -238,6 +238,7 @@ impl Before {
     }
 }
 fn samples(app: &mut Studio) -> Vec<Value> {
+    app.editor.session.settle_submitted_replay().unwrap();
     let journal = app.editor.session.replay_journal(false).unwrap();
     let events = journal.events(0, journal.entries.len()).unwrap();
     let mut values: Vec<_> = events["events"]

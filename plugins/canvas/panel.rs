@@ -224,7 +224,9 @@ impl Editor {
     fn finish_for_pointer_down(&mut self) {
         // Entering a new native contact intentionally commits the previous
         // one, unlike cancelling an outline that owns no native contact.
-        self.session.finish_stroke();
+        if self.session.stroke.active() {
+            self.session.finish_stroke();
+        }
         self.clear_local_contact();
     }
     fn pointer_down(
@@ -277,7 +279,7 @@ impl Editor {
             tool_override,
         };
         self.finish_for_pointer_down();
-        match self.session.pointer(sample) {
+        match self.session.begin_desktop_pointer(sample) {
             Ok(()) => {
                 self.input_owned = self.session.is_drawing() || self.session.is_panning();
                 self.sync_from_session();

@@ -390,7 +390,8 @@ pub struct Document {
     adjustment_nodes: BTreeMap<u64, u32>,
     groups_revision: u64,
     pub(crate) replay_tiles: std::collections::BTreeSet<(usize, usize)>,
-    pub(crate) replay_surface: Option<[usize; 4]>,
+    pub(crate) replay_surface: ReplayDamage,
+    compose_damage: ReplayDamage,
     pub(crate) replay_data: Option<Vec<u8>>,
     pub workflow: super::workflow::Graph,
     pub identity: u64,
@@ -424,6 +425,9 @@ pub fn over(dst: u32, src: u32) -> u32 {
         return src;
     }
     let da = dst >> 24;
+    if da == 0 {
+        return src;
+    }
     let out_a = a + (da * (255 - a) + 127) / 255;
     let mut out = out_a << 24;
     for shift in [0, 8, 16] {
@@ -433,6 +437,72 @@ pub fn over(dst: u32, src: u32) -> u32 {
         out |= c.min(255) << shift;
     }
     out
+}
+
+/// Keep sparse pen damage until replay has captured it. Fall back to a single
+/// conservative bound for unusual workloads without growing an unbounded list.
+#[derive(Default)]
+pub(crate) struct ReplayDamage {
+    bounds: Option<[usize; 4]>,
+    rects: Vec<[usize; 4]>,
+    coarse: bool,
+}
+
+impl ReplayDamage {
+    fn full(width: usize, height: usize) -> Self {
+        Self {
+            bounds: Some([0, 0, width, height]),
+            coarse: true,
+            rects: Vec::new(),
+        }
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.bounds.is_none()
+    }
+
+    pub(crate) fn regions(&self) -> &[[usize; 4]] {
+        if self.coarse {
+            self.bounds.as_slice()
+        } else {
+            &self.rects
+        }
+    }
+
+    fn clear(&mut self) {
+        self.bounds = None;
+        self.rects.clear();
+        self.coarse = false;
+    }
+
+    fn insert(&mut self, r: [usize; 4]) {
+        let union = |p: [usize; 4]| {
+            [
+                p[0].min(r[0]),
+                p[1].min(r[1]),
+                p[2].max(r[2]),
+                p[3].max(r[3]),
+            ]
+        };
+        self.bounds = Some(self.bounds.map_or(r, union));
+        if self.coarse || self.rects.last().is_some_and(|&last| union(last) == last) {
+            return;
+        }
+        if self.rects.len() == 256 {
+            self.rects.clear();
+            self.coarse = true;
+        } else {
+            self.rects.push(r);
+        }
+    }
+}
+
+pub(crate) fn single_layer_surface_pixel(pixel: u32) -> u32 {
+    if pixel >> 24 == 0 {
+        0
+    } else {
+        pixel
+    }
 }
 impl Document {
     pub(crate) fn checkpoint_history(&self) -> HistoryCheckpoint {
@@ -530,7 +600,8 @@ impl Document {
             },
             graph,
             replay_tiles: Default::default(),
-            replay_surface: Some([0, 0, width, height]),
+            replay_surface: ReplayDamage::full(width, height),
+            compose_damage: ReplayDamage::full(width, height),
             replay_data: None,
             renderer: None,
             plan,
@@ -554,16 +625,18 @@ impl Document {
         }
     }
     pub fn invalidate(&mut self) {
-        self.replay_surface = Some([0, 0, self.width, self.height]);
+        self.replay_surface = ReplayDamage::full(self.width, self.height);
         self.changed = Some([0, 0, self.width, self.height]);
+        self.compose_damage = ReplayDamage::full(self.width, self.height);
         self.display_changed = self.changed;
     }
     /// The journal restored verified composite pixels directly into this buffer.
     /// Refresh consumers without invoking a renderer again during rollback.
     pub(crate) fn finish_verified_surface_restore(&mut self) {
         self.changed = None;
+        self.compose_damage.clear();
         self.display_changed = Some([0, 0, self.width, self.height]);
-        self.replay_surface = Some([0, 0, self.width, self.height]);
+        self.replay_surface = ReplayDamage::full(self.width, self.height);
     }
     pub fn requires_renderer(&self) -> bool {
         self.has_raster_masks()
@@ -571,6 +644,12 @@ impl Document {
             || self.has_adjustments()
             || (self.graph.enabled && (!self.graph.linked || self.graph.has_filters()))
             || self.layers.iter().any(|l| l.mode != BlendMode::Normal)
+    }
+    pub(crate) fn has_direct_surface(&self) -> bool {
+        self.layers.len() == 1
+            && self.layers[0].visible
+            && self.layers[0].opacity == 255
+            && !self.requires_renderer()
     }
     pub fn layer_is_rendered(&self, index: usize) -> bool {
         self.graph.linked
@@ -949,15 +1028,8 @@ impl Document {
         Ok(())
     }
     fn damage(&mut self, r: [usize; 4]) {
-        self.replay_surface = Some(match self.replay_surface {
-            Some(p) => [
-                p[0].min(r[0]),
-                p[1].min(r[1]),
-                p[2].max(r[2]),
-                p[3].max(r[3]),
-            ],
-            None => r,
-        });
+        self.replay_surface.insert(r);
+        self.compose_damage.insert(r);
         self.changed = Some(match self.changed {
             Some(p) => [
                 p[0].min(r[0]),
@@ -975,6 +1047,7 @@ impl Document {
                 None => [x0, y0, x1, y1],
             });
             if self.requires_renderer() {
+                self.compose_damage.clear();
                 if self.renderer.is_some() {
                     let mut layers = [micopi_plugin_api::CompositeLayer {
                         data: std::ptr::null(),
@@ -1033,22 +1106,46 @@ impl Document {
                 return;
             }
             self.render_error = None;
-            for y in y0..y1 {
-                for x in x0..x1 {
-                    let i = y * self.width + x;
-                    let mut c = 0;
-                    for l in &self.layers {
-                        if l.visible {
-                            let p = l.pixels[i];
-                            c = over(
-                                c,
-                                (p & 0xffffff) | (((p >> 24) * l.opacity as u32 / 255) << 24),
-                            );
+            let direct = self.has_direct_surface();
+            let bounds = [[x0, y0, x1, y1]];
+            let regions = self.compose_damage.regions();
+            let areas: usize = regions.iter().map(|r| (r[2] - r[0]) * (r[3] - r[1])).sum();
+            let regions = if regions.len() > 1 && areas <= (x1 - x0) * (y1 - y0) / 2 {
+                regions
+            } else {
+                &bounds
+            };
+            for &[x0, y0, x1, y1] in regions {
+                if direct {
+                    for y in y0..y1 {
+                        let row = y * self.width + x0..y * self.width + x1;
+                        for (out, &src) in self.composite[row.clone()]
+                            .iter_mut()
+                            .zip(&self.layers[0].pixels[row])
+                        {
+                            *out = single_layer_surface_pixel(src);
                         }
                     }
-                    self.composite[i] = c;
+                    continue;
+                }
+                for y in y0..y1 {
+                    for x in x0..x1 {
+                        let i = y * self.width + x;
+                        let mut c = 0;
+                        for l in &self.layers {
+                            if l.visible {
+                                let p = l.pixels[i];
+                                c = over(
+                                    c,
+                                    (p & 0xffffff) | (((p >> 24) * l.opacity as u32 / 255) << 24),
+                                );
+                            }
+                        }
+                        self.composite[i] = c;
+                    }
                 }
             }
+            self.compose_damage.clear();
         }
     }
     pub fn display_pixels(&mut self, out: &mut Vec<u32>) {
