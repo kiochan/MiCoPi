@@ -461,8 +461,8 @@ impl ReplayDamage {
         self.bounds.is_none()
     }
 
-    pub(crate) fn regions(&self) -> &[[usize; 4]] {
-        if self.coarse {
+    pub(crate) fn regions(&self, sparse: bool) -> &[[usize; 4]] {
+        if self.coarse || !sparse {
             self.bounds.as_slice()
         } else {
             &self.rects
@@ -1108,7 +1108,7 @@ impl Document {
             self.render_error = None;
             let direct = self.has_direct_surface();
             let bounds = [[x0, y0, x1, y1]];
-            let regions = self.compose_damage.regions();
+            let regions = self.compose_damage.regions(true);
             let areas: usize = regions.iter().map(|r| (r[2] - r[0]) * (r[3] - r[1])).sum();
             let regions = if regions.len() > 1 && areas <= (x1 - x0) * (y1 - y0) / 2 {
                 regions

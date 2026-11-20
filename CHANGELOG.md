@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Retain bounding-region capture for native composition. Sparse regions apply
+  only to plain Normal stacks so masked and graph-rendered outcomes continue to
+  snapshot every pixel the owner recomposes.
+
 - Let the desktop start one Brush or Eraser contact while the previous tail is
   already submitted to the replay writer. Rebase its rollback checkpoint after
   acknowledgment and rewind both provisional contacts if the predecessor fails.

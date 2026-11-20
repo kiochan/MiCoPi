@@ -880,7 +880,8 @@ impl Journal {
         {
             return Err(bad("Mask allocator moved backwards"));
         }
-        let project = allow_direct_projection && !doc.requires_renderer();
+        let simple = !doc.requires_renderer();
+        let project = allow_direct_projection && simple;
         if project {
             metadata.render_error = None;
         } else {
@@ -928,7 +929,8 @@ impl Journal {
             ids.extend(0..count);
         } else {
             let cols = metadata.width.div_ceil(TILE);
-            for &[x0, y0, x1, y1] in surface.regions() {
+            // Match the compositor's conservative bounds for native graphs.
+            for &[x0, y0, x1, y1] in surface.regions(simple) {
                 if x1 <= x0 || y1 <= y0 {
                     continue;
                 }
