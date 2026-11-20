@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Pin Windows CI to the Server 2025 image with Visual Studio 2022. The rolling
+  default uses Visual Studio 2026 headers that require Clang 22 while the image
+  supplies Clang 20. Keep the existing C11 and C++17 ABI checks and packaging gates.
+
 - Defer desktop pen-up replay encoding and append to the same background writer.
   A released contact can wait behind an earlier segment without blocking input
   release. Settle the previous contact before another stroke, document mutation

@@ -15,7 +15,8 @@ concurrency:
 jobs:
   windows:
     name: Windows / stable Rust
-    runs-on: windows-latest
+    # This image pairs Clang 20 with the VS 2022 headers used by the ABI fixture.
+    runs-on: windows-2025
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7.0.1
