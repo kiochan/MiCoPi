@@ -1,7 +1,11 @@
 /* Compile-only C/C++ checks for the published x64 ABI and optional tails. */
 #include "micopi_plugin.h"
 #ifdef __cplusplus
-#include <type_traits>
+/* The C ABI fixture needs no C++ standard library. */
+template<class Actual, class Expected>
+constexpr bool same_type = false;
+template<class T>
+constexpr bool same_type<T, T> = true;
 #define ABI_ASSERT static_assert
 extern "C" {
 #else
@@ -98,8 +102,8 @@ ABI_ASSERT((MICOPI_TOOL_OPTION_STROKE_OPACITY & (MICOPI_TOOL_OPTION_ALPHA_LOCK |
 ABI_ASSERT(MICOPI_TOOL_HOST_ORIGIN_RGBA == 1, "RGBA original loan capability");
 ABI_ASSERT(MICOPI_TOOL_HOST_ORIGIN_A8 == 2, "A8 original loan capability");
 #ifdef __cplusplus
-ABI_ASSERT((std::is_same<decltype(((MicopiOriginPixels *)0)->data), const uint32_t *>::value), "RGBA origin samples are immutable");
-ABI_ASSERT((std::is_same<decltype(((MicopiOriginA8Pixels *)0)->data), const uint8_t *>::value), "A8 origin samples are immutable");
+ABI_ASSERT((same_type<decltype(((MicopiOriginPixels *)0)->data), const uint32_t *>), "RGBA origin samples are immutable");
+ABI_ASSERT((same_type<decltype(((MicopiOriginA8Pixels *)0)->data), const uint8_t *>), "A8 origin samples are immutable");
 #else
 ABI_ASSERT(_Generic(((MicopiOriginPixels *)0)->data, const uint32_t *: 1, default: 0), "RGBA origin samples are immutable");
 ABI_ASSERT(_Generic(((MicopiOriginA8Pixels *)0)->data, const uint8_t *: 1, default: 0), "A8 origin samples are immutable");

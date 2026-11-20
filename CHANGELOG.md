@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-- Pin Windows CI to the Server 2025 image with Visual Studio 2022. The rolling
-  default uses Visual Studio 2026 headers that require Clang 22 while the image
-  supplies Clang 20. Keep the existing C11 and C++17 ABI checks and packaging gates.
+- Make the C++17 native ABI fixture independent of the C++ standard library.
+  Keep the origin pointer type assertions and all layout checks. Hosted Windows
+  images can run this compile-only fixture with Clang 20 even when the installed
+  Visual Studio 2026 C++ standard library requires Clang 22.
 
 - Defer desktop pen-up replay encoding and append to the same background writer.
   A released contact can wait behind an earlier segment without blocking input
