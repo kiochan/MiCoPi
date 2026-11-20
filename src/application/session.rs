@@ -296,7 +296,7 @@ pub struct Session {
         super::atomic::Checkpoint,
         crate::engine::replay::JournalCheckpoint,
     )>,
-    pub(super) released_checkpoint: Option<(
+    pub(super) released_checkpoints: std::collections::VecDeque<(
         super::atomic::Checkpoint,
         crate::engine::replay::JournalCheckpoint,
     )>,
@@ -371,7 +371,7 @@ impl Session {
         doc.renderer = registry.renderer();
         Ok(Self {
             pointer_checkpoint: None,
-            released_checkpoint: None,
+            released_checkpoints: Default::default(),
             atomic_depth: 0,
             journal: None,
             loaded_replay: None,
@@ -902,7 +902,7 @@ impl Session {
         }
         if recording {
             self.poll_replay_segment(false)?;
-            let overlap = defer_finish
+            let rapid_down = defer_finish
                 && self.runtime == "desktop"
                 && self.atomic_depth == 0
                 && sample.phase == PointerPhase::Down
@@ -911,13 +911,21 @@ impl Session {
                     sample.tool_override.unwrap_or(self.tool),
                     ToolKind::Brush | ToolKind::Eraser
                 )
+                && self.replay_finish_pending;
+            if rapid_down {
+                self.admit_rapid_replay_tail()?;
+            }
+            let overlap = rapid_down
                 && self.replay_finish_pending
-                && self.released_checkpoint.is_none()
                 && self.replay_samples.is_empty()
                 && self.replay_worker_pending_samples() != 0;
             if self.replay_finish_pending {
                 if overlap {
-                    self.released_checkpoint = self.pointer_checkpoint.take();
+                    self.released_checkpoints.push_back(
+                        self.pointer_checkpoint
+                            .take()
+                            .expect("released desktop contact"),
+                    );
                     self.replay_finish_pending = false;
                 } else {
                     self.replay_flush(true, None)?;
@@ -945,7 +953,7 @@ impl Session {
             .observe(tool_started.elapsed());
         self.stroke = stroke;
         if result.is_err() && recording {
-            if self.released_checkpoint.is_some() {
+            if !self.released_checkpoints.is_empty() {
                 self.poll_replay_segment(true)?;
             }
             if let Some((saved, _)) = &self.pointer_checkpoint {

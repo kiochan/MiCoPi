@@ -82,7 +82,7 @@ impl Session {
                 self.replay_error = Some(error.to_string());
             }
             let current = self.pointer_checkpoint.take();
-            if let Some((saved, mark)) = self.released_checkpoint.take().or(current) {
+            if let Some((saved, mark)) = self.released_checkpoints.pop_front().or(current) {
                 let rollback = self.journal.as_mut().unwrap().rollback(mark);
                 saved.restore(self);
                 if let Err(error) = rollback {
@@ -94,35 +94,54 @@ impl Session {
     }
 
     pub(super) fn poll_replay_segment(&mut self, wait: bool) -> Result<(), ActionError> {
+        while self.poll_next_replay_segment(wait)? {}
+        Ok(())
+    }
+
+    fn poll_next_replay_segment(&mut self, wait: bool) -> Result<bool, ActionError> {
         let Some(journal) = self.journal.as_mut() else {
-            return Ok(());
+            return Ok(false);
         };
         if journal.in_flight_samples() == 0 {
-            return Ok(());
+            return Ok(false);
         }
         let started = wait.then(std::time::Instant::now);
-        if let Some((result, worker_time)) = journal.poll_pointer_segment(wait) {
-            if let Some(started) = started {
-                self.drawing_performance
-                    .replay_wait
-                    .observe(started.elapsed());
+        let Some((result, worker_time)) = journal.poll_pointer_segment(wait) else {
+            return Ok(false);
+        };
+        if let Some(started) = started {
+            self.drawing_performance
+                .replay_wait
+                .observe(started.elapsed());
+        }
+        self.drawing_performance.replay_worker.observe(worker_time);
+        let completed_contact = result.as_ref().is_ok_and(|finished| *finished);
+        self.finish_segment_result(result.map(|_| ()))?;
+        if completed_contact {
+            if self.released_checkpoints.pop_front().is_some() {
+                let journal = self.journal.as_ref().unwrap();
+                let (saved, mark) = self
+                    .released_checkpoints
+                    .front_mut()
+                    .or(self.pointer_checkpoint.as_mut())
+                    .expect("overlapped contact");
+                saved.use_replay_base(journal.state.clone());
+                *mark = journal.checkpoint();
+            } else {
+                self.clear_replay_contact();
             }
-            self.drawing_performance.replay_worker.observe(worker_time);
-            let completed_contact = result.as_ref().is_ok_and(|finished| *finished);
-            self.finish_segment_result(result.map(|_| ()))?;
-            if completed_contact {
-                if self.released_checkpoint.take().is_some() {
-                    let journal = self.journal.as_ref().unwrap();
-                    let (saved, mark) = self
-                        .pointer_checkpoint
-                        .as_mut()
-                        .expect("overlapped contact");
-                    saved.use_replay_base(journal.state.clone());
-                    *mark = journal.checkpoint();
-                } else {
-                    self.clear_replay_contact();
-                }
+        }
+        Ok(true)
+    }
+
+    pub(super) fn admit_rapid_replay_tail(&mut self) -> Result<(), ActionError> {
+        // A released contact must be captured before drawing the next one.
+        // Wait only for enough space for that tail, not for the entire queue.
+        if self.replay_finish_pending && !self.replay_samples.is_empty() {
+            while !self.journal.as_ref().unwrap().can_queue_tail(&self.doc) {
+                self.poll_next_replay_segment(true)?;
             }
+            self.queue_replay_segment(true)?;
         }
         Ok(())
     }
@@ -158,6 +177,11 @@ impl Session {
         self.drawing_performance
             .replay_flush
             .observe(started.elapsed());
+        if result.is_err() {
+            // Capture can fail before submitting the current contact. Settle
+            // predecessors first so a failed capture never races their writes.
+            self.poll_replay_segment(true)?;
+        }
         self.finish_segment_result(result)
     }
 
@@ -174,9 +198,13 @@ impl Session {
 
     pub(crate) fn advance_replay_writer(&mut self) -> Result<(), ActionError> {
         self.poll_replay_segment(false)?;
-        if self.replay_finish_pending && self.replay_worker_pending_samples() == 0 {
-            // The ended contact still owns the document until this result settles.
-            // Capture only after the previous segment was published.
+        if self.replay_finish_pending
+            && !self.replay_samples.is_empty()
+            && self
+                .journal
+                .as_ref()
+                .is_some_and(|journal| journal.can_queue_tail(&self.doc))
+        {
             self.queue_replay_segment(true)?;
         }
         Ok(())
@@ -447,8 +475,8 @@ impl Session {
         status["transaction_pending"] =
             json!(self.atomic_depth != 0 || self.pointer_checkpoint.is_some());
         let earliest_contact = self
-            .released_checkpoint
-            .as_ref()
+            .released_checkpoints
+            .front()
             .or(self.pointer_checkpoint.as_ref());
         status["committed_head_hash"] = earliest_contact
             .map(|(_, m)| json!(m.head_hash()))

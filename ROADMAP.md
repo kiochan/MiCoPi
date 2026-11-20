@@ -40,6 +40,8 @@ exact samples, one contact Undo and verified outcomes while reducing latency.
   the journal boundary before the next contact, edit and export. CI pending.
 - [x] Allow one desktop brush/eraser contact to overlap an already submitted tail.
   Move plain replay surface composition to the worker and capture sparse regions.
+- [x] Queue several completed brush and eraser tails and wait only for capacity
+  when the next contact needs room. Preserve per-contact rollback and Undo.
 - [ ] Measure frame stalls, dirty-tile copies and journal waits on large and
   complex stacks. Reduce queue saturation and remaining complex compositor work.
 - [ ] Accept sustained tablet drawing, contact completion and rapid successive

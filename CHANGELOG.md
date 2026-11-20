@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Queue up to four desktop Brush or Eraser tails within a 32 MiB pixel capture
+  budget. A new contact waits only for sufficient capacity when saturated.
+  Rebase each contact after its predecessor is acknowledged and rewind failed
+  and later provisional contacts without reverting completed siblings. Add a
+  stalled-writer regression for four contacts, ordered replay and individual Undo.
+
 - Retain bounding-region capture for native composition. Sparse regions apply
   only to plain Normal stacks so masked and graph-rendered outcomes continue to
   snapshot every pixel the owner recomposes.

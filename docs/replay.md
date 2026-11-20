@@ -15,14 +15,17 @@ locally buffered and in-flight samples. `worker_pending_samples` reports the
 in-flight portion. The committed head stays at the start of the contact until
 the final segment succeeds.
 
-The worker holds one dirty-tile snapshot and the local pointer buffer can grow
-to 1,024 samples if the worker falls behind. The canvas releases the pen without
+The worker processes one snapshot at a time and can hold up to four completed
+tails in order within a 32 MiB queued pixel budget. An oversized snapshot runs
+alone. The local pointer buffer can grow to 1,024 samples if the worker falls
+behind. The canvas releases the pen without
 waiting for compression or storage. `contact_finish_pending` tracks a released
 contact whose final segment is queued or waiting behind earlier work. Once its
-tail is submitted, one desktop Brush or Eraser contact can draw while it writes.
-The new contact receives its own rollback base when the predecessor is acknowledged.
-A failed predecessor rewinds both provisional contacts. Undo, Save, replay export,
-explicit takeovers, and exhausted buffers settle pending work before proceeding.
+tail is captured, the next desktop Brush or Eraser contact can draw while earlier
+tails write. Each contact receives its own rollback base when the predecessor
+is acknowledged. On a failed write, that contact and later provisional contacts
+rewind. The next stroke waits for capacity when the queue is full. Undo, Save,
+replay export and explicit takeovers settle pending work before proceeding.
 Headless and explicit `canvas.pointer` completion remain synchronous.
 
 The background worker composes affected replay tiles for plain Normal layer

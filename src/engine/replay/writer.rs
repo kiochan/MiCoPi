@@ -1,10 +1,25 @@
-//! One in-flight provisional segment. Only Session publishes acknowledged outcomes.
+//! One writer with a bounded queue of completed contact snapshots.
 use super::*;
 use std::{
+    collections::VecDeque,
     sync::mpsc::{self, Receiver, SyncSender, TryRecvError},
     thread::{self, JoinHandle},
     time::Duration,
 };
+
+const MAX_TAILS: usize = 4;
+const MAX_TAIL_BYTES: usize = 32 * 1024 * 1024;
+
+struct Draft {
+    captured: Captured,
+    samples: usize,
+    bytes: usize,
+    complete: bool,
+    #[cfg(test)]
+    fail_after: Option<usize>,
+    #[cfg(test)]
+    gate: Option<Receiver<()>>,
+}
 
 struct Job {
     captured: Captured,
@@ -23,7 +38,8 @@ pub(super) struct Writer {
     jobs: Option<SyncSender<Job>>,
     completions: Receiver<Completion>,
     thread: Option<JoinHandle<()>>,
-    samples: usize,
+    current: Option<(usize, usize, bool)>,
+    waiting: VecDeque<Draft>,
 }
 
 fn disconnected() -> ActionError {
@@ -69,25 +85,41 @@ impl Writer {
             jobs: Some(jobs),
             completions,
             thread: Some(thread),
-            samples: 0,
+            current: None,
+            waiting: VecDeque::new(),
         })
     }
 
-    fn submit(&mut self, job: Job, samples: usize) -> Result<(), ActionError> {
-        debug_assert_eq!(self.samples, 0);
+    fn submit(
+        &mut self,
+        mut draft: Draft,
+        previous: &Arc<State>,
+        head: Hash,
+        length: u64,
+        sequence: usize,
+    ) -> Result<(), ActionError> {
+        debug_assert!(self.current.is_none());
+        draft.captured.event.sequence = sequence;
         self.jobs
             .as_ref()
             .unwrap()
-            .try_send(job)
+            .try_send(Job {
+                captured: draft.captured,
+                previous: previous.clone(),
+                head,
+                length,
+                #[cfg(test)]
+                fail_after: draft.fail_after,
+                #[cfg(test)]
+                gate: draft.gate,
+            })
             .map_err(|_| disconnected())?;
-        self.samples = samples;
+        self.current = Some((draft.samples, draft.bytes, draft.complete));
         Ok(())
     }
 
     fn complete(&mut self, wait: bool) -> Option<Completion> {
-        if self.samples == 0 {
-            return None;
-        }
+        self.current?;
         let completion = if wait {
             self.completions
                 .recv()
@@ -98,7 +130,7 @@ impl Writer {
         if matches!(completion, Err(TryRecvError::Empty)) {
             return None;
         }
-        self.samples = 0;
+        self.current = None;
         Some(completion.unwrap_or_else(|_| (Err(disconnected()), Duration::ZERO)))
     }
 }
@@ -116,7 +148,47 @@ impl Drop for Writer {
 
 impl Journal {
     pub(crate) fn in_flight_samples(&self) -> usize {
-        self.writer.as_ref().map_or(0, |writer| writer.samples)
+        self.writer.as_ref().map_or(0, |writer| {
+            writer.current.map_or(0, |job| job.0)
+                + writer.waiting.iter().map(|job| job.samples).sum::<usize>()
+        })
+    }
+
+    pub(crate) fn can_queue_tail(&self, doc: &Document) -> bool {
+        let Some(writer) = &self.writer else {
+            return true;
+        };
+        let pending = usize::from(writer.current.is_some()) + writer.waiting.len();
+        if pending == 0 {
+            return true;
+        }
+        let (_, current_bytes, complete) = writer.current.unwrap_or((0, 0, true));
+        complete
+            && pending < MAX_TAILS
+            && current_bytes
+                + writer.waiting.iter().map(|job| job.bytes).sum::<usize>()
+                + Self::capture_pixel_budget(doc)
+                <= MAX_TAIL_BYTES
+    }
+
+    fn capture_pixel_budget(doc: &Document) -> usize {
+        let raw = doc.replay_tiles.len() * TILE * TILE * 4;
+        let mask = doc.replay_mask_tiles.len() * TILE * TILE;
+        let surface = if doc.requires_renderer() {
+            doc.replay_surface
+                .regions(false)
+                .first()
+                .map_or(0, |[x0, y0, x1, y1]| {
+                    (x1.div_ceil(TILE) - x0 / TILE)
+                        * (y1.div_ceil(TILE) - y0 / TILE)
+                        * TILE
+                        * TILE
+                        * 4
+                })
+        } else {
+            0
+        };
+        raw + mask + surface
     }
 
     pub(crate) fn queue_pointer_segment(
@@ -126,11 +198,12 @@ impl Journal {
         samples: Vec<Pointer>,
         complete: bool,
     ) -> Result<(), ActionError> {
-        debug_assert_eq!(self.in_flight_samples(), 0);
+        debug_assert!(self.in_flight_samples() == 0 || (complete && self.can_queue_tail(doc)));
         if self.writer.is_none() {
             self.writer = Some(Writer::start(self.path.clone())?);
         }
         let sample_count = samples.len();
+        let bytes = Self::capture_pixel_budget(doc);
         let captured = self.capture(
             doc,
             metadata,
@@ -139,24 +212,54 @@ impl Journal {
             None,
             true,
         )?;
-        let job = Job {
+        let draft = Draft {
             captured,
-            previous: self.state.clone(),
-            head: self.head,
-            length: self.length,
+            samples: sample_count,
+            bytes,
+            complete,
             #[cfg(test)]
             fail_after: self.fail_after.take(),
             #[cfg(test)]
             gate: self.writer_gate.take(),
         };
-        self.writer.as_mut().unwrap().submit(job, sample_count)
+        let writer = self.writer.as_mut().unwrap();
+        if writer.current.is_some() || !writer.waiting.is_empty() {
+            writer.waiting.push_back(draft);
+            Ok(())
+        } else {
+            writer.submit(
+                draft,
+                &self.state,
+                self.head,
+                self.length,
+                self.entries.len(),
+            )
+        }
     }
 
     pub(crate) fn poll_pointer_segment(
         &mut self,
         wait: bool,
     ) -> Option<(Result<bool, ActionError>, Duration)> {
-        let (result, elapsed) = self.writer.as_mut()?.complete(wait)?;
+        let writer = self.writer.as_mut()?;
+        if writer.current.is_none() {
+            if let Some(draft) = writer.waiting.pop_front() {
+                if let Err(error) = writer.submit(
+                    draft,
+                    &self.state,
+                    self.head,
+                    self.length,
+                    self.entries.len(),
+                ) {
+                    writer.waiting.clear();
+                    return Some((Err(error), Duration::ZERO));
+                }
+            }
+        }
+        let (result, elapsed) = writer.complete(wait)?;
+        if result.is_err() {
+            writer.waiting.clear();
+        }
         let complete = result.map(|prepared| {
             let complete = matches!(
                 prepared.event.source,

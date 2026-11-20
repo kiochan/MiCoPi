@@ -862,45 +862,44 @@ fn desktop_background_finish_failure_blocks_the_next_mutation_and_restores_pixel
 }
 
 #[test]
-fn desktop_fast_brush_draws_before_the_previous_write_finishes() {
+fn desktop_four_brush_tails_queue_while_the_previous_write_is_paused() {
     let mut s = session();
     s.runtime = "desktop";
     call(&mut s, "canvas.new", json!({"width":260,"height":195}));
     call(&mut s, "layer.fill_color", json!({"color":"#7391ba"}));
     call(&mut s, "layer.add", json!({}));
     call(&mut s, "layer.set", json!({"index":1,"opacity":0.55}));
-    let before = codec::png(&mut s.doc).unwrap();
+    let mut frames = vec![codec::png(&mut s.doc).unwrap()];
     let release = s.journal.as_mut().unwrap().pause_next_writer_job();
-    s.begin_desktop_pointer(desktop_sample(0, u32::MAX))
+    for i in 0..4 {
+        s.begin_desktop_pointer(Pointer {
+            x: 20. + i as f32 * 65.,
+            y: 35. + i as f32 * 38.,
+            ..desktop_sample(0, u32::MAX)
+        })
         .unwrap();
-    s.pointer(desktop_sample(1, u32::MAX)).unwrap();
-    s.finish_desktop_stroke().unwrap();
-    let first = codec::png(&mut s.doc).unwrap();
-    assert_ne!(first, before);
-    s.begin_desktop_pointer(Pointer {
-        x: 225.,
-        y: 155.,
-        ..desktop_sample(0, u32::MAX)
-    })
-    .unwrap();
-    assert!(s.is_drawing());
-    assert!(s.released_checkpoint.is_some());
+        assert!(s.is_drawing());
+        s.finish_desktop_stroke().unwrap();
+        let frame = codec::png(&mut s.doc).unwrap();
+        assert_ne!(&frame, frames.last().unwrap());
+        frames.push(frame);
+    }
+    assert_eq!(s.released_checkpoints.len(), 3);
+    assert_eq!(s.replay_worker_pending_samples(), 8);
+    assert!(!s.journal.as_ref().unwrap().can_queue_tail(&s.doc));
     assert_eq!(s.drawing_performance.replay_wait.snapshot()["count"], 0);
-    let painted = codec::png(&mut s.doc).unwrap();
-    assert_ne!(painted, first);
-    s.finish_desktop_stroke().unwrap();
     release.send(()).unwrap();
     s.settle_submitted_replay().unwrap();
     let last = s.journal.as_ref().unwrap().entries.len() - 1;
     assert_eq!(
         replay::png(&s.replay_preview(last, false).unwrap()).unwrap(),
-        painted
+        *frames.last().unwrap()
     );
     assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
-    call(&mut s, "history.undo", json!({}));
-    assert_eq!(codec::png(&mut s.doc).unwrap(), first);
-    call(&mut s, "history.undo", json!({}));
-    assert_eq!(codec::png(&mut s.doc).unwrap(), before);
+    for frame in frames[..4].iter().rev() {
+        call(&mut s, "history.undo", json!({}));
+        assert_eq!(&codec::png(&mut s.doc).unwrap(), frame);
+    }
 }
 
 #[test]
@@ -924,14 +923,50 @@ fn desktop_fast_brush_writer_failure_restores_the_earliest_contact() {
     .unwrap();
     assert!(s.is_drawing());
     assert_ne!(s.doc.layers[0].pixels, pixels);
+    s.finish_desktop_stroke().unwrap();
+    assert_eq!(s.replay_worker_pending_samples(), 4);
     release.send(()).unwrap();
     assert!(s.settle_submitted_replay().is_err());
     assert_eq!(s.state(), before);
     assert_eq!(s.doc.layers[0].pixels, pixels);
     assert_eq!(s.replay_status()["head_hash"], head);
     assert!(!s.is_drawing());
-    assert!(s.released_checkpoint.is_none());
+    assert!(s.released_checkpoints.is_empty());
     assert!(s.pointer_checkpoint.is_none());
+}
+
+#[test]
+fn desktop_queued_tail_failure_preserves_acknowledged_strokes() {
+    let mut s = session();
+    s.runtime = "desktop";
+    let first_entry = s.journal.as_ref().unwrap().entries.len();
+    let release = s.journal.as_mut().unwrap().pause_next_writer_job();
+    s.begin_desktop_pointer(desktop_sample(0, u32::MAX))
+        .unwrap();
+    s.finish_desktop_stroke().unwrap();
+    let first = codec::png(&mut s.doc).unwrap();
+    let revision = s.revision;
+    s.journal.as_mut().unwrap().fail_next_write_after(7);
+    for (x, y) in [(60., 48.), (105., 75.)] {
+        s.begin_desktop_pointer(Pointer {
+            x,
+            y,
+            ..desktop_sample(0, u32::MAX)
+        })
+        .unwrap();
+        s.finish_desktop_stroke().unwrap();
+    }
+    assert_eq!(s.replay_worker_pending_samples(), 6);
+    release.send(()).unwrap();
+    assert!(s.settle_submitted_replay().is_err());
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), first_entry + 1);
+    assert_eq!(s.revision, revision);
+    assert_eq!(codec::png(&mut s.doc).unwrap(), first);
+    assert_eq!(s.replay_worker_pending_samples(), 0);
+    assert_eq!(
+        s.journal.as_mut().unwrap().verify(None).unwrap()["valid"],
+        true
+    );
 }
 
 #[test]

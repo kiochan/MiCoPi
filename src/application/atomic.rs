@@ -85,7 +85,7 @@ impl Checkpoint {
         s.replay_samples.clear();
         s.replay_direct_contact = false;
         s.replay_finish_pending = false;
-        s.released_checkpoint = None;
+        s.released_checkpoints.clear();
     }
 }
 impl Operation {
