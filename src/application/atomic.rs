@@ -79,6 +79,7 @@ impl Checkpoint {
         s.ui_effects = self.ui_effects;
         s.replay_samples.clear();
         s.replay_direct_contact = false;
+        s.replay_finish_pending = false;
     }
 }
 impl Operation {

@@ -412,7 +412,7 @@ impl Editor {
         // A guarded Move outline was admitted at idle and owns no native
         // contact. A later external stream must survive local cancellation.
         if !self.guarded_movement_pending() {
-            if let Err(error) = self.session.finish_stroke_checked() {
+            if let Err(error) = self.session.finish_desktop_stroke() {
                 self.status = error.to_string();
                 self.sync_from_session();
             }
@@ -1308,7 +1308,7 @@ impl Studio {
     fn frame_ui(&mut self, ctx: &Context) {
         let mut diagnostics_changed = false;
         let contact = self.editor.backend_contact_stamp();
-        if let Err(error) = self.editor.session.poll_replay_segment(false) {
+        if let Err(error) = self.editor.session.advance_replay_writer() {
             self.editor.reconcile_command_contact(contact);
             self.editor.sync_from_session();
             self.editor.status = error.to_string();
@@ -1802,6 +1802,7 @@ impl eframe::App for Studio {
     }
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.editor.finish_stroke();
+        let _ = self.editor.session.replay_flush(true, None);
         self.save_layout();
         let _ = self.editor.workspace.save(
             &self

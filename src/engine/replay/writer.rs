@@ -124,6 +124,7 @@ impl Journal {
         doc: &mut Document,
         metadata: Metadata,
         samples: Vec<Pointer>,
+        complete: bool,
     ) -> Result<(), ActionError> {
         debug_assert_eq!(self.in_flight_samples(), 0);
         if self.writer.is_none() {
@@ -133,10 +134,7 @@ impl Journal {
         let captured = self.capture(
             doc,
             metadata,
-            Source::Pointer {
-                samples,
-                complete: false,
-            },
+            Source::Pointer { samples, complete },
             true,
             None,
         )?;
@@ -156,8 +154,16 @@ impl Journal {
     pub(crate) fn poll_pointer_segment(
         &mut self,
         wait: bool,
-    ) -> Option<(Result<(), ActionError>, Duration)> {
+    ) -> Option<(Result<bool, ActionError>, Duration)> {
         let (result, elapsed) = self.writer.as_mut()?.complete(wait)?;
-        Some((result.map(|prepared| self.publish(prepared)), elapsed))
+        let complete = result.map(|prepared| {
+            let complete = matches!(
+                prepared.event.source,
+                Source::Pointer { complete: true, .. }
+            );
+            self.publish(prepared);
+            complete
+        });
+        Some((complete, elapsed))
     }
 }

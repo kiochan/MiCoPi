@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Defer desktop pen-up replay encoding and append to the same background writer.
+  A released contact can wait behind an earlier segment without blocking input
+  release. Settle the previous contact before another stroke, document mutation
+  or replay export. Preserve complete-contact rollback on delayed final write
+  failure. Add regression coverage for busy-writer release, successive strokes,
+  Undo and a failed final append. Immediate edits and queue saturation can still
+  wait. Full CI and physical tablet measurements remain pending.
+
 - Move mid-contact desktop replay hashing, compaction, compression and append to
   a background writer. Capture dirty tiles under the Session and publish in order
   after acknowledgment. Bound in-flight work to one snapshot and buffer up to

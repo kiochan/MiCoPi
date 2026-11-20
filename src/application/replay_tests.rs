@@ -791,6 +791,77 @@ fn desktop_sample(i: u32, up: u32) -> Pointer {
 }
 
 #[test]
+fn desktop_release_defers_final_recording_while_previous_segment_is_busy() {
+    let mut s = session();
+    s.runtime = "desktop";
+    let original = s.doc.layers[0].pixels.clone();
+    let start = s.journal.as_ref().unwrap().entries.len();
+    let head = s.replay_status()["head_hash"].clone();
+    let release = s.journal.as_mut().unwrap().pause_next_writer_job();
+    for i in 0..290 {
+        s.pointer(desktop_sample(i, u32::MAX)).unwrap();
+    }
+    s.finish_desktop_stroke().unwrap();
+    assert!(!s.is_drawing());
+    assert_eq!(s.replay_status()["pending_samples"], 291);
+    assert_eq!(s.replay_status()["worker_pending_samples"], 256);
+    assert_eq!(s.replay_status()["committed_head_hash"], head);
+    assert_eq!(s.drawing_performance.replay_wait.snapshot()["count"], 0);
+
+    release.send(()).unwrap();
+    s.poll_replay_segment(true).unwrap();
+    let finish = s.journal.as_mut().unwrap().pause_next_writer_job();
+    s.advance_replay_writer().unwrap();
+    assert_eq!(s.replay_status()["worker_pending_samples"], 35);
+    assert_eq!(s.replay_status()["committed_head_hash"], head);
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), start + 1);
+    finish.send(()).unwrap();
+
+    // A new contact must settle the previous journal head before taking its checkpoint.
+    s.pointer(Pointer {
+        x: 120.,
+        y: 89.,
+        ..desktop_sample(0, u32::MAX)
+    })
+    .unwrap();
+    assert_eq!(s.replay_status()["pending_samples"], 1);
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), start + 2);
+    let events = call(&mut s, "replay.events", json!({"start":start}));
+    assert_eq!(events["events"][1]["source"]["complete"], true);
+    assert_eq!(events["events"][1]["source"]["samples"][34]["phase"], "up");
+    s.finish_stroke();
+    call(&mut s, "history.undo", json!({}));
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(s.doc.layers[0].pixels, original);
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+}
+
+#[test]
+fn desktop_background_finish_failure_blocks_the_next_mutation_and_restores_pixels() {
+    let mut s = session();
+    s.runtime = "desktop";
+    let before = s.state();
+    let head = s.replay_status()["head_hash"].clone();
+    let original = s.doc.layers[0].pixels.clone();
+    s.pointer(desktop_sample(0, u32::MAX)).unwrap();
+    s.pointer(desktop_sample(1, u32::MAX)).unwrap();
+    s.journal.as_mut().unwrap().fail_next_write_after(7);
+    s.finish_desktop_stroke().unwrap();
+    assert!(!s.is_drawing());
+    assert!(s.replay_finish_pending);
+    let result = s.apply(Action::new("history.undo", json!({})));
+    assert!(result.is_err());
+    assert!(!s.replay_finish_pending);
+    assert_eq!(s.state(), before);
+    assert_eq!(s.doc.layers[0].pixels, original);
+    assert_eq!(s.replay_status()["head_hash"], head);
+    assert_eq!(
+        s.journal.as_mut().unwrap().verify(None).unwrap()["valid"],
+        true
+    );
+}
+
+#[test]
 fn completed_action_pointer_contacts_record_every_sample_once() {
     let mut s = session();
     let count = s.journal.as_ref().unwrap().entries.len();

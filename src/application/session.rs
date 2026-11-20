@@ -304,6 +304,7 @@ pub struct Session {
     pub(crate) replay_error: Option<String>,
     pub(crate) replay_samples: Vec<Pointer>,
     pub(crate) replay_direct_contact: bool,
+    pub(super) replay_finish_pending: bool,
     pub(crate) pending_save: Option<(PathBuf, Option<PathBuf>, bool, u64)>,
     pub(crate) workflow_stack: Vec<crate::engine::workflow::Graph>,
     pub(crate) doc: Document,
@@ -374,6 +375,7 @@ impl Session {
             replay_error: None,
             replay_samples: Vec::with_capacity(super::replay::POINTER_SEGMENT_SAMPLES),
             replay_direct_contact: false,
+            replay_finish_pending: false,
             pending_save: None,
             workflow_stack: vec![],
             selected_tool: tool.id.clone(),
@@ -858,12 +860,18 @@ impl Session {
         self.pointer_input(
             sample,
             self.execution_depth == 0 || self.replay_direct_contact,
+            false,
         )
     }
     pub(crate) fn pointer_action(&mut self, sample: Pointer) -> Result<(), ActionError> {
-        self.pointer_input(sample, true)
+        self.pointer_input(sample, true, false)
     }
-    fn pointer_input(&mut self, sample: Pointer, recording: bool) -> Result<(), ActionError> {
+    fn pointer_input(
+        &mut self,
+        sample: Pointer,
+        recording: bool,
+        defer_finish: bool,
+    ) -> Result<(), ActionError> {
         if self.read_depth != 0 {
             return Err(ActionError::new(
                 "read_only",
@@ -884,6 +892,9 @@ impl Session {
             return Err(error);
         }
         if recording {
+            if self.replay_finish_pending {
+                self.replay_flush(true, None)?;
+            }
             self.poll_replay_segment(false)?;
             self.replay_ensure()?;
             if sample.phase == PointerPhase::Down {
@@ -924,9 +935,16 @@ impl Session {
                 || result.is_err()
                 || (sample.phase == PointerPhase::Down && !self.stroke.active());
             if ended {
+                if defer_finish
+                    && result.is_ok()
+                    && self.runtime == "desktop"
+                    && self.pointer_checkpoint.is_some()
+                    && self.atomic_depth == 0
+                {
+                    return self.defer_replay_finish();
+                }
                 self.replay_flush(ended, result.as_ref().err().map(ToString::to_string))?;
-                self.replay_direct_contact = false;
-                self.pointer_checkpoint = None;
+                self.clear_replay_contact();
             } else if self.replay_samples.len() >= super::replay::POINTER_SEGMENT_SAMPLES {
                 self.replay_provisional_segment()?;
             }
@@ -948,14 +966,23 @@ impl Session {
         result
     }
     pub fn finish_stroke(&mut self) {
-        let _ = self.finish_stroke_checked();
+        let _ = self.finish_stroke_with_recording(false);
     }
-    pub(crate) fn finish_stroke_checked(&mut self) -> Result<(), ActionError> {
+    pub(crate) fn finish_desktop_stroke(&mut self) -> Result<(), ActionError> {
+        self.finish_stroke_with_recording(true)
+    }
+    fn finish_stroke_with_recording(&mut self, defer_finish: bool) -> Result<(), ActionError> {
         if let Some(last) = self.stroke.last_sample() {
-            self.pointer(Pointer {
-                phase: PointerPhase::Up,
-                ..last
-            })?;
+            self.pointer_input(
+                Pointer {
+                    phase: PointerPhase::Up,
+                    ..last
+                },
+                self.execution_depth == 0 || self.replay_direct_contact,
+                defer_finish,
+            )?;
+        } else if !defer_finish && self.replay_finish_pending {
+            self.replay_flush(true, None)?;
         }
         Ok(())
     }

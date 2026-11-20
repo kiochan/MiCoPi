@@ -36,8 +36,10 @@ exact samples, one contact Undo and verified outcomes while reducing latency.
   canvas/layer sizes, including frame/input-queue latency and display/composition.
 - [x] Move desktop mid-contact replay hashing, compression and append to a
   bounded worker. Keep ordered publication and full contact rollback. CI pending.
-- [ ] Reduce remaining synchronous work at contact completion, queue saturation
-  and dirty-tile capture. Measure frame stalls and journal waits separately.
+- [x] Schedule desktop pen-up encoding and append on the replay worker. Preserve
+  the journal boundary before the next contact, edit and export. CI pending.
+- [ ] Reduce remaining waits at a new contact and queue saturation, and measure
+  dirty-tile capture, frame stalls and journal waits separately.
 - [ ] Accept sustained tablet drawing, contact completion and rapid successive
   strokes without periodic visible stalls before resuming lower-priority work.
 

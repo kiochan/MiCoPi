@@ -51,10 +51,14 @@ impl Session {
         if self.replay_samples.is_empty() {
             return Ok(());
         }
+        let deferred_finish = self.replay_finish_pending;
         let started = std::time::Instant::now();
         let samples = std::mem::take(&mut self.replay_samples);
         let result = self.replay_commit(
-            Source::Pointer { samples, complete },
+            Source::Pointer {
+                samples,
+                complete: complete || deferred_finish,
+            },
             error.is_none(),
             error,
         );
@@ -62,7 +66,11 @@ impl Session {
             .replay_flush
             .observe(started.elapsed());
         self.replay_samples = Vec::with_capacity(POINTER_SEGMENT_SAMPLES);
-        self.finish_segment_result(result)
+        self.finish_segment_result(result)?;
+        if deferred_finish {
+            self.clear_replay_contact();
+        }
+        Ok(())
     }
 
     fn finish_segment_result(
@@ -84,7 +92,7 @@ impl Session {
         result
     }
 
-    pub(crate) fn poll_replay_segment(&mut self, wait: bool) -> Result<(), ActionError> {
+    pub(super) fn poll_replay_segment(&mut self, wait: bool) -> Result<(), ActionError> {
         let Some(journal) = self.journal.as_mut() else {
             return Ok(());
         };
@@ -99,7 +107,11 @@ impl Session {
                     .observe(started.elapsed());
             }
             self.drawing_performance.replay_worker.observe(worker_time);
-            self.finish_segment_result(result)?;
+            let completed_contact = result.as_ref().is_ok_and(|finished| *finished);
+            self.finish_segment_result(result.map(|_| ()))?;
+            if completed_contact {
+                self.clear_replay_contact();
+            }
         }
         Ok(())
     }
@@ -116,21 +128,47 @@ impl Session {
             // Bound memory without dropping samples or reordering journal outcomes.
             self.poll_replay_segment(true)?;
         }
+        self.queue_replay_segment(false)
+    }
+
+    fn queue_replay_segment(&mut self, complete: bool) -> Result<(), ActionError> {
         let started = std::time::Instant::now();
         let samples = std::mem::replace(
             &mut self.replay_samples,
             Vec::with_capacity(POINTER_SEGMENT_SAMPLES),
         );
         let metadata = self.replay_metadata();
-        let result =
-            self.journal
-                .as_mut()
-                .unwrap()
-                .queue_pointer_segment(&mut self.doc, metadata, samples);
+        let result = self.journal.as_mut().unwrap().queue_pointer_segment(
+            &mut self.doc,
+            metadata,
+            samples,
+            complete,
+        );
         self.drawing_performance
             .replay_flush
             .observe(started.elapsed());
         self.finish_segment_result(result)
+    }
+
+    pub(super) fn clear_replay_contact(&mut self) {
+        self.replay_direct_contact = false;
+        self.replay_finish_pending = false;
+        self.pointer_checkpoint = None;
+    }
+
+    pub(super) fn defer_replay_finish(&mut self) -> Result<(), ActionError> {
+        self.replay_finish_pending = true;
+        self.advance_replay_writer()
+    }
+
+    pub(crate) fn advance_replay_writer(&mut self) -> Result<(), ActionError> {
+        self.poll_replay_segment(false)?;
+        if self.replay_finish_pending && self.replay_worker_pending_samples() == 0 {
+            // The ended contact still owns the document until this result settles.
+            // Capture only after the previous segment was published.
+            self.queue_replay_segment(true)?;
+        }
+        Ok(())
     }
 
     fn replay_pending_samples(&self) -> usize {
@@ -384,6 +422,7 @@ impl Session {
             .unwrap_or(json!({"recording":true,"events":0,"frames":0,"bytes":0}));
         status["pending_samples"] = json!(self.replay_pending_samples());
         status["worker_pending_samples"] = json!(self.replay_worker_pending_samples());
+        status["contact_finish_pending"] = json!(self.replay_finish_pending);
         status["transaction_pending"] =
             json!(self.atomic_depth != 0 || self.pointer_checkpoint.is_some());
         status["committed_head_hash"] = self
@@ -462,6 +501,9 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
             Ok(result)
         }
         ReplayExport => {
+            if !loaded && s.replay_finish_pending {
+                s.replay_flush(true, None)?;
+            }
             if !loaded && s.pointer_checkpoint.is_some() {
                 return Err(ActionError::new(
                     "stroke_active",
@@ -497,6 +539,9 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
             }
         }
         ReplayFrames => {
+            if !loaded && s.replay_finish_pending {
+                s.replay_flush(true, None)?;
+            }
             if !loaded && s.pointer_checkpoint.is_some() {
                 return Err(ActionError::new(
                     "stroke_active",

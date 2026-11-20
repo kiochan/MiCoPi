@@ -16,10 +16,13 @@ in-flight portion. The committed head stays at the start of the contact until
 the final segment succeeds.
 
 The worker holds one dirty-tile snapshot and the local pointer buffer can grow
-to 1,024 samples if the worker falls behind. That limit, contact completion and
-operations requiring a journal boundary wait for the previous result. Final
-contact encoding and headless recording are synchronous. Composition and the
-dirty-tile capture still run under the document owner. A writer failure rewinds
+to 1,024 samples if the worker falls behind. The canvas releases the pen without
+waiting for compression or storage. `contact_finish_pending` tracks a released
+contact whose final segment is queued or waiting behind earlier work. The next
+contact, Undo, Save and replay export settle the previous contact before proceeding.
+Buffer saturation can also wait for the previous result. Headless and explicit
+`canvas.pointer` completion remain synchronous. Composition and dirty-tile capture
+run under the document owner. A writer failure rewinds
 the journal, pixels and Undo state to the beginning of the contact, including
 earlier provisional segments. Use the
 [drawing timing counters](workbench-diagnostics.md#drawing-timing-observations)
