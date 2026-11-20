@@ -58,6 +58,12 @@ Masks require linked layer/filter composition and a compositor with the optional
 
 A layer's enabled mask gates its filtered result and combines with layer opacity once. An isolated group mask gates the completed isolated result. A Pass Through group mask gates the completed before/after change with group opacity once. Disabling source filters preserves the mask and group composition gates. Disabled masks reveal fully. Composition passes fixed-size effective-coverage descriptors through cached slots; it does not materialize uniform masks or rebuild JSON per damage update.
 
+The native color evaluator resolves opacity and output dependencies once per
+damaged region, and the histogram uses the same evaluation plan. Validation
+still checks every descriptor and instruction before writing output. The host
+skips effective mask preparation when storage identities, effects and relevant
+content revisions match clean caches.
+
 Generated masks retain the existing graph bounds, including 64 nodes and the native instruction/value budget. A flat stack of sixteen masked rasters without extra filter nodes fits the 64-node bound; additional filters or nested boundaries can exceed it and are rejected before mutation. Preflight validates coverage/image port domains, owner identities, dimensions, capabilities and declared modes, including hidden and disabled branches.
 
 Rendering supports native feather-first density effects through the optional 72-byte compositor tail and capability `0x8`; default properties still use the unchanged 40-byte mask prefix. A compositor without effects rejects nondefault properties before live publication, including hidden/disabled masks. The exact three-box approximation, density rounding and support radius are specified in [effective coverage](raster-mask-editing.md#non-destructive-effective-coverage). Raw edits dirty the affected output expanded by exactly the declared feather radius. Parameter changes invalidate a full effective plane. Caches are reusable derived data, independent of raw history and replay.

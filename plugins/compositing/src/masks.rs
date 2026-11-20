@@ -7,8 +7,8 @@ fn aligned<T>(pointer: *const T) -> bool {
 }
 
 /// Resolve opacity and spatial coverage once, using positive half-up rounding.
-fn weight(opacity: f32, coverage: u32) -> u32 {
-    ((opacity * 255.).round() as u32 * coverage + 127) / 255
+fn weight(opacity: u32, coverage: u32) -> u32 {
+    (opacity * coverage + 127) / 255
 }
 
 fn apply(pixel: u32, amount: u32) -> u32 {
@@ -282,6 +282,7 @@ pub(super) unsafe fn render_quantized_plan(
             output,
         );
     }
+    let plan = EvaluationPlan::new(nodes);
     let pixels = std::slice::from_raw_parts_mut(out.data, used);
     let mut values = [0u32; 64];
     for y in 0..h {
@@ -290,6 +291,7 @@ pub(super) unsafe fn render_quantized_plan(
             let global_x = out.origin_x as usize + x;
             pixels[y * stride + x] = evaluate_quantized(
                 nodes,
+                &plan,
                 layers,
                 masks,
                 luts,
@@ -305,11 +307,52 @@ pub(super) unsafe fn render_quantized_plan(
     abi::OK
 }
 
+/// Compile scalar opacity and reachable instructions once for the whole region.
+/// Input nodes are fully validated before constructing this plan.
+pub(super) struct EvaluationPlan {
+    order: [u8; 64],
+    length: usize,
+    opacity: [u32; 64],
+}
+
+impl EvaluationPlan {
+    pub(super) fn new(nodes: &[abi::CompositeNode]) -> Self {
+        let mut plan = Self {
+            order: [0; 64],
+            length: 0,
+            opacity: [0; 64],
+        };
+        let mut needed = 1u64 << (nodes.len() - 1);
+        for (i, n) in nodes.iter().enumerate().rev() {
+            if needed & (1 << i) == 0 {
+                continue;
+            }
+            match n.kind {
+                1 | 3 | 9..=13 => needed |= 1 << n.a,
+                2 | 5 | 7 => needed |= (1 << n.a) | (1 << n.b),
+                8 => needed |= (1 << n.a) | (1 << n.b) | (1 << n.mode),
+                _ => {}
+            }
+            if matches!(n.kind, 2 | 5 | 7 | 8) {
+                plan.opacity[i] = (n.amount * 255.).round() as u32;
+            }
+        }
+        while needed != 0 {
+            let i = needed.trailing_zeros();
+            plan.order[plan.length] = i as u8;
+            plan.length += 1;
+            needed &= needed - 1;
+        }
+        plan
+    }
+}
+
 /// Internal evaluator for already-validated image plans. Coverage remains a
 /// separate typed slot; callers must reject empty plans and coverage outputs.
 #[inline(always)]
 pub(super) unsafe fn evaluate_quantized(
     nodes: &[abi::CompositeNode],
+    plan: &EvaluationPlan,
     layers: &[abi::CompositeLayer],
     masks: &[abi::CompositeMask],
     luts: &[abi::CompositeLut],
@@ -321,7 +364,9 @@ pub(super) unsafe fn evaluate_quantized(
     values: &mut [u32; 64],
 ) -> u32 {
     let index = global_y * width as usize + global_x;
-    for (i, n) in nodes.iter().enumerate() {
+    for &index_in_plan in &plan.order[..plan.length] {
+        let i = usize::from(index_in_plan);
+        let n = &nodes[i];
         values[i] = match n.kind {
             0 => {
                 let layer = &layers[n.a as usize];
@@ -339,16 +384,12 @@ pub(super) unsafe fn evaluate_quantized(
             1 => filter(values[n.a as usize], n.mode, n.amount),
             2 => over(
                 values[n.a as usize],
-                opacity(values[n.b as usize], (n.amount * 255.).round() as u32),
+                opacity(values[n.b as usize], plan.opacity[i]),
                 n.mode,
             ),
             3 => values[n.a as usize],
             4 => 0,
-            5 => mix(
-                values[n.a as usize],
-                values[n.b as usize],
-                (n.amount * 255.).round() as u32,
-            ),
+            5 => mix(values[n.a as usize], values[n.b as usize], plan.opacity[i]),
             6 => {
                 let mask = &masks[n.a as usize];
                 if mask.data.is_null() {
@@ -357,11 +398,14 @@ pub(super) unsafe fn evaluate_quantized(
                     u32::from(*mask.data.add(global_y * mask.stride as usize + global_x))
                 }
             }
-            7 => apply(values[n.a as usize], weight(n.amount, values[n.b as usize])),
+            7 => apply(
+                values[n.a as usize],
+                weight(plan.opacity[i], values[n.b as usize]),
+            ),
             8 => mix(
                 values[n.a as usize],
                 values[n.b as usize],
-                weight(n.amount, values[n.mode as usize]),
+                weight(plan.opacity[i], values[n.mode as usize]),
             ),
             9 => super::levels::apply_lut(&luts[n.mode as usize].values, values[n.a as usize]),
             10 => {

@@ -172,12 +172,14 @@ pub(crate) unsafe fn sample_quantized_plan(
         ..Default::default()
     };
     let mut values = [0; 64];
+    let plan = crate::masks::EvaluationPlan::new(nodes);
     for row in 0..gh {
         let y = (2 * row as usize + 1) * p.height as usize / (2 * gh as usize);
         for col in 0..gw {
             let x = (2 * col as usize + 1) * p.width as usize / (2 * gw as usize);
             let pixel = crate::masks::evaluate_quantized(
                 nodes,
+                &plan,
                 layers,
                 masks,
                 luts,

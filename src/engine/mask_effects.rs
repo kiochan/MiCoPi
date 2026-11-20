@@ -236,6 +236,28 @@ impl Document {
         }
         self.ensure_raster_mask_renderer()?;
         self.ensure_raster_mask_properties(self.mask_state())?;
+        if self.mask_effects.len() == self.mask_planes.len()
+            && self
+                .mask_effects
+                .iter()
+                .zip(&self.mask_planes)
+                .zip(&self.raster_masks.items)
+                .all(|((cache, plane), metadata)| {
+                    cache.id == plane.id
+                        && cache.width == self.width
+                        && cache.height == self.height
+                        && cache.density == metadata.density
+                        && cache.radius == metadata.feather_radius_px
+                        && cache.dirty.is_none()
+                        && if needed(metadata) {
+                            cache.revision == plane.content_revision && cache.samples.is_some()
+                        } else {
+                            cache.samples.is_none()
+                        }
+                })
+        {
+            return Ok(());
+        }
         self.sync_mask_effect_storage()?;
         let renderer = self.renderer.as_ref().unwrap();
         for ((cache, plane), metadata) in self

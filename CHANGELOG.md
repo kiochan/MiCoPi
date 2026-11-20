@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reduce masked and adjustment composition work per damaged region. Resolve
+  blend opacity once, skip instructions outside the output dependency chain,
+  and reuse valid effective-mask caches. Keep validation of all ABI inputs,
+  exact blend rounding, and the shared histogram evaluator.
+
 - Queue up to four desktop Brush or Eraser tails within a 32 MiB pixel capture
   budget. A new contact waits only for sufficient capacity when saturated.
   Rebase each contact after its predecessor is acknowledged and rewind failed

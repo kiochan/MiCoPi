@@ -120,6 +120,41 @@ fn apply_plan(opacity: u32) -> [abi::CompositeNode; 4] {
         node(3, 2, 0, 0, 1.),
     ]
 }
+
+#[test]
+fn masked_plan_keeps_original_slots_when_sparse_dependencies_span_all_64_nodes() {
+    let source = vec![0x7259b4e3, 0xff116633, 0x00123456];
+    let sources = vec![source.clone()];
+    let layers = layers(&sources);
+    let coverage = [128, 0, 255];
+    let masks = [plane(&coverage, 3)];
+    let mut instructions = [node(1, 0, 0, 1, 0.75); 64];
+    instructions[0] = node(0, 0, 0, 0, 1.);
+    instructions[31] = node(6, 0, 0, 0, 0.);
+    instructions[62] = node(7, 0, 31, 0, 0.5);
+    instructions[63] = node(3, 62, 0, 0, 1.);
+    let mut pixels = [0u32; 3];
+    assert_eq!(
+        unsafe {
+            masked(
+                &instructions,
+                &layers,
+                &masks,
+                3,
+                1,
+                &mut output(&mut pixels, 3, 1),
+            )
+        },
+        abi::OK
+    );
+    let expected: Vec<_> = source
+        .iter()
+        .zip(coverage)
+        .map(|(&pixel, alpha)| expected_apply(pixel, 128, u32::from(alpha)))
+        .collect();
+    assert_eq!(pixels.as_slice(), expected);
+}
+
 fn mix_plan(opacity: u32) -> [abi::CompositeNode; 5] {
     [
         node(0, 0, 0, 0, 1.),

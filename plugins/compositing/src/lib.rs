@@ -29,6 +29,9 @@ pub fn over(dst: u32, src: u32, mode: u32) -> u32 {
         return dst;
     }
     let da = dst >> 24;
+    if da == 0 || (mode == 0 && a == 255) {
+        return src;
+    }
     let out_a = a + (da * (255 - a) + 127) / 255;
     let mut out = out_a << 24;
     for shift in [0, 8, 16] {
