@@ -681,6 +681,116 @@ fn action_pointer_streams_share_contact_buffering_and_storage_rollback() {
 }
 
 #[test]
+fn desktop_pointer_worker_preserves_order_and_one_contact_undo() {
+    let mut s = session();
+    s.runtime = "desktop";
+    let original = s.doc.layers[0].pixels.clone();
+    let start = s.journal.as_ref().unwrap().entries.len();
+    let mut release = Some(s.journal.as_mut().unwrap().pause_next_writer_job());
+    let mut samples = Vec::new();
+    for i in 0..650 {
+        let sample = desktop_sample(i, 649);
+        s.pointer(sample).unwrap();
+        samples.push(serde_json::to_value(sample).unwrap());
+        if i == 255 {
+            let status = s.replay_status();
+            assert_eq!(status["pending_samples"], 256);
+            assert_eq!(status["worker_pending_samples"], 256);
+            assert_eq!(s.journal.as_ref().unwrap().entries.len(), start);
+            let verified = call(&mut s, "replay.verify", json!({}));
+            assert_eq!(verified["valid"], true);
+            assert_eq!(verified["pending_samples"], 256);
+            assert_eq!(verified["checked_events"], start);
+        } else if i == 600 {
+            let status = s.replay_status();
+            assert_eq!(status["worker_pending_samples"], 256);
+            assert_eq!(status["pending_samples"], 601);
+            assert_eq!(s.drawing_performance.replay_wait.snapshot()["count"], 0);
+            release.take().unwrap().send(()).unwrap();
+        }
+    }
+    assert_eq!(s.replay_status()["pending_samples"], 0);
+    assert!(s.pointer_checkpoint.is_none());
+    let events = call(&mut s, "replay.events", json!({"start":start}));
+    let events = events["events"].as_array().unwrap();
+    assert!(events.len() >= 2);
+    assert_eq!(events.last().unwrap()["source"]["complete"], true);
+    assert!(events[..events.len() - 1]
+        .iter()
+        .all(|e| e["source"]["complete"] == false));
+    let recorded: Vec<_> = events
+        .iter()
+        .flat_map(|e| e["source"]["samples"].as_array().unwrap())
+        .cloned()
+        .collect();
+    assert_eq!(recorded, samples);
+    let live = codec::png(&mut s.doc).unwrap();
+    let last = s.journal.as_ref().unwrap().entries.len() - 1;
+    assert_eq!(
+        replay::png(&s.replay_preview(last, false).unwrap()).unwrap(),
+        live
+    );
+    assert_eq!(call(&mut s, "replay.verify", json!({}))["valid"], true);
+    assert_ne!(s.doc.layers[0].pixels, original);
+    call(&mut s, "history.undo", json!({}));
+    assert_eq!(s.doc.layers[0].pixels, original);
+}
+
+#[test]
+fn desktop_pointer_worker_write_failure_rewinds_previously_appended_segments() {
+    let mut s = session();
+    s.runtime = "desktop";
+    let before = s.state();
+    let original = s.doc.layers[0].pixels.clone();
+    let history = s.doc.history_bytes();
+    let start = s.journal.as_ref().unwrap().entries.len();
+    let head = s.replay_status()["head_hash"].clone();
+    for i in 0..256 {
+        s.pointer(desktop_sample(i, 512)).unwrap();
+    }
+    s.poll_replay_segment(true).unwrap();
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), start + 1);
+    s.journal.as_mut().unwrap().fail_next_write_after(7);
+    for i in 256..512 {
+        s.pointer(desktop_sample(i, 512)).unwrap();
+    }
+    assert!(s.pointer(desktop_sample(512, 512)).is_err());
+    assert_eq!(s.state(), before);
+    assert_eq!(s.doc.layers[0].pixels, original);
+    assert_eq!(s.doc.history_bytes(), history);
+    assert_eq!(s.replay_status()["head_hash"], head);
+    assert_eq!(s.replay_status()["pending_samples"], 0);
+    assert_eq!(s.replay_status()["recording"], false);
+    assert!(!s.is_drawing());
+    assert_eq!(s.journal.as_ref().unwrap().entries.len(), start);
+    assert_eq!(
+        s.journal.as_mut().unwrap().verify(None).unwrap()["valid"],
+        true
+    );
+}
+
+fn desktop_sample(i: u32, up: u32) -> Pointer {
+    Pointer {
+        phase: if i == 0 {
+            PointerPhase::Down
+        } else if i == up {
+            PointerPhase::Up
+        } else {
+            PointerPhase::Move
+        },
+        x: 12. + (i % 85) as f32,
+        y: 12. + ((i / 4) % 62) as f32,
+        pressure: 0.3 + 0.1 * (i % 6) as f32,
+        time: i * 4,
+        pen: true,
+        eraser: false,
+        tool_override: None,
+        view_x: None,
+        view_y: None,
+    }
+}
+
+#[test]
 fn completed_action_pointer_contacts_record_every_sample_once() {
     let mut s = session();
     let count = s.journal.as_ref().unwrap().entries.len();

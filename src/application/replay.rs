@@ -3,6 +3,10 @@ use super::{ActionError, ActionResult, Operation, Session};
 use crate::engine::replay::{Journal, Metadata, Source, State, MAX_ARCHIVE};
 use serde_json::{json, Value};
 use std::path::PathBuf;
+
+pub(super) const POINTER_SEGMENT_SAMPLES: usize = 256;
+const MAX_PENDING_POINTER_SAMPLES: usize = 1024;
+
 impl Session {
     pub(crate) fn replay_metadata(&self) -> Metadata {
         Metadata {
@@ -43,6 +47,7 @@ impl Session {
         complete: bool,
         error: Option<String>,
     ) -> Result<(), ActionError> {
+        self.poll_replay_segment(true)?;
         if self.replay_samples.is_empty() {
             return Ok(());
         }
@@ -56,7 +61,18 @@ impl Session {
         self.drawing_performance
             .replay_flush
             .observe(started.elapsed());
-        if result.is_err() {
+        self.replay_samples = Vec::with_capacity(POINTER_SEGMENT_SAMPLES);
+        self.finish_segment_result(result)
+    }
+
+    fn finish_segment_result(
+        &mut self,
+        result: Result<(), ActionError>,
+    ) -> Result<(), ActionError> {
+        if let Err(error) = &result {
+            if error.code != "render_error" {
+                self.replay_error = Some(error.to_string());
+            }
             if let Some((saved, mark)) = self.pointer_checkpoint.take() {
                 let rollback = self.journal.as_mut().unwrap().rollback(mark);
                 saved.restore(self);
@@ -65,8 +81,64 @@ impl Session {
                 }
             }
         }
-        self.replay_samples = Vec::with_capacity(256);
         result
+    }
+
+    pub(crate) fn poll_replay_segment(&mut self, wait: bool) -> Result<(), ActionError> {
+        let Some(journal) = self.journal.as_mut() else {
+            return Ok(());
+        };
+        if journal.in_flight_samples() == 0 {
+            return Ok(());
+        }
+        let started = wait.then(std::time::Instant::now);
+        if let Some((result, worker_time)) = journal.poll_pointer_segment(wait) {
+            if let Some(started) = started {
+                self.drawing_performance
+                    .replay_wait
+                    .observe(started.elapsed());
+            }
+            self.drawing_performance.replay_worker.observe(worker_time);
+            self.finish_segment_result(result)?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn replay_provisional_segment(&mut self) -> Result<(), ActionError> {
+        if self.runtime != "desktop" || self.pointer_checkpoint.is_none() || self.atomic_depth != 0
+        {
+            return self.replay_flush(false, None);
+        }
+        if self.journal.as_ref().unwrap().in_flight_samples() != 0 {
+            if self.replay_samples.len() < MAX_PENDING_POINTER_SAMPLES {
+                return Ok(());
+            }
+            // Bound memory without dropping samples or reordering journal outcomes.
+            self.poll_replay_segment(true)?;
+        }
+        let started = std::time::Instant::now();
+        let samples = std::mem::replace(
+            &mut self.replay_samples,
+            Vec::with_capacity(POINTER_SEGMENT_SAMPLES),
+        );
+        let metadata = self.replay_metadata();
+        let result =
+            self.journal
+                .as_mut()
+                .unwrap()
+                .queue_pointer_segment(&mut self.doc, metadata, samples);
+        self.drawing_performance
+            .replay_flush
+            .observe(started.elapsed());
+        self.finish_segment_result(result)
+    }
+
+    fn replay_pending_samples(&self) -> usize {
+        self.replay_samples.len() + self.replay_worker_pending_samples()
+    }
+
+    pub(crate) fn replay_worker_pending_samples(&self) -> usize {
+        self.journal.as_ref().map_or(0, Journal::in_flight_samples)
     }
     pub(crate) fn replay_boundary(&mut self) -> Result<(), ActionError> {
         if self.atomic_depth != 0 {
@@ -310,7 +382,8 @@ impl Session {
             .as_ref()
             .map(Journal::status)
             .unwrap_or(json!({"recording":true,"events":0,"frames":0,"bytes":0}));
-        status["pending_samples"] = json!(self.replay_samples.len());
+        status["pending_samples"] = json!(self.replay_pending_samples());
+        status["worker_pending_samples"] = json!(self.replay_worker_pending_samples());
         status["transaction_pending"] =
             json!(self.atomic_depth != 0 || self.pointer_checkpoint.is_some());
         status["committed_head_hash"] = self
@@ -380,7 +453,11 @@ pub fn execute(s: &mut Session, op: Operation, args: Value) -> ActionResult {
                 "committed events"
             });
             result["transaction_pending"] = json!(pending || s.atomic_depth != 0);
-            result["pending_samples"] = json!(if loaded { 0 } else { s.replay_samples.len() });
+            result["pending_samples"] = json!(if loaded {
+                0
+            } else {
+                s.replay_pending_samples()
+            });
             result["stroke_in_progress"] = json!(!loaded && s.is_drawing());
             Ok(result)
         }

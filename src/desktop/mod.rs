@@ -412,7 +412,10 @@ impl Editor {
         // A guarded Move outline was admitted at idle and owns no native
         // contact. A later external stream must survive local cancellation.
         if !self.guarded_movement_pending() {
-            self.session.finish_stroke();
+            if let Err(error) = self.session.finish_stroke_checked() {
+                self.status = error.to_string();
+                self.sync_from_session();
+            }
         }
         self.clear_local_contact();
     }
@@ -1304,6 +1307,12 @@ impl Studio {
     }
     fn frame_ui(&mut self, ctx: &Context) {
         let mut diagnostics_changed = false;
+        let contact = self.editor.backend_contact_stamp();
+        if let Err(error) = self.editor.session.poll_replay_segment(false) {
+            self.editor.reconcile_command_contact(contact);
+            self.editor.sync_from_session();
+            self.editor.status = error.to_string();
+        }
         if !self.painting_active() || self.editor.session.ui.get("workspaces.actual").is_none() {
             self.report_workspaces();
         }
@@ -1756,6 +1765,10 @@ impl eframe::App for Studio {
             }
         }
         self.frame_ui(ctx);
+        if self.editor.session.replay_worker_pending_samples() != 0 {
+            // Also publish or report failure when the pen is held motionless.
+            ctx.request_repaint_after(Duration::from_millis(16));
+        }
         self.checkpoint_layout(ctx);
         let name = self
             .editor

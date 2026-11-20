@@ -6,14 +6,24 @@ Open **View → Time-lapse Replay**, or search for **Time-lapse Replay** in the 
 
 ## Execution contract
 
-Recording currently still prepares, compresses and appends provisional segments
-synchronously every 256 direct pointer samples. Batched tile hashing, reuse of
-already-calculated changed-tile digests and borrowed little-endian byte views
-reduce that work without changing the wire format, compression or rollback
-contract. They do not make journaling asynchronous. Use the transient
+During a desktop contact, the Session captures the dirty tiles and submits a
+provisional segment after 256 direct pointer samples. A single background writer
+hashes, compacts, compresses and appends each segment. The Session publishes
+acknowledged results in sequence. Replay readers can inspect the acknowledged
+prefix while the worker writes the next segment. `pending_samples` includes both
+locally buffered and in-flight samples. `worker_pending_samples` reports the
+in-flight portion. The committed head stays at the start of the contact until
+the final segment succeeds.
+
+The worker holds one dirty-tile snapshot and the local pointer buffer can grow
+to 1,024 samples if the worker falls behind. That limit, contact completion and
+operations requiring a journal boundary wait for the previous result. Final
+contact encoding and headless recording are synchronous. Composition and the
+dirty-tile capture still run under the document owner. A writer failure rewinds
+the journal, pixels and Undo state to the beginning of the contact, including
+earlier provisional segments. Use the
 [drawing timing counters](workbench-diagnostics.md#drawing-timing-observations)
-to measure remaining stalls; moving this boundary off the input thread requires
-bounded backpressure, ordered publication and complete contact-failure rollback.
+to identify remaining capture, worker and wait costs.
 
 The bounded hash fixture measured 64 full 64-by-64 tiles at 65.9 ms with the
 previous per-pixel update loop versus 37.2 ms with batched input in a local GNU
@@ -33,7 +43,11 @@ flowchart LR
 
 GUI tools, native plugin host callbacks, JSONL, MCP, pipelines and workflow nodes share `application::Session`. A mutating action records its ID, arguments, outcome, elapsed time and resulting document state. Nested leaf actions are recorded in execution order; container outcomes preserve partial failures in sequential mode. Opt into [atomic groups](atomic-operations.md) to roll back a failed batch and record one group outcome. Invalid mutating requests become rejected attempts. Read-only queries and replay controls do not create authored operations.
 
-Direct pen input keeps its typed path into the tool DLL. Raw positions, timestamps, pressure, pen/eraser flags and tool overrides are buffered in bounded 256-sample provisional segments and committed when the contact ends. `canvas.pointer` actions use the same provisional contact and rollback boundary. A storage failure rewinds the entire contact. Each sample remains in the event; journal serialization, hashing and disk writes are **not performed per pointer move**. Pressure and stabilization still run in the painting plugin. Action-based `canvas.stroke` records its points once as action arguments.
+Direct pen input keeps its typed path into the tool DLL. Provisional segments
+retain every raw position, timestamp, pressure value, pen/eraser flag and tool
+override in order. `canvas.pointer` actions share the contact and rollback
+boundary. Pressure and stabilization run in the painting plugin. Action-based
+`canvas.stroke` records its points once as action arguments.
 
 Events contain before/after state hashes, metadata, changed 64-pixel layer tiles and changed composited tiles. The [raster-mask foundation](raster-mask-storage.md) adds a separate stable-ID A8 tile namespace; it never reuses the raster-count composite sentinel or RGBA tile references. Metadata includes layers, image/workflow graphs, active tool, brush parameters, view, paths and revision. Synchronization checkpoints capture changes observed between action boundaries. New documents start independent histories. Imported images and old projects start from a snapshot; previous operations cannot be recovered.
 

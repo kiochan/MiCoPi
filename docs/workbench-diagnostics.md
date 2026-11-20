@@ -32,8 +32,10 @@ for layout, validated preferences and floating-window captures. See
 
 The response also includes `drawing_performance`, available in both desktop and
 headless Sessions. `tool_input` measures typed tool dispatch, including its tile
-loans/history work; `replay_flush` measures provisional pointer outcome preparation,
-compression and journal append. Each reports cumulative `count`, `total_us`,
+loans and history work. `replay_flush` measures desktop snapshot submission or a
+synchronous flush, depending on the segment. `replay_worker` measures acknowledged
+background encoding and append. `replay_wait` measures synchronous waits for a
+worker result. Each reports cumulative `count`, `total_us`,
 `max_us` and `over_8ms`. The 8 ms counter is a diagnostic threshold, not a frame-rate
 guarantee. A failed flush is counted before contact rollback; rollback time is
 excluded. Action-based `canvas.stroke` does not use the direct-pointer flush path.

@@ -372,7 +372,7 @@ impl Session {
             restored_replay: None,
             replay_identity: 0,
             replay_error: None,
-            replay_samples: Vec::with_capacity(256),
+            replay_samples: Vec::with_capacity(super::replay::POINTER_SEGMENT_SAMPLES),
             replay_direct_contact: false,
             pending_save: None,
             workflow_stack: vec![],
@@ -884,6 +884,7 @@ impl Session {
             return Err(error);
         }
         if recording {
+            self.poll_replay_segment(false)?;
             self.replay_ensure()?;
             if sample.phase == PointerPhase::Down {
                 if !self.stroke.active() {
@@ -922,12 +923,12 @@ impl Session {
             let ended = matches!(sample.phase, PointerPhase::Up | PointerPhase::Cancel)
                 || result.is_err()
                 || (sample.phase == PointerPhase::Down && !self.stroke.active());
-            if ended || self.replay_samples.len() >= 256 {
-                self.replay_flush(ended, result.as_ref().err().map(ToString::to_string))?;
-            }
             if ended {
+                self.replay_flush(ended, result.as_ref().err().map(ToString::to_string))?;
                 self.replay_direct_contact = false;
                 self.pointer_checkpoint = None;
+            } else if self.replay_samples.len() >= super::replay::POINTER_SEGMENT_SAMPLES {
+                self.replay_provisional_segment()?;
             }
         }
         result
@@ -947,12 +948,16 @@ impl Session {
         result
     }
     pub fn finish_stroke(&mut self) {
+        let _ = self.finish_stroke_checked();
+    }
+    pub(crate) fn finish_stroke_checked(&mut self) -> Result<(), ActionError> {
         if let Some(last) = self.stroke.last_sample() {
-            let _ = self.pointer(Pointer {
+            self.pointer(Pointer {
                 phase: PointerPhase::Up,
                 ..last
-            });
+            })?;
         }
+        Ok(())
     }
     pub fn pick(&mut self, x: f32, y: f32) -> Result<(), ActionError> {
         if !x.is_finite()

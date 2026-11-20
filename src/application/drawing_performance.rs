@@ -26,11 +26,15 @@ impl Timings {
 pub(crate) struct DrawingPerformance {
     pub(crate) tool_input: Timings,
     pub(crate) replay_flush: Timings,
+    pub(crate) replay_worker: Timings,
+    pub(crate) replay_wait: Timings,
 }
 impl DrawingPerformance {
     pub(crate) fn snapshot(&self) -> serde_json::Value {
         serde_json::json!({"tool_input":self.tool_input.snapshot(),
             "replay_flush":self.replay_flush.snapshot(),
+            "replay_worker":self.replay_worker.snapshot(),
+            "replay_wait":self.replay_wait.snapshot(),
             "scope":"Cumulative Session wall time, not end-to-end tablet latency"})
     }
 }

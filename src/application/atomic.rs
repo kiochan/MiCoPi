@@ -40,7 +40,7 @@ impl Session {
 #[derive(Clone)]
 pub(crate) struct Checkpoint {
     clipboard: Option<std::sync::Arc<crate::plugins::clipboard::Payload>>,
-    state: State,
+    state: std::sync::Arc<State>,
     history: HistoryCheckpoint,
     last_pointer: Option<Pointer>,
     pen_observed: bool,
@@ -63,7 +63,9 @@ impl Checkpoint {
         s.tool_instances.clear();
         self.state.restore_document(&mut s.doc);
         s.doc.restore_history(self.history);
-        let m = self.state.metadata;
+        let m = std::sync::Arc::try_unwrap(self.state)
+            .map(|state| state.metadata)
+            .unwrap_or_else(|state| state.metadata.clone());
         s.parameters = m.parameters;
         s.selected_tool = m.selected_tool;
         s.tool = m.tool;

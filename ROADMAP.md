@@ -34,9 +34,10 @@ exact samples, one contact Undo and verified outcomes while reducing latency.
   bounded transient tool/flush timing counters; runtime CI pending.
 - [ ] Measure continuous strokes in an optimized portable build on representative
   canvas/layer sizes, including frame/input-queue latency and display/composition.
-- [ ] Remove remaining synchronous provisional recording stalls with a bounded
-  pipeline. Require ordered, verified outcomes, explicit backpressure and full
-  rollback for storage/worker errors; do not drop pen samples or disable replay.
+- [x] Move desktop mid-contact replay hashing, compression and append to a
+  bounded worker. Keep ordered publication and full contact rollback. CI pending.
+- [ ] Reduce remaining synchronous work at contact completion, queue saturation
+  and dirty-tile capture. Measure frame stalls and journal waits separately.
 - [ ] Accept sustained tablet drawing, contact completion and rapid successive
   strokes without periodic visible stalls before resuming lower-priority work.
 

@@ -340,7 +340,14 @@ impl Editor {
                 };
                 self.pressure = pressure;
             }
-            Err(e) => self.status = e.to_string(),
+            Err(e) => {
+                if !self.backend_contact_active() {
+                    self.clear_local_contact();
+                    self.pen_active = false;
+                    self.sync_from_session();
+                }
+                self.status = e.to_string();
+            }
         }
         self.image_rect = Rect::from_center_size(
             self.canvas.center() + self.pan,

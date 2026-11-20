@@ -7,6 +7,10 @@ digest reuse and compatibility/cost fixtures stay in `src/engine/replay.rs` and
 `src/engine/replay/performance_tests.rs`. Desktop layout checkpoint deferral stays
 in `src/desktop/mod.rs`. See [drawing diagnostics](workbench-diagnostics.md#drawing-timing-observations).
 
+`src/engine/replay/writer.rs` handles background encoding and append for one
+desktop provisional segment at a time. The engine captures dirty tiles and the
+Session owns result publication, sample admission and contact rollback.
+
 System glass stays in the existing presentation boundary: `src/configuration.rs`
 validates material preferences, `plugins/workbench/preferences.rs` exposes search
 controls, `src/desktop/theme.rs` gates translucent workspace colors per native

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Move mid-contact desktop replay hashing, compaction, compression and append to
+  a background writer. Capture dirty tiles under the Session and publish in order
+  after acknowledgment. Bound in-flight work to one snapshot and buffer up to
+  1,024 incoming samples while the writer is busy. Preserve all points, verified
+  replay and one contact Undo. Rewind the entire contact after a writer failure.
+  Add worker and wait timing counters plus ordered replay and failure coverage.
+  Contact completion, buffer saturation and explicit journal boundaries can still
+  wait. Full regression and physical tablet measurements remain pending.
+
 - Prioritize continuous painting: batch replay tile SHA-256 input, reuse changed-tile
   digests and borrow little-endian pixel bytes instead of allocating another tile
   for encoding. A bounded Debug microprobe on 64 tiles measured hashing at 65.9 ms

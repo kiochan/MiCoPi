@@ -21,6 +21,7 @@ use std::{
 #[cfg(test)]
 mod mask_tests;
 mod masks;
+mod writer;
 
 pub const MAGIC: &[u8; 8] = b"MCRPLY02";
 pub const MAX_ARCHIVE: usize = 1024 * 1024 * 1024;
@@ -702,18 +703,21 @@ pub struct Entry {
 pub struct Journal {
     #[cfg(test)]
     fail_after: Option<usize>,
+    #[cfg(test)]
+    writer_gate: Option<std::sync::mpsc::Receiver<()>>,
     file: File,
     path: PathBuf,
     pub entries: Vec<Entry>,
-    pub state: State,
+    pub state: Arc<State>,
     head: Hash,
     length: u64,
     clock: Instant,
     base_time: u64,
     cached: Option<(usize, State)>,
+    writer: Option<writer::Writer>,
 }
 pub(crate) struct JournalCheckpoint {
-    state: State,
+    state: Arc<State>,
     length: u64,
     head: Hash,
     entries: usize,
@@ -728,6 +732,7 @@ impl JournalCheckpoint {
 }
 impl Drop for Journal {
     fn drop(&mut self) {
+        drop(self.writer.take());
         let _ = std::fs::remove_file(&self.path);
     }
 }
@@ -741,6 +746,7 @@ impl Journal {
         }
     }
     pub(crate) fn rollback(&mut self, mark: JournalCheckpoint) -> Result<(), ActionError> {
+        debug_assert_eq!(self.in_flight_samples(), 0);
         self.length = mark.length;
         self.head = mark.head;
         self.state = mark.state;
@@ -752,6 +758,12 @@ impl Journal {
     #[cfg(test)]
     pub(crate) fn fail_next_write_after(&mut self, bytes: usize) {
         self.fail_after = Some(bytes);
+    }
+    #[cfg(test)]
+    pub(crate) fn pause_next_writer_job(&mut self) -> std::sync::mpsc::Sender<()> {
+        let (release, gate) = std::sync::mpsc::channel();
+        self.writer_gate = Some(gate);
+        release
     }
     #[cfg(test)]
     pub(crate) fn transfer_pending_write_fault(&mut self, replacement: &mut Self) {
@@ -787,20 +799,23 @@ impl Journal {
         let mut journal = Self {
             #[cfg(test)]
             fail_after: None,
+            #[cfg(test)]
+            writer_gate: None,
             file,
             path,
             entries: vec![],
-            state: State {
+            state: Arc::new(State {
                 metadata: metadata.clone(),
                 layers: vec![],
                 surface: vec![],
                 masks: BTreeMap::new(),
-            },
+            }),
             head: [0; 32],
             length: 8,
             clock: Instant::now(),
             base_time: 0,
             cached: None,
+            writer: None,
         };
         journal.file.write_all(MAGIC)?;
         let prepared = journal.prepare(
@@ -819,11 +834,23 @@ impl Journal {
     pub fn prepare(
         &self,
         doc: &mut Document,
-        mut metadata: Metadata,
+        metadata: Metadata,
         source: Source,
         success: bool,
         error: Option<String>,
     ) -> Result<Prepared, ActionError> {
+        debug_assert_eq!(self.in_flight_samples(), 0);
+        let event = self.capture(doc, metadata, source, success, error)?;
+        Self::encode(event, &self.state, self.head, self.length)
+    }
+    fn capture(
+        &self,
+        doc: &mut Document,
+        mut metadata: Metadata,
+        source: Source,
+        success: bool,
+        error: Option<String>,
+    ) -> Result<(Event, usize), ActionError> {
         metadata.validate()?;
         doc.validate_mask_storage().map_err(bad)?;
         if (metadata.width, metadata.height) != (doc.width, doc.height)
@@ -854,15 +881,9 @@ impl Journal {
                     self.state.metadata.height,
                     self.state.layers.len(),
                 );
-        let before = if self.entries.is_empty() {
-            [0; 32]
-        } else {
-            self.state.digest()
-        };
         let count = metadata.count();
         let n = doc.layers.len();
         let mut changes = vec![];
-        let mut change_digests = vec![];
         let mut touched = std::mem::take(&mut doc.replay_tiles);
         if replace {
             touched = (0..n)
@@ -874,17 +895,13 @@ impl Journal {
                 continue;
             }
             let block = Block::read(&doc.layers[layer].pixels, &metadata, id);
-            let digest = block.digest();
-            if replace || digest != self.state.layers[layer][id].digest {
-                change_digests.push(digest);
-                changes.push(Change {
-                    layer,
-                    tile: id,
-                    block: Some(block),
-                    reuse: None,
-                    xor: false,
-                });
-            }
+            changes.push(Change {
+                layer,
+                tile: id,
+                block: Some(block),
+                reuse: None,
+                xor: false,
+            });
         }
         let surface = doc.replay_surface.take();
         let mut ids = BTreeSet::new();
@@ -900,21 +917,14 @@ impl Journal {
                 }
             }
         }
-        let mut visual = replace;
         for id in ids {
-            let block = Block::read(&doc.composite, &metadata, id);
-            let digest = block.digest();
-            if replace || digest != self.state.surface[id].digest {
-                change_digests.push(digest);
-                visual = true;
-                changes.push(Change {
-                    layer: n,
-                    tile: id,
-                    block: Some(block),
-                    reuse: None,
-                    xor: false,
-                });
-            }
+            changes.push(Change {
+                layer: n,
+                tile: id,
+                block: Some(Block::read(&doc.composite, &metadata, id)),
+                reuse: None,
+                xor: false,
+            });
         }
         let mut mask_changes = vec![];
         let mask_previous = masks::same_dimensions(Some(&self.state), &metadata);
@@ -938,39 +948,51 @@ impl Journal {
                 continue;
             }
             let block = masks::Block::read(doc.mask_plane(mask_id).map_err(bad)?, &metadata, tile);
-            if mask_previous
-                .and_then(|state| state.masks.get(&mask_id)?.get(tile))
-                .is_none_or(|old| hash(&block.bytes) != old.digest)
-            {
-                mask_changes.push(masks::Change {
-                    mask_id,
-                    tile,
-                    block: Some(block),
-                    reuse: None,
-                    xor: false,
-                });
-            }
+            mask_changes.push(masks::Change {
+                mask_id,
+                tile,
+                block: Some(block),
+                reuse: None,
+                xor: false,
+            });
         }
         let mask_version = (!metadata.composition.raster_masks.is_default()
             || !self.state.metadata.composition.raster_masks.is_default())
         .then_some(1);
-        let mut event = Event {
-            sequence: self.entries.len(),
-            elapsed_ms: self
-                .base_time
-                .saturating_add(self.clock.elapsed().as_millis().min(u64::MAX as u128) as u64),
-            source,
-            success,
-            error,
-            before,
-            after: [0; 32],
-            metadata: Some(metadata.clone()),
-            metadata_delta: None,
-            replace,
-            changes,
-            mask_version,
-            mask_changes,
-        };
+        Ok((
+            Event {
+                sequence: self.entries.len(),
+                elapsed_ms: self
+                    .base_time
+                    .saturating_add(self.clock.elapsed().as_millis().min(u64::MAX as u128) as u64),
+                source,
+                success,
+                error,
+                before: [0; 32],
+                after: [0; 32],
+                metadata: Some(metadata),
+                metadata_delta: None,
+                replace,
+                changes,
+                mask_version,
+                mask_changes,
+            },
+            n,
+        ))
+    }
+    fn encode(
+        (mut event, n): (Event, usize),
+        previous: &State,
+        head: Hash,
+        length: u64,
+    ) -> Result<Prepared, ActionError> {
+        if event.sequence != 0 {
+            event.before = previous.digest();
+        }
+        let metadata = event.metadata.as_ref().unwrap().clone();
+        let count = metadata.count();
+        let replace = event.replace;
+        let mut visual = replace;
         let empty = Cell {
             block: Arc::new(Block { pixels: vec![0] }),
             digest: hash(&0u32.to_le_bytes()),
@@ -983,40 +1005,54 @@ impl Journal {
                 masks: BTreeMap::new(),
             }
         } else {
-            let mut s = self.state.clone();
+            let mut s = previous.clone();
             s.metadata = metadata;
             s
         };
         state.masks = masks::seed(
-            if self.entries.is_empty() {
+            if event.sequence == 0 {
                 None
             } else {
-                Some(&self.state)
+                Some(previous)
             },
             &state.metadata,
         );
-        debug_assert_eq!(event.changes.len(), change_digests.len());
-        for (change, digest) in event.changes.iter().zip(change_digests) {
+        event.changes.retain(|change| {
             let block = change.block.as_ref().unwrap();
-            let cell = Cell {
+            let digest = block.digest();
+            let slot = if change.layer == n {
+                &mut state.surface[change.tile]
+            } else {
+                &mut state.layers[change.layer][change.tile]
+            };
+            if !replace && slot.digest == digest {
+                return false;
+            }
+            visual |= change.layer == n;
+            *slot = Cell {
                 digest,
                 block: Arc::new(block.clone()),
             };
-            if change.layer == n {
-                state.surface[change.tile] = cell;
-            } else {
-                state.layers[change.layer][change.tile] = cell;
+            true
+        });
+        event.mask_changes.retain(|change| {
+            let block = change.block.as_ref().unwrap();
+            let digest = hash(&block.bytes);
+            let slot = &mut state.masks.get_mut(&change.mask_id).unwrap()[change.tile];
+            if slot.digest == digest {
+                return false;
             }
-        }
-        for change in &event.mask_changes {
-            let cell = change.block.as_ref().unwrap().clone().cell();
-            state.masks.get_mut(&change.mask_id).unwrap()[change.tile] = cell;
-        }
+            *slot = masks::Cell {
+                digest,
+                block: Arc::new(block.clone()),
+            };
+            true
+        });
         if !masks::complete(&state.masks, &state.metadata) {
             return Err(bad("Incomplete A8 recording snapshot"));
         }
         event.after = state.digest();
-        event.compact(&self.state, &mut state)?;
+        event.compact(previous, &mut state)?;
         let mut encoder = Limited {
             inner: DeflateEncoder::new(Vec::new(), Compression::fast()),
             written: 0,
@@ -1024,12 +1060,12 @@ impl Journal {
         serde_json::to_writer(&mut encoder, &event)?;
         let bytes = encoder.inner.finish()?;
         if bytes.len() > MAX_ARCHIVE
-            || self.length as usize + bytes.len() + 80 > MAX_ARCHIVE
-            || self.entries.len() >= MAX_EVENTS
+            || length as usize + bytes.len() + 80 > MAX_ARCHIVE
+            || event.sequence >= MAX_EVENTS
         {
             return Err(ActionError::new("replay_limit","Replay journal limit reached; recover current pixels with Export PNG or replay.recover_png, then start a new session"));
         }
-        let hash = chain(&self.head, &bytes);
+        let hash = chain(&head, &bytes);
         Ok(Prepared {
             event,
             bytes,
@@ -1042,20 +1078,37 @@ impl Journal {
         prepared.event.before != prepared.event.after
     }
     pub fn commit(&mut self, p: Prepared) -> Result<(), ActionError> {
-        let written = (|| -> std::io::Result<()> {
-            self.file.seek(SeekFrom::Start(self.length))?;
-            self.file.write_all(&(p.bytes.len() as u32).to_le_bytes())?;
-            self.file.write_all(&p.hash)?;
+        debug_assert_eq!(self.in_flight_samples(), 0);
+        Self::append(
+            &mut self.file,
+            self.length,
+            &p,
             #[cfg(test)]
-            if let Some(n) = self.fail_after.take() {
-                self.file.write_all(&p.bytes[..n.min(p.bytes.len())])?;
+            self.fail_after.take(),
+        )?;
+        self.publish(p);
+        Ok(())
+    }
+    fn append(
+        file: &mut File,
+        length: u64,
+        prepared: &Prepared,
+        #[cfg(test)] fail_after: Option<usize>,
+    ) -> Result<(), ActionError> {
+        let written = (|| -> std::io::Result<()> {
+            file.seek(SeekFrom::Start(length))?;
+            file.write_all(&(prepared.bytes.len() as u32).to_le_bytes())?;
+            file.write_all(&prepared.hash)?;
+            #[cfg(test)]
+            if let Some(n) = fail_after {
+                file.write_all(&prepared.bytes[..n.min(prepared.bytes.len())])?;
                 return Err(std::io::Error::other("Injected partial journal write"));
             }
-            self.file.write_all(&p.bytes)?;
+            file.write_all(&prepared.bytes)?;
             Ok(())
         })();
         if let Err(error) = written {
-            if let Err(truncate) = self.file.set_len(self.length) {
+            if let Err(truncate) = file.set_len(length) {
                 return Err(ActionError::new(
                     "replay_storage",
                     format!("{error}; truncating the uncommitted tail failed: {truncate}"),
@@ -1063,6 +1116,9 @@ impl Journal {
             }
             return Err(error.into());
         }
+        Ok(())
+    }
+    fn publish(&mut self, p: Prepared) {
         self.entries.push(Entry {
             sequence: p.event.sequence,
             elapsed_ms: p.event.elapsed_ms,
@@ -1075,8 +1131,7 @@ impl Journal {
         });
         self.length += 36 + p.bytes.len() as u64;
         self.head = p.hash;
-        self.state = p.state;
-        Ok(())
+        self.state = Arc::new(p.state);
     }
     fn event(&mut self, index: usize) -> Result<Event, ActionError> {
         let e = self
@@ -1112,7 +1167,7 @@ impl Journal {
             return Err(bad("Replay event index is out of range"));
         }
         if index + 1 == self.entries.len() {
-            return Ok(self.state.clone());
+            return Ok(self.state.as_ref().clone());
         }
         let (mut cursor, mut state) = match self.cached.take() {
             Some((i, s)) if i <= index => (i, s),
@@ -1251,15 +1306,18 @@ impl Journal {
         let mut journal = Self {
             #[cfg(test)]
             fail_after: None,
+            #[cfg(test)]
+            writer_gate: None,
             file,
             path,
             entries,
-            state: state.ok_or_else(|| bad("Missing replay genesis"))?,
+            state: Arc::new(state.ok_or_else(|| bad("Missing replay genesis"))?),
             head,
             length: end,
             clock: Instant::now(),
             base_time: time,
             cached: None,
+            writer: None,
         };
         journal.file.write_all(MAGIC)?;
         journal.file.write_all(&bytes[8..end as usize])?;
